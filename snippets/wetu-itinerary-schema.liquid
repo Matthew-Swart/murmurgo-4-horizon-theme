@@ -1,0 +1,249 @@
+{% comment %}
+  ============================================================================
+  WETU ITINERARY SEO SCHEMA
+  ============================================================================
+  
+  Generates JSON-LD structured data for itinerary products.
+  Optimized for Google rich results and AI shopping agents.
+  
+  USAGE:
+    {% render 'wetu-itinerary-schema', product: product %}
+  
+  Schema types included:
+  - Product (for e-commerce)
+  - TouristTrip (for travel)
+  - ItemList (for destinations)
+  - BreadcrumbList (for navigation)
+  
+  ============================================================================
+{% endcomment %}
+
+{% comment %} Load itinerary data {% endcomment %}
+{% render 'wetu-itinerary-data', product: product %}
+
+{% assign selected_variant = product.selected_or_first_available_variant %}
+{% assign total_days = wetu_total_days | default: product.metafields.wetu.itinerary_days.value | default: 0 %}
+{% assign total_nights = wetu_total_nights | default: total_days | minus: 1 %}
+
+{% comment %} Build destination list {% endcomment %}
+{% assign destinations_list = '' %}
+{% assign country_name = '' %}
+{% for leg in wetu_legs %}
+  {% assign leg_type = leg.type.value | default: 'Standard' %}
+  {% if leg_type != 'Departure' %}
+    {% assign dest_id = leg.destination_content_entity_id.value %}
+    {% for dest_product in wetu_destination_products %}
+      {% assign dest_pin = dest_product.metafields.wetu.pin_id.value %}
+      {% if dest_pin == dest_id %}
+        {% assign dest_name = dest_product.title %}
+        {% unless destinations_list contains dest_name %}
+          {% if destinations_list != '' %}
+            {% assign destinations_list = destinations_list | append: ', ' %}
+          {% endif %}
+          {% assign destinations_list = destinations_list | append: dest_name %}
+        {% endunless %}
+        {% comment %} Try to get country from first destination {% endcomment %}
+        {% if country_name == blank %}
+          {% assign country_name = dest_product.metafields.wetu.country.value %}
+        {% endif %}
+        {% break %}
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+{% endfor %}
+
+{% comment %} Clean description {% endcomment %}
+{% assign clean_description = product.description | strip_html | strip_newlines | truncate: 500 | escape %}
+
+{% comment %} Build image array {% endcomment %}
+{% capture images_array %}
+[
+  "{{ product.featured_image | image_url: width: 1200 }}"
+  {%- for image in product.images offset: 1 limit: 4 -%}
+  ,"{{ image | image_url: width: 1200 }}"
+  {%- endfor -%}
+]
+{% endcapture %}
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Product",
+      "@id": "{{ shop.url }}{{ product.url }}#product",
+      "name": {{ product.title | json }},
+      "description": {{ clean_description | json }},
+      "url": "{{ shop.url }}{{ product.url }}",
+      "image": {{ images_array }},
+      "sku": {{ product.handle | json }},
+      "brand": {
+        "@type": "Brand",
+        "name": {{ shop.name | json }}
+      },
+      "category": "Travel > Safari Tours",
+      {% if selected_variant.price > 0 %}
+      "offers": {
+        "@type": "Offer",
+        "url": "{{ shop.url }}{{ product.url }}",
+        "price": "{{ selected_variant.price | divided_by: 100.0 | round: 2 }}",
+        "priceCurrency": "{{ shop.currency }}",
+        "priceValidUntil": "{{ 'now' | date: '%Y' | plus: 1 }}-12-31",
+        "availability": "{% if selected_variant.available %}https://schema.org/InStock{% else %}https://schema.org/OutOfStock{% endif %}",
+        "seller": {
+          "@type": "Organization",
+          "name": {{ shop.name | json }}
+        },
+        "itemCondition": "https://schema.org/NewCondition"
+      },
+      {% endif %}
+      "additionalProperty": [
+        {
+          "@type": "PropertyValue",
+          "name": "Duration",
+          "value": "{{ total_days }} days"
+        },
+        {
+          "@type": "PropertyValue",
+          "name": "Nights",
+          "value": "{{ total_nights }}"
+        },
+        {
+          "@type": "PropertyValue",
+          "name": "Accommodations",
+          "value": "{{ wetu_accommodation_products.size }}"
+        }
+        {% if destinations_list != blank %}
+        ,{
+          "@type": "PropertyValue",
+          "name": "Destinations",
+          "value": {{ destinations_list | json }}
+        }
+        {% endif %}
+      ]
+    },
+    {
+      "@type": "TouristTrip",
+      "@id": "{{ shop.url }}{{ product.url }}#trip",
+      "name": {{ product.title | json }},
+      "description": {{ clean_description | json }},
+      "url": "{{ shop.url }}{{ product.url }}",
+      {% if product.featured_image %}
+      "image": "{{ product.featured_image | image_url: width: 1200 }}",
+      {% endif %}
+      "touristType": "Leisure",
+      {% if country_name != blank %}
+      "touristDestination": {
+        "@type": "Place",
+        "name": {{ country_name | json }}
+      },
+      {% endif %}
+      "itinerary": {
+        "@type": "ItemList",
+        "numberOfItems": {{ wetu_legs.size | minus: 1 }},
+        "itemListElement": [
+          {% assign leg_position = 0 %}
+          {% assign current_day = 1 %}
+          {% for leg in wetu_legs %}
+            {% assign leg_type = leg.type.value | default: 'Standard' %}
+            {% assign leg_nights = leg.nights.value | default: 0 %}
+            {% if leg_type != 'Departure' and leg_nights > 0 %}
+              {% assign leg_position = leg_position | plus: 1 %}
+              {% if leg_position > 1 %},{% endif %}
+              {
+                "@type": "ListItem",
+                "position": {{ leg_position }},
+                "item": {
+                  "@type": "TouristDestination",
+                  "name": {{ leg.accommodation_name.value | json }},
+                  "description": "Day {{ current_day }}{% if leg_nights > 1 %}-{{ current_day | plus: leg_nights | minus: 1 }}{% endif %}: {{ leg_nights }} {% if leg_nights == 1 %}night{% else %}nights{% endif %}"
+                }
+              }
+              {% assign current_day = current_day | plus: leg_nights %}
+            {% endif %}
+          {% endfor %}
+        ]
+      },
+      "provider": {
+        "@type": "TravelAgency",
+        "name": {{ shop.name | json }},
+        "url": "{{ shop.url }}"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "{{ shop.url }}"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Itineraries",
+          "item": "{{ shop.url }}/collections/itineraries"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": {{ product.title | json }},
+          "item": "{{ shop.url }}{{ product.url }}"
+        }
+      ]
+    },
+    {
+      "@type": "WebPage",
+      "@id": "{{ shop.url }}{{ product.url }}#webpage",
+      "url": "{{ shop.url }}{{ product.url }}",
+      "name": {{ product.title | json }},
+      "description": {{ clean_description | json }},
+      "isPartOf": {
+        "@type": "WebSite",
+        "@id": "{{ shop.url }}#website",
+        "url": "{{ shop.url }}",
+        "name": {{ shop.name | json }},
+        "publisher": {
+          "@type": "Organization",
+          "name": {{ shop.name | json }}
+        }
+      },
+      "inLanguage": "{{ request.locale.iso_code | default: 'en' }}",
+      "potentialAction": {
+        "@type": "BuyAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": "{{ shop.url }}{{ product.url }}"
+        }
+      }
+    }
+  ]
+}
+</script>
+
+{% comment %} Open Graph Meta Tags {% endcomment %}
+{% capture og_description %}{{ clean_description | truncate: 160 }}{% endcapture %}
+
+<meta property="og:type" content="product">
+<meta property="og:title" content="{{ product.title }} | {{ shop.name }}">
+<meta property="og:description" content="{{ og_description }}">
+<meta property="og:url" content="{{ shop.url }}{{ product.url }}">
+{% if product.featured_image %}
+<meta property="og:image" content="{{ product.featured_image | image_url: width: 1200 }}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+{% endif %}
+<meta property="og:site_name" content="{{ shop.name }}">
+{% if selected_variant.price > 0 %}
+<meta property="product:price:amount" content="{{ selected_variant.price | divided_by: 100.0 }}">
+<meta property="product:price:currency" content="{{ shop.currency }}">
+{% endif %}
+
+{% comment %} Twitter Card Meta Tags {% endcomment %}
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ product.title }}">
+<meta name="twitter:description" content="{{ og_description }}">
+{% if product.featured_image %}
+<meta name="twitter:image" content="{{ product.featured_image | image_url: width: 1200 }}">
+{% endif %}

@@ -1,0 +1,241 @@
+{% doc %}
+  Wetu Accommodation Key Details
+
+  Displays detailed information for accommodation products including room amenities,
+  features, and additional room details.
+
+  @param {product} product - The accommodation product (required)
+
+  @example
+  {% render 'wetu-accommodation-key-details', product: product %}
+{% enddoc %}
+
+{% liquid
+  assign room_amenities = product.metafields.wetu_room.room_amenities.value
+  assign amenities = product.metafields.wetu_room.amenities.value
+  assign special_amenities = product.metafields.wetu_room.special_amenities.value
+  assign view_type = product.metafields.wetu_room.view_type
+  assign has_balcony = product.metafields.wetu_room.has_balcony
+  assign has_jacuzzi = product.metafields.wetu_room.has_jacuzzi
+  assign room_size = product.metafields.wetu_room.room_size
+  assign max_occupancy = product.metafields.wetu_room.max_occupancy
+  assign max_adults = product.metafields.wetu_room.max_adults
+  assign max_children = product.metafields.wetu_room.max_children
+  
+  assign all_amenities = '' | split: ''
+  if room_amenities and room_amenities.size > 0
+    assign all_amenities = all_amenities | concat: room_amenities
+  endif
+  if amenities and amenities.size > 0
+    assign all_amenities = all_amenities | concat: amenities
+  endif
+  if special_amenities and special_amenities.size > 0
+    assign all_amenities = all_amenities | concat: special_amenities
+  endif
+  
+  assign has_amenities = false
+  if all_amenities.size > 0
+    assign has_amenities = true
+  endif
+  
+  assign has_features = false
+  if view_type or has_balcony or has_jacuzzi or room_size or max_occupancy or max_adults
+    assign has_features = true
+  endif
+%}
+
+{% if has_amenities or has_features %}
+<div class="wetu-accommodation-key-details">
+  <h3 class="wetu-accommodation-key-details__title">Room details</h3>
+  
+  <div class="wetu-accommodation-key-details__grid">
+    {% if has_features %}
+      <div class="wetu-accommodation-key-details__section">
+        <h4 class="wetu-accommodation-key-details__subtitle">Features</h4>
+        <div class="wetu-accommodation-key-details__content">
+          {% if max_occupancy or max_adults %}
+            <div class="wetu-accommodation-key-details__info-row">
+              <span class="wetu-accommodation-key-details__info-label">Occupancy</span>
+              <span class="wetu-accommodation-key-details__info-value">
+                {% if max_adults and max_children %}
+                  {{ max_adults }} {{ max_adults | pluralize: 'adult', 'adults' }}, {{ max_children }} {{ max_children | pluralize: 'child', 'children' }}
+                {% elsif max_adults %}
+                  Up to {{ max_adults }} {{ max_adults | pluralize: 'guest', 'guests' }}
+                {% elsif max_occupancy %}
+                  Up to {{ max_occupancy }} {{ max_occupancy | pluralize: 'guest', 'guests' }}
+                {% endif %}
+              </span>
+            </div>
+          {% endif %}
+          {% if view_type %}
+            <div class="wetu-accommodation-key-details__info-row">
+              <span class="wetu-accommodation-key-details__info-label">View</span>
+              <span class="wetu-accommodation-key-details__info-value">{{ view_type }}</span>
+            </div>
+          {% endif %}
+          {% if room_size %}
+            <div class="wetu-accommodation-key-details__info-row">
+              <span class="wetu-accommodation-key-details__info-label">Size</span>
+              <span class="wetu-accommodation-key-details__info-value">{{ room_size }}</span>
+            </div>
+          {% endif %}
+          {% if has_balcony %}
+            <div class="wetu-accommodation-key-details__info-row">
+              <span class="wetu-accommodation-key-details__info-label">Balcony</span>
+              <span class="wetu-accommodation-key-details__info-value">Yes</span>
+            </div>
+          {% endif %}
+          {% if has_jacuzzi %}
+            <div class="wetu-accommodation-key-details__info-row">
+              <span class="wetu-accommodation-key-details__info-label">Jacuzzi</span>
+              <span class="wetu-accommodation-key-details__info-value">Yes</span>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+    
+    {% if has_amenities %}
+      <div class="wetu-accommodation-key-details__section wetu-accommodation-key-details__section--wide">
+        <h4 class="wetu-accommodation-key-details__subtitle">Amenities</h4>
+        <ul class="wetu-accommodation-key-details__list">
+          {% for amenity in all_amenities %}
+            <li class="wetu-accommodation-key-details__list-item">{{ amenity }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+  </div>
+
+  {% liquid
+    assign documents = product.metafields.wetu.documents.value
+    assign show_inline_docs = false
+    if documents
+      for d in documents limit: 1
+        assign show_inline_docs = true
+      endfor
+    endif
+  %}
+  {% if show_inline_docs %}
+    <div class="wetu-accommodation-documents">
+      <ul class="wetu-documents__list wetu-documents__list--list">
+        {% for doc in documents %}
+          {% render 'wetu-document-item', document: doc, layout: 'list' %}
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+</div>
+{% endif %}
+
+{% stylesheet %}
+  .wetu-accommodation-key-details {
+    margin-block: var(--spacing-xl, 40px);
+  }
+  
+  .wetu-accommodation-key-details__title {
+    font-size: var(--font-size-h5, 1.25rem);
+    font-weight: 600;
+    margin-block-end: var(--spacing-lg, 32px);
+    color: rgb(var(--color-foreground));
+    letter-spacing: -0.01em;
+  }
+  
+  .wetu-accommodation-key-details__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--spacing-xl, 40px) var(--spacing-lg, 32px);
+  }
+  
+  @media screen and (max-width: 749px) {
+    .wetu-accommodation-key-details__grid {
+      grid-template-columns: 1fr;
+      gap: var(--spacing-lg, 32px);
+    }
+  }
+  
+  .wetu-accommodation-key-details__section--wide {
+    grid-column: 1 / -1;
+  }
+  
+  .wetu-accommodation-key-details__section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm, 12px);
+  }
+  
+  .wetu-accommodation-key-details__subtitle {
+    font-size: var(--font-size-sm, 0.875rem);
+    font-weight: 600;
+    margin: 0;
+    color: rgb(var(--color-foreground));
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  .wetu-accommodation-key-details__content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs, 8px);
+  }
+  
+  .wetu-accommodation-key-details__info-row {
+    display: flex;
+    gap: var(--spacing-sm, 12px);
+    font-size: var(--font-size-sm, 0.875rem);
+    line-height: 1.6;
+  }
+  
+  .wetu-accommodation-key-details__info-label {
+    color: rgba(var(--color-foreground), 0.5);
+    min-width: 80px;
+  }
+  
+  .wetu-accommodation-key-details__info-value {
+    color: rgba(var(--color-foreground), 0.85);
+  }
+  
+  .wetu-accommodation-key-details__list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing-xs, 8px) var(--spacing-sm, 12px);
+  }
+  
+  @media screen and (max-width: 749px) {
+    .wetu-accommodation-key-details__list {
+      grid-template-columns: 1fr;
+    }
+  }
+  
+  .wetu-accommodation-key-details__list-item {
+    font-size: var(--font-size-sm, 0.875rem);
+    line-height: 1.6;
+    color: rgba(var(--color-foreground), 0.7);
+    position: relative;
+    padding-inline-start: 12px;
+  }
+  
+  .wetu-accommodation-key-details__list-item::before {
+    content: '·';
+    position: absolute;
+    left: 0;
+    color: rgba(var(--color-foreground), 0.3);
+  }
+  
+  /* Inline documents under room details */
+  .wetu-accommodation-documents {
+    margin-top: var(--spacing-lg, 32px);
+  }
+  
+  .wetu-accommodation-documents .wetu-documents__list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+{% endstylesheet %}

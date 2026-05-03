@@ -1,0 +1,665 @@
+{% comment %}
+  ============================================================================
+  WETU TRANSFER LIST ITEM SNIPPET
+  ============================================================================
+  
+  Displays a single transfer/route item in the All Transfers timeline.
+  
+  PARAMETERS:
+  - route: The route metaobject
+  - index: Item index for animation/identification
+  - show_map_link: Boolean to show map link
+  - show_directions: Boolean to show driving directions
+  
+  ============================================================================
+{% endcomment %}
+
+{% assign mode = route.mode.value %}
+{% assign route_type = route.type.value %}
+{% assign route_label = route.label.value | default: mode %}
+{% assign start_location = route.start_location.value %}
+{% assign end_location = route.end_location.value %}
+{% assign start_time = route.start_time.value %}
+{% assign end_time = route.end_time.value %}
+{% assign duration = route.duration.value %}
+{% assign distance = route.distance.value %}
+{% assign agency = route.agency.value %}
+{% assign vehicle = route.vehicle.value %}
+{% assign ticket_class = route.ticket_class.value %}
+{% assign start_terminal = route.start_terminal.value %}
+{% assign end_terminal = route.end_terminal.value %}
+{% assign directions = route.directions.value %}
+{% assign sequence = route.sequence.value | plus: 1 %}
+
+{% comment %} Determine transport icon {% endcomment %}
+{% assign transport_icon = 'car' %}
+{% assign transport_color = 'green' %}
+
+{% case mode %}
+  {% when 'ScheduledFlight' %}
+    {% assign transport_icon = 'plane' %}
+    {% assign transport_color = 'blue' %}
+  {% when 'CharterFlight' %}
+    {% assign transport_icon = 'plane' %}
+    {% assign transport_color = 'blue' %}
+  {% when 'Helicopter' %}
+    {% assign transport_icon = 'helicopter' %}
+    {% assign transport_color = 'purple' %}
+  {% when 'Train' %}
+    {% assign transport_icon = 'train' %}
+    {% assign transport_color = 'yellow' %}
+  {% when 'Boat' %}
+    {% assign transport_icon = 'boat' %}
+    {% assign transport_color = 'cyan' %}
+  {% when 'Selfdrive' %}
+    {% assign transport_icon = 'car' %}
+    {% assign transport_color = 'green' %}
+  {% when 'Transfer', 'Shuttle' %}
+    {% assign transport_icon = 'transfer' %}
+    {% assign transport_color = 'green' %}
+  {% else %}
+    {% assign transport_icon = 'transfer' %}
+    {% assign transport_color = 'gray' %}
+{% endcase %}
+
+{% comment %} Determine if this is a flight {% endcomment %}
+{% assign is_flight = false %}
+{% if mode contains 'Flight' or mode == 'Helicopter' %}
+  {% assign is_flight = true %}
+{% endif %}
+
+{% assign is_self_drive = false %}
+{% if mode == 'Selfdrive' %}
+  {% assign is_self_drive = true %}
+{% endif %}
+
+<div 
+  class="wetu-transfer-item wetu-transfer-item--{{ transport_color }}" 
+  data-mode="{{ mode }}"
+  data-route-index="{{ index }}"
+  style="--animation-delay: {{ index | minus: 1 | times: 0.1 }}s;"
+>
+  {% comment %} Timeline Icon {% endcomment %}
+  <div class="transfer-item__icon">
+    {% render 'icon-transport', icon: transport_icon, size: 24 %}
+  </div>
+
+  {% comment %} Content {% endcomment %}
+  <div class="transfer-item__content">
+    {% comment %} Header {% endcomment %}
+    <div class="transfer-item__header">
+      <div class="transfer-item__type">
+        <span class="type-badge type-badge--{{ transport_color }}">
+          {% case mode %}
+            {% when 'ScheduledFlight' %}Scheduled Flight
+            {% when 'CharterFlight' %}Charter Flight
+            {% when 'Helicopter' %}Helicopter
+            {% when 'Selfdrive' %}Self-Drive
+            {% when 'Transfer' %}Transfer
+            {% when 'Shuttle' %}Shuttle
+            {% when 'Train' %}Train
+            {% when 'Boat' %}Boat
+            {% else %}{{ mode }}
+          {% endcase %}
+        </span>
+        
+        {% if route_label != mode and route_label != blank %}
+          <span class="label-tag">{{ route_label }}</span>
+        {% endif %}
+        
+        {% if sequence > 0 %}
+          <span class="day-tag">Day {{ sequence }}</span>
+        {% endif %}
+      </div>
+      
+      {% if duration != blank %}
+        <span class="transfer-item__duration">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          {{ duration }}
+        </span>
+      {% endif %}
+    </div>
+
+    {% comment %} Route Visual {% endcomment %}
+    <div class="transfer-item__route">
+      {% comment %} Start Point {% endcomment %}
+      <div class="route-point route-point--start">
+        <div class="route-point__marker"></div>
+        <div class="route-point__info">
+          <span class="route-point__label">From</span>
+          <span class="route-point__location">{{ start_location | default: 'Origin' }}</span>
+          {% if start_time != blank %}
+            <span class="route-point__time">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+              {{ start_time }}
+            </span>
+          {% endif %}
+          {% if is_flight and start_terminal != blank %}
+            <span class="route-point__terminal">Terminal {{ start_terminal }}</span>
+          {% endif %}
+        </div>
+      </div>
+
+      {% comment %} Route Line {% endcomment %}
+      <div class="route-line route-line--{{ transport_color }}">
+        {% if distance != blank %}
+          {% assign distance_km = distance | divided_by: 1000.0 | round %}
+          {% if distance_km > 0 %}
+            <span class="route-line__distance">{{ distance_km }} km</span>
+          {% endif %}
+        {% endif %}
+        <div class="route-line__arrow">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </div>
+      </div>
+
+      {% comment %} End Point {% endcomment %}
+      <div class="route-point route-point--end">
+        <div class="route-point__marker"></div>
+        <div class="route-point__info">
+          <span class="route-point__label">To</span>
+          <span class="route-point__location">{{ end_location | default: 'Destination' }}</span>
+          {% if end_time != blank %}
+            <span class="route-point__time">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+              {{ end_time }}
+            </span>
+          {% endif %}
+          {% if is_flight and end_terminal != blank %}
+            <span class="route-point__terminal">Terminal {{ end_terminal }}</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    {% comment %} Flight/Transport Details {% endcomment %}
+    {% if agency != blank or vehicle != blank or ticket_class != blank %}
+      <div class="transfer-item__details">
+        {% if agency != blank %}
+          <span class="detail-item">
+            <span class="detail-label">{% if is_flight %}Airline{% else %}Provider{% endif %}</span>
+            <span class="detail-value">{{ agency }}</span>
+          </span>
+        {% endif %}
+        {% if vehicle != blank %}
+          <span class="detail-item">
+            <span class="detail-label">{% if is_flight %}Flight{% else %}Vehicle{% endif %}</span>
+            <span class="detail-value">{{ vehicle }}</span>
+          </span>
+        {% endif %}
+        {% if ticket_class != blank %}
+          <span class="detail-item">
+            <span class="detail-label">Class</span>
+            <span class="detail-value">{{ ticket_class }}</span>
+          </span>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {% comment %} Driving Directions (for self-drive) {% endcomment %}
+    {% if show_directions and is_self_drive and directions != blank %}
+      <details class="transfer-item__directions">
+        <summary class="directions__toggle">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 18l6-6-6-6"/>
+          </svg>
+          <span>View Driving Directions</span>
+        </summary>
+        <div class="directions__content">
+          {% assign direction_steps = directions | split: '|' %}
+          <ol class="directions__list">
+            {% for step in direction_steps %}
+              {% assign step_clean = step | strip %}
+              {% if step_clean != blank %}
+                <li>{{ step_clean }}</li>
+              {% endif %}
+            {% endfor %}
+          </ol>
+        </div>
+      </details>
+    {% endif %}
+
+    {% comment %} Actions {% endcomment %}
+    {% if show_map_link %}
+      <div class="transfer-item__actions">
+        <button type="button" class="map-link-btn" data-map-route="{{ index }}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
+            <line x1="8" y1="2" x2="8" y2="18"/>
+            <line x1="16" y1="6" x2="16" y2="22"/>
+          </svg>
+          View on Map
+        </button>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<style>
+  .wetu-transfer-item {
+    position: relative;
+    display: flex;
+    gap: 16px;
+    padding: 24px 0;
+    animation: fadeInUp 0.4s ease-out both;
+    animation-delay: var(--animation-delay, 0s);
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Icon */
+  .transfer-item__icon {
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--color-background);
+    border: 2px solid var(--color-border);
+    position: relative;
+    z-index: 1;
+  }
+
+  .wetu-transfer-item--blue .transfer-item__icon {
+    background: color-mix(in srgb, #3b82f6 15%, var(--color-background));
+    border-color: #3b82f6;
+    color: #3b82f6;
+  }
+
+  .wetu-transfer-item--green .transfer-item__icon {
+    background: color-mix(in srgb, #22c55e 15%, var(--color-background));
+    border-color: #22c55e;
+    color: #22c55e;
+  }
+
+  .wetu-transfer-item--purple .transfer-item__icon {
+    background: color-mix(in srgb, #8b5cf6 15%, var(--color-background));
+    border-color: #8b5cf6;
+    color: #8b5cf6;
+  }
+
+  .wetu-transfer-item--yellow .transfer-item__icon {
+    background: color-mix(in srgb, #f59e0b 15%, var(--color-background));
+    border-color: #f59e0b;
+    color: #f59e0b;
+  }
+
+  .wetu-transfer-item--cyan .transfer-item__icon {
+    background: color-mix(in srgb, #06b6d4 15%, var(--color-background));
+    border-color: #06b6d4;
+    color: #06b6d4;
+  }
+
+  .wetu-transfer-item--gray .transfer-item__icon {
+    background: color-mix(in srgb, var(--color-foreground) 10%, var(--color-background));
+    color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+  }
+
+  @media screen and (min-width: 750px) {
+    .transfer-item__icon {
+      width: 56px;
+      height: 56px;
+    }
+  }
+
+  /* Content */
+  .transfer-item__content {
+    flex: 1;
+    min-width: 0;
+    background: color-mix(in srgb, var(--color-foreground) 2%, transparent);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+
+  /* Header */
+  .transfer-item__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+
+  .transfer-item__type {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .type-badge {
+    display: inline-flex;
+    padding: 4px 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    border-radius: 6px;
+  }
+
+  .type-badge--blue {
+    background: color-mix(in srgb, #3b82f6 15%, transparent);
+    color: #3b82f6;
+  }
+
+  .type-badge--green {
+    background: color-mix(in srgb, #22c55e 15%, transparent);
+    color: #22c55e;
+  }
+
+  .type-badge--purple {
+    background: color-mix(in srgb, #8b5cf6 15%, transparent);
+    color: #8b5cf6;
+  }
+
+  .type-badge--yellow {
+    background: color-mix(in srgb, #f59e0b 15%, transparent);
+    color: #f59e0b;
+  }
+
+  .type-badge--cyan {
+    background: color-mix(in srgb, #06b6d4 15%, transparent);
+    color: #06b6d4;
+  }
+
+  .type-badge--gray {
+    background: color-mix(in srgb, var(--color-foreground) 10%, transparent);
+    color: color-mix(in srgb, var(--color-foreground) 70%, transparent);
+  }
+
+  .label-tag,
+  .day-tag {
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    background: color-mix(in srgb, var(--color-foreground) 8%, transparent);
+    border-radius: 4px;
+    color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+  }
+
+  .day-tag {
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    color: var(--color-primary);
+    font-weight: 600;
+  }
+
+  .transfer-item__duration {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--color-foreground);
+    white-space: nowrap;
+  }
+
+  .transfer-item__duration svg {
+    color: var(--color-primary);
+  }
+
+  /* Route Visual */
+  .transfer-item__route {
+    display: flex;
+    align-items: stretch;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  @media screen and (max-width: 600px) {
+    .transfer-item__route {
+      flex-direction: column;
+      gap: 0;
+    }
+  }
+
+  .route-point {
+    flex: 1;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .route-point__marker {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-top: 4px;
+    flex-shrink: 0;
+  }
+
+  .route-point--start .route-point__marker {
+    background: var(--color-primary);
+  }
+
+  .route-point--end .route-point__marker {
+    background: transparent;
+    border: 3px solid var(--color-foreground);
+  }
+
+  .route-point__info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .route-point__label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: color-mix(in srgb, var(--color-foreground) 50%, transparent);
+  }
+
+  .route-point__location {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-foreground);
+  }
+
+  .route-point__time {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-primary);
+  }
+
+  .route-point__terminal {
+    font-size: 0.8rem;
+    color: color-mix(in srgb, var(--color-foreground) 50%, transparent);
+  }
+
+  /* Route Line */
+  .route-line {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 0 12px;
+    position: relative;
+  }
+
+  .route-line::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--color-border);
+  }
+
+  @media screen and (max-width: 600px) {
+    .route-line {
+      flex-direction: row;
+      padding: 16px 0;
+      margin-left: 5px;
+    }
+
+    .route-line::before {
+      top: 0;
+      bottom: 0;
+      left: 0;
+      width: 2px;
+      height: 100%;
+      background: var(--color-border);
+    }
+  }
+
+  .route-line__distance {
+    font-size: 0.75rem;
+    color: color-mix(in srgb, var(--color-foreground) 50%, transparent);
+    background: var(--color-background);
+    padding: 2px 8px;
+    border-radius: 4px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .route-line__arrow {
+    background: var(--color-background);
+    padding: 4px;
+    border-radius: 50%;
+    position: relative;
+    z-index: 1;
+  }
+
+  .route-line--blue .route-line__arrow { color: #3b82f6; }
+  .route-line--green .route-line__arrow { color: #22c55e; }
+  .route-line--purple .route-line__arrow { color: #8b5cf6; }
+  .route-line--yellow .route-line__arrow { color: #f59e0b; }
+  .route-line--cyan .route-line__arrow { color: #06b6d4; }
+
+  /* Details */
+  .transfer-item__details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding: 12px 16px;
+    background: color-mix(in srgb, var(--color-foreground) 3%, transparent);
+    border-radius: 8px;
+    margin-bottom: 16px;
+  }
+
+  .detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .detail-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: color-mix(in srgb, var(--color-foreground) 50%, transparent);
+  }
+
+  .detail-value {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--color-foreground);
+  }
+
+  /* Directions */
+  .transfer-item__directions {
+    border-top: 1px solid var(--color-border);
+    padding-top: 12px;
+    margin-bottom: 16px;
+  }
+
+  .directions__toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--color-primary);
+    list-style: none;
+  }
+
+  .directions__toggle::-webkit-details-marker {
+    display: none;
+  }
+
+  .directions__toggle svg {
+    transition: transform 0.2s ease;
+  }
+
+  .transfer-item__directions[open] .directions__toggle svg {
+    transform: rotate(90deg);
+  }
+
+  .directions__content {
+    padding-top: 12px;
+  }
+
+  .directions__list {
+    margin: 0;
+    padding-left: 24px;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: color-mix(in srgb, var(--color-foreground) 70%, transparent);
+  }
+
+  .directions__list li {
+    padding: 4px 0;
+  }
+
+  /* Actions */
+  .transfer-item__actions {
+    display: flex;
+    gap: 12px;
+  }
+
+  .map-link-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--color-foreground);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .map-link-btn:hover {
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+  }
+
+  .map-link-btn svg {
+    flex-shrink: 0;
+  }
+</style>
+

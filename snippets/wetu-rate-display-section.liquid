@@ -1,0 +1,98 @@
+{% comment %}
+  WETU Rate Display Section Snippet
+  
+  Displays the three rate categories and amenities for a room/accommodation
+  
+  @param {array} per_person_rates - Per person sharing rates
+  @param {array} single_rates - Single occupancy rates  
+  @param {array} room_rates - Per room rates
+  @param {array} amenities - List of amenities
+{% endcomment %}
+
+{% comment %} Per Person Sharing Rates {% endcomment %}
+{% if per_person_rates and per_person_rates.size > 0 %}
+  <div class="wetu-rate-section">
+    <h4 class="wetu-rate-section__title">{{ 'wetu.rates.per_person_sharing' | t | default: 'Per Person Sharing' }}</h4>
+    <div class="wetu-rate-table">
+      {% for rate in per_person_rates %}
+        {% render 'wetu-rate-row', rate: rate %}
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}
+
+{% comment %} Single Rates {% endcomment %}
+{% if single_rates and single_rates.size > 0 %}
+  <div class="wetu-rate-section">
+    <h4 class="wetu-rate-section__title">{{ 'wetu.rates.single_occupancy' | t | default: 'Single Occupancy' }}</h4>
+    <div class="wetu-rate-table">
+      {% for rate in single_rates %}
+        {% render 'wetu-rate-row', rate: rate %}
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}
+
+{% comment %} Per Room Rates {% endcomment %}
+{% if room_rates and room_rates.size > 0 %}
+  <div class="wetu-rate-section">
+    <h4 class="wetu-rate-section__title">{{ 'wetu.rates.per_room' | t | default: 'Per Room' }}</h4>
+    <div class="wetu-rate-table">
+      {% for rate in room_rates %}
+        {% render 'wetu-rate-row', rate: rate %}
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}
+
+{% comment %} Amenities {% endcomment %}
+{% if amenities and amenities.size > 0 %}
+  <div class="wetu-room__amenities">
+    <h5 class="wetu-room__amenities-title">{{ 'wetu.rates.amenities' | t | default: 'Amenities' }}</h5>
+    <ul class="wetu-room__amenities-list">
+      {% for amenity in amenities limit: 12 %}
+        <li>{{ amenity }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}
+
+{% stylesheet %}
+  .wetu-room__amenities {
+    margin-top: 32px;
+    padding: 24px;
+    background: rgba(var(--color-foreground), 0.02);
+    border-radius: 6px;
+  }
+
+  .wetu-room__amenities-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: rgb(var(--color-foreground));
+  }
+
+  .wetu-room__amenities-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+    gap: 12px;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .wetu-room__amenities-list li {
+    font-size: 0.9375rem;
+    color: rgba(var(--color-foreground), 0.7);
+    padding-left: 20px;
+    position: relative;
+  }
+
+  .wetu-room__amenities-list li::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    color: rgb(var(--color-foreground));
+    font-weight: 600;
+  }
+{% endstylesheet %}

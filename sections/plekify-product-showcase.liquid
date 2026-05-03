@@ -1,0 +1,324 @@
+<section class="plekify-showcase" id="plekify-showcase-{{ section.id }}">
+  <div class="plekify-showcase__container">
+    <header class="plekify-showcase__header">
+      {% if section.settings.overline != blank %}
+        <p class="plekify-showcase__overline">{{ section.settings.overline }}</p>
+      {% endif %}
+      {% if section.settings.heading != blank %}
+        <h2 class="plekify-showcase__heading">{{ section.settings.heading }}</h2>
+      {% endif %}
+      <div class="plekify-showcase__divider"></div>
+    </header>
+
+    <div class="plekify-showcase__items">
+      {% for block in section.blocks %}
+        {% assign is_even = forloop.index | modulo: 2 %}
+        <div class="plekify-showcase__item {% if is_even == 0 %}plekify-showcase__item--reversed{% endif %}" {{ block.shopify_attributes }}>
+          <div class="plekify-showcase__item-image-col">
+            <div class="plekify-showcase__browser-frame">
+              <div class="plekify-showcase__browser-bar">
+                <span class="plekify-showcase__browser-dot"></span>
+                <span class="plekify-showcase__browser-dot"></span>
+                <span class="plekify-showcase__browser-dot"></span>
+              </div>
+              <div class="plekify-showcase__browser-viewport">
+                {% if block.settings.image != blank %}
+                  {{ block.settings.image | image_url: width: 1600 | image_tag: widths: '600, 800, 1200, 1600', sizes: '(min-width: 768px) 50vw, 100vw', loading: 'lazy', class: 'plekify-showcase__image' }}
+                {% else %}
+                  <div class="plekify-showcase__image-placeholder">
+                    <span>Screenshot</span>
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <div class="plekify-showcase__item-text-col">
+            {% if block.settings.title != blank %}
+              <h3 class="plekify-showcase__item-title">{{ block.settings.title }}</h3>
+            {% endif %}
+            {% if block.settings.description != blank %}
+              <div class="plekify-showcase__item-description">{{ block.settings.description | newline_to_br }}</div>
+            {% endif %}
+            {% if block.settings.link_url != blank %}
+              <a href="{{ block.settings.link_url }}" class="plekify-showcase__item-link">Learn more →</a>
+            {% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{% stylesheet %}
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;600&display=swap');
+
+.plekify-showcase {
+  background-color: #F5F2ED;
+  padding-block: 96px;
+  padding-inline: 24px;
+}
+
+.plekify-showcase__container {
+  max-inline-size: 1400px;
+  margin-inline: auto;
+}
+
+/* Header */
+.plekify-showcase__header {
+  text-align: center;
+  margin-block-end: 64px;
+}
+
+.plekify-showcase__overline {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #C9A96E;
+  margin-block-end: 16px;
+}
+
+.plekify-showcase__heading {
+  font-family: 'DM Serif Display', serif;
+  font-size: 44px;
+  line-height: 1.15;
+  color: #1A1A1A;
+  margin-block: 0;
+}
+
+.plekify-showcase__divider {
+  inline-size: 64px;
+  block-size: 1px;
+  background-color: #D5D0C8;
+  margin-block-start: 32px;
+  margin-inline: auto;
+}
+
+/* Showcase items */
+.plekify-showcase__items {
+  display: flex;
+  flex-direction: column;
+  gap: 64px;
+}
+
+.plekify-showcase__item {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+  align-items: center;
+}
+
+.plekify-showcase__item--reversed {
+  direction: rtl;
+}
+
+.plekify-showcase__item--reversed > * {
+  direction: ltr;
+}
+
+/* Browser frame mockup */
+.plekify-showcase__browser-frame {
+  background-color: #1E1E1E;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.1);
+  transform: perspective(1200px) rotateY(2deg);
+  transition: transform 0.4s ease;
+}
+
+.plekify-showcase__item--reversed .plekify-showcase__browser-frame {
+  transform: perspective(1200px) rotateY(-2deg);
+}
+
+.plekify-showcase__browser-frame:hover {
+  transform: perspective(1200px) rotateY(0deg);
+}
+
+.plekify-showcase__browser-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-block: 10px;
+  padding-inline: 14px;
+  background-color: #2D2D2D;
+}
+
+.plekify-showcase__browser-dot {
+  inline-size: 10px;
+  block-size: 10px;
+  border-radius: 50%;
+  background-color: #555;
+}
+
+.plekify-showcase__browser-dot:first-child {
+  background-color: #FF5F57;
+}
+
+.plekify-showcase__browser-dot:nth-child(2) {
+  background-color: #FFBD2E;
+}
+
+.plekify-showcase__browser-dot:nth-child(3) {
+  background-color: #28CA41;
+}
+
+.plekify-showcase__browser-viewport {
+  line-height: 0;
+}
+
+.plekify-showcase__image {
+  inline-size: 100%;
+  block-size: auto;
+  display: block;
+}
+
+.plekify-showcase__image-placeholder {
+  aspect-ratio: 16 / 10;
+  background-color: #3A3A3A;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #777;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+}
+
+/* Text column */
+.plekify-showcase__item-title {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 22px;
+  color: #1A1A1A;
+  margin-block: 0 16px;
+}
+
+.plekify-showcase__item-description {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 1.7;
+  color: #4A4A4A;
+  margin-block-end: 20px;
+}
+
+.plekify-showcase__item-link {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  color: #C9A96E;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.plekify-showcase__item-link:hover {
+  color: #A8883F;
+}
+
+/* Mobile */
+@media (max-width: 767px) {
+  .plekify-showcase {
+    padding-block: 48px;
+  }
+
+  .plekify-showcase__heading {
+    font-size: 28px;
+  }
+
+  .plekify-showcase__items {
+    gap: 48px;
+  }
+
+  .plekify-showcase__item,
+  .plekify-showcase__item--reversed {
+    grid-template-columns: 1fr;
+    direction: ltr;
+  }
+
+  .plekify-showcase__browser-frame,
+  .plekify-showcase__item--reversed .plekify-showcase__browser-frame {
+    transform: none;
+  }
+}
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Plekify Product Showcase",
+  "tag": "section",
+  "class": "plekify-showcase-section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "overline",
+      "label": "Overline Text",
+      "default": "WHAT YOUR GUESTS ACTUALLY SEE"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Not a brochure. A booking engine."
+    }
+  ],
+  "blocks": [
+    {
+      "type": "showcase_item",
+      "name": "Showcase Item",
+      "settings": [
+        {
+          "type": "text",
+          "id": "title",
+          "label": "Title",
+          "default": "Feature Title"
+        },
+        {
+          "type": "textarea",
+          "id": "description",
+          "label": "Description",
+          "default": "Feature description."
+        },
+        {
+          "type": "image_picker",
+          "id": "image",
+          "label": "Screenshot Image"
+        },
+        {
+          "type": "url",
+          "id": "link_url",
+          "label": "Link URL"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Plekify Product Showcase",
+      "blocks": [
+        {
+          "type": "showcase_item",
+          "settings": {
+            "title": "The Itinerary Command Centre",
+            "description": "A three-column interface built for complex, multi-day journeys. Left: a day-by-day navigator grouped by legs. Centre: narrative content, property details, and route visualisation. Right: a sticky pricing panel with pricing, guest quantity selector, and \"Confirm Journey\" button — connected to Shopify checkout.\n\n32 days. 7 legs. 292 selectable stops. With pricing and checkout on every one."
+          }
+        },
+        {
+          "type": "showcase_item",
+          "settings": {
+            "title": "The Property Drill-Down",
+            "description": "Every property on the itinerary opens into its own full page. The Oyster Box, for example, expands into 11 room types, 6 restaurants, 8 activities, spa treatments, and live rates — each a clickable Shopify product with its own gallery, description, and booking capability.\n\nBreadcrumb navigation keeps guests oriented: Home → The Oyster Box → Rooms · Dining · Activities · Spa · Rates."
+          }
+        },
+        {
+          "type": "showcase_item",
+          "settings": {
+            "title": "Transfers & Routes",
+            "description": "Flights, road transfers, trains, car hire — rendered as interactive cards with route visualisation, not a static HTML table. Every transfer segment links origin to destination with timing, vehicle type, and mapping."
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

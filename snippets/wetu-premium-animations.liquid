@@ -1,0 +1,101 @@
+{% comment %}
+  WETU Premium Animations
+  =======================
+  Includes premium CSS and scroll reveal JavaScript for WETU itinerary sections.
+  
+  Usage:
+    {% render 'wetu-premium-animations' %}
+  
+  Or with options:
+    {% render 'wetu-premium-animations', init_on_load: false %}
+  
+  CSS Classes for Animations:
+    - .wetu-fade-up    : Fades in while sliding up
+    - .wetu-fade-in    : Simple fade in
+    - .wetu-scale-up   : Fades in while scaling up
+    - .wetu-stagger-children : Staggers child element animations
+  
+  All animations respect prefers-reduced-motion.
+{% endcomment %}
+
+{%- liquid
+  assign init_on_load = init_on_load | default: true
+-%}
+
+{{ 'wetu-itinerary-premium.css' | asset_url | stylesheet_tag }}
+
+<script>
+(function() {
+  'use strict';
+
+  /**
+   * Initialize scroll reveal animations using IntersectionObserver
+   * Elements with .wetu-fade-up, .wetu-fade-in, or .wetu-scale-up
+   * will animate when they enter the viewport
+   */
+  function initScrollReveal() {
+    // Respect reduced motion preference
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      // Make all elements visible immediately
+      document.querySelectorAll('.wetu-fade-up, .wetu-fade-in, .wetu-scale-up').forEach(function(el) {
+        el.classList.add('is-visible');
+      });
+      return;
+    }
+
+    var elements = document.querySelectorAll('.wetu-fade-up, .wetu-fade-in, .wetu-scale-up');
+    if (!elements.length) return;
+
+    var observer = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, {
+      threshold: 0.1,
+      rootMargin: '0px 0px -50px 0px'
+    });
+
+    elements.forEach(function(el) {
+      observer.observe(el);
+    });
+  }
+
+  /**
+   * Initialize stagger children animations
+   * Sets --child-index CSS variable dynamically for more than 8 children
+   */
+  function initStaggerChildren() {
+    document.querySelectorAll('.wetu-stagger-children').forEach(function(container) {
+      var children = container.children;
+      for (var i = 0; i < children.length; i++) {
+        children[i].style.setProperty('--child-index', i);
+      }
+    });
+  }
+
+  /**
+   * Re-initialize animations (useful for dynamically loaded content)
+   */
+  window.wetuPremiumAnimations = {
+    init: function() {
+      initScrollReveal();
+      initStaggerChildren();
+    },
+    refresh: function() {
+      this.init();
+    }
+  };
+
+  {% if init_on_load %}
+  // Run on DOM ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', window.wetuPremiumAnimations.init);
+  } else {
+    window.wetuPremiumAnimations.init();
+  }
+  {% endif %}
+})();
+</script>

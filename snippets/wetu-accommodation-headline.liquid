@@ -1,0 +1,184 @@
+{% doc %}
+  Wetu Accommodation Headline
+
+  Displays headline information for accommodation products including room type,
+  occupancy details, bed configuration, and property reference.
+
+  @param {product} product - The accommodation product (required)
+
+  @example
+  {% render 'wetu-accommodation-headline', product: product %}
+{% enddoc %}
+
+{% liquid
+  assign room_type = product.metafields.wetu_room.room_type
+  assign max_occupancy = product.metafields.wetu_room.max_occupancy
+  assign max_adults = product.metafields.wetu_room.max_adults
+  assign max_children = product.metafields.wetu_room.max_children
+  assign bed_configuration = product.metafields.wetu_room.bed_configuration.value
+  assign bed_types_parsed = product.metafields.wetu_room.bed_types_parsed.value
+  assign room_basis = product.metafields.wetu_room.room_basis
+  assign property_product = product.metafields.wetu_room.property_product.value
+  
+  assign property_name = ''
+  assign property_star_rating = null
+  assign property_area = ''
+  assign property_country = ''
+  if property_product
+    assign property_name = property_product.title
+    assign property_star_rating = property_product.metafields.wetu.star_rating
+    assign property_area = property_product.metafields.wetu.area
+    assign property_country = property_product.metafields.wetu.country
+  endif
+%}
+
+<div class="wetu-accommodation-headline">
+  {% if room_type and room_type != blank %}
+    <div class="wetu-accommodation-headline__type">
+      {{ room_type }}
+    </div>
+  {% endif %}
+  
+  {% if property_name != blank %}
+    <div class="wetu-accommodation-headline__property">
+      <span class="wetu-accommodation-headline__property-label">Property</span>
+      <a href="{{ property_product.url }}" class="wetu-accommodation-headline__property-link">{{ property_name }}</a>
+      {% if property_star_rating %}
+        <span class="wetu-accommodation-headline__stars">
+          {% for i in (1..5) %}
+            {% if i <= property_star_rating %}
+              <span class="wetu-star wetu-star--filled">★</span>
+            {% else %}
+              <span class="wetu-star">☆</span>
+            {% endif %}
+          {% endfor %}
+        </span>
+      {% endif %}
+    </div>
+  {% endif %}
+  
+  {% if property_area and property_country %}
+    <div class="wetu-accommodation-headline__location">
+      {{ property_area }}, {{ property_country }}
+    </div>
+  {% endif %}
+  
+  <div class="wetu-accommodation-headline__details">
+    {% if max_occupancy or max_adults %}
+      <div class="wetu-accommodation-headline__detail">
+        <span class="wetu-accommodation-headline__label">Occupancy</span>
+        <span class="wetu-accommodation-headline__value">
+          {% if max_adults and max_children %}
+            {{ max_adults }} {{ max_adults | pluralize: 'adult', 'adults' }}, {{ max_children }} {{ max_children | pluralize: 'child', 'children' }}
+          {% elsif max_adults %}
+            Up to {{ max_adults }} {{ max_adults | pluralize: 'guest', 'guests' }}
+          {% elsif max_occupancy %}
+            Up to {{ max_occupancy }} {{ max_occupancy | pluralize: 'guest', 'guests' }}
+          {% endif %}
+        </span>
+      </div>
+    {% endif %}
+    
+    {% if bed_types_parsed and bed_types_parsed.size > 0 %}
+      <div class="wetu-accommodation-headline__detail">
+        <span class="wetu-accommodation-headline__label">Beds</span>
+        <span class="wetu-accommodation-headline__value">{{ bed_types_parsed | join: ', ' }}</span>
+      </div>
+    {% elsif bed_configuration and bed_configuration.size > 0 %}
+      <div class="wetu-accommodation-headline__detail">
+        <span class="wetu-accommodation-headline__label">Beds</span>
+        <span class="wetu-accommodation-headline__value">{{ bed_configuration | join: ', ' }}</span>
+      </div>
+    {% endif %}
+    
+    {% if room_basis %}
+      <div class="wetu-accommodation-headline__detail">
+        <span class="wetu-accommodation-headline__label">Meal plan</span>
+        <span class="wetu-accommodation-headline__value">{{ room_basis }}</span>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+{% stylesheet %}
+  .wetu-accommodation-headline {
+    margin-block-end: var(--spacing-xl, 40px);
+  }
+  
+  .wetu-accommodation-headline__type {
+    font-size: var(--font-size-sm, 0.875rem);
+    line-height: 1.5;
+    margin-block-end: var(--spacing-sm, 12px);
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  .wetu-accommodation-headline__property {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs, 8px);
+    margin-block-end: var(--spacing-sm, 12px);
+    flex-wrap: wrap;
+  }
+  
+  .wetu-accommodation-headline__property-label {
+    font-size: var(--font-size-sm, 0.875rem);
+    color: #999;
+  }
+  
+  .wetu-accommodation-headline__property-link {
+    font-size: var(--font-size-base, 0.9375rem);
+    color: #333;
+    text-decoration: underline;
+    font-weight: 400;
+  }
+  
+  .wetu-accommodation-headline__property-link:hover {
+    color: #000;
+  }
+  
+  .wetu-accommodation-headline__stars {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  
+  .wetu-star {
+    font-size: 0.875rem;
+    line-height: 1;
+  }
+  
+  .wetu-star--filled {
+    color: #d4af37;
+  }
+  
+  .wetu-accommodation-headline__location {
+    font-size: var(--font-size-base, 0.9375rem);
+    line-height: 1.6;
+    margin-block-end: var(--spacing-md, 24px);
+    color: #333;
+  }
+  
+  .wetu-accommodation-headline__details {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm, 12px);
+  }
+  
+  .wetu-accommodation-headline__detail {
+    display: flex;
+    gap: var(--spacing-xs, 8px);
+    font-size: var(--font-size-sm, 0.875rem);
+    line-height: 1.6;
+  }
+  
+  .wetu-accommodation-headline__label {
+    color: #999;
+    min-width: 80px;
+  }
+  
+  .wetu-accommodation-headline__value {
+    color: #333;
+  }
+{% endstylesheet %}

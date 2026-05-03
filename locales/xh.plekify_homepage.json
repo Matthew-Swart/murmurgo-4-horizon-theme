@@ -1,0 +1,120 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin language editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "plekify_homepage": {
+    "hero": {
+      "title": "Shopify yoKhenketho",
+      "subtitle": "yenzelwe e CAPE TOWN",
+      "tagline": "Guqula ishishini lakho lokhenketho nge Shopify eCommerce platform kunye ne Plekify App."
+    },
+    "intro": {
+      "paragraph_1": "I-Plekify idibanisa iinkqubo zakho zokhenketho ezikhoyo—ezifana ne ResRequest okanye i Wetu—ngamandla e Shopify, eyona ndawo iphambili yehlabathi yorhwebo nge-intanethi.",
+      "paragraph_2": "I-Plekify yenza ngokuzenzekelayo ukudalwa kunye nokuhlaziywa kwevenkile ye Shopify eyenziwe ngokwesiko kwindawo yakho, eyenzelwe ukhenketho, kusetyenziswa ulwazi oluvela kwiqonga lakho lokubhukisha elikhoyo."
+    },
+    "features": {
+      "own_data": {
+        "title": "Zinele Ukubhukisha Kwakho, Zinele Iinkcukacha Zakho",
+        "description": "Thatha konke ukubhukisha ngqo kwindawo yakho, kubandakanya intlawulo. Zigcinele ukufikelela okukhethekileyo kwiinkcukacha zakho zeendwendwe zentengiso eyenzelwe wena, ngelixa udibanisa ngokulula nenkqubo yakho ye PMS ekhoyo. Isiphumo: Iinzuzo eziphezulu ezivela kwimivuzo encitshisiweyo kunye neshishini eliphindaphindiweyo."
+      },
+      "multilanguage": {
+        "title": "Ukufikelela Kweelwimi ezininzi Ngokulula",
+        "description": "Fikelela kubahambi behlabathi ngeelwimi ezingafikelela kuma-20, kubandakanya isiNgesi, isiJamani, isiFrentshi, isiDatshi, isiTaliyane, iSpanish, isiPhuthukezi, kunye nesiMandarin. Izixhobo ezakhelwe ngaphakathi ze Shopify zisingatha uguqulelo, iSEO, kunye neemali zasekuhlaleni—zilungele iisafari ezikumgangatho ophezulu kunye neendawo zokulala ezikhethekileyo ezijolise kwiimarike zamazwe ngamazwe."
+      },
+      "addons": {
+        "title": "Thengisa Ngakumbi ngeZongezo kunye neZinto ezingaphezulu",
+        "description": "Nikezela ngamava agciniweyo angaphaya kwamagumbi: unyango lwe-spa, ukuqhuba umdlalo, ukudluliselwa, ukungcamla iwayini, nokunye. Iindwendwe zongeza izinto ezingaphezulu ekuhlawuleni, zonyusa ixabiso eliphakathi le-odolo nge-20-30%."
+      },
+      "marketing": {
+        "title": "Ukuthengisa Okunamandla Okwakhelwe Ngaphakathi",
+        "description_1": "Phinda usebenze kwaye unxibelelane ngendlela eyenzelwe wena nabathengi bakho bangaphambili.",
+        "description_2": "Cwangcisa kwaye uzenzele ii-imeyile ngokudityaniswa kwe Klaviyo.",
+        "description_3": "Buyisa iinqwelo ezishiyiweyo, thumela uphononongo lwasemva kokuhlala, kwaye uqhube iinkqubo zokunyaniseka.",
+        "description_4": "Landelela amaphulo kuyo yonke imijelo—indawo yakho, Instagram, Google—ukusuka kwideshibhodi enye."
+      },
+      "financial": {
+        "title": "Ukucaca kwezeMali kunye noKukhula",
+        "description_1": "Qhagamshela kwiindlela zokuhlawula ezifana ne Peach Payments ukuze uhlawule ngqo ebhankini yakho.",
+        "description_2": "Qhagamshela ngokulula kumaqonga e-ERP ale mihla afana ne Acumatica Cloud ERP okanye i Oracle Netsuite.",
+        "description_3": "I-AirBnB inokuqhagamshela ngokulula i-accounting kwi QuickBooks okanye i Xero."
+      },
+      "delight": {
+        "title": "Yonwabela Ukusetyenziswa Kwemihla Ngemihla",
+        "description": "Ukusetyenziswa okunengqiqo kubasebenzisi abangengabo itekhnoloji, uhlalutyo lwexesha langempela, kunye nenkxaso ye-24/7. Shopify iyathandeka—iyakhawuleza, ithembekile, kwaye yenzelwe kakuhle."
+      }
+    },
+    "founder": {
+      "title": "Yasekwa yiNgcali yoTshintsho loKhenketho",
+      "description": "I-Plekify yenzelwe ngu Matthew Swart owasekela i SafariNow.com ngo-1999, iqonga lokuqala lokubhukisha uhambo eMzantsi Afrika. Funda uhambo lwakhe.",
+      "quote": "Ndenze i-Plekify ngo-2025 kuba ndikholelwa ukuba i Shopify ngoku lolona khetho lubalaseleyo lokhenketho kunye nokhenketho kuyo nayiphi na indawo—olukhulayo, olukhuselekileyo, kwaye lwakhelwe inzuzo."
+    },
+    "prototypes": {
+      "heading": "Iisayithi zePrototype",
+      "royal": {
+        "title": "The Royal Portfolio",
+        "description": "Fumana ingqokelela ekhethekileyo yeehotele eziphefumlelweyo zoyilo, iindawo zokulala ezitofotofo, kunye neevilla zabucala ezibonelela ngamava enziwe ngokwesiko kwiindawo ezidumileyo zaseMzantsi Afrika.",
+        "prototype_for": "prototype for theroyalportfolio.com",
+        "password": "password plekify",
+        "button": "Jonga i The Royal Portfolio"
+      },
+      "matetsi": {
+        "title": "Matetsi Victoria Falls",
+        "description": "Indawo yokuphumla etofotofo eyamkelweyo kwi-15km yangaphambili yoMlambo iZambezi ekufutshane neVictoria Falls UNESCO site",
+        "prototype_for": "prototype for matetsivictoriafalls.com",
+        "password": "password plekify",
+        "button": "Jonga i Matetsi Victoria Falls"
+      },
+      "governors": {
+        "title": "Governors' Camp Collection",
+        "description": "Umqali wamava okugqibela e-safari, elunxwemeni loMlambo iMara ukusukela ngo-1972, egxile ngokupheleleyo entliziyweni yeendawo eziphambili zokubukela umdlalo.",
+        "prototype_for": "prototype for governorscamp.com",
+        "password": "password plekify",
+        "button": "Jonga i The Governors' Collection"
+      },
+      "fundu": {
+        "title": "Fundu Lagoon",
+        "description": "Ubunewunewu obungenazihlangu eSiqithini sasePemba kunye neelwandle ezingcoliswanga kunye nokuntywila okukumgangatho wehlabathi, iintlekele zikulindile!",
+        "prototype_for": "prototype for fundulagoon.com",
+        "password": "password plekify",
+        "button": "Jonga i Fundu Lagoon"
+      }
+    },
+    "plekify_definition": {
+      "word": "ple·ki·fy",
+      "pronunciation": "/ˈplɛkɪˌfaɪ/",
+      "part_of_speech": "isenzi",
+      "forms": "(plekified, plekifying)",
+      "definition_label": "Inkcazo:",
+      "definition": "Ukudibanisa ngokungenamthungo ukubhukisha uhambo oluphezulu kunye nokusebenza kwe-e-commerce; ukuguqula iinkqubo zokubhukisha zendawo zibe ngamava adibeneyo, akwi-domain ye Shopify.",
+      "etymology_label": "Imvelaphi:",
+      "etymology": "Ukusuka kwisiBhulu plek (indawo) + -ify (ukwenza okanye ukubangela ukuba ibe), ngokuthe ngqo \"ukwenza indawo ibekeke\" okanye \"ukwenza indawo ibhukisheke kwi Shopify.\"",
+      "usage_heading": "Imizekelo Yokusetyenziswa:",
+      "usage_1": "\"Si plekified yonke ipotfoliyo yethu yeendawo zokulala ze-safari kwikota edlulileyo.\"",
+      "usage_2": "\"Ukusukela plekifying, ukubhukisha kwewebhusayithi yehotele kukhule ngokugqithisileyo\"",
+      "related_forms_label": "Iindlela Ezinxulumene:",
+      "related_forms": "plekification (isibizo), plekifiable (isichazi)",
+      "synonyms_label": "Amagama Afanayo:",
+      "synonyms": "lungisa, dibanisa, lungiselela (ukubhukisha uhambo)",
+      "antonyms_label": "Amagama Aphikisayo:",
+      "antonyms": "qhekeza, qhawula, yenza nzima"
+    },
+    "chatgpt": {
+      "title": "ChatGPT kunye ne AI-ilungele.",
+      "description": "Iisayithi ze Plekify zidibana ngqo ne ChatGPT. Bukela kwaye umamele ukuze ufumane iinkcukacha..."
+    },
+    "contact": {
+      "title": "Qalisa Namhlanje",
+      "description": "Ukuphunyezwa kwesiko kuyafumaneka ngothintelo oluthe ngqo kunye nomseki u Matthew Swart.",
+      "email_heading": "I-imeyile",
+      "email_address": "hello@plekify.com",
+      "whatsapp_heading": "WhatsApp",
+      "whatsapp_number": "+27 60 937 4204"
+    }
+  }
+}

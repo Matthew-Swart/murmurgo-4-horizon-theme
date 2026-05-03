@@ -1,0 +1,647 @@
+{% comment %}
+  ============================================================================
+  WETU ITINERARY STICKY BOOKING BAR
+  ============================================================================
+  
+  Floating sticky bar that appears when scrolling past the hero.
+  Shows current position in journey + compact booking widget.
+  
+  Features:
+  - Syncs with day navigator via custom events
+  - Progress indicator showing journey completion
+  - Responsive design with mobile optimizations
+  - Backdrop blur styling for scheme-5
+  
+  ============================================================================
+{% endcomment %}
+
+{% comment %} Load itinerary data {% endcomment %}
+{% include 'wetu-itinerary-data' %}
+
+{% assign selected_variant = product.selected_or_first_available_variant %}
+{% assign base_price_cents = selected_variant.price | default: 0 %}
+{% assign has_price = false %}
+{% if base_price_cents > 0 %}
+  {% assign has_price = true %}
+{% endif %}
+
+{% assign total_days = wetu_total_days | default: product.metafields.wetu.itinerary_days.value | default: 0 %}
+
+{% comment %} Build leg data for progress tracking {% endcomment %}
+{% capture legs_json %}
+[
+  {% assign running_day = 1 %}
+  {% for leg in wetu_legs %}
+    {% assign leg_type = leg.type.value | default: 'Standard' %}
+    {% assign leg_nights = leg.nights.value | default: 0 %}
+    {% if leg_type != 'Departure' and leg_nights > 0 %}
+      {% unless forloop.first %},{% endunless %}
+      {
+        "id": "leg-{{ forloop.index }}",
+        "name": {{ leg.accommodation_name.value | json }},
+        "startDay": {{ running_day }},
+        "endDay": {{ running_day | plus: leg_nights | minus: 1 }}
+      }
+      {% assign running_day = running_day | plus: leg_nights %}
+    {% endif %}
+  {% endfor %}
+]
+{% endcapture %}
+
+<div 
+  class="sticky-bar color-{{ section.settings.color_scheme }}"
+  id="itinerary-sticky-bar"
+  aria-label="Booking bar"
+  data-sticky-bar
+  data-legs='{{ legs_json | strip_newlines }}'
+  data-total-days="{{ total_days }}"
+>
+  {% comment %} Progress Bar {% endcomment %}
+  <div class="sticky-bar__progress-track" data-progress-track>
+    <div class="sticky-bar__progress-fill" data-progress-fill></div>
+  </div>
+
+  <div class="sticky-bar__container page-width">
+    
+    {% comment %} Progress Indicator {% endcomment %}
+    <div class="sticky-bar__progress" data-progress-info>
+      <span class="sticky-bar__current-day" data-current-day>Day 1</span>
+      <span class="sticky-bar__divider">·</span>
+      <span class="sticky-bar__current-location" data-current-location>
+        {% if wetu_legs.size > 0 %}
+          {{ wetu_legs[0].accommodation_name.value }}
+        {% endif %}
+      </span>
+    </div>
+    
+    {% comment %} Price Display {% endcomment %}
+    {% if has_price %}
+      <div class="sticky-bar__price">
+        {% assign price_in_dollars = base_price_cents | divided_by: 100.0 %}
+        <span class="sticky-bar__price-value">{{ shop.currency }} {{ price_in_dollars | round }}</span>
+        <span class="sticky-bar__price-unit">pp</span>
+      </div>
+    {% endif %}
+    
+    {% comment %} Guest Selector (Desktop) {% endcomment %}
+    {% if has_price %}
+      <div class="sticky-bar__guests">
+        <button 
+          type="button" 
+          class="sticky-bar__guests-btn"
+          data-guest-decrease
+          aria-label="Decrease guests"
+        >−</button>
+        <span class="sticky-bar__guests-value" data-guest-display>2</span>
+        <button 
+          type="button" 
+          class="sticky-bar__guests-btn"
+          data-guest-increase
+          aria-label="Increase guests"
+        >+</button>
+      </div>
+    {% endif %}
+    
+    {% comment %} Book Button {% endcomment %}
+    {%- assign product_form_id = 'sticky-booking-form-' | append: section.id -%}
+    {%- form 'product', product, id: product_form_id, class: 'sticky-bar__form', novalidate: 'novalidate', data-type: 'add-to-cart-form' -%}
+      <input type="hidden" name="id" value="{{ selected_variant.id }}">
+      <input type="hidden" name="quantity" value="2" data-quantity-input>
+      
+      <button 
+        type="submit" 
+        name="add" 
+        class="sticky-bar__book-btn"
+        {% unless selected_variant.available %}disabled{% endunless %}
+      >
+        {% if has_price %}
+          <span class="sticky-bar__book-total" data-total-display></span>
+        {% endif %}
+        <span class="sticky-bar__book-text">Book Now</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+      </button>
+    {%- endform -%}
+    
+  </div>
+</div>
+
+<style>
+/* ====================================
+   Sticky Booking Bar - Enhanced
+   ==================================== */
+
+.sticky-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: var(--color-background);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+  transform: translateY(100%);
+  transition: transform 0.3s ease;
+}
+
+.sticky-bar.is-visible {
+  transform: translateY(0);
+}
+
+/* Progress Track */
+.sticky-bar__progress-track {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.sticky-bar__progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 70%, #fff));
+  transition: width 0.3s ease;
+}
+
+.sticky-bar__container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 0;
+  min-height: 64px;
+}
+
+/* Progress Info */
+.sticky-bar__progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.sticky-bar__current-day {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+
+.sticky-bar__divider {
+  color: rgba(255, 255, 255, 0.3);
+  font-weight: 300;
+}
+
+.sticky-bar__current-location {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.85;
+}
+
+/* Price */
+.sticky-bar__price {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.sticky-bar__price-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-foreground);
+  letter-spacing: -0.01em;
+}
+
+.sticky-bar__price-unit {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: color-mix(in srgb, var(--color-foreground) 50%, transparent);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Guest Selector */
+.sticky-bar__guests {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 4px;
+  flex-shrink: 0;
+}
+
+.sticky-bar__guests-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-foreground);
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sticky-bar__guests-btn:hover {
+  background: var(--color-primary);
+  color: var(--color-primary-button-text, var(--color-background));
+  transform: scale(1.05);
+}
+
+.sticky-bar__guests-value {
+  min-width: 28px;
+  text-align: center;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-foreground);
+}
+
+/* Book Button */
+.sticky-bar__form {
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.sticky-bar__book-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-primary-button-text, var(--color-background));
+  background: var(--color-primary-button-background, var(--color-primary));
+  border: none;
+  border-radius: 24px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+
+.sticky-bar__book-btn:hover:not(:disabled) {
+  transform: scale(1.02);
+  box-shadow: 0 4px 20px color-mix(in srgb, var(--color-primary) 50%, transparent);
+  background: var(--color-primary-button-background-hover, color-mix(in srgb, var(--color-primary) 90%, #fff));
+}
+
+.sticky-bar__book-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.sticky-bar__book-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sticky-bar__book-total {
+  font-weight: 700;
+  padding-right: 4px;
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+  margin-right: 4px;
+}
+
+.sticky-bar__book-btn svg {
+  opacity: 0.8;
+  transition: transform 0.2s ease;
+}
+
+.sticky-bar__book-btn:hover svg {
+  transform: translateX(2px);
+}
+
+/* ====================================
+   Mobile Layout
+   ==================================== */
+
+@media (max-width: 767px) {
+  .sticky-bar__container {
+    padding: 10px 0;
+    gap: 12px;
+  }
+  
+  /* Hide progress when day navigator is in sticky state */
+  .sticky-bar.day-nav-sticky .sticky-bar__progress {
+    display: none;
+  }
+  
+  .sticky-bar__progress {
+    flex: 0 0 auto;
+    max-width: 40%;
+  }
+  
+  .sticky-bar__current-day {
+    font-size: 0.75rem;
+  }
+  
+  .sticky-bar__current-location {
+    font-size: 0.6875rem;
+    max-width: 100px;
+  }
+  
+  .sticky-bar__price {
+    flex: 1;
+    justify-content: flex-start;
+  }
+  
+  .sticky-bar__price-value {
+    font-size: 1.125rem;
+  }
+  
+  .sticky-bar__guests {
+    display: none; /* Simplified mobile - guests on main widget */
+  }
+  
+  .sticky-bar__book-total {
+    display: none;
+  }
+  
+  .sticky-bar__book-btn {
+    padding: 12px 20px;
+  }
+  
+  .sticky-bar__book-text {
+    font-size: 0.8125rem;
+  }
+}
+
+/* Very small screens */
+@media (max-width: 374px) {
+  .sticky-bar__progress {
+    display: none;
+  }
+  
+  .sticky-bar__price-value {
+    font-size: 1rem;
+  }
+  
+  .sticky-bar__book-btn {
+    padding: 10px 16px;
+  }
+}
+
+/* ====================================
+   Tablet/Desktop Enhancements
+   ==================================== */
+
+@media (min-width: 768px) {
+  .sticky-bar__container {
+    padding: 14px 0;
+  }
+  
+  .sticky-bar__progress-track {
+    height: 3px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .sticky-bar__current-location {
+    max-width: 250px;
+  }
+}
+</style>
+
+<script>
+(function() {
+  const stickyBar = document.querySelector('[data-sticky-bar]');
+  if (!stickyBar) return;
+  
+  const heroSection = document.getElementById('hero');
+  const legsData = JSON.parse(stickyBar.dataset.legs || '[]');
+  const totalDays = parseInt(stickyBar.dataset.totalDays) || legsData.reduce((max, leg) => Math.max(max, leg.endDay), 0);
+  
+  const currentDayEl = stickyBar.querySelector('[data-current-day]');
+  const currentLocationEl = stickyBar.querySelector('[data-current-location]');
+  const progressFill = stickyBar.querySelector('[data-progress-fill]');
+  const guestDisplay = stickyBar.querySelector('[data-guest-display]');
+  const totalDisplay = stickyBar.querySelector('[data-total-display]');
+  const quantityInput = stickyBar.querySelector('[data-quantity-input]');
+  const decreaseBtn = stickyBar.querySelector('[data-guest-decrease]');
+  const increaseBtn = stickyBar.querySelector('[data-guest-increase]');
+  
+  // Get base price from hero widget if available
+  const heroWidget = document.querySelector('.booking-widget');
+  const basePrice = heroWidget ? parseInt(heroWidget.dataset.basePrice) || 0 : 0;
+  const currency = heroWidget ? heroWidget.dataset.currency || 'USD' : 'USD';
+  const locale = heroWidget ? heroWidget.dataset.locale || 'en-US' : 'en-US';
+  
+  let guestCount = 2;
+  let currentLegData = legsData[0] || null;
+  
+  // Format currency
+  function formatMoney(cents) {
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: currency,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(cents / 100);
+  }
+  
+  // Calculate total
+  function calculateTotal(guests) {
+    if (guests === 1) return Math.round(basePrice * 1.5);
+    return basePrice * guests;
+  }
+  
+  // Update guest count
+  function updateGuestCount(change) {
+    guestCount = Math.max(1, Math.min(20, guestCount + change));
+    
+    if (guestDisplay) guestDisplay.textContent = guestCount;
+    if (quantityInput) quantityInput.value = guestCount;
+    if (totalDisplay && basePrice > 0) {
+      totalDisplay.textContent = formatMoney(calculateTotal(guestCount));
+    }
+    
+    // Sync with hero widget if present
+    const heroGuestInput = document.querySelector('.booking-widget [data-guest-input]');
+    if (heroGuestInput) {
+      heroGuestInput.value = guestCount;
+      heroGuestInput.dispatchEvent(new Event('change'));
+    }
+  }
+  
+  // Update current day/location and dispatch event
+  function updateCurrentDay(leg) {
+    if (!leg || leg === currentLegData) return;
+    currentLegData = leg;
+    
+    const dayText = leg.startDay === leg.endDay 
+      ? `Day ${leg.startDay}` 
+      : `Days ${leg.startDay}–${leg.endDay}`;
+    
+    if (currentDayEl) currentDayEl.textContent = dayText;
+    if (currentLocationEl) currentLocationEl.textContent = leg.name;
+    
+    // Update progress bar
+    if (progressFill && totalDays > 0) {
+      const progress = (leg.endDay / totalDays) * 100;
+      progressFill.style.width = `${Math.min(100, progress)}%`;
+    }
+    
+    // Dispatch event for day navigator sync
+    document.dispatchEvent(new CustomEvent('dayChanged', { 
+      detail: { 
+        day: leg.startDay, 
+        endDay: leg.endDay,
+        name: leg.name, 
+        legId: leg.id 
+      }
+    }));
+  }
+  
+  // Check if day navigator is in sticky state
+  function checkDayNavSticky() {
+    const dayNav = document.querySelector('[data-day-navigator]');
+    if (dayNav && dayNav.classList.contains('is-sticky')) {
+      stickyBar.classList.add('day-nav-sticky');
+    } else {
+      stickyBar.classList.remove('day-nav-sticky');
+    }
+  }
+  
+  // Initialize total display
+  if (totalDisplay && basePrice > 0) {
+    totalDisplay.textContent = formatMoney(calculateTotal(guestCount));
+  }
+  
+  // Guest buttons
+  if (decreaseBtn) {
+    decreaseBtn.addEventListener('click', () => updateGuestCount(-1));
+  }
+  if (increaseBtn) {
+    increaseBtn.addEventListener('click', () => updateGuestCount(1));
+  }
+  
+  // Visibility on scroll
+  let lastScrollY = 0;
+  let ticking = false;
+  
+  function updateStickyBar() {
+    const heroBottom = heroSection ? heroSection.offsetTop + heroSection.offsetHeight : 400;
+    const scrollY = window.scrollY;
+    
+    // Show/hide based on scroll position
+    if (scrollY > heroBottom - 100) {
+      stickyBar.classList.add('is-visible');
+    } else {
+      stickyBar.classList.remove('is-visible');
+    }
+    
+    // Check day navigator state
+    checkDayNavSticky();
+    
+    // Update current leg based on scroll position
+    if (legsData.length > 0) {
+      let foundLeg = legsData[0];
+      
+      for (const leg of legsData) {
+        const legEl = document.getElementById(leg.id);
+        if (legEl) {
+          const rect = legEl.getBoundingClientRect();
+          if (rect.top < window.innerHeight / 2) {
+            foundLeg = leg;
+          }
+        }
+      }
+      
+      updateCurrentDay(foundLeg);
+    }
+    
+    lastScrollY = scrollY;
+    ticking = false;
+  }
+  
+  window.addEventListener('scroll', () => {
+    if (!ticking) {
+      requestAnimationFrame(updateStickyBar);
+      ticking = true;
+    }
+  }, { passive: true });
+  
+  // Listen for guest changes from hero widget
+  document.addEventListener('guestCountChanged', (e) => {
+    if (e.detail && e.detail.count !== guestCount) {
+      guestCount = e.detail.count;
+      if (guestDisplay) guestDisplay.textContent = guestCount;
+      if (quantityInput) quantityInput.value = guestCount;
+      if (totalDisplay && basePrice > 0) {
+        totalDisplay.textContent = formatMoney(calculateTotal(guestCount));
+      }
+    }
+  });
+  
+  // Listen for day changes from day navigator
+  document.addEventListener('navigatorDaySelected', (e) => {
+    if (e.detail && e.detail.legId) {
+      const leg = legsData.find(l => l.id === e.detail.legId);
+      if (leg) {
+        updateCurrentDay(leg);
+      }
+    }
+  });
+  
+  // Watch for day navigator sticky state changes
+  const observer = new MutationObserver(checkDayNavSticky);
+  const dayNav = document.querySelector('[data-day-navigator]');
+  if (dayNav) {
+    observer.observe(dayNav, { attributes: true, attributeFilter: ['class'] });
+  }
+  
+  // Initial update
+  updateStickyBar();
+})();
+</script>
+
+{% schema %}
+{
+  "name": "Itinerary Sticky Bar",
+  "tag": "div",
+  "class": "section-itinerary-sticky-bar",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-5"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_progress_bar",
+      "label": "Show progress bar",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_current_day",
+      "label": "Show current day on mobile",
+      "default": false,
+      "info": "When disabled, hides day/location on mobile to maximize space for booking"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Itinerary Sticky Bar"
+    }
+  ]
+}
+{% endschema %}

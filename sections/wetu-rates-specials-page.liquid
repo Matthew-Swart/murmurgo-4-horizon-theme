@@ -1,0 +1,9 @@
+{% comment %}
+  Wetu Rates & Specials Page Section
+  Renders unified rates/specials/documents block for a property context
+{% endcomment %}
+{% assign subject_product = page.metafields.wetu_page.source_property.value %}
+<div class="page-width">
+  {% render 'wetu-rates-specials-block', product: subject_product %}
+</div>
+{% schema %}{"name":"Wetu Rates & Specials","tag":"section","class":"section","settings":[]}{% endschema %}

@@ -1,0 +1,204 @@
+{% comment %}
+  Wetu Property Map Section
+  Displays an interactive Mapbox map with property locations
+  Full-screen layout (positioning handled by property-map layout)
+  
+  DATA SOURCES:
+  - wetu_map.properties_data (JSON) - Primary source for map coordinates and property data
+  - custom.property_location (metaobject) - Single property location with images (for rich content)
+  - custom.property_locations (metaobject list) - Multiple property locations (for rich content)
+  - wetu_page.source_property (product reference) - Link to property product
+  
+  The metaobject references provide access to rich location data including images,
+  but the map uses the JSON data which is optimized for the map widget.
+{% endcomment %}
+
+<style>
+  #shopify-section-{{ section.id }} {
+    width: 100%;
+    height: 100%;
+  }
+</style>
+
+{%- comment -%} JSON-first for correctness (urls, images), with metaobject fallback {%- endcomment -%}
+{%- assign properties_json_drop = page.metafields.wetu_map.properties_data -%}
+{%- if properties_json_drop and properties_json_drop != blank -%}
+  {%- assign properties = properties_json_drop.value | default: properties_json_drop | parse_json -%}
+  {%- assign scope_val = properties.size | default: 0 -%}
+  {%- assign scope_key = 'all' -%}
+  {%- if scope_val == 1 -%}
+    {%- assign scope_key = 'single' -%}
+  {%- endif -%}
+  {%- render 'wetu-property-map',
+    properties: properties,
+    map_style: section.settings.map_style,
+    aspect_ratio: 'fullscreen',
+    scope: scope_key,
+    show_popups: true
+  -%}
+{%- else -%}
+  {%- comment -%} Fallback: multi-property via metaobject list {%- endcomment -%}
+  {%- assign location_refs = page.metafields.custom.property_locations.value -%}
+  {%- if location_refs and location_refs.size > 0 -%}
+    {%- assign properties = '' | split: '' -%}
+    {%- for location in location_refs -%}
+      {%- assign latitude = location.latitude.value | times: 1.0 -%}
+      {%- assign longitude = location.longitude.value | times: 1.0 -%}
+      {%- assign destination = location.destination.value | default: 'Unknown' -%}
+      {%- assign country = location.country.value | default: 'Unknown' -%}
+      {%- assign property_name = destination -%}
+      {%- assign property_handle = destination | handleize -%}
+      {%- assign property_url = '#' -%}
+      {%- assign property_image = '' -%}
+      {%- if location.images.value and location.images.value.size > 0 -%}
+        {%- assign property_image = location.images.value[0] | image_url: width: 800 -%}
+      {%- endif -%}
+      {%- capture property_json -%}
+        {
+          "id": "{{ location.id }}",
+          "name": "{{ property_name | escape }}",
+          "handle": "{{ property_handle }}",
+          "url": "{{ property_url }}",
+          "image": "{{ property_image }}",
+          "latitude": {{ latitude }},
+          "longitude": {{ longitude }},
+          "destination": "{{ destination | escape }}",
+          "country": "{{ country | escape }}"
+        }
+      {%- endcapture -%}
+      {%- assign property = property_json | parse_json -%}
+      {%- assign properties = properties | push: property -%}
+    {%- endfor -%}
+    {%- render 'wetu-property-map',
+      properties: properties,
+      map_style: section.settings.map_style,
+      aspect_ratio: 'fullscreen',
+      scope: 'all',
+      show_popups: true
+    -%}
+  {%- else -%}
+    {%- comment -%} Fallback: single metaobject with product enrichments {%- endcomment -%}
+    {%- assign location_single = page.metafields.custom.property_location.value -%}
+    {%- if location_single -%}
+      {%- assign latitude = location_single.latitude.value | times: 1.0 -%}
+      {%- assign longitude = location_single.longitude.value | times: 1.0 -%}
+      {%- assign destination = location_single.destination.value | default: 'Unknown' -%}
+      {%- assign country = location_single.country.value | default: 'Unknown' -%}
+      {%- assign product_ref = page.metafields.wetu_page.source_property.value -%}
+      {%- assign property_name = destination -%}
+      {%- assign property_handle = destination | handleize -%}
+      {%- assign property_url = '/collections/all' -%}
+      {%- assign property_image = '' -%}
+      {%- if product_ref -%}
+        {%- assign property_name = product_ref.title | default: property_name -%}
+        {%- assign property_handle = product_ref.handle | default: property_handle -%}
+        {%- assign property_url = product_ref.url | default: property_url -%}
+        {%- if product_ref.featured_image -%}
+          {%- assign property_image = product_ref.featured_image | image_url: width: 800 -%}
+        {%- endif -%}
+      {%- endif -%}
+      {%- if property_image == '' and location_single.images.value and location_single.images.value.size > 0 -%}
+        {%- assign property_image = location_single.images.value[0] | image_url: width: 800 -%}
+      {%- endif -%}
+      {%- capture property_json -%}
+        [{
+          "id": "{{ location_single.id }}",
+          "name": "{{ property_name | escape }}",
+          "handle": "{{ property_handle }}",
+          "url": "{{ property_url }}",
+          "image": "{{ property_image }}",
+          "latitude": {{ latitude }},
+          "longitude": {{ longitude }},
+          "destination": "{{ destination | escape }}",
+          "country": "{{ country | escape }}"
+        }]
+      {%- endcapture -%}
+      {%- assign properties = property_json | parse_json -%}
+      {%- render 'wetu-property-map',
+        properties: properties,
+        map_style: section.settings.map_style,
+        aspect_ratio: 'fullscreen',
+        scope: 'single',
+        show_popups: true
+      -%}
+    {%- else -%}
+      <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 40px; background: white; border: 2px solid #ccc; font-family: monospace; max-width: 600px;">
+        <h2 style="margin: 0 0 20px 0; color: #c00;">Map Data Not Found</h2>
+        <p><strong>Page:</strong> {{ page.handle }}</p>
+        <p><strong>Title:</strong> {{ page.title }}</p>
+        <p><strong>Template:</strong> {{ page.template_suffix }}</p>
+        <hr style="margin: 20px 0;">
+        <p style="font-size: 12px; color: #666;"><strong>Available Data Sources:</strong></p>
+        <p style="font-size: 12px;"><strong>Map data (JSON):</strong> {% if page.metafields.wetu_map.properties_data %}✓ Present{% else %}✗ Missing{% endif %}</p>
+        <p style="font-size: 12px;"><strong>Location metaobject:</strong> {% if page.metafields.custom.property_location.value %}✓ Present{% else %}✗ Missing{% endif %}</p>
+        <p style="font-size: 12px;"><strong>Property reference:</strong> {% if page.metafields.wetu_page.source_property.value %}✓ Present{% else %}✗ Missing{% endif %}</p>
+        <p style="font-size: 12px;"><strong>Multi-locations:</strong> {% if page.metafields.custom.property_locations.value %}✓ {{ page.metafields.custom.property_locations.value.size }} locations{% else %}✗ Missing{% endif %}</p>
+      </div>
+    {%- endif -%}
+  {%- endif -%}
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Wetu Property Map",
+  "tag": "section",
+  "class": "wetu-property-map-section",
+  "settings": [
+    {
+      "type": "select",
+      "id": "map_style",
+      "label": "Map Style",
+      "options": [
+        {
+          "value": "satellite-streets-v12",
+          "label": "Satellite with Streets"
+        },
+        {
+          "value": "streets-v12",
+          "label": "Streets"
+        },
+        {
+          "value": "outdoors-v12",
+          "label": "Outdoors"
+        },
+        {
+          "value": "light-v11",
+          "label": "Light"
+        },
+        {
+          "value": "dark-v11",
+          "label": "Dark"
+        }
+      ],
+      "default": "satellite-streets-v12"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_fullscreen_control",
+      "label": "Show Fullscreen Control",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_navigation_controls",
+      "label": "Show Navigation Controls",
+      "default": true
+    },
+    {
+      "type": "range",
+      "id": "initial_zoom",
+      "min": 8,
+      "max": 16,
+      "step": 1,
+      "unit": "z",
+      "label": "Initial Zoom Level",
+      "default": 11
+    }
+  ],
+  "presets": [
+    {
+      "name": "Wetu Property Map"
+    }
+  ]
+}
+{% endschema %}

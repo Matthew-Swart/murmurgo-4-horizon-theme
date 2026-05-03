@@ -1,0 +1,120 @@
+{% comment %}
+  Minimal main-product section for Wetu compatibility
+  This section provides basic product display functionality
+{% endcomment %}
+
+{{ 'section-main-product.css' | asset_url | stylesheet_tag }}
+
+<section class="page-width section-{{ section.id }}-padding">
+  <div class="product product--{{ section.settings.media_size }}">
+    <div class="product__info-wrapper">
+      <div class="product__info-container">
+        {% for block in section.blocks %}
+          {% case block.type %}
+            {% when 'text' %}
+              <p class="product__text">
+                {{ block.settings.text }}
+              </p>
+            {% when 'title' %}
+              <h1 class="product__title h2">
+                {{ product.title | escape }}
+              </h1>
+            {% when 'price' %}
+              <div class="product__price">
+                {% render 'price', product: product, use_variant: true, show_badges: true %}
+              </div>
+            {% when 'variant_picker' %}
+              <div class="product__variant-picker">
+                {% unless product.has_only_default_variant %}
+                  {% render 'product-variant-picker', product: product, block: block %}
+                {% endunless %}
+              </div>
+            {% when 'quantity_selector' %}
+              <div class="product__quantity">
+                <label for="Quantity-{{ section.id }}">{{ 'products.product.quantity.label' | t }}</label>
+                <input type="number" id="Quantity-{{ section.id }}" name="quantity" value="1" min="1">
+              </div>
+            {% when 'buy_buttons' %}
+              <div class="product__buy-buttons">
+                <button type="submit" name="add" class="product-form__submit button button--full-width">
+                  {{ 'products.product.add_to_cart' | t }}
+                </button>
+              </div>
+            {% when 'description' %}
+              <div class="product__description">
+                {{ product.description }}
+              </div>
+            {% when 'share' %}
+              {% render 'share-button', share_link: product.url %}
+          {% endcase %}
+        {% endfor %}
+      </div>
+    </div>
+    
+    {% if product.media.size > 0 %}
+      <div class="product__media-wrapper">
+        {% for media in product.media limit: 6 %}
+          <div class="product__media-item">
+            {% render 'product-thumbnail', media: media %}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Product Information",
+  "tag": "section",
+  "class": "section",
+  "blocks": [
+    {
+      "type": "text",
+      "name": "Text",
+      "settings": [
+        {
+          "type": "text",
+          "id": "text",
+          "label": "Text"
+        }
+      ]
+    },
+    {
+      "type": "title",
+      "name": "Title",
+      "limit": 1
+    },
+    {
+      "type": "price",
+      "name": "Price",
+      "limit": 1
+    },
+    {
+      "type": "variant_picker",
+      "name": "Variant Picker",
+      "limit": 1
+    },
+    {
+      "type": "quantity_selector",
+      "name": "Quantity Selector",
+      "limit": 1
+    },
+    {
+      "type": "buy_buttons",
+      "name": "Buy Buttons",
+      "limit": 1
+    },
+    {
+      "type": "description",
+      "name": "Description",
+      "limit": 1
+    },
+    {
+      "type": "share",
+      "name": "Share",
+      "limit": 1
+    }
+  ]
+}
+{% endschema %}

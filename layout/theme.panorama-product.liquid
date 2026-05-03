@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="{{ request.locale.iso_code }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{ page_title }}</title>
+  
+  {%- if settings.favicon != blank -%}
+    <link rel="icon" type="image/png" href="{{ settings.favicon | image_url: width: 32, height: 32 }}">
+  {%- endif -%}
+  
+  {%- comment -%} Include theme base styles for color schemes {%- endcomment -%}
+  {%- render 'stylesheets' -%}
+  {%- render 'fonts' -%}
+  {%- render 'theme-styles-variables' -%}
+  {%- render 'color-schemes' -%}
+  
+  {{ content_for_header }}
+  
+  <style>
+    /* Full-screen panorama layout - no header or footer */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+    }
+    
+
+  </style>
+</head>
+<body>
+  {%- comment -%} Unified navigation strip {%- endcomment -%}
+  {% section 'unified-nav-strip' %}
+  
+  {%- comment -%} Main content area for panorama {%- endcomment -%}
+  {{ content_for_layout }}
+</body>
+</html>
+

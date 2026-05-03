@@ -1,0 +1,71 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "hero": {
+      "type": "hero",
+      "blocks": {
+        "title": {
+          "type": "group",
+          "name": "Title Group",
+          "settings": {
+            "content_direction": "column",
+            "width": "custom",
+            "custom_width": 100
+          },
+          "blocks": {
+            "heading": {
+              "type": "text",
+              "settings": {
+                "text": "<h1>{{ product.title }}</h1>",
+                "type_preset": "h2",
+                "color": "var(--color-foreground)"
+              }
+            }
+          },
+          "block_order": [
+            "heading"
+          ]
+        }
+      },
+      "block_order": [
+        "title"
+      ],
+      "settings": {
+        "media_type_1": "image",
+        "section_height": "full-screen",
+        "toggle_overlay": true,
+        "overlay_color": "#00000026"
+      }
+    },
+    "map": {
+      "type": "wetu-itinerary-map",
+      "settings": {}
+    },
+    "days_v2": {
+      "type": "wetu-itinerary-days-v2",
+      "settings": {}
+    },
+    "product_details": {
+      "type": "wetu-itinerary-product-details",
+      "settings": {
+        "show_heading": true,
+        "heading": "Ready to Book?",
+        "add_to_cart_text": "Book This Itinerary"
+      }
+    }
+  },
+  "order": [
+    "hero",
+    "map",
+    "days_v2",
+    "product_details"
+  ]
+}

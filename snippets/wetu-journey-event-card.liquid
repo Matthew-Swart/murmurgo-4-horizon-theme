@@ -1,0 +1,628 @@
+{% comment %}
+  ============================================================================
+  WETU JOURNEY EVENT CARD - OVERLAY STYLE
+  ============================================================================
+  
+  A unified card component for all journey timeline events with SQUARE (1:1)
+  images and all text overlaid on the image using white text with outer glow
+  shadow for readability on any photo background.
+  
+  Event Types:
+  - Destinations (arrival at a city/area) - Only shows if image exists
+  - Accommodations (hotels/lodges)
+  - Activities
+  - Transit (routes/flights/drives) - No images, detailed info only
+  
+  Key Features:
+  - Square 1:1 aspect ratio images
+  - All text overlaid on image with white text + outer glow
+  - Cards have hover glow effect (no buttons needed)
+  - Clicking anywhere on the card triggers map interaction
+  - Transit cards show detailed route info without images
+  
+  PARAMETERS:
+    - event_type: 'destination' | 'accommodation' | 'activity' | 'transit'
+    - event_data: The relevant data object for this event type
+    - day_number: The day this event occurs on
+    - product: The linked Shopify product (optional)
+    - route: The route object for transit events
+    - show_day_header: Boolean to show day divider header
+    - nights: Number of nights (for accommodation)
+    - is_arrival_day: Boolean for first day at property
+    - activity_meta: Additional activity metadata
+    - all_component_products: Array of all component products (for transit lookups)
+    - destination_name: The destination name for arrival cards
+    
+  ============================================================================
+{% endcomment %}
+
+{% case event_type %}
+
+  {% comment %} ================================================================
+    DESTINATION EVENT
+    Shown when arriving at a new city/area
+    - Only renders if image exists (checked in parent template)
+    - Square image with text overlay
+  ================================================================ {% endcomment %}
+  {% when 'destination' %}
+    {% assign dest_display_name = destination_name | default: event_data.title | default: event_data.name | default: "Destination" %}
+    {% assign destination_image = event_data.featured_image %}
+    {% assign destination_url = event_data.url %}
+    {% assign destination_country = event_data.metafields.wetu.position.value.country %}
+    {% assign destination_region = event_data.metafields.wetu.position.value.region %}
+    {% assign position = event_data.metafields.wetu.position.value %}
+    
+    <article 
+      class="wetu-event-card wetu-event-card--destination wetu-event-card--overlay wetu-event-card--clickable" 
+      data-event-type="destination"
+      data-lat="{{ position.latitude }}"
+      data-lng="{{ position.longitude }}"
+      data-entity-id="destination-{{ event_data.id }}"
+      tabindex="0"
+      role="button"
+      aria-label="View {{ dest_display_name }} on map"
+    >
+      <div class="wetu-event-card__square-media">
+        <img 
+          src="{{ destination_image | image_url: width: 600, height: 600, crop: 'center' }}"
+          alt="{{ dest_display_name }}"
+          loading="lazy"
+          class="wetu-event-card__square-image"
+        >
+        
+        {% comment %} Gradient overlay for text readability {% endcomment %}
+        <div class="wetu-event-card__gradient-overlay"></div>
+        
+        {% comment %} All text content overlaid on image {% endcomment %}
+        <div class="wetu-event-card__overlay-content">
+          <span class="wetu-event-card__overlay-badge wetu-event-card__overlay-badge--destination">Arrive</span>
+          <h4 class="wetu-event-card__overlay-title">{{ dest_display_name }}</h4>
+          {% if destination_country != blank or destination_region != blank %}
+            <p class="wetu-event-card__overlay-location">
+              {% if destination_region != blank %}{{ destination_region }}{% if destination_country != blank %}, {% endif %}{% endif %}
+              {% if destination_country != blank %}{{ destination_country }}{% endif %}
+            </p>
+          {% endif %}
+        </div>
+        
+        {% if destination_url != blank %}
+          <a href="{{ destination_url }}" class="wetu-event-card__external-link" target="_blank" rel="noopener" aria-label="View {{ dest_display_name }} details" onclick="event.stopPropagation();">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+              <polyline points="15 3 21 3 21 9"/>
+              <line x1="10" y1="14" x2="21" y2="3"/>
+            </svg>
+          </a>
+        {% endif %}
+      </div>
+    </article>
+
+  {% comment %} ================================================================
+    ACCOMMODATION EVENT - COMPACT CARD WITH DUAL ACTIONS
+    Shown for hotel/lodge check-ins
+    - Compact 16:9 thumbnail on left
+    - Primary action: View Property (loads in content viewer)
+    - Secondary action: Show on Map
+  ================================================================ {% endcomment %}
+  {% when 'accommodation' %}
+    {% assign acc_name = product.title | default: event_data.accommodation_name.value | default: "Accommodation" %}
+    {% assign acc_image = product.featured_image | default: event_data.featured_image %}
+    {% assign acc_url = product.url | default: event_data.url %}
+    {% assign nights_count = nights | default: event_data.nights.value | default: 1 %}
+    {% assign position = product.metafields.wetu.position.value %}
+    {% assign destination = position.destination | default: position.area %}
+    {% assign country = position.country %}
+    {% assign content_id = event_data.content_entity_id.value | default: product.metafields.wetu.pin_id.value %}
+    {% assign category = product.metafields.wetu.category.value | default: "Accommodation" %}
+    {% assign rating = product.metafields.wetu.star_rating.value %}
+    {% assign check_in = product.metafields.wetu.check_in_time.value | default: "14:00" %}
+    {% assign check_out = product.metafields.wetu.check_out_time.value | default: "10:00" %}
+    
+    {% comment %} 
+      Clicking the entire card loads the product. 
+      The "Show on Map" action is available in the content viewer panel.
+    {% endcomment %}
+    <article 
+      class="wetu-event-card wetu-event-card--accommodation wetu-event-card--compact wetu-event-card--clickable-card"
+      data-event-type="accommodation"
+      data-marker-id="marker-{{ content_id }}"
+      data-focus-marker="marker-{{ content_id }}"
+      data-lat="{{ position.latitude }}"
+      data-lng="{{ position.longitude }}"
+      data-entity-id="marker-{{ content_id }}"
+      data-action="view-product"
+      data-url="{{ acc_url }}"
+      data-title="{{ acc_name }}"
+      tabindex="0"
+      role="button"
+      aria-label="View {{ acc_name }} details"
+    >
+      <div class="wetu-event-card__compact-layout">
+        {% comment %} 16:9 Thumbnail {% endcomment %}
+        <div class="wetu-event-card__compact-thumb">
+          {% if acc_image != blank %}
+            <img 
+              src="{{ acc_image | image_url: width: 320, height: 180, crop: 'center' }}"
+              alt="{{ acc_name }}"
+              loading="lazy"
+            >
+          {% else %}
+            <div class="wetu-event-card__thumb-placeholder">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M3 21h18M5 21V7l8-4 8 4v14M9 21v-8h6v8"/>
+              </svg>
+            </div>
+          {% endif %}
+        </div>
+        
+        {% comment %} Content {% endcomment %}
+        <div class="wetu-event-card__compact-content">
+          <div class="wetu-event-card__compact-header">
+            <div class="wetu-event-card__compact-badges">
+              <span class="wetu-event-card__compact-badge wetu-event-card__compact-badge--nights">
+                {{ nights_count }} {{ nights_count | pluralize: 'Night', 'Nights' }}
+              </span>
+              {% if is_arrival_day %}
+                <span class="wetu-event-card__compact-badge">Check-in {{ check_in }}</span>
+              {% endif %}
+            </div>
+          </div>
+          
+          <h4 class="wetu-event-card__compact-title">{{ acc_name }}</h4>
+          
+          {% if rating != blank and rating > 0 %}
+            <div class="wetu-event-card__compact-rating">
+              {% for i in (1..5) %}
+                {% if i <= rating %}
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                {% endif %}
+              {% endfor %}
+            </div>
+          {% endif %}
+          
+          {% if destination != blank or country != blank %}
+            <p class="wetu-event-card__compact-location">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+              {{ destination }}{% if destination != blank and country != blank %}, {% endif %}{{ country }}
+            </p>
+          {% endif %}
+          
+          <span class="wetu-event-card__compact-category">{{ category }}</span>
+        </div>
+        
+        {% comment %} Arrow indicator showing card is clickable {% endcomment %}
+        <div class="wetu-event-card__compact-arrow">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 18l6-6-6-6"/>
+          </svg>
+        </div>
+      </div>
+    </article>
+
+  {% comment %} ================================================================
+    ACTIVITY EVENT
+    Shown for activities during a stay - SQUARE image with overlay text
+    Clicking opens activity product in new tab
+    Includes day indicator for multi-night stays
+  ================================================================ {% endcomment %}
+  {% when 'activity' %}
+    {% assign activity_name = event_data.title | default: activity_meta.name.value | default: "Activity" %}
+    {% assign activity_image = event_data.featured_image %}
+    {% assign activity_url = event_data.url %}
+    {% assign activity_type = activity_meta.type.value | default: 'Included' %}
+    {% assign time_slot = activity_meta.time_slot.value | default: '' %}
+    {% assign is_highlight = activity_meta.is_highlight.value | default: false %}
+    {% assign position = event_data.metafields.wetu.position.value %}
+    {% assign category = event_data.metafields.wetu.category.value | default: 'Activity' %}
+    {% assign description = event_data.metafields.wetu.teaser_description.value | default: "" | truncate: 80 %}
+    {% assign content_id = event_data.metafields.wetu.pin_id.value %}
+    
+    {% comment %} ALWAYS show activity - with image if available, compact style if not {% endcomment %}
+    {% comment %} ALWAYS link to product when URL exists {% endcomment %}
+    {% if activity_url != blank %}
+      <a 
+        href="{{ activity_url }}"
+        target="_blank"
+        rel="noopener"
+        class="wetu-event-card wetu-event-card--activity wetu-event-card--clickable {% if activity_image != blank %}wetu-event-card--overlay{% else %}wetu-event-card--no-image{% endif %} {% if is_highlight %}wetu-event-card--highlight{% endif %}"
+        data-event-type="activity"
+        data-lat="{{ position.latitude }}"
+        data-lng="{{ position.longitude }}"
+        data-entity-id="activity-{{ content_id }}"
+        aria-label="View {{ activity_name }} details"
+      >
+        {% if activity_image != blank %}
+          <div class="wetu-event-card__square-media">
+            <img 
+              src="{{ activity_image | image_url: width: 600, height: 600, crop: 'center' }}"
+              alt="{{ activity_name }}"
+              loading="lazy"
+              class="wetu-event-card__square-image"
+            >
+            
+            {% comment %} Gradient overlay for text readability {% endcomment %}
+            <div class="wetu-event-card__gradient-overlay"></div>
+            
+            {% comment %} All text content overlaid on image {% endcomment %}
+            <div class="wetu-event-card__overlay-content">
+              {% comment %} Top badges row {% endcomment %}
+              <div class="wetu-event-card__overlay-badges">
+                <span class="wetu-event-card__overlay-badge wetu-event-card__overlay-badge--activity">{{ activity_type }}</span>
+                {% if time_slot != blank and time_slot != 'None' %}
+                  <span class="wetu-event-card__overlay-badge wetu-event-card__overlay-badge--time">{{ time_slot }}</span>
+                {% endif %}
+                {% if is_highlight %}
+                  <span class="wetu-event-card__overlay-badge wetu-event-card__overlay-badge--highlight">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    Highlight
+                  </span>
+                {% endif %}
+                {% comment %} Day indicator for multi-night stays {% endcomment %}
+                {% if total_nights > 1 and period_day %}
+                  <span class="wetu-event-card__overlay-badge wetu-event-card__overlay-badge--day">
+                    Day {{ period_day }} of {{ total_nights }}
+                  </span>
+                {% endif %}
+              </div>
+              
+              {% comment %} Main content at bottom {% endcomment %}
+              <div class="wetu-event-card__overlay-main">
+                <h4 class="wetu-event-card__overlay-title">{{ activity_name }}</h4>
+                <span class="wetu-event-card__overlay-category">{{ category }}</span>
+              </div>
+            </div>
+            
+            <span class="wetu-event-card__external-link">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                <polyline points="15 3 21 3 21 9"/>
+                <line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+            </span>
+          </div>
+        {% else %}
+          {% comment %} Activity without image - compact inline style {% endcomment %}
+          <div class="wetu-event-card__activity-link-content">
+            <div class="wetu-event-card__activity-link-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M8 12l2 2 4-4"/>
+              </svg>
+            </div>
+            <div class="wetu-event-card__activity-link-info">
+              <span class="wetu-event-card__activity-link-name">{{ activity_name }}</span>
+              <div class="wetu-event-card__activity-link-badges">
+                <span class="wetu-event-card__activity-link-badge">{{ activity_type }}</span>
+                {% if time_slot != blank and time_slot != 'None' %}
+                  <span class="wetu-event-card__activity-link-badge">{{ time_slot }}</span>
+                {% endif %}
+                {% if total_nights > 1 and period_day %}
+                  <span class="wetu-event-card__activity-link-badge wetu-event-card__activity-link-badge--day">Day {{ period_day }}/{{ total_nights }}</span>
+                {% endif %}
+              </div>
+            </div>
+            <svg class="wetu-event-card__activity-link-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+              <polyline points="15 3 21 3 21 9"/>
+              <line x1="10" y1="14" x2="21" y2="3"/>
+            </svg>
+          </div>
+        {% endif %}
+      </a>
+    {% else %}
+      {% comment %} Activity without product URL - show as non-clickable card {% endcomment %}
+      <article 
+        class="wetu-event-card wetu-event-card--activity {% if activity_image != blank %}wetu-event-card--overlay{% else %}wetu-event-card--no-image{% endif %} {% if is_highlight %}wetu-event-card--highlight{% endif %}"
+        data-event-type="activity"
+      >
+        {% if activity_image != blank %}
+          <div class="wetu-event-card__square-media">
+            <img 
+              src="{{ activity_image | image_url: width: 600, height: 600, crop: 'center' }}"
+              alt="{{ activity_name }}"
+              loading="lazy"
+              class="wetu-event-card__square-image"
+            >
+            <div class="wetu-event-card__gradient-overlay"></div>
+            <div class="wetu-event-card__overlay-content">
+              <div class="wetu-event-card__overlay-badges">
+                <span class="wetu-event-card__overlay-badge wetu-event-card__overlay-badge--activity">{{ activity_type }}</span>
+                {% if time_slot != blank and time_slot != 'None' %}
+                  <span class="wetu-event-card__overlay-badge wetu-event-card__overlay-badge--time">{{ time_slot }}</span>
+                {% endif %}
+              </div>
+              <div class="wetu-event-card__overlay-main">
+                <h4 class="wetu-event-card__overlay-title">{{ activity_name }}</h4>
+                <span class="wetu-event-card__overlay-category">{{ category }}</span>
+              </div>
+            </div>
+          </div>
+        {% else %}
+          {% comment %} Compact style for activities without images {% endcomment %}
+          <div class="wetu-event-card__activity-link-content">
+            <div class="wetu-event-card__activity-link-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M8 12l2 2 4-4"/>
+              </svg>
+            </div>
+            <div class="wetu-event-card__activity-link-info">
+              <span class="wetu-event-card__activity-link-name">{{ activity_name }}</span>
+              <div class="wetu-event-card__activity-link-badges">
+                <span class="wetu-event-card__activity-link-badge">{{ activity_type }}</span>
+                {% if time_slot != blank and time_slot != 'None' %}
+                  <span class="wetu-event-card__activity-link-badge">{{ time_slot }}</span>
+                {% endif %}
+                {% if total_nights > 1 and period_day %}
+                  <span class="wetu-event-card__activity-link-badge wetu-event-card__activity-link-badge--day">Day {{ period_day }}/{{ total_nights }}</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        {% endif %}
+      </article>
+    {% endif %}
+
+  {% comment %} ================================================================
+    ACTIVITY INLINE EVENT (Fallback)
+    Shown for activities when no product exists - compact text-only card
+    Displays activity name and metadata from the itinerary data
+  ================================================================ {% endcomment %}
+  {% when 'activity-inline' %}
+    {% assign activity_name = activity_meta.name.value | default: "Activity" %}
+    {% assign activity_type = activity_meta.type.value | default: 'Included' %}
+    {% assign time_slot = activity_meta.time_slot.value | default: '' %}
+    {% assign is_highlight = activity_meta.is_highlight.value | default: false %}
+    
+    <article 
+      class="wetu-event-card wetu-event-card--activity-inline {% if is_highlight %}wetu-event-card--highlight{% endif %}"
+      data-event-type="activity-inline"
+    >
+      <div class="wetu-event-card__activity-inline-content">
+        <div class="wetu-event-card__activity-inline-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M8 12l2 2 4-4"/>
+          </svg>
+        </div>
+        <div class="wetu-event-card__activity-inline-info">
+          <span class="wetu-event-card__activity-inline-name">{{ activity_name }}</span>
+          <div class="wetu-event-card__activity-inline-badges">
+            <span class="wetu-event-card__activity-inline-badge">{{ activity_type }}</span>
+            {% if time_slot != blank and time_slot != 'None' %}
+              <span class="wetu-event-card__activity-inline-badge">{{ time_slot }}</span>
+            {% endif %}
+            {% if is_highlight %}
+              <span class="wetu-event-card__activity-inline-badge wetu-event-card__activity-inline-badge--highlight">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                Highlight
+              </span>
+            {% endif %}
+            {% comment %} Day indicator for multi-night stays {% endcomment %}
+            {% if total_nights > 1 and period_day %}
+              <span class="wetu-event-card__activity-inline-badge wetu-event-card__activity-inline-badge--day">
+                Day {{ period_day }}/{{ total_nights }}
+              </span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </article>
+
+  {% comment %} ================================================================
+    TRANSIT EVENT (Drive/Flight/Transfer)
+    Shown for travel between locations
+    - NO images or placeholders - text-only detailed info
+    - Shows detailed route info: distance, duration, From → To
+  ================================================================ {% endcomment %}
+  {% when 'transit' %}
+    {% assign route_mode = route.mode.value | default: "Transfer" %}
+    {% assign route_label = route.route_label.value | default: route.label.value %}
+    {% assign start_location = route.start_location.value %}
+    {% assign end_location = route.end_location.value %}
+    {% assign duration = route.duration.value %}
+    {% assign distance = route.distance.value | default: 0 %}
+    {% assign distance_km = distance | divided_by: 1000.0 | round: 1 %}
+    {% assign agency = route.agency.value %}
+    {% assign vehicle = route.vehicle.value %}
+    {% assign start_day = route.start_day.value | default: 0 %}
+    {% assign end_day = route.end_day.value | default: 0 %}
+    {% assign directions = route.directions.value %}
+    
+    {% comment %} Get start and end coordinates {% endcomment %}
+    {% assign start_id = route.start_content_entity_id.value | append: '' %}
+    {% assign end_id = route.end_content_entity_id.value | append: '' %}
+    {% assign start_product = nil %}
+    {% assign end_product = nil %}
+    
+    {% if all_component_products.size > 0 %}
+      {% for comp_prod in all_component_products %}
+        {% assign prod_pin_id = comp_prod.metafields.wetu.pin_id.value | append: '' %}
+        {% if prod_pin_id == start_id %}
+          {% assign start_product = comp_prod %}
+        {% endif %}
+        {% if prod_pin_id == end_id %}
+          {% assign end_product = comp_prod %}
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+    
+    {% assign start_position = start_product.metafields.wetu.position.value %}
+    {% assign end_position = end_product.metafields.wetu.position.value %}
+    
+    {% comment %} Determine route type {% endcomment %}
+    {% assign route_mode_lower = route_mode | downcase %}
+    {% assign is_flight = false %}
+    {% assign route_icon = 'drive' %}
+    {% assign route_type_label = route_mode %}
+    {% assign route_color_class = 'drive' %}
+    
+    {% if route_mode_lower contains 'flight' or route_mode_lower contains 'scheduled' or route_mode_lower contains 'charter' %}
+      {% assign is_flight = true %}
+      {% assign route_icon = 'flight' %}
+      {% assign route_type_label = 'Flight' %}
+      {% assign route_color_class = 'flight' %}
+    {% elsif route_mode_lower contains 'helicopter' %}
+      {% assign is_flight = true %}
+      {% assign route_icon = 'helicopter' %}
+      {% assign route_type_label = 'Helicopter' %}
+      {% assign route_color_class = 'flight' %}
+    {% elsif route_mode_lower contains 'self' or route_mode_lower contains 'drive' %}
+      {% assign route_icon = 'drive' %}
+      {% assign route_type_label = 'Self-Drive' %}
+      {% assign route_color_class = 'drive' %}
+    {% elsif route_mode_lower contains 'transfer' %}
+      {% assign route_icon = 'transfer' %}
+      {% assign route_type_label = 'Transfer' %}
+      {% assign route_color_class = 'transfer' %}
+    {% elsif route_mode_lower contains 'boat' %}
+      {% assign route_icon = 'boat' %}
+      {% assign route_type_label = 'Boat' %}
+      {% assign route_color_class = 'transfer' %}
+    {% elsif route_mode_lower contains 'train' %}
+      {% assign route_icon = 'train' %}
+      {% assign route_type_label = 'Train' %}
+      {% assign route_color_class = 'transfer' %}
+    {% endif %}
+    
+    {% comment %} Clean location names {% endcomment %}
+    {% assign start_clean = start_location | split: '[' | first | strip %}
+    {% assign end_clean = end_location | split: '[' | first | strip %}
+    {% if start_clean == blank %}{% assign start_clean = start_location %}{% endif %}
+    {% if end_clean == blank %}{% assign end_clean = end_location %}{% endif %}
+    
+    {% comment %} Use route_index (passed from parent) if available, otherwise try to derive from route data {% endcomment %}
+    {% assign actual_route_index = route_index | default: route.sequence.value | default: 0 %}
+    
+    <article 
+      class="wetu-event-card wetu-event-card--transit wetu-event-card--transit-compact wetu-event-card--{{ route_color_class }} wetu-event-card--clickable{% if is_flight %} wetu-event-card--flight{% endif %}"
+      data-event-type="transit"
+      data-route-id="route-{{ actual_route_index }}"
+      data-focus-route="route-{{ actual_route_index }}"
+      data-is-flight="{{ is_flight }}"
+      data-mode="{{ route_mode_lower }}"
+      data-start-lat="{{ start_position.latitude }}"
+      data-start-lng="{{ start_position.longitude }}"
+      data-end-lat="{{ end_position.latitude }}"
+      data-end-lng="{{ end_position.longitude }}"
+      tabindex="0"
+      role="button"
+      aria-label="View {{ route_type_label }} route on map"
+    >
+      <div class="wetu-event-card__transit-header wetu-event-card__transit-header--{{ route_color_class }}">
+        <div class="wetu-event-card__transit-icon">
+          {% case route_icon %}
+            {% when 'flight' %}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
+              </svg>
+            {% when 'helicopter' %}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M3 3h18v2H3V3zm9 4c-2.76 0-5 2.24-5 5v7h2v-3h6v3h2v-7c0-2.76-2.24-5-5-5zm3 7H9v-2c0-1.66 1.34-3 3-3s3 1.34 3 3v2z"/>
+              </svg>
+            {% when 'drive' %}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/>
+                <path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/>
+                <path d="M5 17H3v-6l2-5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0H9"/>
+              </svg>
+            {% when 'transfer' %}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="1" y="3" width="15" height="13"/>
+                <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
+                <circle cx="5.5" cy="18.5" r="2.5"/>
+                <circle cx="18.5" cy="18.5" r="2.5"/>
+              </svg>
+            {% when 'boat' %}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M2 21c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1 .6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/>
+                <path d="M19.38 20A11.6 11.6 0 0 0 21 14l-9-4-9 4c0 2.9.94 5.34 2.81 7.76"/>
+                <path d="M12 10v4"/>
+              </svg>
+            {% when 'train' %}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="4" y="3" width="16" height="16" rx="2"/>
+                <path d="M4 11h16"/>
+                <path d="M12 3v8"/>
+                <path d="M8 19l-2 3M18 22l-2-3"/>
+              </svg>
+            {% else %}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+          {% endcase %}
+        </div>
+        <span class="wetu-event-card__transit-type">{{ route_type_label }}</span>
+        
+        {% if duration != blank or distance_km > 0 %}
+          <div class="wetu-event-card__transit-stats-inline">
+            {% if duration != blank %}
+              <span class="wetu-event-card__duration-inline">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <polyline points="12 6 12 12 16 14"/>
+                </svg>
+                {{ duration }}
+              </span>
+            {% endif %}
+            {% if distance_km > 0 %}
+              <span class="wetu-event-card__distance-inline">{{ distance_km }} km</span>
+            {% endif %}
+          </div>
+        {% endif %}
+      </div>
+      
+      <div class="wetu-event-card__transit-body">
+        <div class="wetu-event-card__route-flow">
+          <div class="wetu-event-card__from">
+            <span class="wetu-event-card__route-label">From</span>
+            <span class="wetu-event-card__route-name">{{ start_clean }}</span>
+          </div>
+          <div class="wetu-event-card__route-divider">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </div>
+          <div class="wetu-event-card__to">
+            <span class="wetu-event-card__route-label">To</span>
+            <span class="wetu-event-card__route-name">{{ end_clean }}</span>
+          </div>
+        </div>
+        
+        {% comment %} Additional details for self-drive {% endcomment %}
+        {% if route_icon == 'drive' %}
+          <div class="wetu-event-card__drive-details">
+            {% if distance_km > 0 and duration != blank %}
+              <p class="wetu-event-card__drive-summary">
+                This self-drive leg covers approximately <strong>{{ distance_km }} km</strong> with an estimated driving time of <strong>{{ duration }}</strong>.
+              </p>
+            {% elsif distance_km > 0 %}
+              <p class="wetu-event-card__drive-summary">
+                This self-drive leg covers approximately <strong>{{ distance_km }} km</strong>.
+              </p>
+            {% elsif duration != blank %}
+              <p class="wetu-event-card__drive-summary">
+                Estimated driving time: <strong>{{ duration }}</strong>.
+              </p>
+            {% endif %}
+          </div>
+        {% endif %}
+        
+        {% comment %} Agency/vehicle info for flights and transfers {% endcomment %}
+        {% if agency != blank or vehicle != blank %}
+          <div class="wetu-event-card__transit-details">
+            {% if agency != blank %}
+              <span class="wetu-event-card__agency">{{ agency }}</span>
+            {% endif %}
+            {% if vehicle != blank %}
+              <span class="wetu-event-card__vehicle">{{ vehicle }}</span>
+            {% endif %}
+          </div>
+        {% endif %}
+      </div>
+    </article>
+
+{% endcase %}

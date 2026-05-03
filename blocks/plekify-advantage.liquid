@@ -1,0 +1,41 @@
+{% schema %}
+{
+  "name": "Advantage Card",
+  "tag": null,
+  "settings": [
+    {
+      "type": "select",
+      "id": "icon",
+      "label": "Icon",
+      "options": [
+        { "value": "seo", "label": "SEO (Magnifying Glass)" },
+        { "value": "ai", "label": "AI Commerce (Chat Bubble)" },
+        { "value": "data", "label": "Guest Data (Person)" },
+        { "value": "language", "label": "Multi-Language (Globe)" },
+        { "value": "marketing", "label": "Marketing (Envelope)" },
+        { "value": "ecosystem", "label": "Ecosystem (Puzzle)" },
+        { "value": "custom", "label": "Custom" }
+      ],
+      "default": "seo"
+    },
+    {
+      "type": "text",
+      "id": "icon_custom",
+      "label": "Custom Icon (emoji or text)",
+      "default": "⭐"
+    },
+    {
+      "type": "text",
+      "id": "title",
+      "label": "Title",
+      "default": "Advantage Title"
+    },
+    {
+      "type": "textarea",
+      "id": "description",
+      "label": "Description",
+      "default": "Advantage description."
+    }
+  ]
+}
+{% endschema %}

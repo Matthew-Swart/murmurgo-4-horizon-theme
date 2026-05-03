@@ -1,0 +1,19 @@
+{% comment %}
+  Wetu Rates Section - renders rates snippet for a given product context
+{% endcomment %}
+{% assign subject_product = product %}
+{% if subject_product == blank and page %}
+  {% assign subject_product = page.metafields.wetu_page.source_property.value %}
+{% endif %}
+<div class="page-width">
+  {% render 'wetu-rate-display', product: subject_product %}
+</div>
+{% schema %}
+{
+  "name": "Wetu Rates",
+  "tag": "section",
+  "class": "section-wetu-rates",
+  "settings": [],
+  "presets": [{ "name": "Wetu Rates" }]
+}
+{% endschema %}

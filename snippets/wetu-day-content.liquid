@@ -1,0 +1,362 @@
+{% comment %}
+  ============================================================================
+  WETU DAY CONTENT SNIPPET
+  ============================================================================
+  
+  Renders the content for a single day/leg in the itinerary.
+  
+  PARAMETERS:
+  - leg: The leg metaobject
+  - day_number: Starting day number for this leg
+  - day_end: Ending day number (for multi-night stays)
+  - routes: Array of route metaobjects
+  - show_property_link: Boolean to show link to property page
+  - collapsible_details: Boolean for collapsible sections
+  - is_first: Boolean if first day
+  - is_last: Boolean if last day
+  - pin_ids_array: Array of PIN IDs from wetu-itinerary-data
+  - handles_array: Array of product handles from wetu-itinerary-data
+  
+  ============================================================================
+{% endcomment %}
+
+{% comment %} Get linked property using PIN ID to handle mapping {% endcomment %}
+{% assign content_id = leg.content_entity_id.value %}
+
+{% comment %} Find the product handle for this PIN ID {% endcomment %}
+{% assign property_handle = nil %}
+{% if pin_ids_array and handles_array %}
+  {% for check_pin in pin_ids_array %}
+    {% if check_pin == content_id %}
+      {% assign property_handle = handles_array[forloop.index0] %}
+      {% break %}
+    {% endif %}
+  {% endfor %}
+{% endif %}
+
+{% assign property = all_products[property_handle] %}
+{% assign accommodation_name = leg.accommodation_name.value | default: property.title | default: 'Destination' %}
+{% assign leg_type = leg.type.value | default: 'Standard' %}
+{% assign leg_nights = leg.nights.value | default: 0 %}
+{% assign leg_id = leg.leg_id.value %}
+
+<article 
+  class="wetu-day{% if is_first %} wetu-day--first{% endif %}{% if is_last %} wetu-day--last{% endif %}" 
+  id="day-{{ day_number }}" 
+  data-day="{{ day_number }}"
+  data-leg-id="{{ leg_id }}"
+>
+  {% comment %} Day Header {% endcomment %}
+  <header class="wetu-day__header">
+    <div class="wetu-day__badge-group">
+      <span class="wetu-day__badge">
+        Day {{ day_number }}{% if day_end > day_number %} - {{ day_end }}{% endif %}
+      </span>
+      {% if leg_nights > 0 %}
+        <span class="wetu-day__nights">
+          {{ leg_nights }} {{ leg_nights | pluralize: 'Night', 'Nights' }}
+        </span>
+      {% endif %}
+    </div>
+    
+    <div class="wetu-day__location">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+        <circle cx="12" cy="10" r="3"/>
+      </svg>
+      <span>{{ accommodation_name }}</span>
+    </div>
+  </header>
+
+  {% comment %} Property Card (if accommodation) {% endcomment %}
+  {% if property != blank and leg_type == 'Standard' and leg_nights > 0 %}
+    {% render 'wetu-property-card', 
+      property: property, 
+      leg: leg,
+      show_link: show_property_link,
+      collapsible: collapsible_details
+    %}
+  {% endif %}
+
+  {% comment %} Transfer INTO this destination (from previous leg) {% endcomment %}
+  {% unless is_first %}
+    {% for route in routes %}
+      {% assign route_end_id = route.end_content_entity_id.value %}
+      {% if route_end_id == content_id %}
+        <div class="wetu-day__transfer wetu-day__transfer--arrival">
+          <span class="transfer-label">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+            Arrival Transfer
+          </span>
+          {% render 'wetu-transfer-card', route: route, compact: true %}
+        </div>
+        {% break %}
+      {% endif %}
+    {% endfor %}
+  {% endunless %}
+
+  {% comment %} Daily Periods & Activities {% endcomment %}
+  {% assign leg_periods = leg.periods.value %}
+  {% if leg_periods and leg_periods.size > 0 %}
+    {% assign period_day = day_number %}
+    {% for period in leg_periods %}
+      {% assign activities = period.activities.value %}
+      {% assign period_notes = period.notes.value %}
+      {% assign day_label = period.day_label.value %}
+      
+      {% comment %} Show day separator for multi-night stays {% endcomment %}
+      {% if leg_nights > 1 and forloop.index > 1 %}
+        <div class="wetu-day__period-divider">
+          <span class="period-divider__day">Day {{ period_day }}</span>
+          {% if day_label != blank %}
+            <span class="period-divider__label">{{ day_label }}</span>
+          {% endif %}
+        </div>
+      {% endif %}
+
+      {% comment %} Period Notes {% endcomment %}
+      {% if period_notes != blank %}
+        <div class="wetu-day__notes">
+          <div class="day-notes__content rte">
+            {% render 'wetu-rich-text', content: period_notes %}
+          </div>
+        </div>
+      {% endif %}
+
+      {% comment %} Activities {% endcomment %}
+      {% if activities and activities.size > 0 %}
+        <div class="wetu-day__activities">
+          <h4 class="activities__title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+            Activities & Experiences
+          </h4>
+          <div class="activities__list">
+            {% for activity in activities %}
+              {% render 'wetu-activity-card', activity: activity %}
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+      
+      {% assign period_day = period_day | plus: 1 %}
+    {% endfor %}
+  {% endif %}
+
+  {% comment %} Transfer OUT of this destination (to next leg) {% endcomment %}
+  {% unless is_last %}
+    {% for route in routes %}
+      {% assign route_start_id = route.start_content_entity_id.value %}
+      {% if route_start_id == content_id %}
+        <div class="wetu-day__transfer wetu-day__transfer--departure">
+          <span class="transfer-label">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+            Onward Journey
+          </span>
+          {% render 'wetu-transfer-card', route: route %}
+        </div>
+        {% break %}
+      {% endif %}
+    {% endfor %}
+  {% endunless %}
+</article>
+
+<style>
+  /* ============================================
+     DAY ARTICLE
+     ============================================ */
+  
+  .wetu-day {
+    padding: 40px 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .wetu-day--first {
+    padding-top: 0;
+  }
+
+  .wetu-day--last {
+    border-bottom: none;
+  }
+
+  /* ============================================
+     DAY HEADER
+     ============================================ */
+  
+  .wetu-day__header {
+    margin-bottom: 24px;
+  }
+
+  .wetu-day__badge-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .wetu-day__badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 14px;
+    background: var(--color-primary);
+    color: var(--color-background);
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-radius: 20px;
+  }
+
+  .wetu-day__nights {
+    font-size: 0.85rem;
+    color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+  }
+
+  .wetu-day__location {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--color-foreground);
+    line-height: 1.2;
+  }
+
+  .wetu-day__location svg {
+    flex-shrink: 0;
+    color: var(--color-primary);
+  }
+
+  @media screen and (min-width: 1024px) {
+    .wetu-day {
+      padding: 60px 0;
+    }
+
+    .wetu-day__location {
+      font-size: 1.75rem;
+    }
+  }
+
+  /* ============================================
+     PERIOD DIVIDER (Multi-night stays)
+     ============================================ */
+  
+  .wetu-day__period-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 0;
+    margin: 32px 0;
+    border-top: 1px dashed var(--color-border);
+  }
+
+  .period-divider__day {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    padding: 4px 12px;
+    border-radius: 12px;
+  }
+
+  .period-divider__label {
+    font-size: 0.9rem;
+    color: color-mix(in srgb, var(--color-foreground) 70%, transparent);
+  }
+
+  /* ============================================
+     DAY NOTES
+     ============================================ */
+  
+  .wetu-day__notes {
+    margin-bottom: 24px;
+  }
+
+  .day-notes__content {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: color-mix(in srgb, var(--color-foreground) 80%, transparent);
+  }
+
+  .day-notes__content p:first-child {
+    margin-top: 0;
+  }
+
+  .day-notes__content p:last-child {
+    margin-bottom: 0;
+  }
+
+  /* ============================================
+     ACTIVITIES SECTION
+     ============================================ */
+  
+  .wetu-day__activities {
+    margin-bottom: 32px;
+  }
+
+  .activities__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: color-mix(in srgb, var(--color-foreground) 70%, transparent);
+    margin: 0 0 16px;
+  }
+
+  .activities__title svg {
+    color: var(--color-primary);
+  }
+
+  .activities__list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* ============================================
+     TRANSFERS
+     ============================================ */
+  
+  .wetu-day__transfer {
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .wetu-day__transfer--arrival {
+    margin-top: 0;
+    margin-bottom: 32px;
+    padding-top: 0;
+    padding-bottom: 24px;
+    border-top: none;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .transfer-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+    margin-bottom: 12px;
+  }
+
+  .transfer-label svg {
+    color: var(--color-primary);
+  }
+</style>
+

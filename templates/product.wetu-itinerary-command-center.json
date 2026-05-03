@@ -1,0 +1,30 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "main": {
+      "type": "wetu-itinerary-command-center",
+      "settings": {
+        "color_scheme": "scheme-5",
+        "show_hero": true,
+        "show_sidebar": true,
+        "show_inspector": true,
+        "show_mobile_picker": true,
+        "show_mobile_sheet": true,
+        "show_tour_overview": false,
+        "enable_pin_map": true,
+        "enable_link_manifest": true
+      }
+    }
+  },
+  "order": [
+    "main"
+  ]
+}

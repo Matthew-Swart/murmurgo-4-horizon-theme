@@ -1,0 +1,398 @@
+{% comment %}
+  Dynamic Property Navigation Menu with Smart Rendering
+  
+  Renders the application-created Shopify navigation menu for the current property context
+  with intelligent runtime decisions:
+  - Skips empty collections
+  - Links directly to single products when collection has only 1 product
+  - Links to collections when they have 2+ products
+  
+  IMPORTANT: Home page (/) should NOT show any property-specific menu
+{% endcomment %}
+
+{% liquid
+  # Menu Selection Logic (inline to avoid scope issues with render tag)
+  assign selected_menu_handle = ''
+  assign is_home_page = false
+  assign is_wetu_context = false
+  assign is_single_property = false
+  assign property_count = 0
+  
+  # Detect if this is a single property store
+  # Use properties collection if available, otherwise check all products
+  if collections.properties
+    assign source_collection = collections.properties
+  elsif collections['all-properties']
+    assign source_collection = collections['all-properties']
+  else
+    assign source_collection = collections.all
+  endif
+  
+  # Count property products
+  for product in source_collection.products limit: 200
+    assign joined_tags = product.tags | join: '|'
+    assign tag_string = '|' | append: joined_tags | append: '|'
+    if tag_string contains '|wetu-property|'
+      assign property_count = property_count | plus: 1
+    endif
+  endfor
+  
+  # Set single property flag
+  if property_count == 1
+    assign is_single_property = true
+  endif
+  
+  # Check if we're on the home page
+  if request.path == '/' or template.name == 'index'
+    assign is_home_page = true
+  endif
+  
+  # Don't show menu on home page
+  unless is_home_page
+    # Check product pages
+    if product
+      # Check if it's a Wetu property product
+      if product.type == 'wetu-property'
+        assign menu_handle = product.metafields.wetu_property.menu_handle
+        if menu_handle and menu_handle != blank
+          assign selected_menu_handle = menu_handle
+          assign is_wetu_context = true
+          echo '<!-- DEBUG: Property product detected, menu_handle from metafield: ' | append: menu_handle | append: ' -->'
+        else
+          # Fallback: Try to construct menu handle from pin_id
+          assign pin_id = product.metafields.wetu.pin_id
+          if pin_id and pin_id != blank
+            assign constructed_handle = 'property-menu-' | append: pin_id
+            if linklists[constructed_handle]
+              assign selected_menu_handle = constructed_handle
+              assign is_wetu_context = true
+              echo '<!-- DEBUG: Property product, constructed menu handle from pin_id: ' | append: constructed_handle | append: ' -->'
+            else
+              echo '<!-- DEBUG: Property product, pin_id: ' | append: pin_id | append: ', but menu not found with handle: ' | append: constructed_handle | append: ' -->'
+            endif
+          else
+            echo '<!-- DEBUG: Property product detected but no menu_handle or pin_id metafield found -->'
+          endif
+        endif
+      endif
+      
+      # Check if it's a Wetu accommodation/room product
+      if product.type == 'wetu-accommodation'
+        # Get parent property and its menu
+        assign parent_property = product.metafields.wetu_room.property_product.value
+        if parent_property
+          assign menu_handle = parent_property.metafields.wetu_property.menu_handle
+          if menu_handle and menu_handle != blank
+            assign selected_menu_handle = menu_handle
+            assign is_wetu_context = true
+            echo '<!-- DEBUG: Accommodation product, parent property menu: ' | append: menu_handle | append: ' -->'
+          endif
+        endif
+      endif
+      
+      # Check for Wetu asset products (videos, 3d-views, documents, activities, restaurants, spa, etc.)
+      if product.type contains 'wetu-'
+        # Try to get property reference from various metafields
+        assign property_ref = product.metafields.wetu.property_product.value
+        unless property_ref
+          assign property_ref = product.metafields.wetu_video.property_product.value
+        endunless
+        unless property_ref
+          assign property_ref = product.metafields.wetu_panorama.property_product.value
+        endunless
+        unless property_ref
+          assign property_ref = product.metafields.wetu_document.property_product.value
+        endunless
+        unless property_ref
+          assign property_ref = product.metafields.wetu_activity.property_product.value
+        endunless
+        unless property_ref
+          assign property_ref = product.metafields.wetu_restaurant.property_product.value
+        endunless
+        unless property_ref
+          assign property_ref = product.metafields.wetu_spa.property_product.value
+        endunless
+        unless property_ref
+          assign property_ref = product.metafields.wetu_linked_activity.property_product.value
+        endunless
+        unless property_ref
+          assign property_ref = product.metafields.wetu_linked_restaurant.property_product.value
+        endunless
+        unless property_ref
+          assign property_ref = product.metafields.wetu_linked_spa.property_product.value
+        endunless
+        
+        if property_ref
+          assign menu_handle = property_ref.metafields.wetu_property.menu_handle
+          if menu_handle and menu_handle != blank
+            assign selected_menu_handle = menu_handle
+            assign is_wetu_context = true
+            echo '<!-- DEBUG: Wetu asset product, property menu: ' | append: menu_handle | append: ' -->'
+          endif
+        endif
+        
+        # Fallback: Check for wetu_property.map_object_id (used by video products)
+        if selected_menu_handle == blank
+          assign map_object_id = product.metafields.wetu_property.map_object_id
+          if map_object_id and map_object_id != blank
+            assign potential_handle = 'property-menu-' | append: map_object_id
+            if linklists[potential_handle]
+              assign selected_menu_handle = potential_handle
+              assign is_wetu_context = true
+              echo '<!-- DEBUG: Wetu product, menu from map_object_id: ' | append: potential_handle | append: ' -->'
+            else
+              echo '<!-- DEBUG: map_object_id found (' | append: map_object_id | append: '), but menu not found with handle: ' | append: potential_handle | append: ' -->'
+            endif
+          endif
+        endif
+        
+        # Fallback: Check product tags for property pin ID (wetu-property-XXXXX format)
+        if selected_menu_handle == blank
+          for tag in product.tags
+            if tag contains 'wetu-property-'
+              assign pin_parts = tag | split: 'wetu-property-'
+              if pin_parts.size > 1
+                assign pin_id = pin_parts[1]
+                assign potential_handle = 'property-menu-' | append: pin_id
+                if linklists[potential_handle]
+                  assign selected_menu_handle = potential_handle
+                  assign is_wetu_context = true
+                  echo '<!-- DEBUG: Wetu product, menu from tag property id: ' | append: potential_handle | append: ' -->'
+                  break
+                endif
+              endif
+            elsif tag contains 'wetu_pin_'
+              assign pin_parts = tag | split: 'wetu_pin_'
+              if pin_parts.size > 1
+                assign pin_id = pin_parts[1]
+                assign potential_handle = 'property-menu-' | append: pin_id
+                if linklists[potential_handle]
+                  assign selected_menu_handle = potential_handle
+                  assign is_wetu_context = true
+                  echo '<!-- DEBUG: Wetu product, menu from tag pin_id: ' | append: potential_handle | append: ' -->'
+                  break
+                endif
+              endif
+            endif
+          endfor
+        endif
+      endif
+    endif
+    
+    # Check collection pages
+    if collection and selected_menu_handle == blank
+      # Check if collection has property reference
+      assign property_ref = collection.metafields.wetu.property_product.value
+      unless property_ref
+        assign property_ref = collection.metafields.wetu_collection.property_product.value
+      endunless
+      
+      if property_ref
+        assign menu_handle = property_ref.metafields.wetu_property.menu_handle
+        if menu_handle and menu_handle != blank
+          assign selected_menu_handle = menu_handle
+          assign is_wetu_context = true
+          echo '<!-- DEBUG: Collection page, property menu: ' | append: menu_handle | append: ' -->'
+        endif
+      endif
+      
+      # Fallback: Check collection tags for property pin ID
+      if selected_menu_handle == blank
+        for tag in collection.tags
+          if tag contains 'wetu_pin_'
+            assign pin_parts = tag | split: 'wetu_pin_'
+            if pin_parts.size > 1
+              assign pin_id = pin_parts[1]
+              assign potential_handle = 'property-menu-' | append: pin_id
+              if linklists[potential_handle]
+                assign selected_menu_handle = potential_handle
+                assign is_wetu_context = true
+                echo '<!-- DEBUG: Collection page, menu from tag pin_id: ' | append: potential_handle | append: ' -->'
+                break
+              endif
+            endif
+          endif
+        endfor
+      endif
+    endif
+    
+    # Check page objects
+    if page and selected_menu_handle == blank
+      # Check if page has property reference
+      assign property_ref = page.metafields.wetu_page.source_property.value
+      if property_ref
+        assign menu_handle = property_ref.metafields.wetu_property.menu_handle
+        if menu_handle and menu_handle != blank
+          assign selected_menu_handle = menu_handle
+          assign is_wetu_context = true
+          echo '<!-- DEBUG: Page object, property menu: ' | append: menu_handle | append: ' -->'
+        endif
+      endif
+    endif
+    
+    # Fallback to main-menu if not in Wetu context
+    unless is_wetu_context
+      assign selected_menu_handle = 'main-menu'
+      echo '<!-- DEBUG: Fallback to main-menu -->'
+    endunless
+  endunless
+  
+  # Get the actual menu from Shopify
+  assign property_menu = nil
+  if selected_menu_handle and selected_menu_handle != blank
+    assign property_menu = linklists[selected_menu_handle]
+  endif
+%}
+
+{% comment %}
+  Dynamic Property Menu Styling
+{% endcomment %}
+<style>
+  .menu-list__list-item {
+    margin-right: 1.5rem;
+  }
+  
+  .menu-list__list-item:last-child {
+    margin-right: 0;
+  }
+</style>
+
+<!-- DEBUG: Menu Handle: {{ selected_menu_handle }} -->
+<!-- DEBUG: Menu Found: {% if property_menu != blank %}true{% else %}false{% endif %} -->
+<!-- DEBUG: Menu Links Count: {{ property_menu.links.size }} -->
+
+{% if property_menu and property_menu.links.size > 0 %}
+  {% comment %} Render the property-specific menu with smart logic {% endcomment %}
+  {% for link in property_menu.links %}
+    {% liquid
+      # Initialize rendering decision variables
+      assign should_render = true
+      assign final_url = link.url
+      assign final_title = link.title
+      assign product_count = 0
+      assign is_collection_link = false
+      assign is_home_link = false
+      
+      # Check if this is a home link
+      assign normalized_url = link.url | remove: request.origin | strip
+      if normalized_url == '/' or normalized_url == '' or normalized_url == '#'
+        assign is_home_link = true
+      endif
+      
+      # Skip home link for single property stores
+      if is_single_property and is_home_link
+        assign should_render = false
+      endif
+      
+      # For multi-property stores: Replace "Home" link with property title
+      if is_home_link and is_single_property == false and product
+        # Try to get current property from various contexts
+        assign current_property = nil
+        
+        if product.type == 'wetu-property'
+          assign current_property = product
+        elsif product.type == 'wetu-accommodation'
+          assign current_property = product.metafields.wetu_room.property_product.value
+        elsif product.type contains 'wetu-'
+          # Try various metafield paths
+          assign current_property = product.metafields.wetu.property_product.value
+          unless current_property
+            assign current_property = product.metafields.wetu_video.property_product.value
+          endunless
+          unless current_property
+            assign current_property = product.metafields.wetu_panorama.property_product.value
+          endunless
+          unless current_property
+            assign current_property = product.metafields.wetu_document.property_product.value
+          endunless
+          unless current_property
+            assign current_property = product.metafields.wetu_activity.property_product.value
+          endunless
+          unless current_property
+            assign current_property = product.metafields.wetu_restaurant.property_product.value
+          endunless
+          unless current_property
+            assign current_property = product.metafields.wetu_spa.property_product.value
+          endunless
+          unless current_property
+            assign current_property = product.metafields.wetu_linked_activity.property_product.value
+          endunless
+          unless current_property
+            assign current_property = product.metafields.wetu_linked_restaurant.property_product.value
+          endunless
+          unless current_property
+            assign current_property = product.metafields.wetu_linked_spa.property_product.value
+          endunless
+        endif
+        
+        # If we found the property, replace title and URL
+        if current_property
+          assign final_title = current_property.title
+          assign final_url = current_property.url
+        endif
+      endif
+      
+      # For collection context in multi-property stores
+      if is_home_link and is_single_property == false and collection
+        assign property_ref = collection.metafields.wetu.property_product.value
+        unless property_ref
+          assign property_ref = collection.metafields.wetu_collection.property_product.value
+        endunless
+        
+        if property_ref
+          assign final_title = property_ref.title
+          assign final_url = property_ref.url
+        endif
+      endif
+      
+      # Detect if this is a collection link by checking the URL pattern
+      if link.url contains '/collections/'
+        assign is_collection_link = true
+        # Extract collection handle from URL (e.g., /collections/matetsi-victoria-falls-accommodations -> matetsi-victoria-falls-accommodations)
+        assign url_parts = link.url | split: '/collections/'
+        if url_parts.size > 1
+          assign collection_handle = url_parts[1] | split: '/' | first | split: '?' | first
+          assign target_collection = collections[collection_handle]
+          
+          if target_collection
+            assign product_count = target_collection.products_count
+            
+            # Skip empty collections
+            if product_count == 0
+              assign should_render = false
+            endif
+            
+            # Link to single product if count = 1
+            if product_count == 1
+              assign first_product = target_collection.products.first
+              if first_product
+                assign final_url = first_product.url
+              endif
+            endif
+          else
+            # Collection not found, don't render this link
+            assign should_render = false
+          endif
+        endif
+      endif
+    %}
+    
+    <!-- DEBUG: Link: {{ link.title }} | Type: {% if is_collection_link %}Collection{% else %}Direct{% endif %} | Home Link: {{ is_home_link }} | Should Render: {{ should_render }} | Final Title: {{ final_title }} | Product Count: {{ product_count }} -->
+    
+    {% if should_render %}
+      <li class="menu-list__list-item" role="presentation">
+        <a href="{{ final_url }}" class="menu-list__link{% if link.active %} menu-list__link--active{% endif %}"{% if final_title contains '3D' %} target="_blank"{% endif %}>
+          <span class="menu-list__link-title">{{ final_title }}</span>
+        </a>
+      </li>
+    {% endif %}
+  {% endfor %}
+{% else %}
+  {% comment %} No menu to display (e.g., on home page or non-Wetu pages) {% endcomment %}
+  <!-- DEBUG: No property menu found or menu is empty -->
+  {% if selected_menu_handle and selected_menu_handle != blank %}
+    <!-- DEBUG: Attempted menu handle: {{ selected_menu_handle }}, but menu not found or empty -->
+  {% endif %}
+{% endif %}
+
+

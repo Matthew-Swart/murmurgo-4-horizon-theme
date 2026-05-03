@@ -1,0 +1,355 @@
+{%- liquid
+  # This section displays videos in a 2-column grid with 2px gaps
+  # Shows title overlays and video play buttons
+  # Automatically spans last item when odd number
+  
+  assign max_items = section.settings.max_products
+-%}
+
+<div class="section-background color-{{ section.settings.color_scheme }}"></div>
+<div
+  class="
+    section
+    section--{{ section.settings.section_width }}
+    color-{{ section.settings.color_scheme }}
+    section-resource-list
+    spacing-style
+    gap-style
+  "
+  style="
+    {% render 'spacing-style', settings: section.settings %}
+    {% render 'gap-style', value: section.settings.gap %}
+  "
+>
+  <div class="section-resource-list__header">
+    {%- content_for 'block', type: '_product-list-content', id: 'static-header', closest.collection: collection -%}
+  </div>
+
+  {% # theme-check-disable ContentForInCapture %}
+  {% capture list_items %}
+    {% for product in collection.products limit: max_items %}
+      <div class="resource-list__item video-card-item">
+        <div class="video-card">
+          <a href="{{ product.url }}" class="video-card__link">
+            {% if product.featured_media %}
+              <div class="video-card__media">
+                {{
+                  product.featured_media.preview_image
+                  | image_url: width: 1200
+                  | image_tag:
+                    widths: '400, 600, 800, 1000, 1200',
+                    sizes: '(min-width: 750px) calc((100vw - 2px) / 2), 100vw',
+                    loading: 'lazy',
+                    class: 'video-card__image',
+                    alt: product.title
+                }}
+                
+                {% comment %} Video play button overlay {% endcomment %}
+                <div class="video-card__play-button">
+                  <span class="video-card__play-icon">
+                    <span class="visually-hidden">{{ 'accessibility.play_video' | t }}</span>
+                    {{- 'icon-play.svg' | inline_asset_content -}}
+                  </span>
+                </div>
+                
+                {% comment %} Title overlay bottom-left {% endcomment %}
+                <div class="video-card__title-overlay">
+                  <h3 class="video-card__title">{{ product.title }}</h3>
+                </div>
+              </div>
+            {% endif %}
+          </a>
+        </div>
+      </div>
+
+      {% unless forloop.last %}
+        <!--@list/split-->
+      {% endunless %}
+    {% endfor %}
+  {% endcapture %}
+  {% # theme-check-enable ContentForInCapture %}
+
+  {% liquid
+    # Create an array from the list items
+    assign list_items_array = list_items | strip | split: '<!--@list/split-->'
+  %}
+
+  {% render 'resource-list',
+    list_items: list_items,
+    list_items_array: list_items_array,
+    settings: section.settings,
+    slide_count: max_items,
+    content_type: 'products'
+  %}
+</div>
+
+{% stylesheet %}
+  .video-card {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  
+  .video-card__link {
+    display: block;
+    position: relative;
+    text-decoration: none;
+    color: inherit;
+  }
+  
+  .video-card__media {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    background-color: #000;
+  }
+  
+  .video-card__image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+  }
+  
+  .video-card__link:hover .video-card__image {
+    transform: scale(1.05);
+  }
+  
+  /* Video play button overlay - center */
+  .video-card__play-button {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2;
+    pointer-events: none;
+  }
+  
+  .video-card__play-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    background-color: rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    transition: all 0.3s ease;
+  }
+  
+  .video-card__play-icon svg {
+    width: 28px;
+    height: 28px;
+    fill: #000;
+    margin-left: 4px;
+  }
+  
+  .video-card__link:hover .video-card__play-icon {
+    background-color: rgba(255, 255, 255, 1);
+    transform: scale(1.1);
+  }
+  
+  /* Title overlay - bottom-left */
+  .video-card__title-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 20px;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.7) 0%, transparent 100%);
+    pointer-events: none;
+    z-index: 1;
+  }
+  
+  .video-card__title {
+    color: white;
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.3;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  }
+  
+  @media (max-width: 749px) {
+    .video-card__title-overlay {
+      padding: 16px;
+    }
+    
+    .video-card__title {
+      font-size: 1rem;
+    }
+    
+    .video-card__play-icon {
+      width: 48px;
+      height: 48px;
+    }
+    
+    .video-card__play-icon svg {
+      width: 20px;
+      height: 20px;
+      margin-left: 3px;
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Video Collection",
+  "class": "section-video-collection",
+  "blocks": [
+    {
+      "type": "@theme"
+    },
+    {
+      "type": "@app"
+    }
+  ],
+  "settings": [
+    {
+      "type": "select",
+      "id": "layout_type",
+      "label": "Layout type",
+      "options": [
+        {
+          "value": "grid",
+          "label": "Grid"
+        }
+      ],
+      "default": "grid"
+    },
+    {
+      "type": "range",
+      "id": "max_products",
+      "label": "Maximum videos",
+      "min": 1,
+      "max": 50,
+      "step": 1,
+      "default": 50
+    },
+    {
+      "type": "range",
+      "id": "columns",
+      "label": "Desktop columns",
+      "min": 1,
+      "max": 8,
+      "step": 1,
+      "default": 2
+    },
+    {
+      "type": "select",
+      "id": "mobile_columns",
+      "label": "Mobile columns",
+      "options": [
+        {
+          "value": "1",
+          "label": "1"
+        },
+        {
+          "value": "2",
+          "label": "2"
+        }
+      ],
+      "default": "1"
+    },
+    {
+      "type": "range",
+      "id": "columns_gap",
+      "label": "Horizontal gap",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 2
+    },
+    {
+      "type": "range",
+      "id": "rows_gap",
+      "label": "Vertical gap",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 2
+    },
+    {
+      "type": "select",
+      "id": "section_width",
+      "label": "Section width",
+      "options": [
+        {
+          "value": "full-width",
+          "label": "Full width"
+        },
+        {
+          "value": "page-width",
+          "label": "Page width"
+        }
+      ],
+      "default": "full-width"
+    },
+    {
+      "type": "select",
+      "id": "horizontal_alignment",
+      "label": "Horizontal alignment",
+      "options": [
+        {
+          "value": "flex-start",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "flex-end",
+          "label": "Right"
+        }
+      ],
+      "default": "flex-start"
+    },
+    {
+      "type": "range",
+      "id": "gap",
+      "label": "Section gap",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 2
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "label": "Padding top",
+      "min": 0,
+      "max": 200,
+      "step": 4,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "label": "Padding bottom",
+      "min": 0,
+      "max": 200,
+      "step": 4,
+      "unit": "px",
+      "default": 0
+    }
+  ],
+  "presets": [
+    {
+      "name": "Video Collection"
+    }
+  ]
+}
+{% endschema %}
+

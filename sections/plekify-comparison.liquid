@@ -1,0 +1,298 @@
+<section class="plekify-comparison" data-section-id="{{ section.id }}">
+  <div class="plekify-comparison__container">
+    <p class="plekify-comparison__overline">{{ section.settings.overline }}</p>
+    <h2 class="plekify-comparison__heading">{{ section.settings.heading }}</h2>
+    <div class="plekify-comparison__divider"></div>
+
+    <div class="plekify-comparison__grid">
+      <div class="plekify-comparison__column plekify-comparison__column--wetu">
+        <div class="plekify-comparison__column-header plekify-comparison__column-header--wetu">
+          WETU TODAY
+        </div>
+        {% for block in section.blocks %}
+          <div class="plekify-comparison__row" {{ block.shopify_attributes }}>
+            <span class="plekify-comparison__row-label">{{ block.settings.feature_label }}</span>
+            <p class="plekify-comparison__row-value">{{ block.settings.wetu_value }}</p>
+          </div>
+        {% endfor %}
+      </div>
+
+      <div class="plekify-comparison__column plekify-comparison__column--plekify">
+        <div class="plekify-comparison__column-header plekify-comparison__column-header--plekify">
+          WITH PLEKIFY
+        </div>
+        {% for block in section.blocks %}
+          <div class="plekify-comparison__row" {{ block.shopify_attributes }}>
+            <span class="plekify-comparison__row-label">{{ block.settings.feature_label }}</span>
+            <p class="plekify-comparison__row-value">{{ block.settings.plekify_value }}</p>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+
+{% stylesheet %}
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;600&display=swap');
+
+.plekify-comparison {
+  background-color: #121212;
+  padding-block: 96px;
+  padding-inline: 64px;
+}
+
+.plekify-comparison__container {
+  max-inline-size: 1200px;
+  margin-inline: auto;
+}
+
+.plekify-comparison__overline {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  color: #C9A96E;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  text-align: center;
+  margin-block-end: 16px;
+}
+
+.plekify-comparison__heading {
+  font-family: 'DM Serif Display', serif;
+  font-size: 44px;
+  color: #FFFFFF;
+  text-align: center;
+  line-height: 1.15;
+  margin: 0;
+}
+
+.plekify-comparison__divider {
+  inline-size: 64px;
+  block-size: 1px;
+  background-color: #2C2C2C;
+  margin-inline: auto;
+  margin-block-start: 32px;
+  margin-block-end: 64px;
+}
+
+.plekify-comparison__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.plekify-comparison__column {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.plekify-comparison__column--wetu {
+  background-color: #2C2C2C;
+}
+
+.plekify-comparison__column--plekify {
+  background-color: #1C1C1C;
+  border-block-start: 2px solid #C9A96E;
+  transition: box-shadow 0.3s ease;
+}
+
+.plekify-comparison__column--plekify:hover {
+  box-shadow: inset 0 0 0 1px rgba(201, 169, 110, 0.2);
+}
+
+.plekify-comparison__column-header {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 24px;
+  border-block-end: 1px solid #333333;
+}
+
+.plekify-comparison__column-header--wetu {
+  color: #8E8E8E;
+}
+
+.plekify-comparison__column-header--plekify {
+  color: #C9A96E;
+}
+
+.plekify-comparison__row {
+  padding: 24px;
+  border-block-end: 1px solid #333333;
+}
+
+.plekify-comparison__row:last-child {
+  border-block-end: none;
+}
+
+.plekify-comparison__row-label {
+  display: block;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-block-end: 8px;
+}
+
+.plekify-comparison__column--wetu .plekify-comparison__row-label {
+  color: #AAAAAA;
+}
+
+.plekify-comparison__column--plekify .plekify-comparison__row-label {
+  color: #FFFFFF;
+}
+
+.plekify-comparison__row-value {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.plekify-comparison__column--wetu .plekify-comparison__row-value {
+  color: #8E8E8E;
+}
+
+.plekify-comparison__column--plekify .plekify-comparison__row-value {
+  color: #FFFFFF;
+}
+
+@media screen and (max-width: 749px) {
+  .plekify-comparison {
+    padding-block: 48px;
+    padding-inline: 24px;
+  }
+
+  .plekify-comparison__heading {
+    font-size: 28px;
+  }
+
+  .plekify-comparison__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Plekify Comparison",
+  "tag": "section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "overline",
+      "label": "Overline Text",
+      "default": "THE TRANSFORMATION"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Same content. Completely different outcome."
+    }
+  ],
+  "blocks": [
+    {
+      "type": "comparison_row",
+      "name": "Comparison Row",
+      "settings": [
+        {
+          "type": "text",
+          "id": "feature_label",
+          "label": "Feature Label",
+          "default": "Feature"
+        },
+        {
+          "type": "textarea",
+          "id": "wetu_value",
+          "label": "WETU Today",
+          "default": "Current state"
+        },
+        {
+          "type": "textarea",
+          "id": "plekify_value",
+          "label": "With Plekify",
+          "default": "Improved state"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Plekify Comparison",
+      "category": "Plekify",
+      "blocks": [
+        {
+          "type": "comparison_row",
+          "settings": {
+            "feature_label": "Guest clicks 'Book Now'",
+            "wetu_value": "An email opens. The consultant responds when they can.",
+            "plekify_value": "Shopify checkout loads. Guest selects quantity, pays, receives confirmation."
+          }
+        },
+        {
+          "type": "comparison_row",
+          "settings": {
+            "feature_label": "Your itinerary lives at",
+            "wetu_value": "wetu.com/itinerary/12345 — their domain, their SEO equity.",
+            "plekify_value": "yourbrand.com/collections/rugby-tour-2026 — your domain, your rankings."
+          }
+        },
+        {
+          "type": "comparison_row",
+          "settings": {
+            "feature_label": "Google sees",
+            "wetu_value": "Nothing. JavaScript-rendered iframe content is invisible to crawlers.",
+            "plekify_value": "Rich, indexable HTML with structured product data, images, and pricing."
+          }
+        },
+        {
+          "type": "comparison_row",
+          "settings": {
+            "feature_label": "ChatGPT knows about",
+            "wetu_value": "Nothing. Content is trapped inside client-side JavaScript.",
+            "plekify_value": "Every property, room type, rate, and itinerary — live via Shopify Catalog API."
+          }
+        },
+        {
+          "type": "comparison_row",
+          "settings": {
+            "feature_label": "A guest abandons mid-decision",
+            "wetu_value": "Gone. No data captured. No follow-up possible.",
+            "plekify_value": "Abandoned cart recovery email fires automatically. Guest data retained in Shopify."
+          }
+        },
+        {
+          "type": "comparison_row",
+          "settings": {
+            "feature_label": "Property depth",
+            "wetu_value": "A card with a photo and a paragraph.",
+            "plekify_value": "Full page with 11 room types, 6 restaurants, 8 activities, spa, rates — each a clickable product."
+          }
+        },
+        {
+          "type": "comparison_row",
+          "settings": {
+            "feature_label": "Languages",
+            "wetu_value": "Single language, typically English.",
+            "plekify_value": "20+ languages. German, French, Dutch, Mandarin, Swahili — improving conversion and local search ranking."
+          }
+        },
+        {
+          "type": "comparison_row",
+          "settings": {
+            "feature_label": "Revenue per booking",
+            "wetu_value": "Room only. No mechanism to add extras.",
+            "plekify_value": "Guests add game drives, spa, wine tastings, transfers at checkout. Average order value increases 20–30%."
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

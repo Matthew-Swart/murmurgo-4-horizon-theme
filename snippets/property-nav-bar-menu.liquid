@@ -1,0 +1,443 @@
+{% comment %}
+  Property Nav Bar Menu Snippet
+  ============================================================================
+  Renders property-specific navigation menu items for the property-nav-bar section.
+  
+  This is a simplified version of dynamic-property-menu that:
+  - Shows the current property name as a link (for multi-property stores)
+  - Shows other property menu items
+  - Displays current page as static text (last item)
+  ============================================================================
+{% endcomment %}
+
+{% liquid
+  assign selected_menu_handle = ''
+  assign is_wetu_context = false
+  assign current_property = nil
+  assign current_page_title = ''
+  
+  # Determine current page title for breadcrumb display
+  if product
+    assign current_page_title = product.title
+  elsif collection
+    assign current_page_title = collection.title
+  elsif page
+    assign current_page_title = page.title
+  endif
+  
+  # --- MENU DETECTION LOGIC (same as dynamic-property-menu) ---
+  
+  # Check product pages
+  if product
+    # Check if it's a Wetu property product
+    if product.type == 'wetu-property'
+      assign current_property = product
+      assign menu_handle = product.metafields.wetu_property.menu_handle
+      if menu_handle and menu_handle != blank
+        assign selected_menu_handle = menu_handle
+        assign is_wetu_context = true
+      else
+        # Fallback: Try to construct menu handle from pin_id
+        assign pin_id = product.metafields.wetu.pin_id
+        if pin_id and pin_id != blank
+          assign constructed_handle = 'property-menu-' | append: pin_id
+          if linklists[constructed_handle]
+            assign selected_menu_handle = constructed_handle
+            assign is_wetu_context = true
+          endif
+        endif
+      endif
+    endif
+    
+    # Check if it's a Wetu accommodation/room product
+    if product.type == 'wetu-accommodation'
+      assign parent_property = product.metafields.wetu_room.property_product.value
+      if parent_property
+        assign current_property = parent_property
+        assign menu_handle = parent_property.metafields.wetu_property.menu_handle
+        if menu_handle and menu_handle != blank
+          assign selected_menu_handle = menu_handle
+          assign is_wetu_context = true
+        endif
+      endif
+    endif
+    
+    # Check for Wetu asset products (videos, 3d-views, documents, activities, restaurants, spa, etc.)
+    if product.type contains 'wetu-' and is_wetu_context == false
+      assign property_ref = product.metafields.wetu.property_product.value
+      unless property_ref
+        assign property_ref = product.metafields.wetu_video.property_product.value
+      endunless
+      unless property_ref
+        assign property_ref = product.metafields.wetu_panorama.property_product.value
+      endunless
+      unless property_ref
+        assign property_ref = product.metafields.wetu_document.property_product.value
+      endunless
+      unless property_ref
+        assign property_ref = product.metafields.wetu_activity.property_product.value
+      endunless
+      unless property_ref
+        assign property_ref = product.metafields.wetu_restaurant.property_product.value
+      endunless
+      unless property_ref
+        assign property_ref = product.metafields.wetu_spa.property_product.value
+      endunless
+      unless property_ref
+        assign property_ref = product.metafields.wetu_linked_activity.property_product.value
+      endunless
+      unless property_ref
+        assign property_ref = product.metafields.wetu_linked_restaurant.property_product.value
+      endunless
+      unless property_ref
+        assign property_ref = product.metafields.wetu_linked_spa.property_product.value
+      endunless
+      
+      if property_ref
+        assign current_property = property_ref
+        assign menu_handle = property_ref.metafields.wetu_property.menu_handle
+        if menu_handle and menu_handle != blank
+          assign selected_menu_handle = menu_handle
+          assign is_wetu_context = true
+        endif
+      endif
+      
+      # Fallback: Check product tags
+      if selected_menu_handle == blank
+        for tag in product.tags
+          if tag contains 'wetu-property-'
+            assign pin_parts = tag | split: 'wetu-property-'
+            if pin_parts.size > 1
+              assign pin_id = pin_parts[1]
+              assign potential_handle = 'property-menu-' | append: pin_id
+              if linklists[potential_handle]
+                assign selected_menu_handle = potential_handle
+                assign is_wetu_context = true
+                break
+              endif
+            endif
+          elsif tag contains 'wetu_pin_'
+            assign pin_parts = tag | split: 'wetu_pin_'
+            if pin_parts.size > 1
+              assign pin_id = pin_parts[1]
+              assign potential_handle = 'property-menu-' | append: pin_id
+              if linklists[potential_handle]
+                assign selected_menu_handle = potential_handle
+                assign is_wetu_context = true
+                break
+              endif
+            endif
+          endif
+        endfor
+      endif
+    endif
+  endif
+  
+  # Check collection pages
+  if collection and selected_menu_handle == blank
+    assign property_ref = collection.metafields.wetu.property_product.value
+    unless property_ref
+      assign property_ref = collection.metafields.wetu_collection.property_product.value
+    endunless
+    
+    if property_ref
+      assign current_property = property_ref
+      assign menu_handle = property_ref.metafields.wetu_property.menu_handle
+      if menu_handle and menu_handle != blank
+        assign selected_menu_handle = menu_handle
+        assign is_wetu_context = true
+      endif
+    endif
+  endif
+  
+  # Check page objects
+  if page and selected_menu_handle == blank
+    assign property_ref = page.metafields.wetu_page.source_property.value
+    if property_ref
+      assign current_property = property_ref
+      assign menu_handle = property_ref.metafields.wetu_property.menu_handle
+      if menu_handle and menu_handle != blank
+        assign selected_menu_handle = menu_handle
+        assign is_wetu_context = true
+      endif
+    endif
+  endif
+  
+  # Get the actual menu
+  assign property_menu = nil
+  if selected_menu_handle and selected_menu_handle != blank
+    assign property_menu = linklists[selected_menu_handle]
+  endif
+  
+  # Check if single property store
+  assign is_single_property = false
+  assign property_count = 0
+  if collections.properties
+    assign source_collection = collections.properties
+  elsif collections['all-properties']
+    assign source_collection = collections['all-properties']
+  else
+    assign source_collection = collections.all
+  endif
+  
+  for prod in source_collection.products limit: 200
+    assign joined_tags = prod.tags | join: '|'
+    assign tag_string = '|' | append: joined_tags | append: '|'
+    if tag_string contains '|wetu-property|'
+      assign property_count = property_count | plus: 1
+    endif
+  endfor
+  
+  if property_count == 1
+    assign is_single_property = true
+  endif
+%}
+
+{% comment %} Output property name first (for multi-property stores) {% endcomment %}
+{% if current_property and is_single_property == false %}
+  <li class="property-nav-bar__item">
+    <a href="{{ current_property.url }}" class="property-nav-bar__link">
+      {{ current_property.title }}
+    </a>
+  </li>
+{% endif %}
+
+{% comment %} 
+  Determine if current product is an asset type (video, 3d-view, etc.)
+  These should show their category as active in nav, not their product title
+{% endcomment %}
+{% liquid
+  assign is_asset_product = false
+  assign asset_category = ''
+  assign has_video_context = false
+  assign has_document_context = false
+  
+  if product
+    if product.metafields.wetu_video != blank
+      assign has_video_context = true
+    elsif product.metafields.wetu_video.video != blank or product.metafields.wetu.video != blank or product.metafields.wetu.videos != blank
+      assign has_video_context = true
+    elsif product.handle contains '-video-'
+      assign has_video_context = true
+    endif
+
+    if product.metafields.wetu_document != blank
+      assign has_document_context = true
+    elsif product.metafields.wetu_document.document != blank or product.metafields.wetu.document != blank or product.metafields.wetu.documents != blank
+      assign has_document_context = true
+    elsif product.handle contains '-document-'
+      assign has_document_context = true
+    endif
+
+    if has_video_context == false or has_document_context == false
+      for product_collection in product.collections
+        if has_video_context == false
+          if product_collection.handle contains '-videos' or product_collection.handle == 'all-property-videos'
+            assign has_video_context = true
+          endif
+        endif
+        if has_document_context == false
+          if product_collection.handle contains '-documents' or product_collection.handle == 'all-property-documents'
+            assign has_document_context = true
+          endif
+        endif
+        if has_video_context and has_document_context
+          break
+        endif
+      endfor
+    endif
+
+    if has_video_context
+      assign is_asset_product = true
+      assign asset_category = 'video'
+    elsif product.type == 'wetu-panorama' or product.type == 'wetu-3d-view'
+      assign is_asset_product = true
+      assign asset_category = '360'
+    elsif has_document_context
+      assign is_asset_product = true
+      assign asset_category = 'documents'
+    elsif product.type == 'wetu-activity'
+      assign is_asset_product = true
+      assign asset_category = 'activities'
+    elsif product.type == 'wetu-restaurant'
+      assign is_asset_product = true
+      assign asset_category = 'restaurant'
+    elsif product.type == 'wetu-spa'
+      assign is_asset_product = true
+      assign asset_category = 'spa'
+    endif
+  endif
+%}
+
+{% comment %} Output menu items (skipping home link and current page) {% endcomment %}
+{% if property_menu and property_menu.links.size > 0 %}
+  {% for link in property_menu.links %}
+    {% liquid
+      assign should_render = true
+      assign final_url = link.url
+      assign final_title = link.title
+      
+      # Check if this is a home link
+      assign normalized_url = link.url | remove: request.origin | strip
+      assign is_home_link = false
+      if normalized_url == '/' or normalized_url == '' or normalized_url == '#'
+        assign is_home_link = true
+      endif
+      
+      # Skip home link (we show logo instead)
+      if is_home_link
+        assign should_render = false
+      endif
+      
+      # Skip if this link matches the current property (avoid duplication)
+      # The property name is already shown separately, so skip it in menu
+      if current_property
+        assign link_title_lower = link.title | downcase | strip
+        assign property_title_lower = current_property.title | downcase | strip
+        if link_title_lower == property_title_lower
+          assign should_render = false
+        endif
+        # Also check if URL points to the property product
+        if link.url == current_property.url
+          assign should_render = false
+        endif
+      endif
+      
+      # For collection links, check if empty
+      if link.url contains '/collections/'
+        assign url_parts = link.url | split: '/collections/'
+        if url_parts.size > 1
+          assign collection_handle = url_parts[1] | split: '/' | first | split: '?' | first
+          assign target_collection = collections[collection_handle]
+          
+          if target_collection
+            assign product_count = target_collection.products_count
+            assign is_video_collection_link = false
+            assign is_documents_collection_link = false
+
+            if collection_handle contains '-videos' or collection_handle == 'all-property-videos'
+              assign is_video_collection_link = true
+            endif
+            if collection_handle contains '-documents' or collection_handle == 'all-property-documents'
+              assign is_documents_collection_link = true
+            endif
+
+            if product_count == 0
+              if is_video_collection_link or is_documents_collection_link
+                assign has_fallback_refs = false
+                assign collection_refs = blank
+
+                if is_video_collection_link
+                  assign collection_refs = target_collection.metafields.wetu_property.videos.value
+                elsif is_documents_collection_link
+                  assign collection_refs = target_collection.metafields.wetu_property.documents.value
+                endif
+
+                if collection_refs != blank
+                  assign has_fallback_refs = true
+                endif
+
+                if has_fallback_refs == false
+                  assign fallback_property = current_property
+                  if fallback_property == blank
+                    assign fallback_property = target_collection.metafields.wetu.property_product.value
+                  endif
+                  unless fallback_property
+                    assign fallback_property = target_collection.metafields.wetu_collection.property_product.value
+                  endunless
+
+                  if fallback_property
+                    if is_video_collection_link
+                      assign property_refs = fallback_property.metafields.wetu.videos.value
+                      assign property_collection_ref = fallback_property.metafields.wetu.videos_collection_ref.value
+                    else
+                      assign property_refs = fallback_property.metafields.wetu.documents.value
+                      assign property_collection_ref = fallback_property.metafields.wetu.documents_collection_ref.value
+                    endif
+
+                    if property_refs != blank
+                      assign has_fallback_refs = true
+                    elsif property_collection_ref != blank and property_collection_ref.products_count > 0
+                      assign has_fallback_refs = true
+                    endif
+                  endif
+                endif
+
+                if has_fallback_refs == false and collection_handle == 'all-property-videos'
+                  for global_video in shop.metaobjects.travel_video.values limit: 1
+                    assign has_fallback_refs = true
+                    break
+                  endfor
+                endif
+                if has_fallback_refs == false and collection_handle == 'all-property-documents'
+                  for global_document in shop.metaobjects.travel_document.values limit: 1
+                    assign has_fallback_refs = true
+                    break
+                  endfor
+                endif
+
+                if has_fallback_refs == false
+                  assign should_render = false
+                endif
+              else
+                assign should_render = false
+              endif
+            endif
+            if product_count == 1 and is_video_collection_link == false and is_documents_collection_link == false
+              assign first_product = target_collection.products.first
+              if first_product
+                assign final_url = first_product.url
+              endif
+            endif
+          else
+            assign should_render = false
+          endif
+        endif
+      endif
+      
+      # Check if this is the current page OR if this is an asset category link
+      assign is_current_page = false
+      if link.active
+        assign is_current_page = true
+      endif
+      
+      # For asset products, mark the parent category as active
+      if is_asset_product
+        assign link_title_lower = link.title | downcase | strip
+        if asset_category == 'video' and link_title_lower contains 'video'
+          assign is_current_page = true
+        elsif asset_category == '360' and link_title_lower contains '360'
+          assign is_current_page = true
+        elsif asset_category == 'documents' and link_title_lower contains 'document'
+          assign is_current_page = true
+        elsif asset_category == 'activities' and link_title_lower contains 'activit'
+          assign is_current_page = true
+        elsif asset_category == 'restaurant' and link_title_lower contains 'restaurant'
+          assign is_current_page = true
+        elsif asset_category == 'spa' and link_title_lower contains 'spa'
+          assign is_current_page = true
+        endif
+      endif
+    %}
+    
+    {% if should_render %}
+      <li class="property-nav-bar__item">
+        {% if is_current_page %}
+          <span class="property-nav-bar__text">{{ final_title }}</span>
+        {% else %}
+          <a href="{{ final_url }}" class="property-nav-bar__link{% if link.active %} property-nav-bar__link--active{% endif %}">
+            {{ final_title }}
+          </a>
+        {% endif %}
+      </li>
+    {% endif %}
+  {% endfor %}
+{% else %}
+  {% comment %} Fallback: Just show current page title if no menu found {% endcomment %}
+  {% comment %} Skip for asset products - they don't need to show their full title {% endcomment %}
+  {% if current_page_title != blank and is_asset_product == false %}
+    <li class="property-nav-bar__item">
+      <span class="property-nav-bar__text">{{ current_page_title }}</span>
+    </li>
+  {% endif %}
+{% endif %}

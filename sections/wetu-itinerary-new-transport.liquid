@@ -1,0 +1,1262 @@
+{% comment %}
+  ============================================================================
+  WETU ITINERARY NEW TRANSPORT SUMMARY
+  ============================================================================
+
+  Transport summary section with flights and road routes tables.
+  Groups routes by type: flights in one table, road routes in another.
+  
+  Features:
+  - Duration and distance display
+  - Google Maps navigation links with driving coordinates
+  - Expandable turn-by-turn directions
+  - Flight carrier and check-in info
+  - Mobile-optimized card view
+
+  ============================================================================
+{% endcomment %}
+
+{% comment %} Load itinerary data {% endcomment %}
+{% include 'wetu-itinerary-data' %}
+
+{% comment %} Count and group routes by type {% endcomment %}
+{% assign flight_count = 0 %}
+{% assign road_count = 0 %}
+
+{% for route in wetu_routes %}
+  {% assign route_mode = route.mode.value | downcase %}
+  {% if route_mode contains 'flight' %}
+    {% assign flight_count = flight_count | plus: 1 %}
+  {% else %}
+    {% assign road_count = road_count | plus: 1 %}
+  {% endif %}
+{% endfor %}
+
+{% comment %} Build component products array for coordinate lookup {% endcomment %}
+{% assign all_component_products = product.metafields.wetu_itinerary.component_products.value %}
+
+{% comment %} Only show section if there are routes {% endcomment %}
+{% if wetu_routes.size > 0 %}
+<section
+  class="itin-new-transport color-{{ section.settings.color_scheme }}"
+  id="transport-summary"
+  aria-labelledby="itin-new-transport-heading"
+>
+  <div class="page-width">
+
+    {% comment %} Section Header {% endcomment %}
+    <header class="itin-new-transport__header">
+      <h2 class="itin-new-transport__heading" id="itin-new-transport-heading">
+        {{ section.settings.heading | default: 'Transport Summary' }}
+      </h2>
+
+      {% comment %} Transport Stats {% endcomment %}
+      <div class="itin-new-transport__stats">
+        {% if flight_count > 0 %}
+          <span class="itin-new-transport__stat itin-new-transport__stat--flight">
+            <svg class="itin-new-transport__stat-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
+            </svg>
+            {{ flight_count }} {% if flight_count == 1 %}Flight{% else %}Flights{% endif %}
+          </span>
+        {% endif %}
+        {% if road_count > 0 %}
+          <span class="itin-new-transport__stat itin-new-transport__stat--road">
+            <svg class="itin-new-transport__stat-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9L18 10l-2.7-3.6A2 2 0 0 0 13.7 5H6.3a2 2 0 0 0-1.6.8L2 9.4a2 2 0 0 0-.3.6L1 13v3c0 .6.4 1 1 1h2"/>
+              <circle cx="7" cy="17" r="2"/>
+              <circle cx="17" cy="17" r="2"/>
+            </svg>
+            {{ road_count }} {% if road_count == 1 %}Road Segment{% else %}Road Segments{% endif %}
+          </span>
+        {% endif %}
+      </div>
+    </header>
+
+    {% comment %} Flights Table {% endcomment %}
+    {% if flight_count > 0 and section.settings.show_flights %}
+      <div class="itin-new-transport__table-section">
+        <h3 class="itin-new-transport__table-heading">
+          <svg class="itin-new-transport__table-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
+          </svg>
+          {{ section.settings.flights_heading | default: 'Flights' }}
+        </h3>
+
+        {% comment %} Desktop Table {% endcomment %}
+        <div class="itin-new-transport__table-wrapper itin-new-transport__table-wrapper--desktop">
+          <table class="itin-new-transport__table">
+            <thead>
+              <tr>
+                <th class="itin-new-transport__th">Departure</th>
+                <th class="itin-new-transport__th">Arrival</th>
+                <th class="itin-new-transport__th itin-new-transport__th--day">Day</th>
+                <th class="itin-new-transport__th itin-new-transport__th--duration">Duration</th>
+                <th class="itin-new-transport__th itin-new-transport__th--type">Type</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for route in wetu_routes %}
+                {% assign route_mode = route.mode.value | downcase %}
+                {% if route_mode contains 'flight' %}
+                  {% assign start_day_display = route.start_day.value | plus: 1 %}
+                  {% assign is_charter = false %}
+                  {% if route_mode contains 'charter' %}
+                    {% assign is_charter = true %}
+                  {% endif %}
+
+                  <tr class="itin-new-transport__tr">
+                    <td class="itin-new-transport__td">
+                      <span class="itin-new-transport__location">{{ route.start_location.value }}</span>
+                      {% comment %} Flight carrier info {% endcomment %}
+                      {% if route.agency.value != blank %}
+                        <div class="itin-new-transport__flight-info">
+                          <span class="itin-new-transport__carrier">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
+                            </svg>
+                            {{ route.agency.value }}
+                          </span>
+                          {% if route.check_in_time.value != blank and route.check_in_time.value != 'NotProvided' %}
+                            <span class="itin-new-transport__checkin">Check-in: {{ route.check_in_time.value }}</span>
+                          {% endif %}
+                        </div>
+                      {% endif %}
+                    </td>
+                    <td class="itin-new-transport__td">
+                      <span class="itin-new-transport__location">{{ route.end_location.value }}</span>
+                    </td>
+                    <td class="itin-new-transport__td itin-new-transport__td--day">
+                      <span class="itin-new-transport__day-badge">{{ start_day_display }}</span>
+                    </td>
+                    <td class="itin-new-transport__td itin-new-transport__td--duration">
+                      {% if route.duration.value != blank %}
+                        <span class="itin-new-transport__duration">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                          </svg>
+                          {{ route.duration.value }}
+                        </span>
+                      {% endif %}
+                    </td>
+                    <td class="itin-new-transport__td itin-new-transport__td--type">
+                      <span class="itin-new-transport__type-badge itin-new-transport__type-badge--flight">
+                        {% if is_charter %}Charter{% else %}Scheduled{% endif %}
+                      </span>
+                    </td>
+                  </tr>
+                {% endif %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        {% comment %} Mobile Cards {% endcomment %}
+        <div class="itin-new-transport__cards itin-new-transport__cards--mobile">
+          {% for route in wetu_routes %}
+            {% assign route_mode = route.mode.value | downcase %}
+            {% if route_mode contains 'flight' %}
+              {% assign start_day_display = route.start_day.value | plus: 1 %}
+              {% assign is_charter = false %}
+              {% if route_mode contains 'charter' %}
+                {% assign is_charter = true %}
+              {% endif %}
+
+              <div class="itin-new-transport__card">
+                <div class="itin-new-transport__card-header">
+                  <span class="itin-new-transport__day-badge">Day {{ start_day_display }}</span>
+                  <span class="itin-new-transport__type-badge itin-new-transport__type-badge--flight">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
+                    </svg>
+                    {% if is_charter %}Charter{% else %}Scheduled{% endif %}
+                  </span>
+                </div>
+                <div class="itin-new-transport__card-route">
+                  <div class="itin-new-transport__card-leg">
+                    <span class="itin-new-transport__card-label">From</span>
+                    <span class="itin-new-transport__card-value">{{ route.start_location.value }}</span>
+                  </div>
+                  <div class="itin-new-transport__card-arrow">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 5v14M5 12l7 7 7-7"/>
+                    </svg>
+                  </div>
+                  <div class="itin-new-transport__card-leg">
+                    <span class="itin-new-transport__card-label">To</span>
+                    <span class="itin-new-transport__card-value">{{ route.end_location.value }}</span>
+                  </div>
+                </div>
+                
+                {% comment %} Flight Details Meta {% endcomment %}
+                <div class="itin-new-transport__card-meta">
+                  {% if route.duration.value != blank %}
+                    <span class="itin-new-transport__card-duration">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                      </svg>
+                      {{ route.duration.value }}
+                    </span>
+                  {% endif %}
+                  {% if route.agency.value != blank %}
+                    <span class="itin-new-transport__card-carrier">
+                      {{ route.agency.value }}
+                    </span>
+                  {% endif %}
+                </div>
+              </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+    {% comment %} Road Routes Table {% endcomment %}
+    {% if road_count > 0 and section.settings.show_road_routes %}
+      <div class="itin-new-transport__table-section">
+        <h3 class="itin-new-transport__table-heading">
+          <svg class="itin-new-transport__table-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9L18 10l-2.7-3.6A2 2 0 0 0 13.7 5H6.3a2 2 0 0 0-1.6.8L2 9.4a2 2 0 0 0-.3.6L1 13v3c0 .6.4 1 1 1h2"/>
+            <circle cx="7" cy="17" r="2"/>
+            <circle cx="17" cy="17" r="2"/>
+          </svg>
+          {{ section.settings.road_routes_heading | default: 'Road Routes' }}
+        </h3>
+
+        {% comment %} Desktop Table {% endcomment %}
+        <div class="itin-new-transport__table-wrapper itin-new-transport__table-wrapper--desktop">
+          <table class="itin-new-transport__table">
+            <thead>
+              <tr>
+                <th class="itin-new-transport__th">From</th>
+                <th class="itin-new-transport__th">To</th>
+                <th class="itin-new-transport__th itin-new-transport__th--day">Day</th>
+                <th class="itin-new-transport__th itin-new-transport__th--duration">Duration</th>
+                <th class="itin-new-transport__th itin-new-transport__th--distance">Distance</th>
+                <th class="itin-new-transport__th itin-new-transport__th--type">Mode</th>
+                <th class="itin-new-transport__th itin-new-transport__th--actions"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for route in wetu_routes %}
+                {% assign route_mode = route.mode.value | downcase %}
+                {% unless route_mode contains 'flight' %}
+                  {% assign start_day_display = route.start_day.value | plus: 1 %}
+                  
+                  {% comment %} Determine display mode {% endcomment %}
+                  {% assign display_mode = 'Transfer' %}
+                  {% assign mode_class = 'transfer' %}
+                  {% if route_mode == 'selfdrive' or route_mode contains 'self' %}
+                    {% assign display_mode = 'Self-Drive' %}
+                    {% assign mode_class = 'selfdrive' %}
+                  {% elsif route_mode contains 'train' %}
+                    {% assign display_mode = 'Train' %}
+                    {% assign mode_class = 'train' %}
+                  {% elsif route_mode contains 'boat' or route_mode contains 'ferry' %}
+                    {% assign display_mode = 'Boat' %}
+                    {% assign mode_class = 'boat' %}
+                  {% endif %}
+                  
+                  {% comment %} Get coordinates for Google Maps link {% endcomment %}
+                  {%- liquid
+                    assign start_pin = route.start_content_entity_id.value | append: ''
+                    assign end_pin = route.end_content_entity_id.value | append: ''
+                    
+                    assign start_lat = nil
+                    assign start_lng = nil
+                    assign end_lat = nil
+                    assign end_lng = nil
+                    
+                    assign embedded_start_lat = route.start_latitude.value
+                    assign embedded_start_lng = route.start_longitude.value
+                    assign embedded_end_lat = route.end_latitude.value
+                    assign embedded_end_lng = route.end_longitude.value
+                    
+                    if embedded_start_lat != blank
+                      assign start_lat = embedded_start_lat
+                      assign start_lng = embedded_start_lng
+                    endif
+                    if embedded_end_lat != blank
+                      assign end_lat = embedded_end_lat
+                      assign end_lng = embedded_end_lng
+                    endif
+                    
+                    if start_lat == blank or end_lat == blank
+                      assign linked_start_product = route.start_product.value
+                      assign linked_end_product = route.end_product.value
+                      
+                      if linked_start_product != blank and start_lat == blank
+                        assign start_pos = linked_start_product.metafields.wetu.position.value
+                        if start_pos.driving_latitude != blank
+                          assign start_lat = start_pos.driving_latitude
+                          assign start_lng = start_pos.driving_longitude
+                        elsif start_pos.latitude != blank
+                          assign start_lat = start_pos.latitude
+                          assign start_lng = start_pos.longitude
+                        endif
+                      endif
+                      
+                      if linked_end_product != blank and end_lat == blank
+                        assign end_pos = linked_end_product.metafields.wetu.position.value
+                        if end_pos.driving_latitude != blank
+                          assign end_lat = end_pos.driving_latitude
+                          assign end_lng = end_pos.driving_longitude
+                        elsif end_pos.latitude != blank
+                          assign end_lat = end_pos.latitude
+                          assign end_lng = end_pos.longitude
+                        endif
+                      endif
+                    endif
+                    
+                    if start_lat == blank or end_lat == blank
+                      for comp_prod in all_component_products
+                        assign prod_pin_id = comp_prod.metafields.wetu.pin_id.value | append: ''
+                        if prod_pin_id == start_pin and start_lat == blank
+                          assign start_pos = comp_prod.metafields.wetu.position.value
+                          if start_pos.driving_latitude != blank
+                            assign start_lat = start_pos.driving_latitude
+                            assign start_lng = start_pos.driving_longitude
+                          elsif start_pos.latitude != blank
+                            assign start_lat = start_pos.latitude
+                            assign start_lng = start_pos.longitude
+                          endif
+                        endif
+                        if prod_pin_id == end_pin and end_lat == blank
+                          assign end_pos = comp_prod.metafields.wetu.position.value
+                          if end_pos.driving_latitude != blank
+                            assign end_lat = end_pos.driving_latitude
+                            assign end_lng = end_pos.driving_longitude
+                          elsif end_pos.latitude != blank
+                            assign end_lat = end_pos.latitude
+                            assign end_lng = end_pos.longitude
+                          endif
+                        endif
+                      endfor
+                    endif
+                  -%}
+
+                  <tr class="itin-new-transport__tr">
+                    <td class="itin-new-transport__td">
+                      <span class="itin-new-transport__location">{{ route.start_location.value }}</span>
+                    </td>
+                    <td class="itin-new-transport__td">
+                      <span class="itin-new-transport__location">{{ route.end_location.value }}</span>
+                    </td>
+                    <td class="itin-new-transport__td itin-new-transport__td--day">
+                      <span class="itin-new-transport__day-badge">{{ start_day_display }}</span>
+                    </td>
+                    <td class="itin-new-transport__td itin-new-transport__td--duration">
+                      {% if route.duration.value != blank %}
+                        <span class="itin-new-transport__duration">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                          </svg>
+                          {{ route.duration.value }}
+                        </span>
+                      {% endif %}
+                    </td>
+                    <td class="itin-new-transport__td itin-new-transport__td--distance">
+                      {% if route.distance.value != blank %}
+                        {%- liquid
+                          assign distance_m = route.distance.value | plus: 0
+                          assign distance_km = distance_m | divided_by: 1000.0
+                        -%}
+                        <span class="itin-new-transport__distance">
+                          {{ distance_km | round }}km
+                        </span>
+                      {% endif %}
+                    </td>
+                    <td class="itin-new-transport__td itin-new-transport__td--type">
+                      <span class="itin-new-transport__type-badge itin-new-transport__type-badge--{{ mode_class }}">
+                        {{ display_mode }}
+                      </span>
+                    </td>
+                    <td class="itin-new-transport__td itin-new-transport__td--actions">
+                      {% if start_lat != blank and end_lat != blank %}
+                        <a href="https://www.google.com/maps/dir/?api=1&origin={{ start_lat }},{{ start_lng }}&destination={{ end_lat }},{{ end_lng }}&travelmode=driving" 
+                           target="_blank" 
+                           rel="noopener noreferrer"
+                           class="itin-new-transport__maps-link"
+                           title="Open in Google Maps">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="3 11 22 2 13 21 11 13 3 11"/>
+                          </svg>
+                          <span class="itin-new-transport__maps-text">Navigate</span>
+                        </a>
+                      {% endif %}
+                    </td>
+                  </tr>
+                  
+                  {% comment %} Expandable Directions Row {% endcomment %}
+                  {% if route.directions.value != blank %}
+                    <tr class="itin-new-transport__directions-row">
+                      <td colspan="7">
+                        <details class="itin-new-transport__directions">
+                          <summary class="itin-new-transport__directions-summary">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <path d="M9 18l6-6-6-6"/>
+                            </svg>
+                            View Turn-by-Turn Directions
+                            <span class="itin-new-transport__directions-count">
+                              {%- assign steps = route.directions.value | split: '|' -%}
+                              {{ steps.size }} steps
+                            </span>
+                          </summary>
+                          <div class="itin-new-transport__directions-content">
+                            <ol class="itin-new-transport__directions-list">
+                              {% assign direction_steps = route.directions.value | split: '|' %}
+                              {% for step in direction_steps %}
+                                {% assign step_clean = step | strip %}
+                                {% if step_clean != blank %}
+                                  <li class="itin-new-transport__directions-step">
+                                    <span class="itin-new-transport__step-num">{{ forloop.index }}</span>
+                                    <span class="itin-new-transport__step-text">{{ step_clean }}</span>
+                                  </li>
+                                {% endif %}
+                              {% endfor %}
+                            </ol>
+                          </div>
+                        </details>
+                      </td>
+                    </tr>
+                  {% endif %}
+                {% endunless %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        {% comment %} Mobile Cards {% endcomment %}
+        <div class="itin-new-transport__cards itin-new-transport__cards--mobile">
+          {% for route in wetu_routes %}
+            {% assign route_mode = route.mode.value | downcase %}
+            {% unless route_mode contains 'flight' %}
+              {% assign start_day_display = route.start_day.value | plus: 1 %}
+              
+              {% assign display_mode = 'Transfer' %}
+              {% assign mode_class = 'transfer' %}
+              {% if route_mode == 'selfdrive' or route_mode contains 'self' %}
+                {% assign display_mode = 'Self-Drive' %}
+                {% assign mode_class = 'selfdrive' %}
+              {% elsif route_mode contains 'train' %}
+                {% assign display_mode = 'Train' %}
+                {% assign mode_class = 'train' %}
+              {% elsif route_mode contains 'boat' or route_mode contains 'ferry' %}
+                {% assign display_mode = 'Boat' %}
+                {% assign mode_class = 'boat' %}
+              {% endif %}
+              
+              {% comment %} Get coordinates for Google Maps link (mobile) {% endcomment %}
+              {%- liquid
+                assign start_pin = route.start_content_entity_id.value | append: ''
+                assign end_pin = route.end_content_entity_id.value | append: ''
+                
+                assign start_lat = nil
+                assign start_lng = nil
+                assign end_lat = nil
+                assign end_lng = nil
+                
+                assign embedded_start_lat = route.start_latitude.value
+                assign embedded_start_lng = route.start_longitude.value
+                assign embedded_end_lat = route.end_latitude.value
+                assign embedded_end_lng = route.end_longitude.value
+                
+                if embedded_start_lat != blank
+                  assign start_lat = embedded_start_lat
+                  assign start_lng = embedded_start_lng
+                endif
+                if embedded_end_lat != blank
+                  assign end_lat = embedded_end_lat
+                  assign end_lng = embedded_end_lng
+                endif
+                
+                if start_lat == blank or end_lat == blank
+                  assign linked_start_product = route.start_product.value
+                  assign linked_end_product = route.end_product.value
+                  
+                  if linked_start_product != blank and start_lat == blank
+                    assign start_pos = linked_start_product.metafields.wetu.position.value
+                    if start_pos.driving_latitude != blank
+                      assign start_lat = start_pos.driving_latitude
+                      assign start_lng = start_pos.driving_longitude
+                    elsif start_pos.latitude != blank
+                      assign start_lat = start_pos.latitude
+                      assign start_lng = start_pos.longitude
+                    endif
+                  endif
+                  
+                  if linked_end_product != blank and end_lat == blank
+                    assign end_pos = linked_end_product.metafields.wetu.position.value
+                    if end_pos.driving_latitude != blank
+                      assign end_lat = end_pos.driving_latitude
+                      assign end_lng = end_pos.driving_longitude
+                    elsif end_pos.latitude != blank
+                      assign end_lat = end_pos.latitude
+                      assign end_lng = end_pos.longitude
+                    endif
+                  endif
+                endif
+                
+                if start_lat == blank or end_lat == blank
+                  for comp_prod in all_component_products
+                    assign prod_pin_id = comp_prod.metafields.wetu.pin_id.value | append: ''
+                    if prod_pin_id == start_pin and start_lat == blank
+                      assign start_pos = comp_prod.metafields.wetu.position.value
+                      if start_pos.driving_latitude != blank
+                        assign start_lat = start_pos.driving_latitude
+                        assign start_lng = start_pos.driving_longitude
+                      elsif start_pos.latitude != blank
+                        assign start_lat = start_pos.latitude
+                        assign start_lng = start_pos.longitude
+                      endif
+                    endif
+                    if prod_pin_id == end_pin and end_lat == blank
+                      assign end_pos = comp_prod.metafields.wetu.position.value
+                      if end_pos.driving_latitude != blank
+                        assign end_lat = end_pos.driving_latitude
+                        assign end_lng = end_pos.driving_longitude
+                      elsif end_pos.latitude != blank
+                        assign end_lat = end_pos.latitude
+                        assign end_lng = end_pos.longitude
+                      endif
+                    endif
+                  endfor
+                endif
+              -%}
+
+              <div class="itin-new-transport__card">
+                <div class="itin-new-transport__card-header">
+                  <span class="itin-new-transport__day-badge">Day {{ start_day_display }}</span>
+                  <span class="itin-new-transport__type-badge itin-new-transport__type-badge--{{ mode_class }}">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9L18 10l-2.7-3.6A2 2 0 0 0 13.7 5H6.3a2 2 0 0 0-1.6.8L2 9.4a2 2 0 0 0-.3.6L1 13v3c0 .6.4 1 1 1h2"/>
+                      <circle cx="7" cy="17" r="2"/>
+                      <circle cx="17" cy="17" r="2"/>
+                    </svg>
+                    {{ display_mode }}
+                  </span>
+                </div>
+                <div class="itin-new-transport__card-route">
+                  <div class="itin-new-transport__card-leg">
+                    <span class="itin-new-transport__card-label">From</span>
+                    <span class="itin-new-transport__card-value">{{ route.start_location.value }}</span>
+                  </div>
+                  <div class="itin-new-transport__card-arrow">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 5v14M5 12l7 7 7-7"/>
+                    </svg>
+                  </div>
+                  <div class="itin-new-transport__card-leg">
+                    <span class="itin-new-transport__card-label">To</span>
+                    <span class="itin-new-transport__card-value">{{ route.end_location.value }}</span>
+                  </div>
+                </div>
+                
+                {% comment %} Mobile Meta with Duration, Distance, Navigate {% endcomment %}
+                <div class="itin-new-transport__card-meta">
+                  {% if route.duration.value != blank %}
+                    <span class="itin-new-transport__card-duration">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                      </svg>
+                      {{ route.duration.value }}
+                    </span>
+                  {% endif %}
+                  {% if route.distance.value != blank %}
+                    {% assign distance_km = route.distance.value | divided_by: 1000 %}
+                    <span class="itin-new-transport__card-distance">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="10" r="3"/><path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 7 8 11.7z"/>
+                      </svg>
+                      {{ distance_km | round }}km
+                    </span>
+                  {% endif %}
+                  {% if start_lat != blank and end_lat != blank %}
+                    <a href="https://www.google.com/maps/dir/?api=1&origin={{ start_lat }},{{ start_lng }}&destination={{ end_lat }},{{ end_lng }}&travelmode=driving" 
+                       target="_blank" 
+                       rel="noopener noreferrer"
+                       class="itin-new-transport__card-maps">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="3 11 22 2 13 21 11 13 3 11"/>
+                      </svg>
+                      Navigate
+                    </a>
+                  {% endif %}
+                </div>
+                
+                {% comment %} Mobile Directions Accordion {% endcomment %}
+                {% if route.directions.value != blank %}
+                  <details class="itin-new-transport__card-directions">
+                    <summary class="itin-new-transport__card-directions-summary">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 18l6-6-6-6"/>
+                      </svg>
+                      View Directions
+                    </summary>
+                    <div class="itin-new-transport__card-directions-content">
+                      <ol class="itin-new-transport__directions-list">
+                        {% assign direction_steps = route.directions.value | split: '|' %}
+                        {% for step in direction_steps %}
+                          {% assign step_clean = step | strip %}
+                          {% if step_clean != blank %}
+                            <li class="itin-new-transport__directions-step">
+                              <span class="itin-new-transport__step-num">{{ forloop.index }}</span>
+                              <span class="itin-new-transport__step-text">{{ step_clean }}</span>
+                            </li>
+                          {% endif %}
+                        {% endfor %}
+                      </ol>
+                    </div>
+                  </details>
+                {% endif %}
+              </div>
+            {% endunless %}
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+  </div>
+</section>
+{% endif %}
+
+<style>
+.itin-new-transport {
+  padding: 60px 0;
+}
+
+.itin-new-transport__header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.itin-new-transport__heading {
+  font-size: 1.75rem;
+  font-weight: 600;
+  margin: 0 0 20px;
+  color: var(--color-foreground);
+}
+
+.itin-new-transport__stats {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+}
+
+.itin-new-transport__stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: color-mix(in srgb, var(--color-foreground) 5%, transparent);
+  border-radius: 20px;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--color-foreground);
+}
+
+.itin-new-transport__stat-icon {
+  flex-shrink: 0;
+}
+
+.itin-new-transport__table-section {
+  background: color-mix(in srgb, var(--color-foreground) 3%, transparent);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.itin-new-transport__table-section:last-child {
+  margin-bottom: 0;
+}
+
+.itin-new-transport__table-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-foreground);
+  margin: 0 0 20px;
+}
+
+.itin-new-transport__table-icon {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.itin-new-transport__table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.itin-new-transport__table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 700px;
+}
+
+.itin-new-transport__th {
+  text-align: left;
+  padding: 12px 16px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+  border-bottom: 2px solid color-mix(in srgb, var(--color-foreground) 10%, transparent);
+}
+
+.itin-new-transport__th--day,
+.itin-new-transport__th--type {
+  text-align: center;
+  width: 100px;
+}
+
+.itin-new-transport__tr {
+  border-bottom: 1px solid color-mix(in srgb, var(--color-foreground) 8%, transparent);
+}
+
+.itin-new-transport__tr:last-child {
+  border-bottom: none;
+}
+
+.itin-new-transport__td {
+  padding: 14px 16px;
+  font-size: 0.9375rem;
+  color: var(--color-foreground);
+  vertical-align: middle;
+}
+
+.itin-new-transport__td--day,
+.itin-new-transport__td--type {
+  text-align: center;
+}
+
+.itin-new-transport__location {
+  font-weight: 500;
+}
+
+.itin-new-transport__day-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  background: var(--color-primary);
+  color: var(--color-primary-contrast, #fff);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.itin-new-transport__type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.itin-new-transport__type-badge--flight {
+  background: color-mix(in srgb, #3b82f6 15%, transparent);
+  color: #2563eb;
+}
+
+.itin-new-transport__type-badge--transfer {
+  background: color-mix(in srgb, #8b5cf6 15%, transparent);
+  color: #7c3aed;
+}
+
+.itin-new-transport__type-badge--selfdrive {
+  background: color-mix(in srgb, #10b981 15%, transparent);
+  color: #059669;
+}
+
+.itin-new-transport__type-badge--train {
+  background: color-mix(in srgb, #f59e0b 15%, transparent);
+  color: #d97706;
+}
+
+.itin-new-transport__type-badge--boat {
+  background: color-mix(in srgb, #06b6d4 15%, transparent);
+  color: #0891b2;
+}
+
+/* Mobile Cards */
+.itin-new-transport__cards {
+  display: none;
+}
+
+.itin-new-transport__card {
+  background: color-mix(in srgb, var(--color-background) 100%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-foreground) 10%, transparent);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.itin-new-transport__card:last-child {
+  margin-bottom: 0;
+}
+
+.itin-new-transport__card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-foreground) 8%, transparent);
+}
+
+.itin-new-transport__card-route {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.itin-new-transport__card-leg {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.itin-new-transport__card-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: color-mix(in srgb, var(--color-foreground) 50%, transparent);
+}
+
+.itin-new-transport__card-value {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--color-foreground);
+}
+
+.itin-new-transport__card-arrow {
+  display: flex;
+  justify-content: center;
+  padding: 4px 0;
+  color: color-mix(in srgb, var(--color-foreground) 30%, transparent);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .itin-new-transport {
+    padding: 40px 0;
+  }
+
+  .itin-new-transport__heading {
+    font-size: 1.5rem;
+  }
+
+  .itin-new-transport__stats {
+    gap: 8px 12px;
+  }
+
+  .itin-new-transport__stat {
+    padding: 6px 12px;
+    font-size: 0.875rem;
+  }
+
+  .itin-new-transport__table-section {
+    padding: 16px;
+  }
+
+  .itin-new-transport__table-heading {
+    font-size: 1rem;
+    margin-bottom: 16px;
+  }
+
+  .itin-new-transport__table-wrapper--desktop {
+    display: none;
+  }
+
+  .itin-new-transport__cards--mobile {
+    display: block;
+  }
+}
+
+@media (min-width: 769px) {
+  .itin-new-transport__cards--mobile {
+    display: none;
+  }
+
+  .itin-new-transport__table-wrapper--desktop {
+    display: block;
+  }
+}
+
+/* Duration & Distance Column Headers */
+.itin-new-transport__th--duration,
+.itin-new-transport__th--distance {
+  text-align: center;
+  width: 100px;
+}
+
+.itin-new-transport__th--actions {
+  width: 120px;
+  text-align: center;
+}
+
+/* Duration & Distance Cell Styles */
+.itin-new-transport__td--duration,
+.itin-new-transport__td--distance,
+.itin-new-transport__td--actions {
+  text-align: center;
+}
+
+.itin-new-transport__duration,
+.itin-new-transport__distance {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.itin-new-transport__duration svg {
+  color: var(--color-primary, #d4a574);
+}
+
+/* Google Maps Link */
+.itin-new-transport__maps-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: color-mix(in srgb, var(--color-primary, #d4a574) 15%, transparent);
+  color: var(--color-primary, #d4a574);
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.itin-new-transport__maps-link:hover {
+  background: var(--color-primary, #d4a574);
+  color: #fff;
+}
+
+.itin-new-transport__maps-text {
+  display: inline;
+}
+
+/* Directions Expandable Row */
+.itin-new-transport__directions-row {
+  background: none !important;
+}
+
+.itin-new-transport__directions-row td {
+  padding: 0 !important;
+}
+
+.itin-new-transport__directions-row:hover {
+  background: none !important;
+}
+
+.itin-new-transport__directions {
+  margin: 0 16px 16px;
+  border: 1px solid color-mix(in srgb, var(--color-foreground) 10%, transparent);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.itin-new-transport__directions-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  background: color-mix(in srgb, var(--color-foreground) 2%, transparent);
+  list-style: none;
+  color: var(--color-foreground);
+}
+
+.itin-new-transport__directions-summary::-webkit-details-marker {
+  display: none;
+}
+
+.itin-new-transport__directions-summary svg {
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.itin-new-transport__directions[open] .itin-new-transport__directions-summary svg {
+  transform: rotate(90deg);
+}
+
+.itin-new-transport__directions-count {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--color-foreground) 50%, transparent);
+}
+
+.itin-new-transport__directions-content {
+  padding: 16px;
+  border-top: 1px solid color-mix(in srgb, var(--color-foreground) 10%, transparent);
+}
+
+.itin-new-transport__directions-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.itin-new-transport__directions-step {
+  display: flex;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-foreground) 5%, transparent);
+}
+
+.itin-new-transport__directions-step:last-child {
+  border-bottom: none;
+}
+
+.itin-new-transport__step-num {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--color-foreground) 10%, transparent);
+  border-radius: 50%;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.itin-new-transport__step-text {
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--color-foreground) 80%, transparent);
+}
+
+/* Flight Info */
+.itin-new-transport__flight-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 6px;
+  font-size: 0.8125rem;
+}
+
+.itin-new-transport__carrier {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: color-mix(in srgb, var(--color-foreground) 70%, transparent);
+}
+
+.itin-new-transport__carrier svg {
+  opacity: 0.7;
+}
+
+.itin-new-transport__checkin {
+  color: var(--color-primary, #d4a574);
+  font-weight: 500;
+}
+
+/* Mobile Card Meta */
+.itin-new-transport__card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid color-mix(in srgb, var(--color-foreground) 8%, transparent);
+}
+
+.itin-new-transport__card-duration,
+.itin-new-transport__card-distance {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.itin-new-transport__card-duration svg,
+.itin-new-transport__card-distance svg {
+  opacity: 0.7;
+}
+
+.itin-new-transport__card-carrier {
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--color-foreground) 70%, transparent);
+}
+
+.itin-new-transport__card-maps {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  margin-left: auto;
+  background: color-mix(in srgb, var(--color-primary, #d4a574) 15%, transparent);
+  color: var(--color-primary, #d4a574);
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.itin-new-transport__card-maps:hover {
+  background: var(--color-primary, #d4a574);
+  color: #fff;
+}
+
+/* Mobile Card Directions */
+.itin-new-transport__card-directions {
+  margin-top: 12px;
+  border-top: 1px solid color-mix(in srgb, var(--color-foreground) 8%, transparent);
+  padding-top: 12px;
+}
+
+.itin-new-transport__card-directions-summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-primary, #d4a574);
+  cursor: pointer;
+  list-style: none;
+}
+
+.itin-new-transport__card-directions-summary::-webkit-details-marker {
+  display: none;
+}
+
+.itin-new-transport__card-directions-summary svg {
+  transition: transform 0.2s ease;
+}
+
+.itin-new-transport__card-directions[open] .itin-new-transport__card-directions-summary svg {
+  transform: rotate(90deg);
+}
+
+.itin-new-transport__card-directions-content {
+  padding-top: 12px;
+}
+
+/* Hide duration/distance columns on mobile for tables (they show in cards) */
+@media (max-width: 768px) {
+  .itin-new-transport__th--duration,
+  .itin-new-transport__th--distance,
+  .itin-new-transport__th--actions,
+  .itin-new-transport__td--duration,
+  .itin-new-transport__td--distance,
+  .itin-new-transport__td--actions {
+    display: none;
+  }
+}
+</style>
+
+{% schema %}
+{
+  "name": "New Transport Summary",
+  "tag": "section",
+  "class": "section-itin-new-transport",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-5"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Section heading",
+      "default": "Transport Summary"
+    },
+    {
+      "type": "header",
+      "content": "Flights"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_flights",
+      "label": "Show flights table",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "flights_heading",
+      "label": "Flights heading",
+      "default": "Flights"
+    },
+    {
+      "type": "header",
+      "content": "Road Routes"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_road_routes",
+      "label": "Show road routes table",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "road_routes_heading",
+      "label": "Road routes heading",
+      "default": "Road Routes"
+    },
+    {
+      "type": "header",
+      "content": "Display Options"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_duration",
+      "label": "Show drive duration",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_distance",
+      "label": "Show distance",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_directions",
+      "label": "Show driving directions",
+      "default": true,
+      "info": "Expandable turn-by-turn directions"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_maps_link",
+      "label": "Show Google Maps link",
+      "default": true,
+      "info": "Direct navigation link using driving coordinates"
+    }
+  ],
+  "presets": [
+    {
+      "name": "New Transport Summary",
+      "settings": {
+        "color_scheme": "scheme-5",
+        "heading": "Transport Summary",
+        "show_flights": true,
+        "flights_heading": "Flights",
+        "show_road_routes": true,
+        "road_routes_heading": "Road Routes"
+      }
+    }
+  ]
+}
+{% endschema %}

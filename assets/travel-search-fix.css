@@ -1,0 +1,176 @@
+/* CRITICAL FIX: Override any conflicting travel search CSS */
+/* Updated: 2025-12-11 - Date inputs layout + Color Scheme Fix + Menu Font Size */
+/* NOTE: Template visibility is now controlled in theme.liquid - no CSS overrides needed */
+
+/* ========================================
+   MENU FONT SIZE OVERRIDE
+   All menus set to 18px
+   ======================================== */
+
+:root {
+  --menu-font-sm--size: 18px !important;
+  --menu-font-md--size: 18px !important;
+  --menu-font-lg--size: 18px !important;
+  --menu-font-xl--size: 18px !important;
+  --menu-font-2xl--size: 18px !important;
+  --menu-top-level-font-size: 18px !important;
+  --menu-top-level-font-size-desktop: 18px !important;
+  --menu-parent-font-size: 18px !important;
+  --menu-child-font-size: 18px !important;
+}
+
+/* Direct menu link targeting for full coverage */
+.header__menu-link,
+.header__menu-item a,
+.header-menu__link,
+.header-drawer__menu-link,
+.drawer__menu-link,
+.menu__link,
+.nav__link,
+.navigation__link,
+[class*="menu"] a,
+[class*="nav"] a {
+  font-size: 18px !important;
+}
+
+/* ========================================
+   DATE INPUTS LAYOUT FIX
+   Force date inputs to display side-by-side
+   ======================================== */
+
+/* Force date inputs to display side-by-side */
+.travel-search-main-wrapper .dates-field,
+.travel-search-wrapper .dates-field,
+div.dates-field,
+.search-field.dates-field {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: stretch !important;
+  padding: 0 !important;
+  gap: 0 !important;
+}
+
+.travel-search-main-wrapper .date-inputs-container,
+.travel-search-wrapper .date-inputs-container,
+div.date-inputs-container,
+.dates-field .date-inputs-container,
+.search-field .date-inputs-container {
+  display: flex !important;
+  flex-direction: row !important;
+  width: 100% !important;
+  gap: 1px !important;
+  grid-template-columns: none !important;
+  grid-template-rows: none !important;
+  grid: none !important;
+}
+
+.travel-search-main-wrapper .date-input-group,
+.travel-search-wrapper .date-input-group,
+.date-inputs-container .date-input-group,
+.dates-field .date-input-group,
+div.date-input-group {
+  flex: 1 !important;
+  display: flex !important;
+  align-items: stretch !important;
+  min-width: 0 !important;
+}
+
+.travel-search-main-wrapper .date-input,
+.travel-search-wrapper .date-input,
+.date-input-group .date-input,
+input.date-input {
+  cursor: pointer !important;
+  flex: 1 !important;
+  width: 100% !important;
+}
+
+/* ========================================
+   COLOR SCHEME FIX
+   Updated: 2025-12-11
+   Ensures Travel Search respects parent section color schemes
+   ======================================== */
+
+/* Prevent the Travel Search component from overriding parent section backgrounds */
+.shopify-block:has(.travel-search-main-wrapper) {
+  background: inherit !important;
+}
+
+/* Ensure the wrapper inherits the parent section's color scheme */
+.travel-search-main-wrapper:not([class*="color-scheme"]) {
+  background: transparent !important;
+  color: inherit !important;
+}
+
+/* ========================================
+   DROPDOWN TEXT COLOR FIX FOR LIGHT COLOR SCHEMES
+   Updated: 2025-12-11
+   Ensures ALL text in Travel Search is visible on light backgrounds
+   Targets color-scheme-1 which typically has white/light background
+   ======================================== */
+
+/* Universal fix for Travel Search in light color schemes */
+/* Target using Horizon theme's color class naming convention: color-scheme-1 */
+.color-scheme-1 .travel-search-main-wrapper,
+.color-scheme-1 .travel-search-main-wrapper *,
+.color-scheme-1 [class*="plekify-travel-search"],
+.color-scheme-1 [class*="plekify-travel-search"] *,
+.color-scheme-1 [class*="travel-search"],
+.color-scheme-1 [class*="travel-search"] * {
+  color: var(--color-foreground, #333333) !important;
+}
+
+/* Also handle when the section wrapper has the color class */
+.section-wrapper .color-scheme-1 .travel-search-main-wrapper,
+.section-wrapper .color-scheme-1 .travel-search-main-wrapper *,
+.section-background.color-scheme-1 + .section .travel-search-main-wrapper,
+.section-background.color-scheme-1 + .section .travel-search-main-wrapper * {
+  color: var(--color-foreground, #333333) !important;
+}
+
+/* Specifically target common Travel Search elements */
+.color-scheme-1 .travel-search-main-wrapper select,
+.color-scheme-1 .travel-search-main-wrapper input,
+.color-scheme-1 .travel-search-main-wrapper button,
+.color-scheme-1 .travel-search-main-wrapper label,
+.color-scheme-1 .travel-search-main-wrapper span,
+.color-scheme-1 .travel-search-main-wrapper div,
+.color-scheme-1 .travel-search-main-wrapper p,
+.color-scheme-1 .travel-search-main-wrapper h1,
+.color-scheme-1 .travel-search-main-wrapper h2,
+.color-scheme-1 .travel-search-main-wrapper h3,
+.color-scheme-1 .travel-search-main-wrapper h4,
+.color-scheme-1 .travel-search-main-wrapper h5,
+.color-scheme-1 .travel-search-main-wrapper h6,
+.color-scheme-1 .travel-search-main-wrapper option {
+  color: var(--color-foreground, #333333) !important;
+}
+
+/* Guest selector and dropdown specific fixes */
+.color-scheme-1 .travel-search-main-wrapper .guests-dropdown,
+.color-scheme-1 .travel-search-main-wrapper .guests-dropdown *,
+.color-scheme-1 .travel-search-main-wrapper .guest-selector,
+.color-scheme-1 .travel-search-main-wrapper .guest-selector *,
+.color-scheme-1 .travel-search-main-wrapper [class*="guest"],
+.color-scheme-1 .travel-search-main-wrapper [class*="guest"] *,
+.color-scheme-1 .travel-search-main-wrapper [class*="select"],
+.color-scheme-1 .travel-search-main-wrapper [class*="select"] *,
+.color-scheme-1 .travel-search-main-wrapper [class*="dropdown"],
+.color-scheme-1 .travel-search-main-wrapper [class*="dropdown"] * {
+  color: var(--color-foreground, #333333) !important;
+}
+
+/* Fix placeholder text color for light schemes */
+.color-scheme-1 .travel-search-main-wrapper select::placeholder,
+.color-scheme-1 .travel-search-main-wrapper input::placeholder,
+.color-scheme-1 [class*="travel-search"] select::placeholder,
+.color-scheme-1 [class*="travel-search"] input::placeholder {
+  color: rgba(51, 51, 51, 0.6) !important;
+}
+
+/* Handle inline styles that might override - use higher specificity */
+.section.color-scheme-1 .travel-search-main-wrapper,
+.section.color-scheme-1 .travel-search-main-wrapper *,
+div.color-scheme-1 .travel-search-main-wrapper,
+div.color-scheme-1 .travel-search-main-wrapper * {
+  color: var(--color-foreground, #333333) !important;
+}

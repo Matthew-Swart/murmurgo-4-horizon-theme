@@ -1,0 +1,116 @@
+{% style %}
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Inter:wght@300;400;500&family=IBM+Plex+Mono:wght@300;400&display=swap');
+{% endstyle %}
+
+<div class="plekify-v8-fw">
+  <section class="v8-prop-frame">
+    <div class="v8-contain">
+      <span class="v8-annot">Property sites · One sync, one PinID</span>
+      <h2 class="v8-sh">One property identifier.<br><em>An entire website.</em></h2>
+      <p class="v8-body v8-prose" style="margin-top:.5rem">Enter a single Wetu PinID and Plekify creates a complete property site on Shopify — accommodation units, activities, restaurants, dining, spa, travel documents, videos, and panoramas — each as a separate, browseable, SEO-indexed page on the operator's own domain.</p>
+      <div class="v8-prop-caps">
+        <span class="v8-prop-cap">Accommodation units</span>
+        <span class="v8-prop-cap">Activities</span>
+        <span class="v8-prop-cap">Restaurants</span>
+        <span class="v8-prop-cap">Spa &amp; wellness</span>
+        <span class="v8-prop-cap">Travel documents</span>
+        <span class="v8-prop-cap">Videos</span>
+        <span class="v8-prop-cap">Panoramas</span>
+        <span class="v8-prop-cap">Gallery</span>
+      </div>
+      <p class="v8-body v8-sm" style="margin-top:.75rem">Each property below was created by a single synchronisation. Click any property to browse the full site structure generated from Wetu content.</p>
+    </div>
+  </section>
+</div>
+
+{% stylesheet %}
+
+.plekify-v8-fw {
+  font-family: 'Inter', sans-serif;
+  font-weight: 300;
+  color: #1a1a1a;
+  background: #fff;
+}
+
+.plekify-v8-fw .v8-contain {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.plekify-v8-fw h2.v8-sh {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 300;
+  font-size: clamp(24px, 3.2vw, 36px);
+  line-height: 1.12;
+  color: #111;
+  margin-bottom: .4rem;
+}
+.plekify-v8-fw h2.v8-sh em { font-style: italic; color: #555; }
+
+.plekify-v8-fw .v8-body { font-size: 13.5px; line-height: 1.8; color: #444; font-weight: 300; }
+.plekify-v8-fw .v8-sm { font-size: 12px; line-height: 1.7; color: #666; }
+.plekify-v8-fw .v8-prose { max-width: 640px; }
+
+.plekify-v8-fw .v8-annot {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: #888;
+  font-weight: 400;
+  margin-bottom: .5rem;
+  display: block;
+}
+
+.v8-prop-frame {
+  padding: 3rem 0 1rem;
+  border-top: 1px solid #e0e0e0;
+  background: #f9f9f9;
+}
+
+.v8-prop-caps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: .85rem;
+}
+
+.v8-prop-cap {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9.5px;
+  color: #444;
+  border: 1px solid #d0d0d0;
+  padding: 3px 8px;
+  border-radius: 1px;
+  letter-spacing: .03em;
+  font-weight: 400;
+  background: #fff;
+}
+
+@media (max-width: 720px) {
+  .plekify-v8-fw .v8-contain {
+    padding: 0 1.25rem;
+  }
+  .v8-prop-frame {
+    padding: 2rem 0 .75rem;
+  }
+}
+
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Plekify V8 Property Frame",
+  "tag": "section",
+  "class": "plekify-v8-property-frame-section",
+  "limit": 1,
+  "settings": [],
+  "presets": [
+    {
+      "name": "Plekify V8 Property Frame",
+      "category": "Plekify"
+    }
+  ]
+}
+{% endschema %}

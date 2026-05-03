@@ -1,0 +1,219 @@
+{% comment %}
+  ============================================================================
+  WETU MOBILE STOP SNIPPET
+  ============================================================================
+  
+  Renders a stop along a Mobile leg (e.g. cruise stop, train station).
+  
+  PARAMETERS:
+  - stop: The ItineraryStop metaobject
+  - product: The linked Shopify product (optional)
+  - day_number: Current itinerary day
+  - is_arrival: Boolean (true if arriving at this stop today)
+  - is_departure: Boolean (true if departing this stop today)
+  - color_scheme: Color scheme class
+  ============================================================================
+{% endcomment %}
+
+{%- liquid
+  assign stop_type = stop.type.value | default: 'Stop'
+  assign stop_name = product.title | default: 'Scheduled Stop'
+  assign image = product.featured_image
+  
+  assign unique_id = 'stop-' | append: day_number | append: '-' | append: forloop.index
+-%}
+
+<div class="wetu-mobile-stop color-{{ color_scheme }}" id="{{ unique_id }}">
+  <div class="wetu-mobile-stop__inner">
+    
+    <div class="wetu-mobile-stop__marker">
+      <span class="wetu-mobile-stop__icon">
+        {% if stop_type == 'Overnight' or stop_type == 'Camp' %}
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M2 12h20M2 12v3a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-3M2 12V8c0-1.1.9-2 2-2h3l2-3h6l2 3h3a2 2 0 0 1 2 2v4"/>
+          </svg>
+        {% else %}
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M12 22s-8-10.5-8-14a8 8 0 0 1 16 0c0 3.5-8 14-8 14z"/>
+            <circle cx="12" cy="8" r="3"/>
+          </svg>
+        {% endif %}
+      </span>
+      <div class="wetu-mobile-stop__line"></div>
+    </div>
+    
+    <div class="wetu-mobile-stop__content-wrapper">
+      <div class="wetu-mobile-stop__header">
+        <span class="wetu-mobile-stop__label">{{ stop_type }}</span>
+        {% if is_arrival and is_departure %}
+          <span class="wetu-mobile-stop__timing">Visit</span>
+        {% elsif is_arrival %}
+          <span class="wetu-mobile-stop__timing">Arrive</span>
+        {% elsif is_departure %}
+          <span class="wetu-mobile-stop__timing">Depart</span>
+        {% endif %}
+      </div>
+      
+      <div class="wetu-mobile-stop__main">
+        <div class="wetu-mobile-stop__info">
+          <h4 class="wetu-mobile-stop__title">
+            {% if product %}
+              <a href="{{ product.url }}" target="_blank">{{ stop_name }}</a>
+            {% else %}
+              {{ stop_name }}
+            {% endif %}
+          </h4>
+          
+          {% if product and product.metafields.custom.property_tagline %}
+            <p class="wetu-mobile-stop__tagline">{{ product.metafields.custom.property_tagline }}</p>
+          {% endif %}
+          
+          {% if product and product.description != blank %}
+            <div class="wetu-mobile-stop__description">
+              {{ product.description | strip_html | truncate: 120 }}
+            </div>
+          {% endif %}
+        </div>
+        
+        {% if image %}
+          <div class="wetu-mobile-stop__image">
+            <img 
+              src="{{ image | image_url: width: 200, height: 150, crop: 'center' }}" 
+              loading="lazy" 
+              width="200" 
+              height="150" 
+              alt="{{ stop_name }}"
+            >
+          </div>
+        {% endif %}
+      </div>
+    </div>
+    
+  </div>
+</div>
+
+<style>
+  .wetu-mobile-stop {
+    margin: 16px 0;
+    padding: 0 24px;
+  }
+  
+  .wetu-mobile-stop__inner {
+    display: flex;
+    gap: 16px;
+  }
+  
+  .wetu-mobile-stop__marker {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 4px;
+  }
+  
+  .wetu-mobile-stop__icon {
+    width: 32px;
+    height: 32px;
+    background: var(--color-background);
+    border: 1px solid var(--color-border);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-primary);
+    z-index: 2;
+  }
+  
+  .wetu-mobile-stop__line {
+    flex: 1;
+    width: 2px;
+    background: var(--color-border);
+    margin-top: 8px;
+    min-height: 40px;
+  }
+  
+  .wetu-mobile-stop__content-wrapper {
+    flex: 1;
+    background: rgba(var(--color-foreground-rgb), 0.02);
+    border-radius: 8px;
+    padding: 16px;
+    border: 1px solid rgba(var(--color-foreground-rgb), 0.05);
+  }
+  
+  .wetu-mobile-stop__header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  .wetu-mobile-stop__label {
+    font-weight: 700;
+    color: var(--color-primary);
+  }
+  
+  .wetu-mobile-stop__timing {
+    color: rgba(var(--color-foreground-rgb), 0.6);
+  }
+  
+  .wetu-mobile-stop__main {
+    display: flex;
+    gap: 16px;
+    justify-content: space-between;
+  }
+  
+  .wetu-mobile-stop__info {
+    flex: 1;
+  }
+  
+  .wetu-mobile-stop__title {
+    margin: 0 0 4px;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+  
+  .wetu-mobile-stop__title a {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  
+  .wetu-mobile-stop__title a:hover {
+    color: var(--color-primary);
+  }
+  
+  .wetu-mobile-stop__tagline {
+    font-size: 0.8rem;
+    color: rgba(var(--color-foreground-rgb), 0.6);
+    margin: 0 0 8px;
+    font-style: italic;
+  }
+  
+  .wetu-mobile-stop__description {
+    font-size: 0.875rem;
+    color: rgba(var(--color-foreground-rgb), 0.8);
+    line-height: 1.5;
+  }
+  
+  .wetu-mobile-stop__image {
+    width: 100px;
+    height: 75px;
+    flex-shrink: 0;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  
+  .wetu-mobile-stop__image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  @media (min-width: 768px) {
+    .wetu-mobile-stop__image {
+      width: 160px;
+      height: 100px;
+    }
+  }
+</style>

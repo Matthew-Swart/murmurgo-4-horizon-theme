@@ -1,0 +1,49 @@
+{% comment %}
+  ============================================================================
+  PLAY ICON SNIPPET
+  ============================================================================
+  
+  PARAMETERS:
+  - size: Icon size in pixels (default: 24)
+  - class: Additional CSS classes
+  - filled: Boolean to use filled style (default: false)
+  
+  USAGE:
+  {% render 'icon-play', size: 24 %}
+  {% render 'icon-play', size: 48, filled: true %}
+  
+  ============================================================================
+{% endcomment %}
+
+{% assign icon_size = size | default: 24 %}
+{% assign icon_class = class | default: '' %}
+{% assign is_filled = filled | default: false %}
+
+{% if is_filled %}
+  <svg 
+    class="icon icon-play icon-play--filled {{ icon_class }}" 
+    width="{{ icon_size }}" 
+    height="{{ icon_size }}" 
+    viewBox="0 0 24 24" 
+    fill="currentColor"
+    aria-hidden="true"
+  >
+    <polygon points="5 3 19 12 5 21 5 3"/>
+  </svg>
+{% else %}
+  <svg 
+    class="icon icon-play {{ icon_class }}" 
+    width="{{ icon_size }}" 
+    height="{{ icon_size }}" 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    stroke-width="2" 
+    stroke-linecap="round" 
+    stroke-linejoin="round"
+    aria-hidden="true"
+  >
+    <polygon points="5 3 19 12 5 21 5 3"/>
+  </svg>
+{% endif %}
+

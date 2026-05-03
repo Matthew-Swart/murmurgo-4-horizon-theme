@@ -1,0 +1,735 @@
+{% comment %}
+  ============================================================================
+  WETU DAY-BY-DAY ENTITIES SECTION
+  ============================================================================
+  
+  Entity-based scrolling journey through every destination, property, and 
+  activity in the itinerary.
+  
+  - Desktop: 50/50 split with sticky image left, scrolling content right
+  - Mobile: Stacked cards with 16:9 images above content
+  - Each entity (destination, property, activity) gets its own section
+  - Featured image + thumbnail strip + link to full product page
+  
+  DATA STRUCTURE:
+  Uses the linked product lists from wetu_itinerary metafields:
+  - wetu_itinerary.accommodations: list.product_reference
+  - wetu_itinerary.destinations: list.product_reference
+  - wetu_itinerary.activities: list.product_reference
+  
+  And legs from the itinerary metaobject for sequencing.
+  
+  TEMPLATE: product.wetu-itinerary3.json
+  
+  ============================================================================
+{% endcomment %}
+
+{% comment %} Load itinerary data directly {% endcomment %}
+{% assign itinerary = product.metafields.wetu.itinerary_metaobject.value %}
+{% assign legs = itinerary.legs.value %}
+
+{% comment %} Load linked products from metafields {% endcomment %}
+{% assign accommodation_products = product.metafields.wetu_itinerary.accommodations.value %}
+{% assign destination_products = product.metafields.wetu_itinerary.destinations.value %}
+{% assign activity_products = product.metafields.wetu_itinerary.activities.value %}
+
+{% comment %} 
+  Build entity list based on leg sequence
+  For each leg: show destination (if new), then property, then activities
+{% endcomment %}
+
+{% assign entity_list = '' %}
+{% assign entity_count = 0 %}
+{% assign current_day = 1 %}
+{% assign shown_destination_handles = '' %}
+{% assign shown_property_handles = '' %}
+
+{% comment %} Iterate through legs to build the journey sequence {% endcomment %}
+{% for leg in legs %}
+  {% assign leg_type = leg.type.value | default: 'Standard' %}
+  {% if leg_type == 'Departure' %}{% continue %}{% endif %}
+  
+  {% assign leg_nights = leg.nights.value | default: 1 %}
+  {% assign leg_end_day = current_day | plus: leg_nights | minus: 1 %}
+  {% assign content_id = leg.content_entity_id.value %}
+  
+  {% comment %} Find matching accommodation product {% endcomment %}
+  {% assign leg_accommodation = nil %}
+  {% for acc in accommodation_products %}
+    {% assign acc_pin = acc.metafields.wetu.pin_id.value %}
+    {% if acc_pin == content_id %}
+      {% assign leg_accommodation = acc %}
+      {% break %}
+    {% endif %}
+  {% endfor %}
+  
+  {% comment %} 
+    1. Add destination entity based on property location
+    Only show if we haven't shown this destination yet
+  {% endcomment %}
+  {% if leg_accommodation != blank %}
+    {% assign position = leg_accommodation.metafields.wetu.position.value %}
+    {% assign dest_name = position.destination | default: position.region %}
+    
+    {% comment %} Try to find matching destination product {% endcomment %}
+    {% for dest in destination_products %}
+      {% assign dest_handle = dest.handle %}
+      {% unless shown_destination_handles contains dest_handle %}
+        {% comment %} Check if destination matches property location {% endcomment %}
+        {% assign dest_title_downcase = dest.title | downcase %}
+        {% assign dest_name_downcase = dest_name | downcase %}
+        
+        {% if dest_title_downcase contains dest_name_downcase or dest_name_downcase contains dest_title_downcase %}
+          {% assign entity_data = 'destination|' | append: dest_handle | append: '|' | append: current_day | append: '|' | append: leg_end_day %}
+          {% if entity_list != '' %}
+            {% assign entity_list = entity_list | append: '|||' %}
+          {% endif %}
+          {% assign entity_list = entity_list | append: entity_data %}
+          {% assign entity_count = entity_count | plus: 1 %}
+          {% assign shown_destination_handles = shown_destination_handles | append: dest_handle | append: ',' %}
+          {% break %}
+        {% endif %}
+      {% endunless %}
+    {% endfor %}
+  {% endif %}
+  
+  {% comment %} 2. Add accommodation entity {% endcomment %}
+  {% if leg_accommodation != blank %}
+    {% assign acc_handle = leg_accommodation.handle %}
+    {% unless shown_property_handles contains acc_handle %}
+      {% assign entity_data = 'accommodation|' | append: acc_handle | append: '|' | append: current_day | append: '|' | append: leg_end_day | append: '|' | append: leg_nights %}
+      {% if entity_list != '' %}
+        {% assign entity_list = entity_list | append: '|||' %}
+      {% endif %}
+      {% assign entity_list = entity_list | append: entity_data %}
+      {% assign entity_count = entity_count | plus: 1 %}
+      {% assign shown_property_handles = shown_property_handles | append: acc_handle | append: ',' %}
+    {% endunless %}
+  {% endif %}
+  
+  {% assign current_day = current_day | plus: leg_nights %}
+{% endfor %}
+
+{% comment %} 
+  3. Add activities at the end (or interspersed if we can determine timing)
+  Since we don't have specific day info for activities, show them in order
+{% endcomment %}
+{% for act in activity_products %}
+  {% assign act_handle = act.handle %}
+  {% assign entity_data = 'activity|' | append: act_handle | append: '|0|0|0' %}
+  {% if entity_list != '' %}
+    {% assign entity_list = entity_list | append: '|||' %}
+  {% endif %}
+  {% assign entity_list = entity_list | append: entity_data %}
+  {% assign entity_count = entity_count | plus: 1 %}
+{% endfor %}
+
+{% assign entities = entity_list | split: '|||' %}
+
+<section 
+  id="day-by-day-entities"
+  class="wetu-entities color-{{ section.settings.color_scheme }}"
+  style="
+    --section-padding-top: {{ section.settings.padding_top }}px;
+    --section-padding-bottom: {{ section.settings.padding_bottom }}px;
+    --thumbnail-gap: 2px;
+  "
+  data-section-type="day-by-day-entities"
+  data-entity-count="{{ entity_count }}"
+>
+  {% comment %} Section Header {% endcomment %}
+  {% if section.settings.show_header %}
+    <header class="wetu-entities__header page-width">
+      <span class="wetu-entities__label">{{ section.settings.subheading }}</span>
+      <h2 class="wetu-entities__title h2">{{ section.settings.heading }}</h2>
+    </header>
+  {% endif %}
+
+  <div class="wetu-entities__container">
+    {% comment %} =============================================
+         STICKY MEDIA PANEL (Desktop Left Side)
+         ============================================= {% endcomment %}
+    <div class="wetu-entities__media" aria-hidden="true">
+      {% assign entity_index = 0 %}
+      {% for entity_data in entities %}
+        {% assign parts = entity_data | split: '|' %}
+        {% assign entity_type = parts[0] %}
+        {% assign entity_handle = parts[1] %}
+        {% assign day_start = parts[2] %}
+        {% assign day_end = parts[3] %}
+        
+        {% comment %} Get product by handle {% endcomment %}
+        {% assign entity_product = all_products[entity_handle] %}
+        
+        <div 
+          class="wetu-entities__media-item{% if entity_index == 0 %} is-active{% endif %}" 
+          data-entity-index="{{ entity_index }}"
+          data-entity-type="{{ entity_type }}"
+          {% unless entity_index == 0 %}hidden{% endunless %}
+        >
+          {% if entity_product != blank and entity_product.featured_image %}
+            <img 
+              src="{{ entity_product.featured_image | image_url: width: 1600 }}"
+              srcset="{{ entity_product.featured_image | image_url: width: 800 }} 800w,
+                      {{ entity_product.featured_image | image_url: width: 1200 }} 1200w,
+                      {{ entity_product.featured_image | image_url: width: 1600 }} 1600w,
+                      {{ entity_product.featured_image | image_url: width: 2000 }} 2000w"
+              sizes="(max-width: 1023px) 100vw, 50vw"
+              alt="{{ entity_product.featured_image.alt | default: entity_product.title | escape }}"
+              loading="{% if entity_index < 2 %}eager{% else %}lazy{% endif %}"
+              class="wetu-entities__hero-image"
+            >
+          {% else %}
+            <div class="wetu-entities__media-placeholder">
+              {% case entity_type %}
+                {% when 'destination' %}
+                  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <circle cx="12" cy="10" r="3"/>
+                    <path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 6.9 8 11.7z"/>
+                  </svg>
+                {% when 'accommodation' %}
+                  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M3 21h18"/>
+                    <path d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16"/>
+                    <path d="M9 21v-4h6v4"/>
+                  </svg>
+                {% when 'activity' %}
+                  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                  </svg>
+              {% endcase %}
+            </div>
+          {% endif %}
+          
+          {% comment %} Thumbnail Strip {% endcomment %}
+          {% if entity_product != blank and entity_product.images.size > 1 %}
+            <div class="wetu-entities__thumbnail-strip">
+              {% for image in entity_product.images limit: 5 offset: 1 %}
+                <div class="thumbnail-strip__item">
+                  <img 
+                    src="{{ image | image_url: width: 80 }}"
+                    alt="{{ image.alt | escape }}"
+                    loading="lazy"
+                  >
+                </div>
+              {% endfor %}
+              {% assign remaining_images = entity_product.images.size | minus: 6 %}
+              {% if remaining_images > 0 %}
+                <span class="thumbnail-strip__more">+{{ remaining_images }}</span>
+              {% endif %}
+            </div>
+          {% endif %}
+          
+          {% comment %} Video Button (if product has video) {% endcomment %}
+          {% assign videos = entity_product.metafields.wetu.videos.value %}
+          {% if videos and videos.size > 0 %}
+            <button 
+              type="button" 
+              class="wetu-entities__video-btn"
+              data-video-trigger="{{ entity_product.handle }}"
+              aria-label="Watch video"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+              </svg>
+              Watch Video
+            </button>
+          {% endif %}
+          
+          {% comment %} Image Overlay Gradient {% endcomment %}
+          <div class="wetu-entities__media-gradient"></div>
+        </div>
+        
+        {% assign entity_index = entity_index | plus: 1 %}
+      {% endfor %}
+      
+      {% comment %} Progress Indicator {% endcomment %}
+      <div class="wetu-entities__progress">
+        {% for entity_data in entities %}
+          <button 
+            type="button" 
+            class="progress-dot{% if forloop.first %} is-active{% endif %}" 
+            data-scroll-to-entity="{{ forloop.index0 }}"
+            aria-label="Go to entity {{ forloop.index }}"
+          ></button>
+        {% endfor %}
+      </div>
+    </div>
+
+    {% comment %} =============================================
+         SCROLLING CONTENT PANEL (Desktop Right Side)
+         ============================================= {% endcomment %}
+    <div class="wetu-entities__content">
+      {% assign entity_index = 0 %}
+      {% assign current_day_label = '' %}
+      
+      {% for entity_data in entities %}
+        {% assign parts = entity_data | split: '|' %}
+        {% assign entity_type = parts[0] %}
+        {% assign entity_handle = parts[1] %}
+        {% assign day_start = parts[2] | plus: 0 %}
+        {% assign day_end = parts[3] | plus: 0 %}
+        {% assign extra_data = parts[4] %}
+        
+        {% comment %} Get product by handle {% endcomment %}
+        {% assign entity_product = all_products[entity_handle] %}
+        
+        {% comment %} Build day label {% endcomment %}
+        {% if day_start > 0 %}
+          {% if day_start == day_end %}
+            {% assign day_label = 'Day ' | append: day_start %}
+          {% else %}
+            {% assign day_label = 'Day ' | append: day_start | append: '-' | append: day_end %}
+          {% endif %}
+        {% else %}
+          {% assign day_label = 'Experiences' %}
+        {% endif %}
+        
+        {% comment %} Check if this is a new day section {% endcomment %}
+        {% assign show_day_header = false %}
+        {% if day_label != current_day_label %}
+          {% assign show_day_header = true %}
+          {% assign current_day_label = day_label %}
+        {% endif %}
+        
+        {% comment %} Render entity card {% endcomment %}
+        {% render 'wetu-entity-card',
+          entity_type: entity_type,
+          entity_product: entity_product,
+          entity_handle: entity_handle,
+          entity_index: entity_index,
+          day_start: day_start,
+          day_end: day_end,
+          extra_data: extra_data,
+          show_day_header: show_day_header,
+          day_label: day_label,
+          show_thumbnail_strip: section.settings.show_thumbnails_mobile,
+          color_scheme_alt: section.settings.color_scheme_alt
+        %}
+        
+        {% assign entity_index = entity_index | plus: 1 %}
+      {% endfor %}
+      
+      {% comment %} Journey End Card {% endcomment %}
+      <div class="wetu-entity wetu-entity--end" data-entity-index="{{ entity_index }}" data-entity-type="end">
+        <div class="wetu-entity__end-card">
+          <div class="end-card__icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+              <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+          </div>
+          <span class="end-card__label">End of Journey</span>
+          <h3 class="end-card__title">{{ product.title }}</h3>
+          <p class="end-card__text">We hope this journey creates lasting memories. Ready to make it a reality?</p>
+          
+          {% if section.settings.show_book_cta %}
+            <a href="#booking" class="end-card__cta button">Book This Journey</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% comment %} Load entity scroll JavaScript {% endcomment %}
+<script src="{{ 'wetu-entity-scroll.js' | asset_url }}" defer></script>
+
+{% stylesheet %}
+  /* ============================================
+     ENTITY SECTION BASE STYLES
+     ============================================ */
+  
+  .wetu-entities {
+    background: var(--color-background);
+    color: var(--color-foreground);
+    overflow-x: hidden;
+  }
+
+  .wetu-entities__header {
+    text-align: center;
+    padding: var(--section-padding-top, 60px) 16px 40px;
+  }
+
+  .wetu-entities__label {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--color-primary);
+    margin-bottom: 12px;
+  }
+
+  .wetu-entities__title {
+    margin: 0;
+    color: var(--color-foreground);
+  }
+
+  .wetu-entities__container {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ============================================
+     MEDIA PANEL - MOBILE (Hidden, images in cards)
+     ============================================ */
+  
+  .wetu-entities__media {
+    display: none;
+  }
+
+  /* ============================================
+     CONTENT PANEL - MOBILE
+     ============================================ */
+  
+  .wetu-entities__content {
+    width: 100%;
+    padding: 0 16px var(--section-padding-bottom, 60px);
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  /* ============================================
+     DESKTOP LAYOUT (50/50 Split)
+     ============================================ */
+  
+  @media screen and (min-width: 1024px) {
+    .wetu-entities__header {
+      padding: var(--section-padding-top, 60px) 0 60px;
+    }
+
+    .wetu-entities__container {
+      flex-direction: row;
+      min-height: 100vh;
+    }
+
+    /* Sticky Media Panel */
+    .wetu-entities__media {
+      display: block;
+      width: 50%;
+      height: 100vh;
+      position: sticky;
+      top: 0;
+      overflow: hidden;
+      background: color-mix(in srgb, var(--color-foreground) 5%, transparent);
+    }
+
+    .wetu-entities__media-item {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.5s ease, visibility 0.5s ease, transform 0.5s ease;
+      transform: scale(1.02);
+    }
+
+    .wetu-entities__media-item.is-active {
+      opacity: 1;
+      visibility: visible;
+      transform: scale(1);
+    }
+
+    .wetu-entities__media-item[hidden] {
+      display: block;
+    }
+
+    .wetu-entities__hero-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .wetu-entities__media-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      color: color-mix(in srgb, var(--color-foreground) 40%, transparent);
+      background: color-mix(in srgb, var(--color-foreground) 8%, transparent);
+    }
+
+    /* Thumbnail Strip */
+    .wetu-entities__thumbnail-strip {
+      position: absolute;
+      bottom: 24px;
+      left: 24px;
+      display: flex;
+      gap: var(--thumbnail-gap, 2px);
+      align-items: center;
+      z-index: 10;
+    }
+
+    .thumbnail-strip__item {
+      width: 48px;
+      height: 48px;
+      border-radius: 4px;
+      overflow: hidden;
+      border: 2px solid rgba(255,255,255,0.6);
+    }
+
+    .thumbnail-strip__item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .thumbnail-strip__more {
+      padding: 4px 10px;
+      background: rgba(0,0,0,0.6);
+      color: white;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border-radius: 4px;
+      backdrop-filter: blur(4px);
+      margin-left: 4px;
+    }
+
+    /* Video Button */
+    .wetu-entities__video-btn {
+      position: absolute;
+      bottom: 24px;
+      right: 24px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      background: rgba(255,255,255,0.95);
+      color: #1a1a1a;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      z-index: 10;
+    }
+
+    .wetu-entities__video-btn:hover {
+      background: white;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    /* Gradient Overlay */
+    .wetu-entities__media-gradient {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 200px;
+      background: linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 100%);
+      pointer-events: none;
+    }
+
+    /* Progress Dots */
+    .wetu-entities__progress {
+      position: absolute;
+      right: 24px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 10;
+    }
+
+    .progress-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.4);
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      padding: 0;
+    }
+
+    .progress-dot:hover,
+    .progress-dot.is-active {
+      background: white;
+      transform: scale(1.3);
+    }
+
+    /* Content Panel */
+    .wetu-entities__content {
+      width: 50%;
+      padding: 80px 60px var(--section-padding-bottom, 60px);
+      gap: 0;
+    }
+  }
+
+  @media screen and (min-width: 1200px) {
+    .wetu-entities__content {
+      padding: 100px 80px var(--section-padding-bottom, 60px);
+    }
+
+    .wetu-entities__thumbnail-strip {
+      bottom: 32px;
+      left: 32px;
+    }
+
+    .thumbnail-strip__item {
+      width: 56px;
+      height: 56px;
+    }
+
+    .wetu-entities__video-btn {
+      bottom: 32px;
+      right: 32px;
+    }
+  }
+
+  /* ============================================
+     JOURNEY END CARD
+     ============================================ */
+  
+  .wetu-entity--end {
+    padding: 60px 0;
+  }
+
+  .wetu-entity__end-card {
+    text-align: center;
+    padding: 60px 40px;
+    background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+    border-radius: 24px;
+    border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
+  }
+
+  .end-card__icon {
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+    color: var(--color-primary);
+    border-radius: 50%;
+    margin: 0 auto 24px;
+  }
+
+  .end-card__label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--color-primary);
+    margin-bottom: 8px;
+  }
+
+  .end-card__title {
+    margin: 0 0 12px;
+    font-size: 1.5rem;
+    color: var(--color-foreground);
+  }
+
+  .end-card__text {
+    margin: 0 0 24px;
+    font-size: 1rem;
+    color: color-mix(in srgb, var(--color-foreground) 70%, transparent);
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .end-card__cta {
+    display: inline-flex;
+    padding: 14px 32px;
+    text-decoration: none;
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Day by Day (Entities)",
+  "tag": "section",
+  "class": "section-wetu-day-by-day-entities",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme_alt",
+      "label": "Alternate color scheme",
+      "info": "Used for alternating cards",
+      "default": "scheme-5"
+    },
+    {
+      "type": "header",
+      "content": "Header"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_header",
+      "label": "Show section header",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "subheading",
+      "label": "Subheading",
+      "default": "Your Journey"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Day by Day"
+    },
+    {
+      "type": "header",
+      "content": "Content"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_thumbnails_mobile",
+      "label": "Show thumbnail strip on mobile",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_book_cta",
+      "label": "Show booking CTA at end",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Spacing"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "Top padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 60
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "Bottom padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 60
+    }
+  ],
+  "presets": [
+    {
+      "name": "Day by Day (Entities)"
+    }
+  ]
+}
+{% endschema %}

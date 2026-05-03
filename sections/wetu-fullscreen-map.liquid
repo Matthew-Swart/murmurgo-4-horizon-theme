@@ -1,0 +1,1499 @@
+{% comment %}
+  ============================================================================
+  WETU FULLSCREEN ITINERARY MAP
+  ============================================================================
+  
+  A full-page, immersive map experience for WETU itinerary products.
+  Features:
+  - Interactive Mapbox GL JS map with accommodation markers and routes
+  - Synchronized timeline panel (side on desktop, drawer on mobile)
+  - Light/Dark theme toggle using Horizon color schemes
+  - Full-width 16:9 thumbnail cards for each property
+  - Route details with distance, duration, and Google Maps links
+  - Activity markers along the journey
+  - Store logo and journey info overlay
+  - Day-by-day chronological timeline with flights
+  
+  TEMPLATE: product.wetu-itinerary-map.json
+  
+  ============================================================================
+{% endcomment %}
+
+{% comment %} Load itinerary data {% endcomment %}
+{% render 'wetu-itinerary-data', product: product %}
+
+{% assign itinerary = product.metafields.wetu.itinerary_metaobject.value %}
+{% assign legs_array = itinerary.legs.value %}
+{% assign routes_array = itinerary.routes.value %}
+<!-- DEBUG_ITINERARY: has_itinerary={{ itinerary | size }}, legs_count={{ legs_array.size }}, routes_count={{ routes_array.size }} -->
+{% assign client_name = itinerary.client_name.value %}
+{% assign journey_title = product.title %}
+{% assign total_days = product.metafields.wetu.itinerary_days.value | default: wetu_total_days %}
+{% assign itinerary_type = product.metafields.wetu.itinerary_type.value %}
+{% assign trip_start_date = itinerary.start_date.value %}
+
+{% comment %} Define weekday names array {% endcomment %}
+{% assign weekday_names = 'Sunday,Monday,Tuesday,Wednesday,Thursday,Friday,Saturday' | split: ',' %}
+{% assign month_names = 'January,February,March,April,May,June,July,August,September,October,November,December' | split: ',' %}
+
+{% comment %} 
+  Load accommodation, activity, and component products directly from metafields.
+  These are product_reference lists that contain actual product objects with metafields.
+{% endcomment %}
+{% assign accommodation_products = product.metafields.wetu_itinerary.accommodations.value %}
+{% assign activity_products = product.metafields.wetu_itinerary.activities.value %}
+{% assign all_component_products = product.metafields.wetu_itinerary.component_products.value %}
+{% assign component_pin_ids = product.metafields.wetu_itinerary.component_pin_ids.value %}
+
+{% comment %} Build markers data from legs {% endcomment %}
+{% capture markers_json %}
+[
+  {% assign marker_index = 0 %}
+  {% assign current_day = 1 %}
+  {% for leg in legs_array %}
+    {% assign leg_type = leg.type.value | default: "Standard" %}
+    {% assign leg_nights = leg.nights.value | default: 0 %}
+    
+    {% if leg_type == "Departure" %}
+      {% continue %}
+    {% endif %}
+    
+    {% comment %} Get content_entity_id (PIN ID) and find matching product {% endcomment %}
+    {% assign content_id = leg.content_entity_id.value | append: '' %}
+    {% assign property = nil %}
+    
+    {% comment %} Find product by matching PIN ID in accommodation_products {% endcomment %}
+    {% for acc_prod in accommodation_products %}
+      {% assign prod_pin_id = acc_prod.metafields.wetu.pin_id.value | append: '' %}
+      {% if prod_pin_id == content_id %}
+        {% assign property = acc_prod %}
+        {% break %}
+      {% endif %}
+    {% endfor %}
+    
+    {% assign accommodation_name = leg.accommodation_name.value | default: property.title | default: "Destination" %}
+    
+    {% if property != blank %}
+      {% comment %} Position is stored as JSON in wetu.position metafield {% endcomment %}
+      {% assign position = property.metafields.wetu.position.value %}
+      
+      {% if position.latitude != blank and position.longitude != blank %}
+        {% comment %} Safely get image URLs {% endcomment %}
+        {% assign marker_image = "" %}
+        {% assign marker_thumb = "" %}
+        {% if property.featured_image != blank %}
+          {% assign marker_image = property.featured_image | image_url: width: 640, height: 360, crop: 'center' %}
+          {% assign marker_thumb = property.featured_image | image_url: width: 320, height: 180, crop: 'center' %}
+        {% endif %}
+        
+        {% if marker_index > 0 %},{% endif %}
+        {
+          "id": "marker-{{ content_id }}",
+          "contentId": {{ content_id | json }},
+          "name": {{ accommodation_name | json }},
+          "lat": {{ position.latitude }},
+          "lng": {{ position.longitude }},
+          "drivingLat": {{ position.driving_latitude | default: position.latitude }},
+          "drivingLng": {{ position.driving_longitude | default: position.longitude }},
+          "nights": {{ leg_nights }},
+          "day": {{ current_day }},
+          "dayEnd": {{ current_day | plus: leg_nights | minus: 1 }},
+          "sequence": {{ leg.sequence.value | default: forloop.index0 }},
+          "type": "accommodation",
+          "country": {{ position.country | default: "" | json }},
+          "region": {{ position.region | default: "" | json }},
+          "destination": {{ position.destination | default: "" | json }},
+          "image": {{ marker_image | json }},
+          "imageThumb": {{ marker_thumb | json }},
+          "url": {{ property.url | default: "" | json }},
+          "category": {{ property.metafields.wetu.category.value | default: "Accommodation" | json }}
+        }
+        {% assign marker_index = marker_index | plus: 1 %}
+      {% endif %}
+    {% endif %}
+    
+    {% assign current_day = current_day | plus: leg_nights %}
+  {% endfor %}
+]
+{% endcapture %}
+
+{% comment %} Build routes data - includes flights with embedded airport coordinates {% endcomment %}
+{% capture routes_json %}
+[
+  {% assign route_index = 0 %}
+  {% for route in routes_array %}
+    {% assign route_mode = route.mode.value | default: "" %}
+    {% assign route_type = route.type.value | default: "" %}
+    {% assign start_location = route.start_location.value | default: "" | strip_newlines %}
+    {% assign end_location = route.end_location.value | default: "" | strip_newlines %}
+    {% assign points = route.points.value | default: "" %}
+    {% assign duration = route.duration.value | default: "" %}
+    {% assign distance = route.distance.value | default: 0 %}
+    {% assign start_day = route.start_day.value | default: 0 %}
+    {% assign end_day = route.end_day.value | default: 0 %}
+    
+    {% comment %} Get start/end coordinates - PRIORITY ORDER:
+      1. Embedded coordinates from route metaobject (for airports/infrastructure)
+      2. Linked product references (start_product, end_product)
+      3. Product lookup by PIN ID (legacy fallback)
+    {% endcomment %}
+    {% assign start_id = route.start_content_entity_id.value | append: '' %}
+    {% assign end_id = route.end_content_entity_id.value | append: '' %}
+    
+    {% comment %} Check for embedded coordinates first (from sync) {% endcomment %}
+    {% assign embedded_start_lat = route.start_latitude.value %}
+    {% assign embedded_start_lng = route.start_longitude.value %}
+    {% assign embedded_end_lat = route.end_latitude.value %}
+    {% assign embedded_end_lng = route.end_longitude.value %}
+    {% assign embedded_start_name = route.start_name.value %}
+    {% assign embedded_end_name = route.end_name.value %}
+    
+    {% comment %} Check for linked product references (new sync field) {% endcomment %}
+    {% assign linked_start_product = route.start_product.value %}
+    {% assign linked_end_product = route.end_product.value %}
+    
+    {% comment %} Fallback: Find products by matching PIN IDs in component_products {% endcomment %}
+    {% assign start_product = linked_start_product %}
+    {% assign end_product = linked_end_product %}
+    {% if start_product == blank or end_product == blank %}
+      {% for comp_prod in all_component_products %}
+        {% assign prod_pin_id = comp_prod.metafields.wetu.pin_id.value | append: '' %}
+        {% if prod_pin_id == start_id and start_product == blank %}
+          {% assign start_product = comp_prod %}
+        {% endif %}
+        {% if prod_pin_id == end_id and end_product == blank %}
+          {% assign end_product = comp_prod %}
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+    
+    {% assign start_position = start_product.metafields.wetu.position.value %}
+    {% assign end_position = end_product.metafields.wetu.position.value %}
+    
+    {% comment %} Determine final coordinates - embedded takes priority {% endcomment %}
+    {% assign final_start_lat = embedded_start_lat | default: start_position.driving_latitude | default: start_position.latitude %}
+    {% assign final_start_lng = embedded_start_lng | default: start_position.driving_longitude | default: start_position.longitude %}
+    {% assign final_end_lat = embedded_end_lat | default: end_position.driving_latitude | default: end_position.latitude %}
+    {% assign final_end_lng = embedded_end_lng | default: end_position.driving_longitude | default: end_position.longitude %}
+    
+    {% comment %} Determine if this is a flight {% endcomment %}
+    {% assign route_mode_lower = route_mode | downcase %}
+    {% assign is_flight = false %}
+    {% if route_mode_lower contains 'flight' or route_mode_lower contains 'scheduled' or route_mode_lower contains 'charter' or route_mode_lower contains 'helicopter' %}
+      {% assign is_flight = true %}
+    {% endif %}
+    
+    {% comment %} Include route if we have valid coordinates {% endcomment %}
+    {% if final_start_lat != blank and final_end_lat != blank %}
+      {% if route_index > 0 %},{% endif %}
+      {
+        "id": "route-{{ forloop.index0 }}",
+        "mode": {{ route_mode | json }},
+        "type": {{ route_type | json }},
+        "label": {{ route.label.value | default: route_mode | strip_newlines | json }},
+        "routeLabel": {{ route.route_label.value | default: "" | strip_newlines | json }},
+        "startLocation": {{ embedded_start_name | default: start_location | json }},
+        "endLocation": {{ embedded_end_name | default: end_location | json }},
+        "startLat": {{ final_start_lat }},
+        "startLng": {{ final_start_lng }},
+        "endLat": {{ final_end_lat }},
+        "endLng": {{ final_end_lng }},
+        "points": {{ points | strip_newlines | json }},
+        "duration": {{ duration | json }},
+        "distance": {{ distance | default: 0 }},
+        "distanceKm": {{ distance | default: 0 | divided_by: 1000.0 | round: 1 }},
+        "startDay": {{ start_day | default: 0 }},
+        "endDay": {{ end_day | default: 0 }},
+        "sequence": {{ route.sequence.value | default: forloop.index0 }},
+        "agency": {{ route.agency.value | default: "" | strip_newlines | json }},
+        "vehicle": {{ route.vehicle.value | default: "" | strip_newlines | json }},
+        "startContentId": {{ start_id | json }},
+        "endContentId": {{ end_id | json }},
+        "isFlight": {{ is_flight }},
+        "startProductUrl": {{ start_product.url | default: "" | json }},
+        "endProductUrl": {{ end_product.url | default: "" | json }},
+        "startProductImage": {% if start_product.featured_image != blank %}{{ start_product.featured_image | image_url: width: 320, height: 180, crop: 'center' | json }}{% else %}""{% endif %},
+        "endProductImage": {% if end_product.featured_image != blank %}{{ end_product.featured_image | image_url: width: 320, height: 180, crop: 'center' | json }}{% else %}""{% endif %}
+      }
+      {% assign route_index = route_index | plus: 1 %}
+    {% endif %}
+  {% endfor %}
+]
+{% endcapture %}
+
+{% comment %} Build activities data - include parent property coords for filtering {% endcomment %}
+{% comment %}
+  IMPORTANT: In Wetu data:
+  - simple_item_id: The activity's unique ID (maps to wetu.pin_id on activity products)
+  - content_entity_id: Either the parent property's PIN ID or the activity's own PIN ID
+    (when simple_item_id is empty, content_entity_id IS the activity's PIN)
+{% endcomment %}
+{% capture activities_json %}
+[
+  {% assign activity_index = 0 %}
+  {% for leg in legs_array %}
+    {% assign leg_content_id = leg.content_entity_id.value | append: '' %}
+    {% comment %} Find the parent property for this leg to get its coordinates {% endcomment %}
+    {% assign parent_property = nil %}
+    {% for acc_prod in accommodation_products %}
+      {% assign prod_pin_id = acc_prod.metafields.wetu.pin_id.value | append: '' %}
+      {% if prod_pin_id == leg_content_id %}
+        {% assign parent_property = acc_prod %}
+        {% break %}
+      {% endif %}
+    {% endfor %}
+    {% assign parent_position = parent_property.metafields.wetu.position.value %}
+    
+    {% assign periods = leg.periods.value %}
+    {% if periods.size > 0 %}
+      {% for period in periods %}
+        {% assign activities = period.activities.value %}
+        {% if activities == blank %}{% continue %}{% endif %}
+        {% if activities.size > 0 %}
+          {% for activity in activities %}
+            {% comment %} Determine the activity's PIN ID for product lookup {% endcomment %}
+            {% assign act_simple_id = activity.simple_item_id.value | append: '' %}
+            {% assign act_content_id = activity.content_entity_id.value | append: '' %}
+            
+            {% comment %} Use simple_item_id if set, otherwise use content_entity_id {% endcomment %}
+            {% assign activity_pin_id = act_simple_id %}
+            {% if activity_pin_id == blank %}
+              {% assign activity_pin_id = act_content_id %}
+            {% endif %}
+            
+            {% if activity_pin_id != blank %}
+              {% comment %} Find activity product by matching PIN ID {% endcomment %}
+              {% assign act_product = nil %}
+              
+              {% comment %} Search activity_products first {% endcomment %}
+              {% if activity_products.size > 0 %}
+                {% for act_prod in activity_products %}
+                  {% assign prod_pin_id = act_prod.metafields.wetu.pin_id.value | append: '' %}
+                  {% if prod_pin_id == activity_pin_id %}
+                    {% assign act_product = act_prod %}
+                    {% break %}
+                  {% endif %}
+                {% endfor %}
+              {% endif %}
+              
+              {% comment %} Fallback to all_component_products {% endcomment %}
+              {% if act_product == blank and all_component_products.size > 0 %}
+                {% for comp_prod in all_component_products %}
+                  {% assign prod_pin_id = comp_prod.metafields.wetu.pin_id.value | append: '' %}
+                  {% if prod_pin_id == activity_pin_id %}
+                    {% assign act_product = comp_prod %}
+                    {% break %}
+                  {% endif %}
+                {% endfor %}
+              {% endif %}
+              
+              {% comment %} 
+                NOTE: Do NOT fall back to content_entity_id when simple_item_id is set.
+                When simple_item_id is present, content_entity_id refers to the PARENT
+                property, not the activity itself. We only use content_entity_id for
+                lookup when simple_item_id is empty.
+              {% endcomment %}
+              
+              {% if act_product != blank %}
+                {% assign act_position = act_product.metafields.wetu.position.value %}
+                {% if act_position.latitude != blank %}
+                  {% comment %} Safely get activity image {% endcomment %}
+                  {% assign act_image = "" %}
+                  {% if act_product.featured_image != blank %}
+                    {% assign act_image = act_product.featured_image | image_url: width: 320, height: 180, crop: 'center' %}
+                  {% endif %}
+                  
+                  {% if activity_index > 0 %},{% endif %}
+                  {
+                    "id": "activity-{{ activity_pin_id }}",
+                    "name": {{ activity.name.value | default: act_product.title | json }},
+                    "lat": {{ act_position.latitude }},
+                    "lng": {{ act_position.longitude }},
+                    "parentLat": {{ parent_position.latitude | default: 0 }},
+                    "parentLng": {{ parent_position.longitude | default: 0 }},
+                    "type": {{ activity.type.value | default: "Included" | json }},
+                    "timeSlot": {{ activity.time_slot.value | default: "None" | json }},
+                    "isHighlight": {{ activity.is_highlight.value | default: false }},
+                    "image": {{ act_image | json }},
+                    "url": {{ act_product.url | default: "" | json }},
+                    "category": {{ act_product.metafields.wetu.category.value | default: "Activity" | json }}
+                  }
+                  {% assign activity_index = activity_index | plus: 1 %}
+                {% endif %}
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+  {% endfor %}
+]
+{% endcapture %}
+
+{% comment %} Build destinations data {% endcomment %}
+{% capture destinations_json %}
+[
+  {% assign dest_index = 0 %}
+  {% assign destination_products = product.metafields.wetu_itinerary.destinations.value %}
+  {% if destination_products.size > 0 %}
+    {% for dest_prod in destination_products %}
+      {% assign dest_position = dest_prod.metafields.wetu.position.value %}
+      {% if dest_position.latitude != blank and dest_position.longitude != blank %}
+        {% assign dest_image = "" %}
+        {% if dest_prod.featured_image != blank %}
+          {% assign dest_image = dest_prod.featured_image | image_url: width: 640, height: 360, crop: 'center' %}
+        {% endif %}
+        
+        {% if dest_index > 0 %},{% endif %}
+        {
+          "id": "destination-{{ dest_prod.id }}",
+          "name": {{ dest_prod.title | json }},
+          "lat": {{ dest_position.latitude }},
+          "lng": {{ dest_position.longitude }},
+          "country": {{ dest_position.country | default: "" | json }},
+          "region": {{ dest_position.region | default: "" | json }},
+          "destination": {{ dest_position.destination | default: dest_prod.title | json }},
+          "image": {{ dest_image | json }},
+          "url": {{ dest_prod.url | default: "" | json }},
+          "description": {{ dest_prod.metafields.wetu.description.value | default: "" | truncate: 200 | json }}
+        }
+        {% assign dest_index = dest_index | plus: 1 %}
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+]
+{% endcapture %}
+
+{% comment %} Clean up JSON whitespace {% endcomment %}
+{% assign markers_data = markers_json | strip_newlines | replace: '  ', '' %}
+{% assign routes_data = routes_json | strip_newlines | replace: '  ', '' %}
+{% assign activities_data = activities_json | strip_newlines | replace: '  ', '' %}
+{% assign destinations_data = destinations_json | strip_newlines | replace: '  ', '' %}
+
+{% comment %} Get shop logo {% endcomment %}
+{% assign shop_logo = settings.logo %}
+
+{% comment %} Critical inline CSS to prevent logo layout shift {% endcomment %}
+<style>
+  /* Critical CSS for preventing logo layout shift - loads before external stylesheet */
+  .wetu-fullscreen-map__logo {
+    min-height: 32px;
+    max-height: 32px;
+    display: flex;
+    align-items: center;
+  }
+  .wetu-fullscreen-map__logo img,
+  .wetu-fullscreen-map__logo-img {
+    height: 32px !important;
+    max-height: 32px !important;
+    width: auto !important;
+    max-width: 150px !important;
+    object-fit: contain;
+    contain: layout size;
+  }
+  @media screen and (max-width: 479px) {
+    .wetu-fullscreen-map__logo img,
+    .wetu-fullscreen-map__logo-img {
+      height: 24px !important;
+      max-height: 24px !important;
+      max-width: 100px !important;
+    }
+    .wetu-fullscreen-map__logo {
+      min-height: 24px;
+      max-height: 24px;
+    }
+  }
+</style>
+
+<div 
+  id="wetu-fullscreen-map-container"
+  class="wetu-fullscreen-map color-{{ section.settings.color_scheme }}"
+  data-color-scheme-light="{{ section.settings.color_scheme }}"
+  data-color-scheme-dark="{{ section.settings.color_scheme_dark }}"
+  data-default-theme="{{ section.settings.default_theme }}"
+  data-current-theme="{{ section.settings.default_theme }}"
+>
+  {% comment %} ================================================================
+    HEADER OVERLAY
+  ================================================================ {% endcomment %}
+  {% if section.settings.show_header %}
+    <header class="wetu-fullscreen-map__header">
+      <div class="wetu-fullscreen-map__header-left">
+        {% if section.settings.show_logo and shop_logo != blank %}
+          <a href="{{ routes.root_url }}" class="wetu-fullscreen-map__logo">
+            {{ shop_logo | image_url: width: 200 | image_tag: 
+              loading: 'eager', 
+              fetchpriority: 'high',
+              width: 150,
+              height: 32,
+              alt: shop.name,
+              class: 'wetu-fullscreen-map__logo-img'
+            }}
+          </a>
+        {% elsif section.settings.show_logo %}
+          <a href="{{ routes.root_url }}" class="wetu-fullscreen-map__logo wetu-fullscreen-map__logo--text">
+            {{ shop.name }}
+          </a>
+        {% endif %}
+      </div>
+      
+      <div class="wetu-fullscreen-map__header-center">
+        <div class="wetu-fullscreen-map__journey-info">
+          <h1 class="wetu-fullscreen-map__title">
+            <a href="{{ product.url }}" class="wetu-fullscreen-map__title-link">{{ journey_title }}</a>
+          </h1>
+          <div class="wetu-fullscreen-map__meta">
+            {% if section.settings.show_client_name and client_name != blank %}
+              <span class="wetu-fullscreen-map__client">{{ client_name }}</span>
+              <span class="wetu-fullscreen-map__divider">•</span>
+            {% endif %}
+            {% if section.settings.show_duration %}
+              <span class="wetu-fullscreen-map__duration">{{ total_days }} Days</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      
+      <div class="wetu-fullscreen-map__header-right">
+        {% comment %} Price and Book Now {% endcomment %}
+        {% if product.price > 0 %}
+          <div class="wetu-fullscreen-map__price-container">
+            <span class="wetu-fullscreen-map__price">{{ product.price | money }}</span>
+            {% if product.compare_at_price > product.price %}
+              <span class="wetu-fullscreen-map__compare-price">{{ product.compare_at_price | money }}</span>
+            {% endif %}
+          </div>
+        {% endif %}
+        
+        <a href="/cart/{{ product.variants.first.id }}:1" class="wetu-fullscreen-map__book-now">
+          <span>Book Now</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </a>
+        
+        <button 
+          type="button" 
+          class="wetu-fullscreen-map__theme-toggle"
+          data-theme-toggle
+          aria-label="Toggle light/dark theme"
+        >
+          <svg class="icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"/>
+            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+          </svg>
+          <svg class="icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+  {% endif %}
+
+  {% comment %} ================================================================
+    MAIN CONTENT AREA
+  ================================================================ {% endcomment %}
+  <div class="wetu-fullscreen-map__content">
+    
+    {% comment %} ================================================================
+      TIMELINE SIDEBAR (Desktop) / DRAWER (Mobile)
+    ================================================================ {% endcomment %}
+    {% if section.settings.show_timeline %}
+      <aside 
+        class="wetu-fullscreen-map__timeline {% if section.settings.timeline_position == 'right' %}wetu-fullscreen-map__timeline--right{% endif %}"
+        data-timeline-panel
+      >
+        <div class="wetu-fullscreen-map__timeline-header">
+          <h2 class="wetu-fullscreen-map__timeline-title">Your Journey</h2>
+          <button type="button" class="wetu-fullscreen-map__timeline-collapse" data-timeline-collapse aria-label="Collapse timeline">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M15 18l-6-6 6-6"/>
+            </svg>
+          </button>
+        </div>
+        
+        <div class="wetu-fullscreen-map__timeline-content" data-timeline-scroll>
+          <div class="wetu-fullscreen-map__journey-timeline" data-version="2024-12-03">
+            {% comment %} ================================================================
+              BUILD COMPREHENSIVE CHRONOLOGICAL JOURNEY TIMELINE
+              
+              VERSION: 2024-12-03 - Fixed activity duplication and day assignment
+              
+              Each day shows all events in chronological order:
+              1. Transit routes (from previous property, if same day as arrival)
+              2. Destination arrival (if new destination)
+              3. Accommodation check-in
+              4. Activities throughout the day
+              
+              KEY FIX: Activities are now tracked to prevent duplicates.
+              Each activity is rendered only once, on its correct day within
+              its parent leg's stay period.
+            ================================================================ {% endcomment %}
+            
+            {% comment %} Pre-build tracking variables {% endcomment %}
+            {% assign stop_index = 0 %}
+            {% assign last_destination = '' %}
+            {% assign rendered_days = '' %}
+            {% assign prev_content_id = '' %}
+            {% assign prev_leg_id_num = 0 %}
+            {% assign rendered_activities = '' %}
+            
+            {% comment %} Calculate total days including departure {% endcomment %}
+            {% assign total_days_calc = 0 %}
+            {% for leg in legs_array %}
+              {% assign leg_type = leg.type.value | default: "Standard" %}
+              {% assign leg_nights = leg.nights.value | default: 0 %}
+              {% if leg_type != "Departure" %}
+                {% assign total_days_calc = total_days_calc | plus: leg_nights %}
+              {% endif %}
+            {% endfor %}
+            {% comment %} Add 1 for final departure day {% endcomment %}
+            {% assign total_days_calc = total_days_calc | plus: 1 %}
+            
+            {% comment %} Track the current day across all legs {% endcomment %}
+            {% assign leg_start_day = 1 %}
+            
+            {% for leg in legs_array %}
+              {% assign leg_type = leg.type.value | default: "Standard" %}
+              {% assign leg_nights = leg.nights.value | default: 0 %}
+              
+              {% if leg_type == "Departure" %}
+                {% continue %}
+              {% endif %}
+              
+              {% assign content_id = leg.content_entity_id.value | append: '' %}
+              {% assign current_leg_id_num = stop_index | plus: 1 %}
+              
+              {% comment %} Find accommodation product {% endcomment %}
+              {% assign property = nil %}
+              {% for acc_prod in accommodation_products %}
+                {% assign prod_pin_id = acc_prod.metafields.wetu.pin_id.value | append: '' %}
+                {% if prod_pin_id == content_id %}
+                  {% assign property = acc_prod %}
+                  {% break %}
+                {% endif %}
+              {% endfor %}
+              
+              {% assign position = property.metafields.wetu.position.value %}
+              {% assign current_destination = position.destination | default: position.area | default: position.country %}
+              
+              {% comment %} 
+                Calculate day ranges:
+                - Stay starts: leg_start_day 
+                - Last staying night: leg_start_day + leg_nights - 1
+                - Departure day: leg_start_day + leg_nights (same as next leg's arrival)
+              {% endcomment %}
+              {% assign departure_day = leg_start_day | plus: leg_nights %}
+              
+              {% comment %} Check if this is the last leg (for final departure handling) {% endcomment %}
+              {% assign is_last_leg = false %}
+              {% assign remaining_standard_legs = 0 %}
+              {% for future_leg in legs_array %}
+                {% if forloop.index > forloop.index0 %}
+                  {% assign future_type = future_leg.type.value | default: "Standard" %}
+                  {% if future_type != "Departure" %}
+                    {% assign remaining_standard_legs = remaining_standard_legs | plus: 1 %}
+                  {% endif %}
+                {% endif %}
+              {% endfor %}
+              {% if remaining_standard_legs <= 1 %}
+                {% assign is_last_leg = true %}
+              {% endif %}
+              
+              {% comment %} ============================================================
+                Loop through each STAY DAY of this leg (NOT including departure)
+                
+                For a 2-night stay:
+                - day_offset 0: Arrival day (Day 1) - includes routes if coming from previous
+                - day_offset 1: Second day (Day 2) - activities only
+                
+                Departure day (Day 3) is NOT rendered here - it becomes the arrival
+                day of the next leg which will show the routes.
+                
+                EXCEPTION: For the LAST leg, we DO show departure day with final routes.
+              ============================================================ {% endcomment %}
+              {% assign max_day_offset = leg_nights | minus: 1 %}
+              {% if is_last_leg %}
+                {% assign max_day_offset = leg_nights %}
+              {% endif %}
+              
+              {% for day_offset in (0..max_day_offset) %}
+                {% assign this_day = leg_start_day | plus: day_offset %}
+                {% assign this_day_str = this_day | append: ',' %}
+                
+                {% comment %} Determine what type of day this is {% endcomment %}
+                {% assign is_arrival_day = false %}
+                {% assign is_stay_day = false %}
+                {% assign is_departure_day = false %}
+                
+                {% if day_offset == 0 %}
+                  {% assign is_arrival_day = true %}
+                  {% assign is_stay_day = true %}
+                {% elsif day_offset < leg_nights %}
+                  {% assign is_stay_day = true %}
+                {% elsif day_offset == leg_nights and is_last_leg %}
+                  {% assign is_departure_day = true %}
+                {% endif %}
+                
+                {% comment %} For final departure day, only show if there are routes {% endcomment %}
+                {% if is_departure_day %}
+                  {% assign has_departure_routes = false %}
+                  {% for route in routes_array %}
+                    {% assign route_start_id = route.start_content_entity_id.value | append: '' %}
+                    {% if route_start_id == content_id %}
+                      {% assign has_departure_routes = true %}
+                      {% break %}
+                    {% endif %}
+                  {% endfor %}
+                  {% unless has_departure_routes %}
+                    {% continue %}
+                  {% endunless %}
+                {% endif %}
+                
+                {% comment %} ============================================================
+                  DAY HEADER - Shows Day number AND weekday/date
+                ============================================================ {% endcomment %}
+                {% assign day_offset_seconds = this_day | minus: 1 | times: 86400 %}
+                {% if trip_start_date != blank %}
+                  {% assign day_timestamp = trip_start_date | date: "%s" | plus: day_offset_seconds %}
+                  {% assign day_weekday_num = day_timestamp | date: "%w" | plus: 0 %}
+                  {% assign day_weekday = weekday_names[day_weekday_num] %}
+                  {% assign day_month_num = day_timestamp | date: "%-m" | minus: 1 %}
+                  {% assign day_month = month_names[day_month_num] %}
+                  {% assign day_date_num = day_timestamp | date: "%-d" %}
+                  {% assign day_year = day_timestamp | date: "%Y" %}
+                {% else %}
+                  {% assign day_weekday = "" %}
+                  {% assign day_month = "" %}
+                  {% assign day_date_num = "" %}
+                  {% assign day_year = "" %}
+                {% endif %}
+                
+                <div class="wetu-journey-day" data-day="{{ this_day }}">
+                  <div class="wetu-journey-day__header">
+                    <div class="wetu-journey-day__date-label">
+                      <span class="wetu-journey-day__day-number">Day {{ this_day }}</span>
+                      {% if trip_start_date != blank %}
+                        <span class="wetu-journey-day__date-divider">·</span>
+                        <span class="wetu-journey-day__weekday">{{ day_weekday }}</span>
+                        <span class="wetu-journey-day__date">{{ day_date_num }} {{ day_month }}</span>
+                      {% endif %}
+                    </div>
+                  </div>
+                  
+                  <div class="wetu-journey-day__events">
+                    {% comment %} ============================================================
+                      ARRIVAL DAY CONTENT
+                      Order:
+                      1. Routes from previous property (if this is a transfer day)
+                      2. Destination card (if new destination with image)
+                      3. Accommodation check-in
+                    ============================================================ {% endcomment %}
+                    {% if is_arrival_day %}
+                      {% comment %} ============================================================
+                        INCOMING ROUTES (from previous property)
+                        
+                        On arrival day, if this isn't Day 1, show the routes that
+                        brought us here from the previous accommodation. These are
+                        routes where end_content_entity_id matches this property.
+                      ============================================================ {% endcomment %}
+                      {% if stop_index > 0 %}
+                        {% assign shown_incoming_routes = "" %}
+                        {% for route in routes_array %}
+                          {% assign route_end_id = route.end_content_entity_id.value | append: '' %}
+                          {% assign route_index = forloop.index0 %}
+                          {% assign route_index_str = route_index | append: ',' %}
+                          
+                          {% comment %} Show routes that END at this property {% endcomment %}
+                          {% if route_end_id == content_id %}
+                            {% unless shown_incoming_routes contains route_index_str %}
+                              {% render 'wetu-journey-event-card',
+                                event_type: 'transit',
+                                route: route,
+                                route_index: route_index,
+                                day_number: this_day,
+                                show_day_header: false,
+                                all_component_products: all_component_products
+                              %}
+                              {% assign shown_incoming_routes = shown_incoming_routes | append: route_index_str %}
+                            {% endunless %}
+                          {% endif %}
+                        {% endfor %}
+                      {% endif %}
+                      
+                      {% comment %} DESTINATION ARRIVAL (if new destination) {% endcomment %}
+                      {% if current_destination != last_destination and current_destination != blank %}
+                        {% assign destination_product = nil %}
+                        {% assign destination_products = product.metafields.wetu_itinerary.destinations.value %}
+                        {% if destination_products.size > 0 %}
+                          {% for dest_prod in destination_products %}
+                            {% assign dest_position = dest_prod.metafields.wetu.position.value %}
+                            {% assign dest_name = dest_position.destination | default: dest_prod.title %}
+                            {% if dest_name == current_destination or dest_prod.title contains current_destination %}
+                              {% assign destination_product = dest_prod %}
+                              {% break %}
+                            {% endif %}
+                          {% endfor %}
+                        {% endif %}
+                        
+                        {% comment %} Show destination arrival card - compact style {% endcomment %}
+                        <div class="wetu-destination-arrival">
+                          {% if destination_product != blank %}
+                            <a href="{{ destination_product.url }}" target="_blank" rel="noopener" class="wetu-destination-arrival__link">
+                              <div class="wetu-destination-arrival__icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                              </div>
+                              <div class="wetu-destination-arrival__content">
+                                <span class="wetu-destination-arrival__label">Arriving in</span>
+                                <span class="wetu-destination-arrival__name">{{ current_destination }}</span>
+                              </div>
+                              <div class="wetu-destination-arrival__arrow">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17l9.2-9.2M17 17V7H7"/></svg>
+                              </div>
+                            </a>
+                          {% else %}
+                            <div class="wetu-destination-arrival__link wetu-destination-arrival__link--no-link">
+                              <div class="wetu-destination-arrival__icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                              </div>
+                              <div class="wetu-destination-arrival__content">
+                                <span class="wetu-destination-arrival__label">Arriving in</span>
+                                <span class="wetu-destination-arrival__name">{{ current_destination }}</span>
+                              </div>
+                            </div>
+                          {% endif %}
+                        </div>
+                        {% assign last_destination = current_destination %}
+                      {% endif %}
+                      
+                      {% comment %} ACCOMMODATION CHECK-IN {% endcomment %}
+                      {% render 'wetu-journey-event-card',
+                        event_type: 'accommodation',
+                        event_data: leg,
+                        product: property,
+                        day_number: this_day,
+                        nights: leg_nights,
+                        is_arrival_day: true,
+                        show_day_header: false
+                      %}
+                    {% endif %}
+                    
+                    {% comment %} ============================================================
+                      ACTIVITIES FOR THIS DAY (only on stay days, not departure)
+                      
+                      Period matching: period_sequence is 0-indexed within the leg
+                      - Period 0 = Arrival day activities
+                      - Period 1 = Day 2 activities
+                      - etc.
+                    ============================================================ {% endcomment %}
+                    <!-- DEBUG_STAY: day_offset={{ day_offset }}, is_stay_day={{ is_stay_day }}, is_arrival={{ is_arrival_day }} -->
+                    {% if is_stay_day %}
+                      {% assign periods = leg.periods.value %}
+                      <!-- DEBUG_PERIODS: count={{ periods.size }} -->
+                      {% if periods.size > 0 %}
+                        {% assign period = nil %}
+                        {% assign period_activities = nil %}
+                        {% for p in periods %}
+                          {% assign p_seq = p.period_sequence.value | default: forloop.index0 | plus: 0 %}
+                          {% assign p_days = p.days.value | default: 1 | plus: 0 %}
+                          {% assign p_end = p_seq | plus: p_days %}
+                          {% comment %}
+                            Multi-day period support:
+                            Match current day_offset if it falls within [p_seq, p_end)
+                          {% endcomment %}
+                          {% if day_offset >= p_seq and day_offset < p_end %}
+                            {% assign period = p %}
+                            {% assign period_activities = p.activities.value %}
+                            {% break %}
+                          {% endif %}
+                        {% endfor %}
+                        
+                        {% comment %}
+                          CRITICAL FIX: Only show activities on the FIRST day of their period.
+                          
+                          The Wetu API stores activities in periods that can span multiple days.
+                          For example: period.days = 2 means activities are available across 2 days.
+                          
+                          Previously, we showed the same activities on EVERY day within the period,
+                          which caused duplicates (e.g., Table Mountain showing on Day 1 AND Day 2).
+                          
+                          Now we only render activities when day_offset equals the period's sequence,
+                          which is the first day of that period.
+                        {% endcomment %}
+                        {% assign is_first_day_of_period = false %}
+                        {% if period != blank %}
+                          {% assign p_seq_check = period.period_sequence.value | plus: 0 %}
+                          {% if day_offset == p_seq_check %}
+                            {% assign is_first_day_of_period = true %}
+                          {% endif %}
+                        {% endif %}
+                        
+                        {% comment %} 
+                          REMOVED: Formal activity cards
+                          Activities are now only displayed in the "What's Included" section below
+                          to prevent duplication. If an activity exists as a product, it will be 
+                          linked from within that section.
+                        {% endcomment %}
+                        
+                        {% comment %} ============================================================
+                          INCLUDED EXPERIENCES SUMMARY
+                          
+                          The Wetu API stores additional included items in the "included" field.
+                          This is stored as a Shopify rich text metafield (JSON structure).
+                          
+                          We show this content as a summary card on the first day of each period,
+                          only if there's content in the included field and we haven't shown
+                          the formal activities that might overlap.
+                          
+                          The included text typically contains items like:
+                          - Guided tours, boat rides, spa treatments, etc.
+                        ============================================================ {% endcomment %}
+                        {% comment %} 
+                          INCLUDED ITEMS DISPLAY
+                          
+                          The sync app now stores included activities in TWO formats:
+                          1. included: Rich text field for display (Shopify renders as HTML)
+                          2. included_items: JSON array for programmatic access (e.g., ["Activity 1", "Activity 2"])
+                          
+                          We use included_items to render individual activity cards that can be
+                          distributed across multiple days of a stay.
+                        {% endcomment %}
+                        <!-- DEBUG_INCLUDED: period_blank={{ period | size }}, is_first={{ is_first_day_of_period }}, day_offset={{ day_offset }} -->
+                        {% if period != blank and is_first_day_of_period %}
+                          {% comment %} Parse included_items JSON array {% endcomment %}
+                          {% assign included_items_json = period.included_items.value | default: '' %}
+                          <!-- DEBUG_ITEMS: json_length={{ included_items_json.size }}, json={{ included_items_json | truncate: 100 }} -->
+                          {% assign included_items_array = included_items_json | remove: '[' | remove: ']' | remove: '"' | split: ',' %}
+                          {% assign included_count = 0 %}
+                          {% for item in included_items_array %}
+                            {% assign clean_item = item | strip %}
+                            {% if clean_item != blank %}
+                              {% assign included_count = included_count | plus: 1 %}
+                            {% endif %}
+                          {% endfor %}
+                          
+                          {% if included_count > 0 %}
+                            {% assign stay_day_number = day_offset | plus: 1 %}
+                            {% assign period_span_days = period.days.value | default: 1 | plus: 0 %}
+                            
+                            {% comment %} 
+                              ACTIVITY DISTRIBUTION:
+                              If we have more activities than days, show them all on the first day.
+                              If we have fewer activities than days, distribute one per day.
+                              The current day_offset within the period determines which activity to show.
+                            {% endcomment %}
+                            {% assign activity_index_for_day = day_offset %}
+                            {% assign show_all_on_first_day = false %}
+                            
+                            {% if included_count > period_span_days %}
+                              {% comment %} More activities than days: show all on first day {% endcomment %}
+                              {% assign show_all_on_first_day = true %}
+                            {% endif %}
+                            
+                            {% if show_all_on_first_day or day_offset == 0 %}
+                              {% comment %} Show "What's Included" summary card with all items {% endcomment %}
+                              <article class="wetu-event-card wetu-event-card--activity wetu-event-card--included-summary">
+                                <div class="wetu-event-card__included-content">
+                                  <div class="wetu-event-card__included-header">
+                                    <div class="wetu-event-card__included-icon">
+                                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M9 11l3 3L22 4"/>
+                                        <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+                                      </svg>
+                                    </div>
+                                    <div class="wetu-event-card__included-title">
+                                      <span class="wetu-event-card__included-label">What's Included</span>
+                                      {% if period_span_days > 1 %}
+                                        <span class="wetu-event-card__included-period">Days {{ stay_day_number }}-{{ stay_day_number | plus: period_span_days | minus: 1 }}</span>
+                                      {% endif %}
+                                    </div>
+                                  </div>
+                                  <ul class="wetu-event-card__included-list">
+                                    {% for item in included_items_array %}
+                                      {% assign clean_item = item | strip %}
+                                      {% if clean_item != blank %}
+                                        {% comment %} 
+                                          WETU ID-BASED MATCHING ONLY
+                                          
+                                          We ONLY link to products if:
+                                          1. There's a formal activity in this period that matches the included item text
+                                          2. That formal activity has a content_entity_id (Wetu ID)
+                                          3. We find a product with matching wetu.content_entity_id or wetu.simple_item_id
+                                          
+                                          NO fuzzy title matching - this prevents false positives like 
+                                          "Traditional South African braai" matching "Africa" product.
+                                        {% endcomment %}
+                                        {% assign matched_product = nil %}
+                                        {% assign matched_content_entity_id = nil %}
+                                        {% assign matched_simple_item_id = nil %}
+                                        {% assign clean_item_lower = clean_item | downcase %}
+                                        
+                                        {% comment %} 
+                                          Step 1: Find formal activity that matches this included item text.
+                                          period_activities contains the API activities with Wetu IDs.
+                                        {% endcomment %}
+                                        {% if period_activities != blank and period_activities.size > 0 %}
+                                          {% for formal_act in period_activities %}
+                                            {% assign formal_name = formal_act.name.value | default: '' | downcase %}
+                                            {% assign formal_name_stripped = formal_name | strip %}
+                                            
+                                            {% comment %} Check if formal activity name matches the included item text {% endcomment %}
+                                            {% if formal_name_stripped != blank %}
+                                              {% if formal_name_stripped contains clean_item_lower or clean_item_lower contains formal_name_stripped %}
+                                                {% comment %} Found matching formal activity - get its Wetu IDs {% endcomment %}
+                                                {% assign matched_content_entity_id = formal_act.content_entity_id.value | append: '' %}
+                                                {% assign matched_simple_item_id = formal_act.simple_item_id.value | append: '' %}
+                                                {% break %}
+                                              {% endif %}
+                                            {% endif %}
+                                          {% endfor %}
+                                        {% endif %}
+                                        
+                                        {% comment %} 
+                                          Step 2: Only search for products if we found a Wetu ID.
+                                          Match by content_entity_id or simple_item_id ONLY.
+                                          
+                                          CRITICAL: If content_entity_id equals the leg's property PIN ID,
+                                          it means this activity doesn't have its own unique ID - it's just
+                                          tagged to the parent property. In that case, we ONLY use simple_item_id.
+                                          This prevents incorrectly linking to accommodation products.
+                                        {% endcomment %}
+                                        {% assign use_content_entity_id = true %}
+                                        {% if matched_content_entity_id == content_id %}
+                                          {% comment %} Activity's content_entity_id matches parent property - don't use it {% endcomment %}
+                                          {% assign use_content_entity_id = false %}
+                                        {% endif %}
+                                        
+                                        {% if matched_simple_item_id != blank or use_content_entity_id and matched_content_entity_id != blank %}
+                                          {% comment %} 
+                                            ONLY search activity_products - NEVER search all_component_products.
+                                            This ensures we only link to activity-type products, not accommodations.
+                                          {% endcomment %}
+                                          {% if activity_products.size > 0 %}
+                                            {% for act_prod in activity_products %}
+                                              {% assign prod_content_id = act_prod.metafields.wetu.content_entity_id.value | append: '' %}
+                                              {% assign prod_simple_id = act_prod.metafields.wetu.simple_item_id.value | append: '' %}
+                                              {% assign prod_pin_id = act_prod.metafields.wetu.pin_id.value | append: '' %}
+                                              
+                                              {% comment %} Match by simple_item_id (highest priority - unique activity ID) {% endcomment %}
+                                              {% if matched_simple_item_id != blank and prod_simple_id == matched_simple_item_id %}
+                                                {% assign matched_product = act_prod %}
+                                                {% break %}
+                                              {% endif %}
+                                              
+                                              {% if matched_simple_item_id != blank and prod_pin_id == matched_simple_item_id %}
+                                                {% assign matched_product = act_prod %}
+                                                {% break %}
+                                              {% endif %}
+                                              
+                                              {% comment %} Match by content_entity_id (only if not parent property) {% endcomment %}
+                                              {% if use_content_entity_id and matched_content_entity_id != blank %}
+                                                {% if prod_content_id == matched_content_entity_id %}
+                                                  {% assign matched_product = act_prod %}
+                                                  {% break %}
+                                                {% endif %}
+                                                
+                                                {% if prod_pin_id == matched_content_entity_id %}
+                                                  {% assign matched_product = act_prod %}
+                                                  {% break %}
+                                                {% endif %}
+                                              {% endif %}
+                                            {% endfor %}
+                                          {% endif %}
+                                        {% endif %}
+                                        
+                                        <li class="wetu-event-card__included-item {% if matched_product != blank %}wetu-event-card__included-item--linked{% endif %}">
+                                          <svg class="wetu-event-card__included-item-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                            <polyline points="20 6 9 17 4 12"/>
+                                          </svg>
+                                          {% if matched_product != blank %}
+                                            <a href="{{ matched_product.url }}" target="_blank" rel="noopener" class="wetu-event-card__included-item-link wetu-activity-link">
+                                              <span>{{ clean_item }}</span>
+                                              <svg class="wetu-event-card__included-item-external" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                                                <polyline points="15 3 21 3 21 9"/>
+                                                <line x1="10" y1="14" x2="21" y2="3"/>
+                                              </svg>
+                                            </a>
+                                          {% else %}
+                                            <span>{{ clean_item }}</span>
+                                          {% endif %}
+                                        </li>
+                                      {% endif %}
+                                    {% endfor %}
+                                  </ul>
+                                </div>
+                              </article>
+                            {% endif %}
+                                          {% endif %}
+                                        {% endif %}
+                                      {% endif %}
+                                      
+                                      {% comment %} ============================================================
+                                        PROPERTY-LINKED ACTIVITIES
+                                        
+                                        These are activities available at the property that aren't explicitly
+                                        scheduled in the itinerary. They come from the accommodation product's
+                                        wetu.linked_activities metafield (list.product_reference).
+                                        
+                                        Only show on the first day of the stay to avoid repetition.
+                                      ============================================================ {% endcomment %}
+                                      {% if is_arrival_day and property != blank %}
+                                        {% assign property_linked_activities = property.metafields.wetu.linked_activities.value %}
+                                        {% if property_linked_activities.size > 0 %}
+                                          <article class="wetu-event-card wetu-event-card--activity wetu-event-card--property-activities">
+                                            <div class="wetu-event-card__included-content">
+                                              <div class="wetu-event-card__included-header">
+                                                <div class="wetu-event-card__included-icon wetu-event-card__included-icon--activities">
+                                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                                                    <path d="M2 17l10 5 10-5"/>
+                                                    <path d="M2 12l10 5 10-5"/>
+                                                  </svg>
+                                                </div>
+                                                <div class="wetu-event-card__included-title">
+                                                  <span class="wetu-event-card__included-label">Also Available at This Property</span>
+                                                </div>
+                                              </div>
+                                              <ul class="wetu-event-card__included-list wetu-event-card__property-activities-list">
+                                                {% for linked_activity in property_linked_activities %}
+                                                  {% if linked_activity.title != blank %}
+                                                    <li class="wetu-event-card__included-item wetu-event-card__included-item--linked wetu-event-card__property-activity">
+                                                      <svg class="wetu-event-card__included-item-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                        <circle cx="12" cy="12" r="10"/>
+                                                        <path d="M12 8v4l3 3"/>
+                                                      </svg>
+                                                      <a href="{{ linked_activity.url }}" target="_blank" rel="noopener" class="wetu-event-card__included-item-link wetu-activity-link">
+                                                        <span>{{ linked_activity.title }}</span>
+                                                        <svg class="wetu-event-card__included-item-external" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                                                          <polyline points="15 3 21 3 21 9"/>
+                                                          <line x1="10" y1="14" x2="21" y2="3"/>
+                                                        </svg>
+                                                      </a>
+                                                    </li>
+                                                  {% endif %}
+                                                {% endfor %}
+                                              </ul>
+                                            </div>
+                                          </article>
+                                        {% endif %}
+                                      {% endif %}
+                      
+                      {% comment %} ============================================================
+                        "STAYING AT" INDICATOR for intermediate days without activities
+                        Now checks for included_items instead of formal activities
+                      ============================================================ {% endcomment %}
+                      {% unless is_arrival_day %}
+                        {% assign day_has_activities = false %}
+                        {% comment %} Check if there are any included items for this period {% endcomment %}
+                        {% if included_count > 0 %}
+                          {% assign day_has_activities = true %}
+                        {% endif %}
+                        
+                        {% unless day_has_activities %}
+                          {% assign staying_property_name = property.title | default: leg.accommodation_name.value | default: "your accommodation" %}
+                          <div class="wetu-event-card wetu-event-card--staying">
+                            <div class="wetu-event-card__staying-content">
+                              <svg class="wetu-event-card__staying-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                              </svg>
+                              <span class="wetu-event-card__staying-text">Staying at <strong>{{ staying_property_name }}</strong></span>
+                            </div>
+                          </div>
+                        {% endunless %}
+                      {% endunless %}
+                    {% endif %}
+                    
+                    {% comment %} ============================================================
+                      FINAL DEPARTURE DAY - OUTGOING TRANSIT ROUTES
+                      
+                      This only applies to the LAST leg of the itinerary.
+                      For intermediate legs, routes are shown on the ARRIVAL day of
+                      the next property (above in the is_arrival_day section).
+                      
+                      For the final leg, there's no "next arrival" so we show
+                      departure routes here on the actual departure day.
+                    ============================================================ {% endcomment %}
+                    {% if is_departure_day %}
+                      {% assign shown_route_indices = "" %}
+                      
+                      {% for route in routes_array %}
+                        {% assign route_start_id = route.start_content_entity_id.value | append: '' %}
+                        {% assign route_index = forloop.index0 %}
+                        {% assign route_index_str = route_index | append: ',' %}
+                        
+                        {% comment %} Show routes that START from this property {% endcomment %}
+                        {% if route_start_id == content_id %}
+                          {% unless shown_route_indices contains route_index_str %}
+                            {% render 'wetu-journey-event-card',
+                              event_type: 'transit',
+                              route: route,
+                              route_index: route_index,
+                              day_number: this_day,
+                              show_day_header: false,
+                              all_component_products: all_component_products
+                            %}
+                            {% assign shown_route_indices = shown_route_indices | append: route_index_str %}
+                          {% endunless %}
+                        {% endif %}
+                      {% endfor %}
+                    {% endif %}
+                  </div>
+                </div>
+                
+                {% comment %} Mark this day as rendered {% endcomment %}
+                {% assign rendered_days = rendered_days | append: this_day_str %}
+              {% endfor %}
+              
+              {% comment %} Move to next leg {% endcomment %}
+              {% assign leg_start_day = leg_start_day | plus: leg_nights %}
+              {% assign stop_index = stop_index | plus: 1 %}
+            {% endfor %}
+          </div>
+        </div>
+        
+        {% comment %} Mobile drawer handle {% endcomment %}
+        <div class="wetu-fullscreen-map__timeline-handle" data-timeline-handle>
+          <span class="wetu-fullscreen-map__timeline-handle-bar"></span>
+        </div>
+      </aside>
+    {% endif %}
+
+    {% comment %} ================================================================
+      MAP CANVAS
+    ================================================================ {% endcomment %}
+    <div class="wetu-fullscreen-map__map-wrapper">
+      <div 
+        id="wetu-fullscreen-map-canvas"
+        class="wetu-fullscreen-map__canvas"
+        data-markers='{{ markers_data }}'
+        data-routes='{{ routes_data }}'
+        data-activities='{{ activities_data }}'
+        data-destinations='{{ destinations_data }}'
+        data-style-light="{{ section.settings.map_style_light }}"
+        data-style-dark="{{ section.settings.map_style_dark }}"
+        data-animate="{{ section.settings.animate_on_navigation }}"
+        data-show-activities="{{ section.settings.show_activities }}"
+        data-route-color-driving="{{ section.settings.route_color_driving }}"
+        data-route-color-flight="{{ section.settings.route_color_flight }}"
+        data-route-color-transfer="{{ section.settings.route_color_transfer }}"
+        data-mapbox-token="{% if settings.mapbox_access_token != blank %}{{ settings.mapbox_access_token }}{% else %}{{ MAPBOX_ACCESS_TOKEN }}{% endif %}"
+        aria-label="Interactive itinerary journey map"
+        role="application"
+      >
+        <div class="wetu-fullscreen-map__loading">
+          <div class="loading-spinner"></div>
+          <span>Loading your journey map...</span>
+        </div>
+      </div>
+      
+      {% comment %} Map Controls {% endcomment %}
+      <div class="wetu-fullscreen-map__controls">
+        <button 
+          type="button" 
+          class="wetu-fullscreen-map__control" 
+          data-map-fit
+          aria-label="Fit all destinations in view"
+          title="Show all destinations"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+          </svg>
+        </button>
+        
+        <button 
+          type="button" 
+          class="wetu-fullscreen-map__control" 
+          data-map-zoom-in
+          aria-label="Zoom in"
+          title="Zoom in"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="M21 21l-4.35-4.35M11 8v6M8 11h6"/>
+          </svg>
+        </button>
+        
+        <button 
+          type="button" 
+          class="wetu-fullscreen-map__control" 
+          data-map-zoom-out
+          aria-label="Zoom out"
+          title="Zoom out"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="M21 21l-4.35-4.35M8 11h6"/>
+          </svg>
+        </button>
+      </div>
+      
+      {% comment %} Legend {% endcomment %}
+      <div class="wetu-fullscreen-map__legend">
+        <div class="wetu-fullscreen-map__legend-item">
+          <span class="wetu-fullscreen-map__legend-marker"></span>
+          <span class="wetu-fullscreen-map__legend-label">Stay</span>
+        </div>
+        <div class="wetu-fullscreen-map__legend-item">
+          <span class="wetu-fullscreen-map__legend-route wetu-fullscreen-map__legend-route--driving"></span>
+          <span class="wetu-fullscreen-map__legend-label">Drive</span>
+        </div>
+        <div class="wetu-fullscreen-map__legend-item">
+          <span class="wetu-fullscreen-map__legend-route wetu-fullscreen-map__legend-route--flight"></span>
+          <span class="wetu-fullscreen-map__legend-label">Flight</span>
+        </div>
+        {% if section.settings.show_activities %}
+          <div class="wetu-fullscreen-map__legend-item">
+            <span class="wetu-fullscreen-map__legend-activity"></span>
+            <span class="wetu-fullscreen-map__legend-label">Activity</span>
+          </div>
+        {% endif %}
+      </div>
+      
+      {% comment %} Navigation arrows for mobile {% endcomment %}
+      <div class="wetu-fullscreen-map__nav-arrows">
+        <button type="button" class="wetu-fullscreen-map__nav-arrow wetu-fullscreen-map__nav-arrow--prev" data-nav-prev aria-label="Previous stop">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 18l-6-6 6-6"/>
+          </svg>
+        </button>
+        <div class="wetu-fullscreen-map__nav-dots" data-nav-dots>
+          {% for leg in legs_array %}
+            {% assign leg_type = leg.type.value | default: "Standard" %}
+            {% if leg_type != "Departure" %}
+              <button 
+                type="button" 
+                class="wetu-fullscreen-map__nav-dot {% if forloop.first %}active{% endif %}"
+                data-nav-dot="{{ forloop.index0 }}"
+                aria-label="Go to stop {{ forloop.index }}"
+              ></button>
+            {% endif %}
+          {% endfor %}
+        </div>
+        <button type="button" class="wetu-fullscreen-map__nav-arrow wetu-fullscreen-map__nav-arrow--next" data-nav-next aria-label="Next stop">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 18l6-6-6-6"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  {% comment %} Route details panel (slides in when route clicked) {% endcomment %}
+  {% if section.settings.show_route_details %}
+    <div class="wetu-fullscreen-map__route-panel" data-route-panel>
+      <div class="wetu-fullscreen-map__route-panel-header">
+        <h3 class="wetu-fullscreen-map__route-panel-title" data-route-panel-title>Route Details</h3>
+        <button type="button" class="wetu-fullscreen-map__route-panel-close" data-route-panel-close aria-label="Close route details">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div class="wetu-fullscreen-map__route-panel-content" data-route-panel-content>
+        {% comment %} Content injected via JavaScript {% endcomment %}
+      </div>
+    </div>
+  {% endif %}
+</div>
+
+{% comment %} Mapbox GL JS CSS {% endcomment %}
+<link href='https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css' rel='stylesheet' />
+
+{% comment %} Load custom CSS {% endcomment %}
+{{ 'wetu-fullscreen-map.css' | asset_url | stylesheet_tag }}
+
+{% comment %} Load Mapbox GL JS and our custom script {% endcomment %}
+<script src='https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js'></script>
+<script src="{{ 'wetu-fullscreen-map.js' | asset_url }}" defer></script>
+
+{% schema %}
+{
+  "name": "Fullscreen Journey Map",
+  "tag": "section",
+  "class": "section-wetu-fullscreen-map",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Color Schemes"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Light mode color scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme_dark",
+      "label": "Dark mode color scheme",
+      "default": "scheme-5"
+    },
+    {
+      "type": "select",
+      "id": "default_theme",
+      "label": "Default theme",
+      "options": [
+        { "value": "light", "label": "Light" },
+        { "value": "dark", "label": "Dark" },
+        { "value": "system", "label": "System preference" }
+      ],
+      "default": "light"
+    },
+    {
+      "type": "header",
+      "content": "Map Styles"
+    },
+    {
+      "type": "select",
+      "id": "map_style_light",
+      "label": "Default map style (Light theme)",
+      "options": [
+        { "value": "outdoors-v12", "label": "Outdoors" },
+        { "value": "streets-v12", "label": "Streets" },
+        { "value": "light-v11", "label": "Light" },
+        { "value": "satellite-v9", "label": "Satellite" },
+        { "value": "satellite-streets-v12", "label": "Satellite with Streets" },
+        { "value": "navigation-day-v1", "label": "Navigation Day" }
+      ],
+      "default": "outdoors-v12"
+    },
+    {
+      "type": "select",
+      "id": "map_style_dark",
+      "label": "Default map style (Dark theme)",
+      "options": [
+        { "value": "outdoors-v12", "label": "Outdoors" },
+        { "value": "dark-v11", "label": "Dark" },
+        { "value": "navigation-night-v1", "label": "Navigation Night" },
+        { "value": "satellite-v9", "label": "Satellite" },
+        { "value": "satellite-streets-v12", "label": "Satellite with Streets" }
+      ],
+      "default": "outdoors-v12"
+    },
+    {
+      "type": "header",
+      "content": "Header"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_header",
+      "label": "Show header",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_logo",
+      "label": "Show store logo",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_client_name",
+      "label": "Show client name",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_duration",
+      "label": "Show trip duration",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Timeline Panel"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_timeline",
+      "label": "Show timeline panel",
+      "default": true
+    },
+    {
+      "type": "select",
+      "id": "timeline_position",
+      "label": "Timeline position (desktop)",
+      "options": [
+        { "value": "left", "label": "Left" },
+        { "value": "right", "label": "Right" }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "header",
+      "content": "Map Features"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_route_details",
+      "label": "Show route details panel",
+      "default": true,
+      "info": "Slide-in panel with distance, duration, and directions"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_activities",
+      "label": "Show activity markers",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_google_maps_links",
+      "label": "Show Google Maps links",
+      "default": true,
+      "info": "Open directions in Google Maps"
+    },
+    {
+      "type": "checkbox",
+      "id": "animate_on_navigation",
+      "label": "Animate map when navigating",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "auto_fit_bounds",
+      "label": "Auto-fit all markers on load",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Route Colors"
+    },
+    {
+      "type": "color",
+      "id": "route_color_driving",
+      "label": "Driving route color",
+      "default": "#3b82f6"
+    },
+    {
+      "type": "color",
+      "id": "route_color_flight",
+      "label": "Flight route color",
+      "default": "#8b5cf6"
+    },
+    {
+      "type": "color",
+      "id": "route_color_transfer",
+      "label": "Transfer route color",
+      "default": "#10b981"
+    },
+    {
+      "type": "select",
+      "id": "marker_style",
+      "label": "Marker style",
+      "options": [
+        { "value": "numbered", "label": "Numbered (1, 2, 3...)" },
+        { "value": "dots", "label": "Dots" },
+        { "value": "icons", "label": "Category icons" }
+      ],
+      "default": "numbered"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Fullscreen Journey Map"
+    }
+  ]
+}
+{% endschema %}

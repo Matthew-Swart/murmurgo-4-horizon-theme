@@ -1,0 +1,397 @@
+{% comment %}
+  ============================================================================
+  WETU ITINERARY NEW NAVIGATOR
+  ============================================================================
+  
+  Sticky day navigation bar with:
+  - Cover, Overview, Map links
+  - Day pills with dates
+  - Progress indicator
+  - Active day tracking on scroll
+  
+  ============================================================================
+{% endcomment %}
+
+{% include 'wetu-itinerary-data' %}
+
+{%- liquid
+  assign total_days = wetu_total_days | default: 0
+  if total_days < 1
+    assign total_days = wetu_total_nights | plus: 1
+  endif
+  assign start_date = wetu_itinerary.start_date.value
+-%}
+
+<nav
+  class="itin-new-nav color-{{ section.settings.color_scheme }}"
+  id="itinerary-navigator"
+  aria-label="Itinerary navigation"
+  {% if section.settings.sticky %}data-sticky{% endif %}
+>
+  <div class="itin-new-nav__inner">
+    <ul class="itin-new-nav__list" role="list">
+      {% comment %} Cover Link {% endcomment %}
+      <li class="itin-new-nav__item">
+        <a href="#hero" class="itin-new-nav__link itin-new-nav__link--icon" aria-label="Go to cover">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+          <span>Cover</span>
+        </a>
+      </li>
+      
+      {% comment %} Overview Link {% endcomment %}
+      <li class="itin-new-nav__item">
+        <a href="#journey" class="itin-new-nav__link">
+          <span>Overview</span>
+        </a>
+      </li>
+      
+      {% comment %} Map Link {% endcomment %}
+      {% if section.settings.show_map_link %}
+        <li class="itin-new-nav__item">
+          <a href="{{ product.url }}?view=wetu-itinerary-map" class="itin-new-nav__link itin-new-nav__link--external">
+            <span>Map</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+              <polyline points="15 3 21 3 21 9"/>
+              <line x1="10" y1="14" x2="21" y2="3"/>
+            </svg>
+          </a>
+        </li>
+      {% endif %}
+      
+      {% comment %} Separator {% endcomment %}
+      <li class="itin-new-nav__separator" aria-hidden="true"></li>
+      
+      {% comment %} Day Pills {% endcomment %}
+      {% for day_num in (1..total_days) %}
+        {%- liquid
+          # Calculate date for this day
+          assign day_offset = day_num | minus: 1
+          if start_date != blank
+            assign day_date = start_date | date: '%s' | plus: day_offset | times: 86400 | date: '%b %d'
+          else
+            assign day_date = ''
+          endif
+          
+          # Find accommodation for this day
+          assign day_lodge = ''
+          assign running_day = 1
+          for leg in wetu_legs
+            assign leg_nights = leg.nights.value | default: 0 | plus: 0
+            assign leg_end = running_day | plus: leg_nights | minus: 1
+            if day_num >= running_day and day_num <= leg_end
+              assign day_lodge = leg.accommodation_name.value
+              break
+            endif
+            assign running_day = running_day | plus: leg_nights
+          endfor
+        -%}
+        
+        <li class="itin-new-nav__item itin-new-nav__item--day">
+          <a 
+            href="#day-{{ day_num }}" 
+            class="itin-new-nav__day-link"
+            data-day="{{ day_num }}"
+            {% if day_lodge != blank %}title="Day {{ day_num }} at {{ day_lodge }}"{% endif %}
+          >
+            {% if day_date != blank %}
+              <span class="itin-new-nav__day-date">{{ day_date }}</span>
+            {% endif %}
+            <span class="itin-new-nav__day-num">Day {{ day_num }}</span>
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+    
+    {% comment %} Progress Bar {% endcomment %}
+    {% if section.settings.show_progress_bar %}
+      <div class="itin-new-nav__progress" aria-hidden="true">
+        <div class="itin-new-nav__progress-bar" style="width: 0%;"></div>
+      </div>
+    {% endif %}
+  </div>
+</nav>
+
+<style>
+/* ============================================
+   NAVIGATOR STYLES
+   ============================================ */
+
+.itin-new-nav {
+  position: relative;
+  z-index: 100;
+  background: rgb(var(--color-background));
+  border-bottom: 1px solid rgba(var(--color-foreground), 0.1);
+}
+
+.itin-new-nav[data-sticky].is-stuck {
+  position: fixed;
+  top: var(--header-height, 60px);
+  left: 0;
+  right: 0;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.itin-new-nav__inner {
+  position: relative;
+  max-width: var(--page-width, 1400px);
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.itin-new-nav__list {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 12px 0;
+  list-style: none;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.itin-new-nav__list::-webkit-scrollbar {
+  display: none;
+}
+
+.itin-new-nav__item {
+  flex-shrink: 0;
+}
+
+.itin-new-nav__separator {
+  width: 1px;
+  height: 24px;
+  background: rgba(var(--color-foreground), 0.15);
+  margin: 0 8px;
+}
+
+.itin-new-nav__link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgba(var(--color-foreground), 0.7);
+  text-decoration: none;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.itin-new-nav__link:hover {
+  color: rgb(var(--color-foreground));
+  background: rgba(var(--color-foreground), 0.05);
+}
+
+.itin-new-nav__link--icon svg {
+  flex-shrink: 0;
+}
+
+.itin-new-nav__link--external svg {
+  opacity: 0.5;
+}
+
+/* Day Pills */
+.itin-new-nav__day-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 14px;
+  font-size: 0.75rem;
+  color: rgba(var(--color-foreground), 0.6);
+  text-decoration: none;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.itin-new-nav__day-link:hover {
+  color: rgb(var(--color-foreground));
+  background: rgba(var(--color-foreground), 0.05);
+}
+
+.itin-new-nav__day-link.is-active {
+  color: var(--color-background, #1a1a2e);
+  background: var(--color-primary, #d4a574);
+}
+
+.itin-new-nav__day-date {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.itin-new-nav__day-num {
+  font-size: 0.6875rem;
+  opacity: 0.8;
+}
+
+/* Progress Bar */
+.itin-new-nav__progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: rgba(var(--color-foreground), 0.1);
+}
+
+.itin-new-nav__progress-bar {
+  height: 100%;
+  background: var(--color-primary, #d4a574);
+  transition: width 0.3s ease;
+}
+
+/* Mobile */
+@media (max-width: 767px) {
+  .itin-new-nav__link span:not(:first-child) {
+    display: none;
+  }
+  
+  .itin-new-nav__link--icon span {
+    display: none;
+  }
+  
+  .itin-new-nav__day-link {
+    padding: 8px 12px;
+  }
+}
+</style>
+
+<script>
+(function() {
+  'use strict';
+  
+  function initNavigator() {
+    const nav = document.getElementById('itinerary-navigator');
+    if (!nav) return;
+    
+    const isSticky = nav.hasAttribute('data-sticky');
+    const dayLinks = nav.querySelectorAll('.itin-new-nav__day-link');
+    const progressBar = nav.querySelector('.itin-new-nav__progress-bar');
+    
+    // Sticky behavior
+    if (isSticky) {
+      const heroSection = document.getElementById('hero');
+      if (heroSection) {
+        const observer = new IntersectionObserver(function(entries) {
+          entries.forEach(function(entry) {
+            if (entry.isIntersecting) {
+              nav.classList.remove('is-stuck');
+            } else {
+              nav.classList.add('is-stuck');
+            }
+          });
+        }, {
+          threshold: 0,
+          rootMargin: '-' + (parseInt(getComputedStyle(document.documentElement).getPropertyValue('--header-height'), 10) || 60) + 'px 0px 0px 0px'
+        });
+        observer.observe(heroSection);
+      }
+    }
+    
+    // Active day tracking
+    const daySections = document.querySelectorAll('[data-day-section]');
+    if (daySections.length > 0) {
+      const dayObserver = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (entry.isIntersecting) {
+            const dayNum = entry.target.dataset.daySection;
+            
+            // Update active pill
+            dayLinks.forEach(function(link) {
+              link.classList.remove('is-active');
+              if (link.dataset.day === dayNum) {
+                link.classList.add('is-active');
+                // Scroll into view
+                link.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+              }
+            });
+            
+            // Update progress
+            if (progressBar) {
+              const totalDays = daySections.length;
+              const progress = (parseInt(dayNum, 10) / totalDays) * 100;
+              progressBar.style.width = progress + '%';
+            }
+          }
+        });
+      }, {
+        threshold: 0.3,
+        rootMargin: '-30% 0px -50% 0px'
+      });
+      
+      daySections.forEach(function(section) {
+        dayObserver.observe(section);
+      });
+    }
+    
+    // Smooth scroll on click
+    dayLinks.forEach(function(link) {
+      link.addEventListener('click', function(e) {
+        e.preventDefault();
+        const targetId = this.getAttribute('href').substring(1);
+        const target = document.getElementById(targetId);
+        if (target) {
+          const headerHeight = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--header-height'), 10) || 60;
+          const navHeight = nav.offsetHeight;
+          const offset = headerHeight + navHeight + 20;
+          const targetPosition = target.getBoundingClientRect().top + window.pageYOffset - offset;
+          window.scrollTo({ top: targetPosition, behavior: 'smooth' });
+        }
+      });
+    });
+  }
+  
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initNavigator);
+  } else {
+    initNavigator();
+  }
+})();
+</script>
+
+{% schema %}
+{
+  "name": "Itinerary New Navigator",
+  "tag": "section",
+  "class": "section-itin-new-nav",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-5"
+    },
+    {
+      "type": "checkbox",
+      "id": "sticky",
+      "label": "Sticky on scroll",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_progress_bar",
+      "label": "Show progress bar",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_map_link",
+      "label": "Show Map link",
+      "default": true
+    }
+  ],
+  "presets": [
+    {
+      "name": "Itinerary New Navigator"
+    }
+  ]
+}
+{% endschema %}

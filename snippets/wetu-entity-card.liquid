@@ -1,0 +1,582 @@
+{% comment %}
+  ============================================================================
+  WETU ENTITY CARD SNIPPET
+  ============================================================================
+  
+  Renders a single entity (destination, property, or activity) card.
+  Desktop: Content only (image is in sticky panel)
+  Mobile: Image + Content stacked
+  
+  PARAMETERS:
+  - entity_type: 'destination', 'accommodation', or 'activity'
+  - entity_product: The Shopify product for this entity
+  - entity_handle: Product handle for linking
+  - entity_index: Index for scroll tracking
+  - day_start: Starting day number
+  - day_end: Ending day number
+  - extra_data: Additional data (nights for accommodation)
+  - show_day_header: Boolean to show day divider
+  - day_label: "Day X" or "Day X-Y" string
+  - show_thumbnail_strip: Boolean for mobile thumbnails
+  - color_scheme_alt: Alternate color scheme for alternating cards
+  
+  ============================================================================
+{% endcomment %}
+
+{% comment %} Extract data {% endcomment %}
+{% assign nights = extra_data | plus: 0 %}
+{% assign tagline = entity_product.metafields.wetu.tagline.value %}
+{% assign star_rating = entity_product.metafields.wetu.star_rating.value | plus: 0 %}
+{% assign features = entity_product.metafields.wetu.features.value %}
+{% assign position = entity_product.metafields.wetu.position.value %}
+{% assign location_name = position.destination | default: position.region | default: position.area %}
+
+{% comment %} Get highlights based on entity type {% endcomment %}
+{% case entity_type %}
+  {% when 'destination' %}
+    {% assign highlights = features.highlights | default: features.destination_highlights %}
+    {% assign entity_icon = 'destination' %}
+    {% assign entity_label = 'DESTINATION' %}
+    {% assign cta_text = 'Explore' %}
+  {% when 'accommodation' %}
+    {% assign highlights = features.highlights | default: features.property_highlights %}
+    {% assign entity_icon = 'property' %}
+    {% assign entity_label = 'WHERE YOU STAY' %}
+    {% assign cta_text = 'View Property' %}
+  {% when 'activity' %}
+    {% assign highlights = features.highlights | default: features.activity_highlights %}
+    {% assign entity_icon = 'activity' %}
+    {% assign entity_label = 'EXPERIENCE' %}
+    {% assign cta_text = 'Learn More' %}
+{% endcase %}
+
+{% comment %} Determine color scheme for alternating {% endcomment %}
+{% assign card_index_mod = entity_index | modulo: 2 %}
+
+<article 
+  class="wetu-entity wetu-entity--{{ entity_type }}"
+  data-entity-index="{{ entity_index }}"
+  data-entity-type="{{ entity_type }}"
+  data-entity-handle="{{ entity_handle }}"
+>
+  {% comment %} Day Header (Mobile & Desktop) {% endcomment %}
+  {% if show_day_header %}
+    <div class="wetu-entity__day-header">
+      <span class="day-header__badge">{{ day_label }}</span>
+      {% if entity_type == 'destination' and location_name != blank %}
+        <span class="day-header__location">{{ location_name }}</span>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  {% comment %} Mobile Image (Hidden on Desktop) {% endcomment %}
+  <div class="wetu-entity__mobile-image">
+    {% if entity_product != blank and entity_product.featured_image %}
+      <div class="mobile-image__container">
+        <img 
+          src="{{ entity_product.featured_image | image_url: width: 800 }}"
+          srcset="{{ entity_product.featured_image | image_url: width: 400 }} 400w,
+                  {{ entity_product.featured_image | image_url: width: 600 }} 600w,
+                  {{ entity_product.featured_image | image_url: width: 800 }} 800w"
+          sizes="(max-width: 749px) calc(100vw - 32px), 800px"
+          alt="{{ entity_product.featured_image.alt | default: entity_product.title | escape }}"
+          loading="lazy"
+          class="mobile-image__img"
+        >
+        
+        {% comment %} Thumbnail Strip (Mobile) {% endcomment %}
+        {% if show_thumbnail_strip and entity_product.images.size > 1 %}
+          <div class="mobile-image__thumbnails">
+            {% for image in entity_product.images limit: 5 offset: 1 %}
+              <div class="thumbnail-item">
+                <img 
+                  src="{{ image | image_url: width: 60 }}"
+                  alt="{{ image.alt | escape }}"
+                  loading="lazy"
+                >
+              </div>
+            {% endfor %}
+            {% assign remaining = entity_product.images.size | minus: 6 %}
+            {% if remaining > 0 %}
+              <span class="thumbnail-more">+{{ remaining }}</span>
+            {% endif %}
+          </div>
+        {% endif %}
+        
+        {% comment %} Video Button (Mobile) {% endcomment %}
+        {% assign videos = entity_product.metafields.wetu.videos.value %}
+        {% if videos and videos.size > 0 %}
+          <button 
+            type="button" 
+            class="mobile-image__video-btn"
+            data-video-trigger="{{ entity_product.handle }}"
+            aria-label="Watch video"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <polygon points="5 3 19 12 5 21 5 3"/>
+            </svg>
+          </button>
+        {% endif %}
+      </div>
+    {% else %}
+      <div class="mobile-image__placeholder">
+        {% case entity_icon %}
+          {% when 'destination' %}
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <circle cx="12" cy="10" r="3"/>
+              <path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 6.9 8 11.7z"/>
+            </svg>
+          {% when 'property' %}
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M3 21h18"/>
+              <path d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16"/>
+              <path d="M9 21v-4h6v4"/>
+            </svg>
+          {% when 'activity' %}
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+        {% endcase %}
+      </div>
+    {% endif %}
+  </div>
+
+  {% comment %} Content Panel {% endcomment %}
+  <div class="wetu-entity__content">
+    {% comment %} Entity Type Badge {% endcomment %}
+    <div class="wetu-entity__type-badge">
+      {% case entity_icon %}
+        {% when 'destination' %}
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="10" r="3"/>
+            <path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 6.9 8 11.7z"/>
+          </svg>
+        {% when 'property' %}
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 21h18"/>
+            <path d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16"/>
+          </svg>
+        {% when 'activity' %}
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+      {% endcase %}
+      <span>{{ entity_label }}</span>
+    </div>
+
+    {% comment %} Title & Rating {% endcomment %}
+    <div class="wetu-entity__title-row">
+      <h3 class="wetu-entity__title">
+        {{ entity_product.title | default: 'Unknown' }}
+      </h3>
+      
+      {% if entity_type == 'accommodation' and star_rating > 0 %}
+        <div class="wetu-entity__stars" aria-label="{{ star_rating }} star rating">
+          {% for i in (1..5) %}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="{% if i <= star_rating %}currentColor{% else %}none{% endif %}" stroke="currentColor" stroke-width="2">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    {% comment %} Location & Duration Info {% endcomment %}
+    <div class="wetu-entity__meta">
+      {% if location_name != blank %}
+        <span class="meta-item meta-item--location">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="10" r="3"/>
+            <path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 6.9 8 11.7z"/>
+          </svg>
+          {{ location_name }}{% if position.country != blank %}, {{ position.country }}{% endif %}
+        </span>
+      {% endif %}
+      
+      {% if entity_type == 'accommodation' and nights > 0 %}
+        <span class="meta-item meta-item--nights">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+          {{ nights }} {{ nights | pluralize: 'Night', 'Nights' }}
+        </span>
+      {% endif %}
+    </div>
+
+    {% comment %} Tagline {% endcomment %}
+    {% if tagline != blank %}
+      <p class="wetu-entity__tagline">"{{ tagline }}"</p>
+    {% endif %}
+
+    {% comment %} Description {% endcomment %}
+    {% if entity_product.description != blank %}
+      <div class="wetu-entity__description">
+        {{ entity_product.description | strip_html | truncatewords: 40 }}
+      </div>
+    {% endif %}
+
+    {% comment %} Highlights {% endcomment %}
+    {% if highlights and highlights.size > 0 %}
+      <ul class="wetu-entity__highlights">
+        {% for highlight in highlights limit: 4 %}
+          <li>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            {{ highlight }}
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    {% comment %} CTA Button {% endcomment %}
+    {% if entity_product != blank %}
+      <div class="wetu-entity__actions">
+        <a 
+          href="{{ entity_product.url }}" 
+          class="wetu-entity__cta"
+          target="_blank"
+          rel="noopener"
+        >
+          {{ cta_text }} {{ entity_product.title | truncatewords: 3, '' }}
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </a>
+      </div>
+    {% endif %}
+  </div>
+</article>
+
+<style>
+  /* ============================================
+     ENTITY CARD BASE STYLES
+     ============================================ */
+
+  .wetu-entity {
+    position: relative;
+    padding-bottom: 40px;
+    margin-bottom: 40px;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-foreground) 10%, transparent);
+  }
+
+  .wetu-entity:last-of-type:not(.wetu-entity--end) {
+    border-bottom: none;
+    margin-bottom: 0;
+  }
+
+  /* Day Header */
+  .wetu-entity__day-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding-top: 20px;
+  }
+
+  .day-header__badge {
+    display: inline-flex;
+    padding: 6px 14px;
+    background: var(--color-primary);
+    color: var(--color-background);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-radius: 20px;
+  }
+
+  .day-header__location {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: color-mix(in srgb, var(--color-foreground) 70%, transparent);
+  }
+
+  /* Mobile Image */
+  .wetu-entity__mobile-image {
+    margin-bottom: 20px;
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .mobile-image__container {
+    position: relative;
+    aspect-ratio: 16/9;
+    background: color-mix(in srgb, var(--color-foreground) 5%, transparent);
+  }
+
+  .mobile-image__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .mobile-image__placeholder {
+    aspect-ratio: 16/9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--color-foreground) 8%, transparent);
+    border-radius: 16px;
+    color: color-mix(in srgb, var(--color-foreground) 30%, transparent);
+  }
+
+  /* Mobile Thumbnails */
+  .mobile-image__thumbnails {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    display: flex;
+    gap: 2px;
+    align-items: center;
+  }
+
+  .thumbnail-item {
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+    overflow: hidden;
+    border: 2px solid rgba(255,255,255,0.7);
+  }
+
+  .thumbnail-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .thumbnail-more {
+    padding: 4px 8px;
+    background: rgba(0,0,0,0.6);
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 4px;
+    backdrop-filter: blur(4px);
+  }
+
+  /* Mobile Video Button */
+  .mobile-image__video-btn {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.95);
+    color: #1a1a1a;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .mobile-image__video-btn:hover {
+    transform: scale(1.1);
+  }
+
+  /* Content Panel */
+  .wetu-entity__content {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* Type Badge */
+  .wetu-entity__type-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--color-primary);
+  }
+
+  .wetu-entity__type-badge svg {
+    opacity: 0.8;
+  }
+
+  /* Title Row */
+  .wetu-entity__title-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .wetu-entity__title {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--color-foreground);
+  }
+
+  .wetu-entity__stars {
+    display: flex;
+    gap: 2px;
+    color: #f59e0b;
+    flex-shrink: 0;
+  }
+
+  /* Meta Info */
+  .wetu-entity__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    font-size: 0.9rem;
+  }
+
+  .meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: color-mix(in srgb, var(--color-foreground) 70%, transparent);
+  }
+
+  .meta-item svg {
+    flex-shrink: 0;
+    opacity: 0.7;
+  }
+
+  /* Tagline */
+  .wetu-entity__tagline {
+    margin: 8px 0 0;
+    font-size: 1.1rem;
+    font-style: italic;
+    color: color-mix(in srgb, var(--color-foreground) 80%, transparent);
+    line-height: 1.5;
+  }
+
+  /* Description */
+  .wetu-entity__description {
+    margin: 4px 0 0;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: color-mix(in srgb, var(--color-foreground) 70%, transparent);
+  }
+
+  /* Highlights */
+  .wetu-entity__highlights {
+    margin: 12px 0 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 8px;
+  }
+
+  .wetu-entity__highlights li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 0.9rem;
+    color: var(--color-foreground);
+  }
+
+  .wetu-entity__highlights svg {
+    flex-shrink: 0;
+    margin-top: 2px;
+    color: var(--color-primary);
+  }
+
+  /* CTA Button */
+  .wetu-entity__actions {
+    margin-top: 16px;
+  }
+
+  .wetu-entity__cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: var(--color-primary);
+    color: var(--color-background);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+  }
+
+  .wetu-entity__cta:hover {
+    gap: 12px;
+    opacity: 0.9;
+  }
+
+  /* ============================================
+     DESKTOP STYLES
+     ============================================ */
+  
+  @media screen and (min-width: 1024px) {
+    .wetu-entity {
+      padding: 60px 0;
+      margin-bottom: 0;
+      border-bottom: none;
+      min-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    /* Hide mobile image on desktop */
+    .wetu-entity__mobile-image {
+      display: none;
+    }
+
+    .wetu-entity__day-header {
+      margin-bottom: 24px;
+      padding-top: 0;
+    }
+
+    .wetu-entity__title {
+      font-size: 2rem;
+    }
+
+    .wetu-entity__tagline {
+      font-size: 1.2rem;
+    }
+
+    .wetu-entity__highlights {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .wetu-entity__cta {
+      padding: 14px 28px;
+    }
+  }
+
+  @media screen and (min-width: 1200px) {
+    .wetu-entity {
+      padding: 80px 0;
+    }
+
+    .wetu-entity__title {
+      font-size: 2.25rem;
+    }
+  }
+
+  /* ============================================
+     ENTITY TYPE VARIATIONS
+     ============================================ */
+  
+  /* Destination - slightly different styling */
+  .wetu-entity--destination .wetu-entity__type-badge {
+    color: #059669;
+  }
+
+  /* Activity - slightly different styling */
+  .wetu-entity--activity .wetu-entity__type-badge {
+    color: #d97706;
+  }
+
+  /* Activity badge adjustments */
+  .wetu-entity--activity .wetu-entity__highlights li svg {
+    color: #d97706;
+  }
+</style>
+

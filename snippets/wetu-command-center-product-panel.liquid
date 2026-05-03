@@ -1,0 +1,188 @@
+{% liquid
+  assign panel_product = product | default: closest.product
+  assign panel_description = panel_product.description
+  assign panel_landscape_ratio = 1.7777777778
+
+  assign is_property_product = false
+  if panel_product.type == 'wetu-property'
+    assign is_property_product = true
+  endif
+
+  assign linked_property_product = panel_product
+  unless is_property_product
+    assign linked_property_product = panel_product.metafields.wetu.property_product.value
+    if linked_property_product == blank
+      assign linked_property_product = panel_product.metafields.wetu_room.property_product.value
+    endif
+    if linked_property_product == blank
+      assign linked_property_product = panel_product.metafields.wetu_linked_activity.property_product.value
+    endif
+    if linked_property_product == blank
+      assign linked_property_product = panel_product.metafields.wetu_linked_restaurant.property_product.value
+    endif
+    if linked_property_product == blank
+      assign linked_property_product = panel_product.metafields.wetu_linked_spa.property_product.value
+    endif
+    if linked_property_product == blank
+      assign linked_property_product = panel_product.metafields.wetu_activity.property_product.value
+    endif
+    if linked_property_product == blank
+      assign linked_property_product = panel_product.metafields.wetu_restaurant.property_product.value
+    endif
+    if linked_property_product == blank
+      assign linked_property_product = panel_product.metafields.wetu_spa.property_product.value
+    endif
+    if linked_property_product == blank
+      assign linked_property_product = panel_product.metafields.wetu_video.property_product.value
+    endif
+    if linked_property_product == blank
+      assign linked_property_product = panel_product.metafields.wetu_document.property_product.value
+    endif
+  endunless
+
+  assign location_label = ''
+  if linked_property_product != blank
+    assign property_position = linked_property_product.metafields.wetu.position.value
+    assign location_primary = property_position.destination | default: property_position.area | default: property_position.region | default: linked_property_product.metafields.wetu.area.value | default: linked_property_product.metafields.wetu.area | default: linked_property_product.metafields.wetu.region.value | default: linked_property_product.metafields.wetu.region | default: linked_property_product.metafields.wetu.location.value | default: linked_property_product.metafields.wetu.location
+    assign location_country = property_position.country | default: linked_property_product.metafields.wetu.country.value | default: linked_property_product.metafields.wetu.country
+
+    if location_primary != blank and location_country != blank and location_primary != location_country
+      assign location_label = location_primary | append: ', ' | append: location_country
+    else
+      assign location_label = location_primary | default: location_country
+    endif
+  endif
+
+  assign panel_kicker = panel_product.type | default: 'Product'
+  if is_property_product or linked_property_product != blank
+    assign panel_kicker = location_label | default: 'Property location unavailable'
+  endif
+%}
+
+<div
+  class="wetu-command-center-panel{% if is_property_product %} is-property{% endif %}"
+  data-command-center-panel-handle="{{ panel_product.handle | escape }}"
+  style="--gallery-aspect-ratio: 16 / 9;"
+>
+  <div class="wetu-command-center-panel__media-column" aria-label="{{ panel_product.title | escape }} media gallery">
+    {% assign rendered_media_count = 0 %}
+
+    {% for media in panel_product.media %}
+      {% assign media_preview = media.preview_image | default: media %}
+      {% if media_preview != blank %}
+        {% assign media_width = media.width | default: media_preview.width | default: 0 %}
+        {% assign media_height = media.height | default: media_preview.height | default: 0 %}
+        {% assign media_aspect_ratio = media_preview.aspect_ratio | default: 0 %}
+        {% assign media_ratio_value = panel_landscape_ratio %}
+        {% if media_width > 0 and media_height > 0 %}
+          {% assign media_aspect_ratio = media_width | times: 1.0 | divided_by: media_height %}
+        {% endif %}
+        {% if media_aspect_ratio > 0 %}
+          {% assign media_ratio_value = media_aspect_ratio %}
+        {% endif %}
+        {% assign use_landscape_ratio = false %}
+        {% if media_aspect_ratio > 0 and media_aspect_ratio < panel_landscape_ratio %}
+          {% assign use_landscape_ratio = true %}
+        {% endif %}
+        {% assign rendered_media_count = rendered_media_count | plus: 1 %}
+        <figure
+          class="wetu-command-center-panel__media-item{% if use_landscape_ratio %} wetu-command-center-panel__media-item--clamped{% else %} wetu-command-center-panel__media-item--natural{% endif %}"
+          style="--media-native-aspect-ratio: {{ media_ratio_value }};"
+        >
+          <button
+            type="button"
+            class="wetu-command-center-panel__media-trigger"
+            data-command-center-gallery-trigger
+            data-command-center-gallery-handle="{{ panel_product.handle | escape }}"
+            data-command-center-gallery-media-id="{{ media.id }}"
+            data-command-center-gallery-index="{{ forloop.index0 }}"
+            data-command-center-gallery-image-src="{{ media_preview | image_url: width: 1800 | escape }}"
+            aria-label="Open {{ panel_product.title | escape }} gallery image {{ forloop.index }}"
+          >
+            {{
+              media_preview
+              | image_url: width: 1400
+              | image_tag:
+                alt: media.alt | default: panel_product.title,
+                class: 'wetu-command-center-panel__media-image',
+                loading: 'lazy',
+                widths: '420, 620, 820, 1080, 1400',
+                sizes: '(max-width: 900px) 50vw, 25vw'
+            }}
+          </button>
+        </figure>
+      {% endif %}
+    {% endfor %}
+
+    {% if rendered_media_count == 0 and panel_product.featured_image != blank %}
+      {% assign featured_width = panel_product.featured_image.width | default: 0 %}
+      {% assign featured_height = panel_product.featured_image.height | default: 0 %}
+      {% assign featured_aspect_ratio = panel_product.featured_image.aspect_ratio | default: 0 %}
+      {% assign featured_ratio_value = panel_landscape_ratio %}
+      {% if featured_width > 0 and featured_height > 0 %}
+        {% assign featured_aspect_ratio = featured_width | times: 1.0 | divided_by: featured_height %}
+      {% endif %}
+      {% if featured_aspect_ratio > 0 %}
+        {% assign featured_ratio_value = featured_aspect_ratio %}
+      {% endif %}
+      {% assign use_featured_landscape_ratio = false %}
+      {% if featured_aspect_ratio > 0 and featured_aspect_ratio < panel_landscape_ratio %}
+        {% assign use_featured_landscape_ratio = true %}
+      {% endif %}
+      <figure
+        class="wetu-command-center-panel__media-item{% if use_featured_landscape_ratio %} wetu-command-center-panel__media-item--clamped{% else %} wetu-command-center-panel__media-item--natural{% endif %}"
+        style="--media-native-aspect-ratio: {{ featured_ratio_value }};"
+      >
+        <button
+          type="button"
+          class="wetu-command-center-panel__media-trigger"
+          data-command-center-gallery-trigger
+          data-command-center-gallery-handle="{{ panel_product.handle | escape }}"
+          data-command-center-gallery-image-src="{{ panel_product.featured_image | image_url: width: 1800 | escape }}"
+          aria-label="Open {{ panel_product.title | escape }} gallery"
+        >
+          {{
+            panel_product.featured_image
+            | image_url: width: 1400
+            | image_tag:
+              alt: panel_product.featured_image.alt | default: panel_product.title,
+              class: 'wetu-command-center-panel__media-image',
+              loading: 'lazy',
+              widths: '420, 620, 820, 1080, 1400',
+              sizes: '(max-width: 900px) 50vw, 25vw'
+          }}
+        </button>
+      </figure>
+      {% assign rendered_media_count = 1 %}
+    {% endif %}
+
+    {% if rendered_media_count == 0 %}
+      <div class="wetu-command-center-panel__media-empty">
+        <p>No media available for this product.</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="wetu-command-center-panel__details-column">
+    <div class="wetu-command-center-panel__details-inner">
+      <header class="wetu-command-center-panel__header">
+        <p class="wetu-command-center-panel__kicker">{{ panel_kicker }}</p>
+        <h2 class="wetu-command-center-panel__title">{{ panel_product.title }}</h2>
+      </header>
+
+      {% if panel_description != blank %}
+        <div class="wetu-command-center-panel__description rte">
+          {{ panel_description }}
+        </div>
+      {% endif %}
+
+      {% if is_property_product %}
+        <section class="wetu-command-center-panel__property-details" aria-label="Property details">
+          {% render 'wetu-property-headline', product: panel_product %}
+          {% render 'wetu-command-center-property-collections', property_product: panel_product %}
+          {% render 'wetu-property-key-details', product: panel_product %}
+        </section>
+      {% endif %}
+    </div>
+  </div>
+</div>

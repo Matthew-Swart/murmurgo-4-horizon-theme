@@ -1,0 +1,726 @@
+{% comment %}
+  Wetu Itinerary Product Details Section
+  Displays product price, variants, quantity selector, and buy buttons
+  for itinerary products
+{% endcomment %}
+
+{% assign selected_variant = product.selected_or_first_available_variant %}
+
+<section class="itinerary-product-details color-{{ section.settings.color_scheme }}" id="product-details">
+  <div class="product-details__container page-width">
+    {%- if section.settings.show_heading -%}
+      <div class="product-details__header">
+        <h2 class="product-details__title">{{ section.settings.heading | default: 'Book This Trip' }}</h2>
+        {%- if section.settings.show_subtitle -%}
+          <p class="product-details__subtitle">{{ section.settings.subtitle }}</p>
+        {%- endif -%}
+      </div>
+    {%- endif -%}
+
+    <div class="product-details__content">
+      {%- comment -%} Price Display {%- endcomment -%}
+      <div class="product-details__price-wrapper">
+        {%- if product.compare_at_price_max > product.price -%}
+          <div class="product-details__price-group">
+            <span class="product-details__price product-details__price--sale">
+              {{ selected_variant.price | money }}
+            </span>
+            <span class="product-details__compare-price">
+              {{ selected_variant.compare_at_price | money }}
+            </span>
+            {%- if selected_variant.compare_at_price > selected_variant.price -%}
+              <span class="product-details__badge product-details__badge--sale">
+                Sale
+              </span>
+            {%- endif -%}
+          </div>
+        {%- else -%}
+          <span class="product-details__price">
+            {%- if product.price_varies -%}
+              From {{ product.price_min | money }}
+            {%- else -%}
+              {{ selected_variant.price | money }}
+            {%- endif -%}
+          </span>
+        {%- endif -%}
+
+        {%- if section.settings.show_price_per_person -%}
+          <span class="product-details__price-note">{{ section.settings.price_note | default: 'per person' }}</span>
+        {%- endif -%}
+      </div>
+
+      {%- comment -%} Unit Price {%- endcomment -%}
+      {%- if selected_variant.unit_price -%}
+        <div class="product-details__unit-price">
+          {{ selected_variant.unit_price | money }} / {{ selected_variant.unit_price_measurement.reference_value }}{{ selected_variant.unit_price_measurement.reference_unit }}
+        </div>
+      {%- endif -%}
+
+      {%- comment -%} Tax Info {%- endcomment -%}
+      {%- if section.settings.show_tax_info -%}
+        <div class="product-details__tax-note">
+          {%- if cart.taxes_included -%}
+            Tax included.
+          {%- endif -%}
+          {%- if shop.shipping_policy.body != blank -%}
+            <a href="{{ shop.shipping_policy.url }}">Shipping</a> calculated at checkout.
+          {%- endif -%}
+        </div>
+      {%- endif -%}
+
+      {%- comment -%} Product Form {%- endcomment -%}
+      {%- assign product_form_id = 'product-form-' | append: section.id -%}
+      {%- form 'product', product, id: product_form_id, class: 'product-details__form', novalidate: 'novalidate', data-type: 'add-to-cart-form' -%}
+        <input type="hidden" name="id" value="{{ selected_variant.id }}" id="variant-id-{{ section.id }}">
+        
+        {%- comment -%} Variant Selector (if product has multiple variants) {%- endcomment -%}
+        {%- if product.has_only_default_variant == false -%}
+          <div class="product-details__variants">
+            {%- for option in product.options_with_values -%}
+              <div class="product-details__option">
+                <label class="product-details__option-label" for="option-{{ option.name | handleize }}-{{ section.id }}">
+                  {{ option.name }}
+                </label>
+                <select 
+                  class="product-details__option-select"
+                  id="option-{{ option.name | handleize }}-{{ section.id }}"
+                  name="options[{{ option.name }}]"
+                  data-option-index="{{ forloop.index0 }}"
+                >
+                  {%- for value in option.values -%}
+                    <option 
+                      value="{{ value }}"
+                      {% if option.selected_value == value %}selected{% endif %}
+                    >
+                      {{ value }}
+                    </option>
+                  {%- endfor -%}
+                </select>
+              </div>
+            {%- endfor -%}
+          </div>
+        {%- endif -%}
+
+        {%- comment -%} Quantity Selector {%- endcomment -%}
+        {%- if section.settings.show_quantity_selector -%}
+          <div class="product-details__quantity">
+            <label class="product-details__quantity-label" for="quantity-{{ section.id }}">
+              {{ 'products.product.quantity' | t | default: 'Quantity' }}
+            </label>
+            <div class="product-details__quantity-wrapper">
+              <button 
+                type="button" 
+                class="product-details__quantity-btn" 
+                aria-label="Decrease quantity"
+                onclick="this.parentNode.querySelector('input').stepDown(); this.parentNode.querySelector('input').dispatchEvent(new Event('change'));"
+              >
+                <svg width="12" height="2" viewBox="0 0 12 2" fill="none" aria-hidden="true">
+                  <path d="M1 1H11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+              </button>
+              <input 
+                type="number" 
+                id="quantity-{{ section.id }}"
+                name="quantity" 
+                value="1" 
+                min="1"
+                max="{{ selected_variant.inventory_quantity | default: 99 }}"
+                class="product-details__quantity-input"
+                aria-label="Quantity"
+              >
+              <button 
+                type="button" 
+                class="product-details__quantity-btn" 
+                aria-label="Increase quantity"
+                onclick="this.parentNode.querySelector('input').stepUp(); this.parentNode.querySelector('input').dispatchEvent(new Event('change'));"
+              >
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                  <path d="M6 1V11M1 6H11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        {%- endif -%}
+
+        {%- comment -%} Buy Buttons {%- endcomment -%}
+        <div class="product-details__buttons">
+          {%- if selected_variant.available -%}
+            <button 
+              type="submit" 
+              name="add" 
+              class="product-details__add-to-cart button"
+              {% if selected_variant.available == false %}disabled{% endif %}
+            >
+              <span class="product-details__add-to-cart-text">
+                {{ section.settings.add_to_cart_text | default: 'Add to Cart' }}
+              </span>
+              <span class="product-details__add-to-cart-icon" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="9" cy="21" r="1"/>
+                  <circle cx="20" cy="21" r="1"/>
+                  <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+                </svg>
+              </span>
+            </button>
+          {%- else -%}
+            <button 
+              type="button" 
+              class="product-details__add-to-cart button button--disabled"
+              disabled
+            >
+              {{ 'products.product.sold_out' | t | default: 'Sold Out' }}
+            </button>
+          {%- endif -%}
+
+          {%- comment -%} Dynamic Checkout Buttons (Buy Now / Shop Pay) {%- endcomment -%}
+          {%- if section.settings.show_dynamic_checkout -%}
+            <div class="product-details__dynamic-checkout">
+              {{ form | payment_button }}
+            </div>
+          {%- endif -%}
+        </div>
+
+        {%- comment -%} Shop Pay Installments {%- endcomment -%}
+        {%- if section.settings.show_installments -%}
+          <div class="product-details__installments">
+            {{ form | payment_terms }}
+          </div>
+        {%- endif -%}
+      {%- endform -%}
+
+      {%- comment -%} Additional Info {%- endcomment -%}
+      {%- if section.settings.show_additional_info -%}
+        <div class="product-details__additional-info">
+          {%- if section.settings.info_text != blank -%}
+            <p class="product-details__info-text">{{ section.settings.info_text }}</p>
+          {%- endif -%}
+        </div>
+      {%- endif -%}
+    </div>
+  </div>
+</section>
+
+<style>
+/* ====================================
+   Product Details Section
+   ==================================== */
+
+.itinerary-product-details {
+  padding: var(--section-spacing, 60px) 0;
+  background: var(--color-background);
+}
+
+.product-details__container {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.product-details__header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.product-details__title {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: var(--color-foreground);
+  margin: 0 0 8px;
+}
+
+.product-details__subtitle {
+  font-size: 1rem;
+  color: color-mix(in srgb, var(--color-foreground) 70%, transparent);
+  margin: 0;
+}
+
+.product-details__content {
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+/* Price Display */
+.product-details__price-wrapper {
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.product-details__price-group {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.product-details__price {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--color-foreground);
+  line-height: 1.2;
+}
+
+.product-details__price--sale {
+  color: var(--color-primary);
+}
+
+.product-details__compare-price {
+  font-size: 1.25rem;
+  color: color-mix(in srgb, var(--color-foreground) 50%, transparent);
+  text-decoration: line-through;
+}
+
+.product-details__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.product-details__badge--sale {
+  background: var(--color-primary);
+  color: var(--color-background);
+}
+
+.product-details__price-note {
+  display: block;
+  font-size: 0.9rem;
+  color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+  margin-top: 4px;
+}
+
+.product-details__unit-price,
+.product-details__tax-note {
+  font-size: 0.85rem;
+  color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.product-details__tax-note a {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+/* Variants */
+.product-details__variants {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.product-details__option {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.product-details__option-label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--color-foreground);
+}
+
+.product-details__option-select {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-background);
+  color: var(--color-foreground);
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%23333' stroke-width='2'%3E%3Cpath d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  transition: border-color 0.2s ease;
+}
+
+.product-details__option-select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+/* Quantity */
+.product-details__quantity {
+  margin-bottom: 24px;
+}
+
+.product-details__quantity-label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--color-foreground);
+  margin-bottom: 8px;
+}
+
+.product-details__quantity-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+  max-width: 150px;
+  margin: 0 auto;
+}
+
+.product-details__quantity-btn {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--color-foreground);
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.product-details__quantity-btn:hover {
+  background: color-mix(in srgb, var(--color-foreground) 5%, transparent);
+}
+
+.product-details__quantity-input {
+  width: 60px;
+  height: 44px;
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 500;
+  border: none;
+  border-left: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-foreground);
+  -moz-appearance: textfield;
+}
+
+.product-details__quantity-input::-webkit-outer-spin-button,
+.product-details__quantity-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Buttons */
+.product-details__buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.product-details__add-to-cart {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 32px;
+  font-size: 1rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-background);
+  background: var(--color-primary);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.product-details__add-to-cart:hover:not(:disabled) {
+  background: var(--color-primary-hover, color-mix(in srgb, var(--color-primary) 85%, black));
+  transform: translateY(-1px);
+}
+
+.product-details__add-to-cart:disabled,
+.product-details__add-to-cart.button--disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.product-details__add-to-cart-icon {
+  display: flex;
+  align-items: center;
+}
+
+/* Dynamic Checkout */
+.product-details__dynamic-checkout {
+  margin-top: 8px;
+}
+
+.product-details__dynamic-checkout .shopify-payment-button {
+  margin: 0;
+}
+
+.product-details__dynamic-checkout .shopify-payment-button__button {
+  border-radius: 8px;
+  min-height: 52px;
+}
+
+/* Installments */
+.product-details__installments {
+  margin-top: 16px;
+  text-align: center;
+  font-size: 0.85rem;
+  color: color-mix(in srgb, var(--color-foreground) 70%, transparent);
+}
+
+/* Additional Info */
+.product-details__additional-info {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--color-border);
+  text-align: center;
+}
+
+.product-details__info-text {
+  font-size: 0.9rem;
+  color: color-mix(in srgb, var(--color-foreground) 70%, transparent);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .itinerary-product-details {
+    padding: 40px 0;
+  }
+  
+  .product-details__content {
+    padding: 24px;
+    border-radius: 12px;
+  }
+  
+  .product-details__title {
+    font-size: 1.5rem;
+  }
+  
+  .product-details__price {
+    font-size: 1.75rem;
+  }
+}
+</style>
+
+<script>
+(function() {
+  const section = document.querySelector('.itinerary-product-details');
+  if (!section) return;
+
+  // Variant data from Shopify
+  const productData = {{ product | json }};
+  const variants = productData.variants;
+
+  // Get DOM elements
+  const variantIdInput = section.querySelector('[name="id"]');
+  const optionSelects = section.querySelectorAll('.product-details__option-select');
+  const priceWrapper = section.querySelector('.product-details__price-wrapper');
+  const addToCartBtn = section.querySelector('.product-details__add-to-cart');
+
+  // Update variant based on selected options
+  function updateVariant() {
+    const selectedOptions = [];
+    optionSelects.forEach(select => {
+      selectedOptions.push(select.value);
+    });
+
+    // Find matching variant
+    const matchingVariant = variants.find(variant => {
+      return variant.options.every((option, index) => option === selectedOptions[index]);
+    });
+
+    if (matchingVariant) {
+      // Update hidden input
+      variantIdInput.value = matchingVariant.id;
+
+      // Update price display
+      updatePriceDisplay(matchingVariant);
+
+      // Update button state
+      updateButtonState(matchingVariant);
+
+      // Update URL without reload
+      const url = new URL(window.location.href);
+      url.searchParams.set('variant', matchingVariant.id);
+      window.history.replaceState({}, '', url);
+    }
+  }
+
+  // Update price display
+  function updatePriceDisplay(variant) {
+    const priceEl = priceWrapper.querySelector('.product-details__price');
+    if (priceEl) {
+      const formattedPrice = formatMoney(variant.price);
+      priceEl.textContent = formattedPrice;
+    }
+
+    const compareEl = priceWrapper.querySelector('.product-details__compare-price');
+    if (compareEl && variant.compare_at_price) {
+      compareEl.textContent = formatMoney(variant.compare_at_price);
+      compareEl.style.display = variant.compare_at_price > variant.price ? '' : 'none';
+    }
+  }
+
+  // Update button state
+  function updateButtonState(variant) {
+    if (!addToCartBtn) return;
+
+    if (variant.available) {
+      addToCartBtn.disabled = false;
+      addToCartBtn.classList.remove('button--disabled');
+      const textEl = addToCartBtn.querySelector('.product-details__add-to-cart-text');
+      if (textEl) {
+        textEl.textContent = '{{ section.settings.add_to_cart_text | default: "Add to Cart" }}';
+      }
+    } else {
+      addToCartBtn.disabled = true;
+      addToCartBtn.classList.add('button--disabled');
+      const textEl = addToCartBtn.querySelector('.product-details__add-to-cart-text');
+      if (textEl) {
+        textEl.textContent = '{{ "products.product.sold_out" | t | default: "Sold Out" }}';
+      }
+    }
+  }
+
+  // Format money helper
+  function formatMoney(cents) {
+    const amount = cents / 100;
+    return new Intl.NumberFormat('{{ request.locale.iso_code | default: "en-US" }}', {
+      style: 'currency',
+      currency: '{{ shop.currency }}'
+    }).format(amount);
+  }
+
+  // Add event listeners
+  optionSelects.forEach(select => {
+    select.addEventListener('change', updateVariant);
+  });
+})();
+</script>
+
+{% schema %}
+{
+  "name": "Itinerary Product Details",
+  "tag": "section",
+  "class": "section-itinerary-product-details",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "header",
+      "content": "Heading"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_heading",
+      "label": "Show heading",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading text",
+      "default": "Book This Trip"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_subtitle",
+      "label": "Show subtitle",
+      "default": false
+    },
+    {
+      "type": "text",
+      "id": "subtitle",
+      "label": "Subtitle text",
+      "default": "Secure your spot on this incredible journey"
+    },
+    {
+      "type": "header",
+      "content": "Price display"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_price_per_person",
+      "label": "Show price note",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "price_note",
+      "label": "Price note text",
+      "default": "per person"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_tax_info",
+      "label": "Show tax and shipping info",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "Form options"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_quantity_selector",
+      "label": "Show quantity selector",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "add_to_cart_text",
+      "label": "Add to cart button text",
+      "default": "Book Now"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_dynamic_checkout",
+      "label": "Show dynamic checkout buttons",
+      "info": "Display accelerated checkout options like Shop Pay",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_installments",
+      "label": "Show Shop Pay Installments",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Additional information"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_additional_info",
+      "label": "Show additional info",
+      "default": false
+    },
+    {
+      "type": "textarea",
+      "id": "info_text",
+      "label": "Additional info text",
+      "default": "Prices are subject to availability and may change. A deposit is required to secure your booking."
+    }
+  ],
+  "presets": [
+    {
+      "name": "Itinerary Product Details"
+    }
+  ]
+}
+{% endschema %}
+

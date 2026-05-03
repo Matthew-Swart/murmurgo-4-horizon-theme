@@ -1,0 +1,584 @@
+{% comment %}
+  ============================================================================
+  WETU ITINERARY NEW OVERVIEW
+  ============================================================================
+  
+  Journey overview section with:
+  - Stats bar (Days, Lodges, Experiences, Flights)
+  - Visual timeline of stops
+  - Accommodation summary table
+  - Map preview
+  - Trip description
+  
+  ============================================================================
+{% endcomment %}
+
+{% include 'wetu-itinerary-data' %}
+
+{%- liquid
+  assign total_days = wetu_total_days | default: 0
+  assign total_nights = wetu_total_nights | default: 0
+  
+  # Count unique accommodations and build timeline data
+  assign accommodation_count = 0
+  assign seen_accommodations = ''
+  assign timeline_data = ''
+  assign running_day = 1
+  
+  for leg in wetu_legs
+    assign leg_type = leg.type.value | default: 'Standard'
+    assign leg_nights = leg.nights.value | default: 0 | plus: 0
+    assign acc_name = leg.accommodation_name.value
+    assign acc_id = leg.content_entity_id.value
+    assign room_basis = leg.meal_plan.value | default: 'ALL'
+    
+    if leg_type != 'Departure' and leg_nights > 0
+      assign leg_end = running_day | plus: leg_nights | minus: 1
+      
+      unless seen_accommodations contains acc_id
+        assign accommodation_count = accommodation_count | plus: 1
+        assign seen_accommodations = seen_accommodations | append: acc_id | append: ','
+      endunless
+      
+      # Build timeline entry
+      if timeline_data != ''
+        assign timeline_data = timeline_data | append: '|||'
+      endif
+      assign timeline_data = timeline_data | append: acc_name | append: '::' | append: running_day | append: '::' | append: leg_end | append: '::' | append: leg_nights | append: '::' | append: room_basis
+      
+      assign running_day = running_day | plus: leg_nights
+    endif
+  endfor
+  
+  assign timeline_array = timeline_data | split: '|||'
+  
+  # Count flights
+  assign flight_count = 0
+  assign road_route_count = 0
+  for route in wetu_routes
+    assign mode = route.mode.value | default: ''
+    if mode contains 'Flight'
+      assign flight_count = flight_count | plus: 1
+    else
+      assign road_route_count = road_route_count | plus: 1
+    endif
+  endfor
+  
+  # Get description
+  assign summary = wetu_itinerary.summary.value | default: product.description
+-%}
+
+<section 
+  class="itin-new-overview color-{{ section.settings.color_scheme }}" 
+  id="journey"
+  aria-labelledby="overview-heading"
+>
+  <div class="page-width">
+    {% comment %} Header {% endcomment %}
+    <header class="itin-new-overview__header">
+      <h2 id="overview-heading" class="itin-new-overview__title">{{ section.settings.heading }}</h2>
+      <div class="itin-new-overview__duration">
+        <span>{{ total_days }} Days</span>
+        <span>/</span>
+        <span>{{ total_nights }} Nights</span>
+      </div>
+    </header>
+    
+    {% comment %} Description {% endcomment %}
+    {% if summary != blank %}
+      <div class="itin-new-overview__desc">
+        {{ summary | strip_html }}
+      </div>
+    {% endif %}
+    
+    {% comment %} Stats Bar {% endcomment %}
+    {% if section.settings.show_stats %}
+      <ul class="itin-new-overview__stats" role="list" aria-label="Journey statistics">
+        <li class="itin-new-overview__stat">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          <div class="itin-new-overview__stat-content">
+            <span class="itin-new-overview__stat-value">{{ total_days }}</span>
+            <span class="itin-new-overview__stat-label">Days</span>
+          </div>
+        </li>
+        <li class="itin-new-overview__stat">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+          <div class="itin-new-overview__stat-content">
+            <span class="itin-new-overview__stat-value">{{ accommodation_count }}</span>
+            <span class="itin-new-overview__stat-label">Lodges</span>
+          </div>
+        </li>
+        <li class="itin-new-overview__stat">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 16v-4"/>
+            <path d="M12 8h.01"/>
+          </svg>
+          <div class="itin-new-overview__stat-content">
+            <span class="itin-new-overview__stat-value">3+</span>
+            <span class="itin-new-overview__stat-label">Experiences</span>
+          </div>
+        </li>
+        {% if flight_count > 0 %}
+          <li class="itin-new-overview__stat">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M22 2L11 13"/>
+              <path d="M22 2l-7 20-4-9-9-4 20-7z"/>
+            </svg>
+            <div class="itin-new-overview__stat-content">
+              <span class="itin-new-overview__stat-value">{{ flight_count }}</span>
+              <span class="itin-new-overview__stat-label">Flights</span>
+            </div>
+          </li>
+        {% endif %}
+      </ul>
+    {% endif %}
+    
+    {% comment %} Timeline {% endcomment %}
+    {% if section.settings.show_timeline and timeline_array.size > 0 %}
+      <div class="itin-new-overview__timeline">
+        <h3 class="itin-new-overview__section-title">Journey Stops</h3>
+        <div class="itin-new-overview__timeline-track">
+          {% for item in timeline_array %}
+            {% assign parts = item | split: '::' %}
+            {% assign acc_name = parts[0] %}
+            {% assign start_day = parts[1] %}
+            {% assign end_day = parts[2] %}
+            {% assign nights = parts[3] %}
+            
+            <a href="#leg-{{ forloop.index }}" class="itin-new-overview__stop">
+              <div class="itin-new-overview__stop-marker">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <circle cx="12" cy="12" r="6"/>
+                </svg>
+                <span class="itin-new-overview__stop-days">Day {{ start_day }}-{{ end_day }}</span>
+              </div>
+              <div class="itin-new-overview__stop-info">
+                <span class="itin-new-overview__stop-name">{{ acc_name }}</span>
+                <span class="itin-new-overview__stop-nights">{{ nights }} Night{% if nights != '1' %}s{% endif %}</span>
+              </div>
+            </a>
+            
+            {% unless forloop.last %}
+              <div class="itin-new-overview__connector" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                  <polyline points="12 5 19 12 12 19"/>
+                </svg>
+              </div>
+            {% endunless %}
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+    
+    {% comment %} Accommodation Table {% endcomment %}
+    {% if section.settings.show_accommodation_table and timeline_array.size > 0 %}
+      <div class="itin-new-overview__table-wrapper">
+        <h3 class="itin-new-overview__section-title">Accommodation Summary</h3>
+        <table class="itin-new-overview__table">
+          <thead>
+            <tr>
+              <th>Stay</th>
+              <th>Date</th>
+              <th>Nights</th>
+              <th>Basis</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in timeline_array %}
+              {% assign parts = item | split: '::' %}
+              {% assign acc_name = parts[0] %}
+              {% assign start_day = parts[1] %}
+              {% assign end_day = parts[2] %}
+              {% assign nights = parts[3] %}
+              {% assign basis = parts[4] | default: 'ALL' %}
+              
+              <tr>
+                <td>
+                  <span class="itin-new-overview__table-name">{{ acc_name }}</span>
+                </td>
+                <td>Day {{ start_day }} - {{ end_day }}</td>
+                <td>{{ nights }}</td>
+                <td>
+                  <span class="itin-new-overview__basis" title="{{ basis }}">{{ basis | truncate: 3, '' }}</span>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        
+        <div class="itin-new-overview__legend">
+          <span class="itin-new-overview__legend-title">Meal Plan Key:</span>
+          <span><strong>B&B</strong> Bed & Breakfast</span>
+          <span><strong>FB</strong> Full Board</span>
+          <span><strong>FB+</strong> Full Board Plus</span>
+          <span><strong>FI</strong> Fully Inclusive</span>
+          <span><strong>HB</strong> Half Board</span>
+          <span><strong>DBB</strong> Dinner, Bed & Breakfast</span>
+        </div>
+      </div>
+    {% endif %}
+    
+    {% comment %} Map Preview {% endcomment %}
+    {% if section.settings.show_map_preview %}
+      <div class="itin-new-overview__map">
+        <a href="{{ product.url }}?view=wetu-itinerary-map" class="itin-new-overview__map-link">
+          {% if product.featured_image %}
+            <img 
+              src="{{ product.featured_image | image_url: width: 800 }}"
+              alt="Route map for {{ product.title }}"
+              class="itin-new-overview__map-img"
+              loading="lazy"
+            >
+          {% endif %}
+          <div class="itin-new-overview__map-overlay">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
+              <line x1="8" y1="2" x2="8" y2="18"/>
+              <line x1="16" y1="6" x2="16" y2="22"/>
+            </svg>
+            <span>View Interactive Map</span>
+          </div>
+        </a>
+      </div>
+    {% endif %}
+    
+  </div>
+</section>
+
+<style>
+/* ============================================
+   OVERVIEW STYLES
+   ============================================ */
+
+.itin-new-overview {
+  padding: 60px 0;
+}
+
+.itin-new-overview__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.itin-new-overview__title {
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-weight: 700;
+  margin: 0;
+}
+
+.itin-new-overview__duration {
+  display: flex;
+  gap: 8px;
+  font-size: 0.9375rem;
+  color: rgba(var(--color-foreground), 0.6);
+}
+
+.itin-new-overview__desc {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: rgba(var(--color-foreground), 0.8);
+  margin-bottom: 32px;
+  max-width: 800px;
+}
+
+/* Stats */
+.itin-new-overview__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  padding: 24px;
+  margin: 0 0 40px;
+  list-style: none;
+  background: rgba(var(--color-foreground), 0.03);
+  border-radius: 12px;
+}
+
+.itin-new-overview__stat {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: rgba(var(--color-foreground), 0.7);
+}
+
+.itin-new-overview__stat-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.itin-new-overview__stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: rgb(var(--color-foreground));
+  line-height: 1;
+}
+
+.itin-new-overview__stat-label {
+  font-size: 0.75rem;
+  color: rgba(var(--color-foreground), 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Section titles */
+.itin-new-overview__section-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0 0 20px;
+}
+
+/* Timeline */
+.itin-new-overview__timeline {
+  margin-bottom: 40px;
+}
+
+.itin-new-overview__timeline-track {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.itin-new-overview__stop {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  background: rgba(var(--color-foreground), 0.03);
+  border: 1px solid rgba(var(--color-foreground), 0.08);
+  border-radius: 12px;
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.2s ease;
+  min-width: 160px;
+}
+
+.itin-new-overview__stop:hover {
+  background: rgba(var(--color-foreground), 0.06);
+  border-color: var(--color-primary, #d4a574);
+}
+
+.itin-new-overview__stop-marker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-primary, #d4a574);
+}
+
+.itin-new-overview__stop-days {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.itin-new-overview__stop-name {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.itin-new-overview__stop-nights {
+  font-size: 0.8125rem;
+  color: rgba(var(--color-foreground), 0.6);
+}
+
+.itin-new-overview__connector {
+  display: flex;
+  align-items: center;
+  padding: 16px 8px;
+  color: rgba(var(--color-foreground), 0.3);
+}
+
+/* Table */
+.itin-new-overview__table-wrapper {
+  margin-bottom: 40px;
+}
+
+.itin-new-overview__table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 16px;
+}
+
+.itin-new-overview__table th,
+.itin-new-overview__table td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid rgba(var(--color-foreground), 0.1);
+}
+
+.itin-new-overview__table th {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgba(var(--color-foreground), 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.itin-new-overview__table td {
+  font-size: 0.9375rem;
+}
+
+.itin-new-overview__table-name {
+  font-weight: 500;
+}
+
+.itin-new-overview__basis {
+  display: inline-block;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: rgba(var(--color-foreground), 0.05);
+  border-radius: 4px;
+}
+
+.itin-new-overview__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 0.75rem;
+  color: rgba(var(--color-foreground), 0.6);
+}
+
+.itin-new-overview__legend-title {
+  font-weight: 600;
+  color: rgba(var(--color-foreground), 0.8);
+}
+
+.itin-new-overview__legend strong {
+  color: rgb(var(--color-foreground));
+  margin-right: 4px;
+}
+
+/* Map */
+.itin-new-overview__map {
+  margin-bottom: 40px;
+}
+
+.itin-new-overview__map-link {
+  position: relative;
+  display: block;
+  aspect-ratio: 21/9;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.itin-new-overview__map-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.itin-new-overview__map-link:hover .itin-new-overview__map-img {
+  transform: scale(1.02);
+}
+
+.itin-new-overview__map-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(0,0,0,0.4);
+  color: #fff;
+  font-weight: 500;
+  transition: background 0.2s ease;
+}
+
+.itin-new-overview__map-link:hover .itin-new-overview__map-overlay {
+  background: rgba(0,0,0,0.5);
+}
+
+/* Mobile */
+@media (max-width: 767px) {
+  .itin-new-overview {
+    padding: 40px 0;
+  }
+  
+  .itin-new-overview__stats {
+    gap: 16px;
+  }
+  
+  .itin-new-overview__timeline-track {
+    flex-direction: column;
+  }
+  
+  .itin-new-overview__stop {
+    width: 100%;
+  }
+  
+  .itin-new-overview__connector {
+    padding: 8px 0;
+    transform: rotate(90deg);
+  }
+  
+  .itin-new-overview__table {
+    display: block;
+    overflow-x: auto;
+  }
+}
+</style>
+
+{% schema %}
+{
+  "name": "Itinerary New Overview",
+  "tag": "section",
+  "class": "section-itin-new-overview",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-5"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Your Journey"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_stats",
+      "label": "Show stats bar",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_timeline",
+      "label": "Show journey timeline",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_accommodation_table",
+      "label": "Show accommodation table",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_map_preview",
+      "label": "Show map preview",
+      "default": true
+    }
+  ],
+  "presets": [
+    {
+      "name": "Itinerary New Overview"
+    }
+  ]
+}
+{% endschema %}

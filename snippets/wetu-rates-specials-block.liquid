@@ -1,0 +1,1971 @@
+{% comment %}
+  Snippet: wetu-rates-specials-block
+  Unified Rates & Specials (and Documents) display for Wetu products.
+  - Redesigned: Room types first, aggregate graph after
+  - Future-only rates filtering
+  - Per-person/single occupancy dropdown grouped with rate statement
+  - Individual room graphs in accordions
+{% endcomment %}
+
+{% liquid
+  assign ctx_product = product
+  if ctx_product == blank and page
+    assign ctx_product = page.metafields.wetu_page.source_property.value
+  endif
+
+  assign is_property = false
+  assign is_room = false
+  if ctx_product and ctx_product.type == 'wetu-property'
+    assign is_property = true
+  elsif ctx_product and ctx_product.type == 'wetu-accommodation'
+    assign is_room = true
+  endif
+
+  assign property_min_rate = ctx_product.metafields.wetu.min_base_rate | default: ctx_product.metafields.wetu_property.min_base_rate
+  assign property_max_rate = ctx_product.metafields.wetu_property.max_base_rate | default: ctx_product.metafields.wetu.max_rate
+  assign currency = ctx_product.metafields.wetu_property.min_base_rate_currency | default: ctx_product.metafields.wetu.min_base_rate_currency | default: ctx_product.metafields.wetu_room.currency | default: 'USD'
+
+  assign linked_rooms = ctx_product.metafields.wetu.linked_rooms.value
+  assign room_rate_tiers = ctx_product.metafields.wetu_room.aggregated_rate_tiers.value
+
+  assign specials_json = ctx_product.metafields.wetu.special_offers
+  assign specials = nil
+  if specials_json and specials_json.value and specials_json.value != blank
+    assign specials = specials_json.value
+  endif
+
+  assign should_check_parent = false
+  if is_room
+    if specials == nil or specials.size == 0
+      assign should_check_parent = true
+    endif
+  endif
+
+  if should_check_parent
+    assign parent_property = ctx_product.metafields.wetu_room.property_product.value
+    if parent_property and parent_property.metafields.wetu.special_offers and parent_property.metafields.wetu.special_offers.value
+      assign specials = parent_property.metafields.wetu.special_offers.value
+    endif
+  endif
+
+  assign has_specials = false
+  if specials and specials.size > 0
+    assign has_specials = true
+  endif
+
+  assign docs = ctx_product.metafields.wetu.documents.value
+  
+  comment Pre-check if any room has detailed rate tiers (used for conditional UI throughout)
+  endcomment
+  assign any_room_has_tiers = false
+  for room in linked_rooms
+    assign check_tiers = room.metafields.wetu_room.aggregated_rate_tiers.value
+    if check_tiers and check_tiers.size > 0
+      assign any_room_has_tiers = true
+      break
+    endif
+  endfor
+%}
+
+{%- comment -%} Calculate actual min/max from room rate tiers by occupancy type {%- endcomment -%}
+{%- liquid
+  assign calc_pps_min = 999999999
+  assign calc_pps_max = 0
+  assign calc_single_min = 999999999
+  assign calc_single_max = 0
+  assign has_pps_rates = false
+  assign has_single_rates = false
+  
+  for room in linked_rooms
+    assign room_tiers = room.metafields.wetu_room.aggregated_rate_tiers.value
+    if room_tiers
+      for tier in room_tiers
+        assign tier_amt = tier.rate_amount.value | plus: 0
+        assign tier_type = tier.rate_type.value
+        if tier_amt > 0
+          if tier_type == 'per_person_sharing'
+            assign has_pps_rates = true
+            if tier_amt < calc_pps_min
+              assign calc_pps_min = tier_amt
+            endif
+            if tier_amt > calc_pps_max
+              assign calc_pps_max = tier_amt
+            endif
+          elsif tier_type == 'single'
+            assign has_single_rates = true
+            if tier_amt < calc_single_min
+              assign calc_single_min = tier_amt
+            endif
+            if tier_amt > calc_single_max
+              assign calc_single_max = tier_amt
+            endif
+          endif
+        endif
+      endfor
+    endif
+  endfor
+  
+  comment Use calculated PPS values for initial display, fallback to single rates, then property metafields
+  endcomment
+  if has_pps_rates
+    assign display_min_rate = calc_pps_min
+    assign display_max_rate = calc_pps_max
+  elsif has_single_rates
+    assign display_min_rate = calc_single_min
+    assign display_max_rate = calc_single_max
+  else
+    assign display_min_rate = property_min_rate | plus: 0
+    assign display_max_rate = property_max_rate | plus: 0
+  endif
+  
+  comment Fallback single rates if none found
+  endcomment
+  if has_single_rates == false
+    assign calc_single_min = display_min_rate
+    assign calc_single_max = display_max_rate
+  endif
+  
+  comment If no PPS rates exist, also set calc_pps values from single or property rates for JS
+  endcomment
+  if has_pps_rates == false
+    assign calc_pps_min = display_min_rate
+    assign calc_pps_max = display_max_rate
+  endif
+-%}
+
+<div class="horizon-rates" id="rates" data-today-date="{{ 'now' | date: '%Y-%m-%d' }}">
+  <div class="horizon-rates__header color-scheme-1">
+    <h2 class="horizon-rates__title">Rates</h2>
+    {%- assign display_min_rate_num = display_min_rate | plus: 0 -%}
+    {%- comment -%} Only show price if it's a valid rate (not the 999999999 sentinel value) {%- endcomment -%}
+    {% if is_property and display_min_rate_num > 0 and display_min_rate_num < 999999999 %}
+      <div class="horizon-rates__range-row">
+        {%- comment -%} Sanitize sentinel values in data attributes {%- endcomment -%}
+        {%- assign safe_pps_min = calc_pps_min -%}
+        {%- assign safe_single_min = calc_single_min -%}
+        {%- if calc_pps_min >= 999999999 -%}{%- assign safe_pps_min = 0 -%}{%- endif -%}
+        {%- if calc_single_min >= 999999999 -%}{%- assign safe_single_min = 0 -%}{%- endif -%}
+        <div class="horizon-rates__range" 
+             data-pps-min="{{ safe_pps_min }}" 
+             data-pps-max="{{ calc_pps_max }}" 
+             data-single-min="{{ safe_single_min }}" 
+             data-single-max="{{ calc_single_max }}"
+             data-currency="{{ currency }}">
+          <span class="horizon-rates__label">From</span>
+          <span class="horizon-rates__amount horizon-rates__amount--min">{{ currency }} {{ display_min_rate | round: 0 }}</span>
+          {%- assign display_max_rate_num = display_max_rate | plus: 0 -%}
+          {% if display_max_rate_num > 0 and display_max_rate_num != display_min_rate_num %}
+            <span class="horizon-rates__sep">—</span>
+            <span class="horizon-rates__label">To</span>
+            <span class="horizon-rates__amount horizon-rates__amount--max">{{ currency }} {{ display_max_rate | round: 0 }}</span>
+          {% endif %}
+          <span class="horizon-rates__per">per night</span>
+          
+          {%- comment -%} Only show occupancy dropdown when there are seasonal rates {%- endcomment -%}
+          {%- if any_room_has_tiers -%}
+          <!-- Occupancy Dropdown styled as inline button -->
+          <div class="occupancy-dropdown-btn">
+            <select class="occupancy-select-btn" data-occupancy-selector aria-label="Rate basis">
+              <option value="per_person_sharing" selected>Per Person Sharing</option>
+              <option value="single">Single Occupancy</option>
+            </select>
+            <svg class="occupancy-dropdown-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+          </div>
+          {%- endif -%}
+        </div>
+      </div>
+      {%- if any_room_has_tiers -%}
+      <div class="horizon-rates__qualifier">
+        <small>Rates vary by season and occupancy.</small>
+      </div>
+      {%- endif -%}
+    {% endif %}
+  </div>
+
+  <div class="horizon-rates-layout">
+    <div class="horizon-rates-main color-scheme-1">
+      {% if is_property %}
+        
+        {%- if any_room_has_tiers -%}
+          <div class="horizon-rates__intro">
+            Comprehensive seasonal rates for all accommodation options. Expand each section to view detailed pricing, inclusions, and terms.
+          </div>
+        {%- else -%}
+          <div class="horizon-rates__intro">
+            All rates are subject to availability and may change without notice. Seasonal rates, special offers, and package deals may apply. Please contact us for the most current pricing and availability.
+          </div>
+        {%- endif -%}
+
+        <!-- ROOM TYPES FIRST -->
+        <div class="horizon-accordions">
+          {% for room in linked_rooms %}
+            {% liquid
+              assign r_base = room.metafields.wetu_room.base_rate | plus: 0
+              assign r_tiers = room.metafields.wetu_room.aggregated_rate_tiers.value
+              assign r_curr = room.metafields.wetu_room.currency | default: currency
+              
+              comment
+                Count VALID tiers - must have positive amount and valid dates
+                This fixes the bug where rooms show accordion but have no displayable rates
+              endcomment
+              assign valid_tier_count = 0
+              assign valid_pps_count = 0
+              assign valid_single_count = 0
+              assign today_iso = 'now' | date: '%Y-%m-%d'
+              
+              if r_tiers and r_tiers.size > 0
+                for tier in r_tiers
+                  assign tier_amt = tier.rate_amount.value | plus: 0
+                  assign tier_end = tier.end_date.value
+                  assign tier_type = tier.rate_type.value
+                  
+                  comment Only count tiers with positive amounts and future end dates
+                  endcomment
+                  if tier_amt > 0 and tier_end >= today_iso
+                    assign valid_tier_count = valid_tier_count | plus: 1
+                    if tier_type == 'per_person_sharing'
+                      assign valid_pps_count = valid_pps_count | plus: 1
+                    elsif tier_type == 'single'
+                      assign valid_single_count = valid_single_count | plus: 1
+                    endif
+                  endif
+                endfor
+              endif
+              
+              comment
+                has_tier now means room has VALID displayable seasonal tiers
+                If no valid tiers but has base_rate, show as link card with right chevron
+              endcomment
+              assign has_tier = false
+              if valid_tier_count > 0
+                assign has_tier = true
+              endif
+              
+              comment Check if room has ANY useful rate data
+              endcomment
+              assign room_has_any_rate_data = false
+              if has_tier
+                assign room_has_any_rate_data = true
+              elsif r_base > 0
+                assign room_has_any_rate_data = true
+              endif
+
+              assign r_sorted_tiers = r_tiers | sort: 'start_date.value'
+              
+              comment
+                Deduplication Logic
+              endcomment
+              assign common_included = nil
+              assign common_conditions = nil
+              
+              if has_tier
+                assign all_includes = r_sorted_tiers | map: 'rate_included.value' | uniq
+                if all_includes.size == 1
+                  assign common_included = all_includes.first
+                endif
+                
+                assign all_conditions = r_sorted_tiers | map: 'rate_conditions.value' | uniq
+                if all_conditions.size == 1
+                  assign common_conditions = all_conditions.first
+                endif
+              endif
+            %}
+            
+            {% comment %} Build rate data for this room's individual graph {% endcomment %}
+            {% liquid
+              assign room_rate_data = ''
+              assign room_min_price = nil
+              assign room_min_pps = nil
+              assign room_min_single = nil
+              
+              if has_tier
+                for tier in r_tiers
+                  assign tier_amt = tier.rate_amount.value | plus: 0
+                  assign tier_start = tier.start_date.value
+                  assign tier_end = tier.end_date.value
+                  assign tier_type = tier.rate_type.value
+                  
+                  if tier_amt and tier_amt > 0
+                    assign room_rate_data = room_rate_data | append: tier_start | append: '|' | append: tier_end | append: '|' | append: tier_amt | append: '|' | append: tier_type | append: '||'
+                    
+                    if tier_type == 'per_person_sharing'
+                      if room_min_pps == nil or tier_amt < room_min_pps
+                        assign room_min_pps = tier_amt
+                      endif
+                    elsif tier_type == 'single'
+                      if room_min_single == nil or tier_amt < room_min_single
+                        assign room_min_single = tier_amt
+                      endif
+                    endif
+                    
+                    if room_min_price == nil or tier_amt < room_min_price
+                      assign room_min_price = tier_amt
+                    endif
+                  endif
+                endfor
+              endif
+              if room_min_price == nil and r_base and r_base > 0
+                assign room_min_price = r_base | plus: 0
+              endif
+              
+              comment Use PPS as default display
+              endcomment
+              if room_min_pps
+                assign display_min_price = room_min_pps
+              else
+                assign display_min_price = room_min_price
+              endif
+            %}
+            
+            {% if room_has_any_rate_data %}
+            {%- assign display_min_num = display_min_price | plus: 0 -%}
+            
+            {%- comment -%} CASE 1: Room has seasonal rate tiers - show as accordion {%- endcomment -%}
+            {%- if has_tier -%}
+            <details class="room-accordion" data-room-id="{{ room.id }}" data-min-pps="{{ room_min_pps | default: 0 }}" data-min-single="{{ room_min_single | default: 0 }}">
+              <summary class="room-accordion__summary">
+                {% if room.featured_image %}
+                  <div class="room-accordion__media">
+                    <img src="{{ room.featured_image | image_url: width: 800 }}" alt="{{ room.title | escape }}" width="{{ room.featured_image.width }}" height="{{ room.featured_image.height }}" loading="lazy">
+                  </div>
+                {% endif %}
+                <div class="room-accordion__header-content">
+                  <div class="room-accordion__title">{{ room.title }}</div>
+                  {%- if display_min_num > 0 -%}
+                    <div class="room-accordion__price-preview">
+                      <span class="muted">From</span>
+                      <span class="amount" data-lowest-rate="{{ display_min_price | round: 0 }}" data-currency="{{ r_curr }}">
+                        {{ r_curr }} {{ display_min_price | round: 0 }}
+                      </span>
+                      <span class="per">per night</span>
+                      <span class="occupancy-label" data-pps-label="per person sharing" data-single-label="single occupancy">per person sharing</span>
+                    </div>
+                  {%- endif -%}
+                </div>
+                <div class="room-accordion__icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                </div>
+              </summary>
+            
+            {%- comment -%} CASE 2: Room has only base_rate (no tiers) - show as simple link card {%- endcomment -%}
+            {%- else -%}
+            <a href="{{ room.url }}" class="room-card-link">
+              <div class="room-card">
+                {% if room.featured_image %}
+                  <div class="room-card__media">
+                    <img src="{{ room.featured_image | image_url: width: 800 }}" alt="{{ room.title | escape }}" width="{{ room.featured_image.width }}" height="{{ room.featured_image.height }}" loading="lazy">
+                  </div>
+                {% endif %}
+                <div class="room-card__content">
+                  <div class="room-card__title">{{ room.title }}</div>
+                  {%- if display_min_num > 0 -%}
+                    <div class="room-card__price">
+                      <span class="muted">From</span>
+                      <span class="amount">{{ r_curr }} {{ display_min_price | round: 0 }}</span>
+                      <span class="per">per night</span>
+                    </div>
+                  {%- endif -%}
+                </div>
+                <div class="room-card__arrow">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                </div>
+              </div>
+            </a>
+            {%- endif -%}
+            
+            {%- comment -%} Accordion content (only when has_tier) {%- endcomment -%}
+            {%- if has_tier -%}
+              <div class="room-accordion__content">
+                  {% comment %} INDIVIDUAL ROOM SEASONAL GRAPH {% endcomment %}
+                  <div class="room-graph-container" data-room-rates="{{ room_rate_data | escape }}" data-currency="{{ r_curr }}" data-room-name="{{ room.title | escape }}" data-room-url="{{ room.url }}">
+                    <div class="room-graph__header">
+                      <h4 class="room-graph__title">Seasonal Price Trend — Next 18 Months</h4>
+                      <div class="room-graph__legend">
+                        <span class="legend-line"></span>
+                        <a href="{{ room.url }}" class="legend-room-link">{{ room.title }}</a>
+                      </div>
+                    </div>
+                    <div class="room-graph__visual">
+                      <div class="room-graph__y-axis"></div>
+                      <div class="room-graph__canvas">
+                        <svg viewBox="0 0 1600 225" preserveAspectRatio="none">
+                          <g class="room-grid">
+                            <line x1="0" y1="45" x2="1600" y2="45" />
+                            <line x1="0" y1="90" x2="1600" y2="90" />
+                            <line x1="0" y1="135" x2="1600" y2="135" />
+                            <line x1="0" y1="180" x2="1600" y2="180" />
+                          </g>
+                          <polyline class="room-line" points="" />
+                        </svg>
+                      </div>
+                    </div>
+                    <div class="room-graph__x-axis"></div>
+                  </div>
+
+                  {% comment %} COMMON CONTENT {% endcomment %}
+                  {% if common_included %}
+                    <div class="room-common-block">
+                      <div class="room-common-title">Included in all rates</div>
+                      <div class="room-common-text">{{ common_included | newline_to_br }}</div>
+                    </div>
+                  {% endif %}
+                  {% if common_conditions %}
+                    <details class="room-common-block">
+                      <summary class="room-common-title">General Terms & Conditions</summary>
+                      <div class="room-common-text">{{ common_conditions | newline_to_br }}</div>
+                    </details>
+                  {% endif %}
+
+                  <div class="horizon-list horizon-list--tiers">
+                    {% for tier in r_sorted_tiers %}
+                      {% liquid
+                        assign t_type = tier.rate_type.value
+                        assign t_amt = tier.rate_amount.value
+                        assign t_curr = tier.currency.value | default: r_curr
+                        assign t_label = tier.seasonal_label.value | default: 'Standard Rate'
+                        assign t_start = tier.start_date.value
+                        assign t_end = tier.end_date.value
+                        assign t_included = tier.rate_included.value
+                        assign t_conditions = tier.rate_conditions.value
+                        
+                        assign show_included = true
+                        if common_included and t_included == common_included
+                          assign show_included = false
+                        endif
+                        
+                        assign show_conditions = true
+                        if common_conditions and t_conditions == common_conditions
+                          assign show_conditions = false
+                        endif
+                      %}
+                      <div class="tier" data-start="{{ t_start }}" data-end="{{ t_end }}" data-type="{{ t_type }}">
+                        <div class="tier__row">
+                          <div class="tier__left">
+                            <div class="tier__name">{{ t_label }}</div>
+                            {% if t_start and t_end %}
+                              <div class="tier__dates">{{ t_start | date: '%b %d, %Y' }} – {{ t_end | date: '%b %d, %Y' }}</div>
+                            {% endif %}
+                          </div>
+                          <div class="tier__right">
+                            <div class="tier__price">{{ t_curr }} {{ t_amt | round: 0 }} <span class="tier__per-night">per night</span></div>
+                            <div class="tier__type">
+                              {% case t_type %}
+                                {% when 'per_person_sharing' %}Per person sharing
+                                {% when 'single' %}Single occupancy
+                                {% when 'room' %}Per room
+                                {% when 'unit' %}Per unit
+                                {% else %}{{ t_type | replace: '_', ' ' | capitalize }}
+                              {% endcase %}
+                            </div>
+                          </div>
+                        </div>
+                        {% if t_included and show_included %}
+                          <div class="tier__inclusions-block tier__inclusions-block--included">
+                            <div class="tier__inclusions-title">Included</div>
+                            <div class="tier__inclusions-content">{{ t_included | newline_to_br }}</div>
+                          </div>
+                        {% endif %}
+                        {% if t_conditions and show_conditions %}
+                          <details class="tier__terms-accordion">
+                            <summary class="tier__terms-summary">
+                              <span class="tier__terms-title">Terms and Conditions</span>
+                              <svg class="tier__terms-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                            </summary>
+                            <div class="tier__terms-content">{{ t_conditions | newline_to_br | replace: '<br /><br /><br />', '<br />' | replace: '<br /><br />', '<br />' | replace: '<br><br><br>', '<br>' | replace: '<br><br>', '<br>' }}</div>
+                          </details>
+                        {% endif %}
+                      </div>
+                    {% endfor %}
+                    <div class="tier-empty-message" style="display:none;">No rates available for the selected occupancy type.</div>
+                  </div>
+                
+                <div class="room-accordion__actions">
+                   <a href="{{ room.url }}" class="horizon-btn">View Accommodation Details</a>
+                </div>
+              </div>
+            </details>
+            {%- endif -%}
+            {% endif %}
+          {% endfor %}
+        </div>
+
+        {% comment %} COMPREHENSIVE SEASONAL PRICE TREND GRAPH - NOW BELOW ROOM TYPES {% endcomment %}
+        {% liquid
+          assign all_rate_data = ''
+          assign property_currency = currency
+          assign has_aggregate_data = false
+          
+          comment
+            Collect all rate tiers from all rooms to build aggregate min/max pricing
+          endcomment
+          
+          for room in linked_rooms
+            assign room_tiers = room.metafields.wetu_room.aggregated_rate_tiers.value
+            if room_tiers and room_tiers.size > 0
+              assign has_aggregate_data = true
+              for tier in room_tiers
+                assign tier_amount = tier.rate_amount.value
+                assign tier_start = tier.start_date.value
+                assign tier_end = tier.end_date.value
+                assign tier_type = tier.rate_type.value
+                
+                if tier_amount and tier_amount > 0 and tier_type == 'per_person_sharing'
+                  assign all_rate_data = all_rate_data | append: tier_start | append: '|' | append: tier_end | append: '|' | append: tier_amount | append: '||'
+                endif
+              endfor
+            endif
+          endfor
+        %}
+
+        {% if has_aggregate_data %}
+        {% comment %} Calculate highest and lowest priced rooms {% endcomment %}
+        {% liquid
+          assign highest_room = nil
+          assign highest_room_price = 0
+          assign lowest_room = nil
+          assign lowest_room_price = 999999999
+          assign rooms_with_pps_count = 0
+          
+          for room in linked_rooms
+            assign room_tiers = room.metafields.wetu_room.aggregated_rate_tiers.value
+            assign room_has_pps = false
+            if room_tiers and room_tiers.size > 0
+              for tier in room_tiers
+                assign tier_amount = tier.rate_amount.value | plus: 0
+                assign tier_type = tier.rate_type.value
+                if tier_amount > 0 and tier_type == 'per_person_sharing'
+                  assign room_has_pps = true
+                  if tier_amount > highest_room_price
+                    assign highest_room_price = tier_amount
+                    assign highest_room = room
+                  endif
+                  if tier_amount < lowest_room_price
+                    assign lowest_room_price = tier_amount
+                    assign lowest_room = room
+                  endif
+                endif
+              endfor
+            endif
+            if room_has_pps
+              assign rooms_with_pps_count = rooms_with_pps_count | plus: 1
+            endif
+          endfor
+          
+          comment Only show aggregate graph if we have at least 2 different rooms with PPS rates
+          endcomment
+          assign show_aggregate_graph = false
+          if rooms_with_pps_count >= 2 and highest_room and lowest_room
+            if highest_room.id != lowest_room.id
+              assign show_aggregate_graph = true
+            endif
+          endif
+        %}
+        {% if show_aggregate_graph %}
+        <div class="aggregate-price-graph">
+          <div class="agg-graph__header">
+            <h3 class="agg-graph__title">Property Price Overview — Next 18 Months</h3>
+            <div class="agg-graph__legend">
+              <div class="legend-item legend-item--max">
+                <span class="legend-line"></span>
+                Highest Room{% if highest_room %}: <a href="{{ highest_room.url }}" class="legend-room-link">{{ highest_room.title }}</a>{% endif %}
+              </div>
+              <div class="legend-item legend-item--min">
+                <span class="legend-line legend-line--dashed"></span>
+                Lowest Room{% if lowest_room %}: <a href="{{ lowest_room.url }}" class="legend-room-link">{{ lowest_room.title }}</a>{% endif %}
+              </div>
+            </div>
+          </div>
+          
+          <div class="agg-graph__visual" id="aggregate-graph" data-rates="{{ all_rate_data | escape }}" data-currency="{{ property_currency }}">
+            <div class="agg-graph__y-axis" id="agg-y-axis">
+              <!-- Y-axis labels populated by JS -->
+            </div>
+            <div class="agg-graph__canvas">
+              <svg viewBox="0 0 1600 225" preserveAspectRatio="none" id="agg-svg">
+                <!-- Grid lines -->
+                <g class="agg-grid">
+                  <line x1="0" y1="45" x2="1600" y2="45" />
+                  <line x1="0" y1="90" x2="1600" y2="90" />
+                  <line x1="0" y1="135" x2="1600" y2="135" />
+                  <line x1="0" y1="180" x2="1600" y2="180" />
+                </g>
+                <!-- Shaded area between lines -->
+                <polygon id="agg-shaded-area" class="agg-shaded-area" points="" />
+                <!-- Max price line -->
+                <polyline id="agg-max-line" class="agg-line agg-line--max" points="" />
+                <!-- Min price line -->
+                <polyline id="agg-min-line" class="agg-line agg-line--min" points="" />
+              </svg>
+            </div>
+          </div>
+          
+          <div class="agg-graph__x-axis" id="agg-x-axis">
+            <!-- Month labels populated by JS -->
+          </div>
+        </div>
+        {% endif %}
+        {% endif %}
+      {% endif %}
+
+      {% comment %} Single Room View Logic (if accessed directly) {% endcomment %}
+      {% if is_room %}
+        <div class="horizon-rates__section horizon-rates__section--room">
+          {% if room_rate_tiers and room_rate_tiers.size > 0 %}
+            {% assign r_sorted_tiers = room_rate_tiers | sort: 'start_date.value' %}
+            
+            {% comment %} Deduplication for Single Room {% endcomment %}
+            {% liquid
+               assign common_included = nil
+               assign all_includes = r_sorted_tiers | map: 'rate_included.value' | uniq
+               if all_includes.size == 1
+                 assign common_included = all_includes.first
+               endif 
+            %}
+
+            {% assign graph_min = 1000000 %}
+            {% assign graph_max = 0 %}
+            {% for t in r_sorted_tiers %}
+              {% assign val = t.rate_amount.value %}
+              {% if val < graph_min %}{% assign graph_min = val %}{% endif %}
+              {% if val > graph_max %}{% assign graph_max = val %}{% endif %}
+            {% endfor %}
+
+            {% if graph_max > graph_min %}
+              <div class="rate-graph">
+                <div class="rate-graph__header">
+                  <span class="rate-graph__label">Seasonal Price Trend</span>
+                  <span class="rate-graph__value">{{ currency }} {{ graph_max }}</span>
+                </div>
+                <div class="rate-graph__visual">
+                    <svg viewBox="0 0 100 25" preserveAspectRatio="none">
+                      <polyline points="
+                        {% for t in r_sorted_tiers %}
+                          {% assign idx = forloop.index0 %}
+                          {% assign count = forloop.length | minus: 1 %}
+                          {% if count == 0 %}{% assign count = 1 %}{% endif %}
+                          {% assign x = idx | times: 100.0 | divided_by: count %}
+                          {% assign range = graph_max | minus: graph_min %}
+                          {% assign val = t.rate_amount.value %}
+                          {% assign rel = val | minus: graph_min %}
+                          {% assign y_pct = rel | divided_by: range %}
+                          {% assign y = 1.0 | minus: y_pct | times: 20 | plus: 2 %}
+                          {{ x }},{{ y }} 
+                        {% endfor %}
+                      " />
+                    </svg>
+                </div>
+                <div class="rate-graph__footer">
+                  <span class="rate-graph__value">{{ currency }} {{ graph_min }}</span>
+                </div>
+              </div>
+            {% endif %}
+
+            {% if common_included %}
+              <div class="room-common-block">
+                <div class="room-common-title">Included</div>
+                <div class="room-common-text">{{ common_included | newline_to_br }}</div>
+              </div>
+            {% endif %}
+
+            <div class="horizon-list horizon-list--tiers">
+              {% for tier in r_sorted_tiers %}
+                {% liquid
+                  assign t_included = tier.rate_included.value
+                  assign show_included = true
+                  if common_included and t_included == common_included
+                    assign show_included = false
+                  endif
+                %}
+                <div class="tier" data-start="{{ tier.start_date.value }}" data-end="{{ tier.end_date.value }}" data-type="{{ tier.rate_type.value | default: 'per_person_sharing' }}">
+                  <div class="tier__row">
+                    <div class="tier__left">
+                      <div class="tier__name">{{ tier.seasonal_label.value | default: 'Standard Rate' }}</div>
+                      {% if tier.start_date.value %}
+                        <div class="tier__dates">{{ tier.start_date.value | date: '%b %d, %Y' }} – {{ tier.end_date.value | date: '%b %d, %Y' }}</div>
+                      {% endif %}
+                    </div>
+                    <div class="tier__right">
+                      <div class="tier__price">{{ tier.currency.value | default: currency }} {{ tier.rate_amount.value }} <span class="tier__per-night">per night</span></div>
+                      <div class="tier__type">
+                        {% case tier.rate_type.value %}
+                          {% when 'per_person_sharing' %}Per person sharing
+                          {% when 'single' %}Single occupancy
+                          {% else %}Per person sharing
+                        {% endcase %}
+                      </div>
+                    </div>
+                  </div>
+                  {% if t_included and show_included %}
+                    <div class="tier__block">
+                      <div class="tier__block-title">Included</div>
+                      <div class="tier__block-content">{{ t_included | newline_to_br }}</div>
+                    </div>
+                  {% endif %}
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="horizon-rates-sidebar">
+      {% if has_specials %}
+        {%- comment -%} Filter out past special offers - only show current and future {%- endcomment -%}
+        {%- assign today_date = 'now' | date: '%Y-%m-%d' -%}
+        {%- assign future_specials_count = 0 -%}
+        {%- for s in specials -%}
+          {%- assign offer_end = s.end | default: '2099-12-31' -%}
+          {%- if offer_end >= today_date -%}
+            {%- assign future_specials_count = future_specials_count | plus: 1 -%}
+          {%- endif -%}
+        {%- endfor -%}
+        
+        {%- if future_specials_count > 0 -%}
+        <div class="horizon-rates__section horizon-rates__section--specials" id="specials">
+          <h3 class="horizon-subtitle">Special Offers</h3>
+          <div class="horizon-list--specials">
+            {% for s in specials %}
+              {%- comment -%} Only show offers where end date is today or in the future {%- endcomment -%}
+              {%- assign offer_end = s.end | default: '2099-12-31' -%}
+              {%- if offer_end >= today_date -%}
+                {%- comment -%} Check if offer has detailed content worth expanding {%- endcomment -%}
+                {%- assign has_description = false -%}
+                {%- assign has_conditions = false -%}
+                {%- assign has_details = false -%}
+                {%- if s.description and s.description != blank -%}
+                  {%- assign has_description = true -%}
+                  {%- assign has_details = true -%}
+                {%- endif -%}
+                {%- if s.conditions and s.conditions != blank -%}
+                  {%- assign has_conditions = true -%}
+                  {%- assign has_details = true -%}
+                {%- endif -%}
+                
+                {%- if has_details -%}
+                  {%- comment -%} Expandable special offer card with full details {%- endcomment -%}
+                  <details class="special-card special-card--expandable">
+                    <summary class="special-card__header">
+                      <div class="special-card__header-content">
+                        <div class="special__name">{{ s.name | strip }}</div>
+                        {% if s.type %}<div class="special__type">{{ s.type | upcase | replace: ' ', ' ' }}</div>{% endif %}
+                        {% if s.start or s.end %}
+                          <div class="special__dates">
+                            {% if s.start %}{{ s.start | date: '%b %d' }}{% endif %}
+                            {% if s.end %} - {{ s.end | date: '%b %d, %Y' }}{% endif %}
+                          </div>
+                        {% endif %}
+                      </div>
+                      <div class="special-card__toggle-icon">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                      </div>
+                    </summary>
+                    <div class="special-card__details">
+                      {%- if has_description -%}
+                        <div class="special__description">{{ s.description }}</div>
+                      {%- endif -%}
+                      {%- if has_conditions -%}
+                        <div class="special__conditions">
+                          <div class="special__conditions-title">Terms & Conditions</div>
+                          <div class="special__conditions-content">{{ s.conditions }}</div>
+                        </div>
+                      {%- endif -%}
+                    </div>
+                  </details>
+                {%- else -%}
+                  {%- comment -%} Simple card for offers without detailed content {%- endcomment -%}
+                  <div class="special-card">
+                    <div class="special__name">{{ s.name | strip }}</div>
+                    {% if s.type %}<div class="special__type">{{ s.type | upcase | replace: ' ', ' ' }}</div>{% endif %}
+                    {% if s.start or s.end %}
+                      <div class="special__dates">
+                        {% if s.start %}{{ s.start | date: '%b %d' }}{% endif %}
+                        {% if s.end %} - {{ s.end | date: '%b %d, %Y' }}{% endif %}
+                      </div>
+                    {% endif %}
+                  </div>
+                {%- endif -%}
+              {%- endif -%}
+            {% endfor %}
+          </div>
+        </div>
+        {%- endif -%}
+      {% endif %}
+
+      {% if docs and docs.size > 0 %}
+        <div class="horizon-rates__section horizon-rates__section--documents" id="documents">
+          <h3 class="horizon-subtitle">Travel Documents</h3>
+          
+          {% comment %} 
+            Group Documents by WETU API document type field
+            WETU API provides: type, category, title, name, label, url
+          {% endcomment %}
+          
+          {% comment %} Collect unique document types from the API {% endcomment %}
+          {% assign collected_types = '' %}
+          {% for doc in docs %}
+            {% assign doc_type = doc.type | default: doc.category | default: 'General' %}
+            {% assign doc_type_normalized = doc_type | strip | capitalize %}
+            {% unless collected_types contains doc_type_normalized %}
+              {% if collected_types != '' %}
+                {% assign collected_types = collected_types | append: '||' %}
+              {% endif %}
+              {% assign collected_types = collected_types | append: doc_type_normalized %}
+            {% endunless %}
+          {% endfor %}
+          {% assign doc_type_groups = collected_types | split: '||' | sort %}
+          
+          {% for group in doc_type_groups %}
+            {% capture group_content %}
+              {% assign group_has_docs = false %}
+              {% for doc in docs %}
+                {% assign doc_type = doc.type | default: doc.category | default: 'General' %}
+                {% assign doc_type_normalized = doc_type | strip | capitalize %}
+                
+                {% if doc_type_normalized == group %}
+                  {% assign group_has_docs = true %}
+                  {% assign doc_url = doc.url %}
+                  {% comment %} Priority: title > name > label (never use raw filename) {% endcomment %}
+                  {% assign doc_label = doc.title | default: doc.name | default: doc.label %}
+                  
+                  {% unless doc_url == blank %}
+                    {% comment %} Check if URL needs Wetu prefix {% endcomment %}
+                    {% assign first_char = doc_url | slice: 0 %}
+                    {% if first_char == '/' %}
+                      {% assign final_url = 'https://wetu.com' | append: doc_url %}
+                    {% else %}
+                      {% assign final_url = doc_url %}
+                    {% endif %}
+
+                    {% if doc_label and final_url %}
+                      <a href="{{ final_url }}" class="doc-card" target="_blank" rel="noopener">
+                        <div class="doc-card__icon">
+                          <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        </div>
+                        <div class="doc-card__main">
+                          <div class="doc-card__name">{{ doc_label }}</div>
+                        </div>
+                      </a>
+                    {% endif %}
+                 {% endunless %}
+                {% endif %}
+              {% endfor %}
+            {% endcapture %}
+
+            {% if group_has_docs %}
+              <div class="doc-group">
+                <h4 class="doc-group__title">{{ group }}</h4>
+                <div class="horizon-grid horizon-grid--docs">
+                  {{ group_content }}
+                </div>
+              </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="horizon-rates__disclaimer">
+    <small>All rates are subject to availability and may change without notice. Seasonal rates, special offers, and package deals may apply. Please contact us for the most current pricing and availability.</small>
+  </div>
+</div>
+
+<style>
+  .horizon-rates { margin: 2rem 0; font-family: inherit; }
+  .horizon-rates__header { border-bottom: 1px solid rgba(var(--color-foreground), 0.1); padding-bottom: 1.5rem; margin-bottom: 2rem; }
+  .horizon-rates__title { font-size: 2.5rem; margin: 0 0 0.5rem; font-weight: 400; letter-spacing: -0.02em; }
+  
+  /* Rate Range with Occupancy Dropdown */
+  .horizon-rates__range-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1.5rem;
+    margin-top: 1rem;
+  }
+  
+  .horizon-rates__range { 
+    display: flex; 
+    flex-wrap: wrap; 
+    align-items: baseline; 
+    gap: 0.5rem; 
+    font-size: 1.25rem; 
+    opacity: 0.9; 
+  }
+  .horizon-rates__amount { font-weight: 600; }
+  
+  /* Occupancy Dropdown Button Styles */
+  .occupancy-dropdown-btn {
+    display: inline-flex;
+    align-items: center;
+    position: relative;
+    background: #fff;
+    border: 1px solid #999;
+    border-radius: 3px;
+    padding: 0.35rem 0.75rem;
+    padding-right: 1.75rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.08);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    margin-left: 0.5rem;
+  }
+  
+  .occupancy-dropdown-btn:hover {
+    border-color: #666;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15), 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+  
+  .occupancy-dropdown-btn:focus-within {
+    border-color: #333;
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+  }
+  
+  .occupancy-select-btn {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    border: none;
+    background: transparent;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: #333;
+    cursor: pointer;
+    outline: none;
+    padding: 0;
+    margin: 0;
+    text-transform: capitalize;
+  }
+  
+  .occupancy-dropdown-icon {
+    position: absolute;
+    right: 0.5rem;
+    pointer-events: none;
+    color: #666;
+    transition: transform 0.15s ease;
+  }
+  
+  .occupancy-dropdown-btn:hover .occupancy-dropdown-icon {
+    color: #333;
+  }
+  
+  .horizon-rates__qualifier { margin-top: 0.75rem; }
+  
+  .horizon-rates__intro { margin-bottom: 2rem; opacity: 0.8; max-width: 800px; line-height: 1.6; }
+  .horizon-subtitle { font-size: 1.25rem; margin: 0 0 1rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+  
+  /* Layout */
+  .horizon-rates-layout { display: grid; grid-template-columns: 1fr; gap: 3rem; }
+  
+  @media (min-width: 1024px) {
+    .horizon-rates-layout { grid-template-columns: 2fr 1fr; align-items: start; }
+    .horizon-rates-sidebar { position: sticky; top: 2rem; }
+  }
+
+  /* Accordion Styles */
+  .horizon-accordions { display: flex; flex-direction: column; gap: 1.5rem; }
+  .room-accordion { border: 1px solid rgba(var(--color-foreground), 0.15); transition: all 0.2s ease; background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-radius: 8px; margin-bottom: 0.5rem; }
+  .room-accordion:hover { border-color: rgba(var(--color-foreground), 0.3); box-shadow: 0 6px 16px rgba(0,0,0,0.12); }
+  .room-accordion[open] { border-color: rgba(var(--color-foreground), 0.3); box-shadow: 0 12px 24px rgba(0,0,0,0.1); }
+  
+  /* Simple Room Card (non-accordion, for base-rate only rooms) */
+  .room-card-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+  }
+  
+  .room-card {
+    display: flex;
+    gap: 2rem;
+    padding: 1.5rem;
+    align-items: center;
+    border: 1px solid rgba(var(--color-foreground), 0.15);
+    background: #fff;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    transition: all 0.2s ease;
+  }
+  
+  .room-card:hover {
+    border-color: rgba(var(--color-foreground), 0.3);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+  }
+  
+  .room-card__media {
+    width: 200px;
+    aspect-ratio: 16/9;
+    flex-shrink: 0;
+    background: #f4f4f4;
+    overflow: hidden;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+  
+  .room-card__media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s ease;
+  }
+  
+  .room-card:hover .room-card__media img {
+    transform: scale(1.05);
+  }
+  
+  .room-card__content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 80px;
+  }
+  
+  .room-card__title {
+    font-size: 1.5rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    line-height: 1.2;
+  }
+  
+  .room-card__price {
+    font-size: 1.125rem;
+    opacity: 0.9;
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  
+  .room-card__price .amount {
+    font-weight: 600;
+  }
+  
+  .room-card__price .per {
+    font-size: 0.875rem;
+    opacity: 0.7;
+  }
+  
+  .room-card__arrow {
+    margin-left: auto;
+    opacity: 0.5;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+  }
+  
+  .room-card:hover .room-card__arrow {
+    opacity: 1;
+    transform: translateX(4px);
+  }
+  
+  @media (max-width: 900px) {
+    .room-card {
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .room-card__media {
+      width: 100%;
+    }
+    .room-card__arrow {
+      display: none;
+    }
+  }
+  
+  .room-accordion__summary { list-style: none; display: flex; gap: 2rem; padding: 1.5rem; cursor: pointer; align-items: center; position: relative; }
+  .room-accordion__summary::-webkit-details-marker { display: none; }
+  .room-accordion__media { width: 200px; aspect-ratio: 16/9; flex-shrink: 0; background: #f4f4f4; overflow: hidden; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+  .room-accordion__media img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
+  .room-accordion:hover .room-accordion__media img { transform: scale(1.05); }
+  
+  .room-accordion__header-content { flex: 1; display: flex; flex-direction: column; justify-content: center; min-height: 80px; }
+  .room-accordion__title { font-size: 1.5rem; font-weight: 500; margin-bottom: 0.5rem; line-height: 1.2; }
+  .room-accordion__price-preview { font-size: 1.125rem; opacity: 0.9; display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
+  .room-accordion__price-preview .amount { font-weight: 600; }
+  .room-accordion__price-preview .per { font-size: 0.875rem; opacity: 0.7; }
+  .room-accordion__price-preview .occupancy-label { font-size: 0.8125rem; opacity: 0.6; text-transform: lowercase; }
+
+  .room-accordion__icon { margin-left: auto; align-self: center; transition: transform 0.3s ease; opacity: 0.5; }
+  .room-accordion[open] .room-accordion__icon { transform: rotate(180deg); }
+
+  .room-accordion__content { padding: 0 2rem 2rem 2rem; border-top: 1px solid rgba(var(--color-foreground), 0.05); margin-top: 0.5rem; }
+  
+  .room-accordion__actions { margin-top: 2rem; text-align: right; }
+  .horizon-btn { display: inline-flex; align-items: center; padding: 0.75rem 1.5rem; border: 1px solid currentColor; text-decoration: none; color: inherit; font-size: 0.9375rem; letter-spacing: 0.05em; text-transform: uppercase; transition: all 0.2s; }
+  .horizon-btn:hover { background: rgba(var(--color-foreground), 0.05); }
+
+  /* Individual Room Graph Styles */
+  .room-graph-container {
+    margin: 1.5rem 0 2rem;
+    padding: 1.5rem;
+    background: rgba(var(--color-foreground), 0.02);
+    border-radius: 6px;
+    border: 1px solid rgba(var(--color-foreground), 0.08);
+  }
+  
+  .room-graph__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  
+  .room-graph__title {
+    font-size: 1.125rem;
+    font-weight: 500;
+    margin: 0;
+  }
+  
+  .room-graph__legend {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+  }
+  
+  .room-graph__legend .legend-line {
+    width: 24px;
+    height: 3px;
+    background: #333;
+  }
+  
+  .room-graph__legend .legend-room-link {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  
+  .room-graph__visual {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .room-graph__y-axis {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 10px 0;
+    min-width: 70px;
+    font-size: 0.7rem;
+    color: rgba(var(--color-foreground), 0.6);
+    text-align: right;
+    padding-right: 8px;
+  }
+  
+  .room-graph__canvas {
+    flex: 1;
+    height: 150px;
+  }
+  
+  .room-graph__canvas svg {
+    width: 100%;
+    height: 100%;
+  }
+  
+  .room-grid line {
+    stroke: rgba(var(--color-foreground), 0.08);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+  
+  .room-line {
+    fill: none;
+    stroke: #333;
+    stroke-width: 2.5;
+    vector-effect: non-scaling-stroke;
+  }
+  
+  .room-graph__x-axis {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0 0 78px;
+    font-size: 0.7rem;
+    color: rgba(var(--color-foreground), 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  
+  .room-graph__x-axis span {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  
+  .room-graph__x-axis .year-label {
+    font-weight: 600;
+    color: rgba(var(--color-foreground), 0.8);
+    font-size: 0.65rem;
+  }
+
+  /* Common Block */
+  .room-common-block { background: rgba(var(--color-foreground), 0.03); padding: 1rem 1.5rem; margin-bottom: 1.5rem; border-radius: 4px; }
+  .room-common-title { font-weight: 600; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; cursor: pointer; }
+  .room-common-text { font-size: 0.9375rem; line-height: 1.6; opacity: 0.85; }
+
+  /* Tiers List */
+  .tier { border-bottom: 1px solid rgba(var(--color-foreground), 0.1); padding: 1.5rem 0; }
+  .tier:last-child { border-bottom: none; }
+  .tier[hidden] { display: none; }
+  .tier.past-rate { display: none; }
+  
+  .tier__row { display: flex; justify-content: space-between; gap: 2rem; align-items: baseline; }
+  .tier__name { font-weight: 600; font-size: 1.125rem; margin-bottom: 0.25rem; }
+  .tier__dates { font-size: 0.9375rem; opacity: 0.7; }
+  .tier__price { font-size: 1.5rem; font-weight: 600; }
+  .tier__per-night { font-size: 0.75rem; font-weight: 400; opacity: 0.7; margin-left: 0.25rem; }
+  .tier__type { text-transform: uppercase; font-size: 0.75rem; opacity: 0.6; letter-spacing: 0.05em; text-align: right; }
+  .tier__block { margin-top: 1rem; font-size: 0.9375rem; opacity: 0.8; line-height: 1.6; }
+  .tier__block-title { font-weight: 600; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem; display: block; }
+  .tier-empty-message { padding: 2rem; text-align: center; opacity: 0.6; font-style: italic; }
+  
+  /* Inclusions Block - Included/Excluded styling */
+  .tier__inclusions-block {
+    margin-top: 1rem;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+  }
+  
+  .tier__inclusions-title {
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #555;
+    margin-bottom: 0.35rem;
+  }
+  
+  .tier__inclusions-content {
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: rgba(var(--color-foreground), 0.8);
+  }
+  
+  /* Terms and Conditions - Accordion styling */
+  .tier__terms-accordion {
+    margin-top: 1.25rem;
+    background: #f5f5f4;
+    border-left: 3px solid #888;
+    border-radius: 0 4px 4px 0;
+  }
+  
+  .tier__terms-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    list-style: none;
+  }
+  
+  .tier__terms-summary::-webkit-details-marker {
+    display: none;
+  }
+  
+  .tier__terms-title {
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #555;
+  }
+  
+  .tier__terms-icon {
+    color: #666;
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+  }
+  
+  .tier__terms-accordion[open] .tier__terms-icon {
+    transform: rotate(180deg);
+  }
+  
+  .tier__terms-content {
+    padding: 0 1rem 1rem 1rem;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: #444;
+  }
+  
+  .tier__terms-content br + br {
+    display: none;
+  }
+
+  /* Documents Sidebar */
+  .horizon-grid--docs { display: grid; grid-template-columns: 1fr; gap: 1rem; }
+  .doc-card { display: flex; align-items: center; gap: 1rem; padding: 1.5rem; border: 1px solid rgba(var(--color-foreground), 0.08); text-decoration: none; color: inherit; transition: all 0.3s ease; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-radius: 6px; }
+  .doc-card:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); border-color: transparent; }
+  .doc-card__icon { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; background: rgba(var(--color-foreground), 0.04); border-radius: 50%; color: inherit; flex-shrink: 0; }
+  .doc-card__main { flex: 1; min-width: 0; }
+  .doc-card__name { font-weight: 600; font-size: 1.05rem; margin-bottom: 0.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* Specials */
+  .horizon-list--specials { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 3rem; }
+  .special-card { padding: 1.25rem; background: rgba(var(--color-foreground), 0.03); border: 1px dashed rgba(var(--color-foreground), 0.2); border-radius: 4px; }
+  .special__name { font-weight: 600; margin-bottom: 0.5rem; line-height: 1.3; }
+  .special__type { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.7; margin-bottom: 0.5rem; display: inline-block; border: 1px solid currentColor; padding: 0.1rem 0.4rem; border-radius: 2px; }
+  .special__dates { font-size: 0.85rem; opacity: 0.7; }
+  
+  /* Expandable Special Offers */
+  .special-card--expandable { padding: 0; border: 1px solid rgba(var(--color-foreground), 0.15); background: #fff; }
+  .special-card--expandable[open] { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+  .special-card__header { 
+    display: flex; 
+    align-items: flex-start; 
+    justify-content: space-between; 
+    padding: 1.25rem; 
+    cursor: pointer; 
+    list-style: none;
+    gap: 1rem;
+  }
+  .special-card__header::-webkit-details-marker { display: none; }
+  .special-card__header-content { flex: 1; }
+  .special-card__toggle-icon { 
+    flex-shrink: 0; 
+    opacity: 0.5; 
+    transition: transform 0.2s ease;
+    margin-top: 0.25rem;
+  }
+  .special-card--expandable[open] .special-card__toggle-icon { transform: rotate(180deg); }
+  .special-card__details { 
+    padding: 0 1.25rem 1.25rem; 
+    border-top: 1px solid rgba(var(--color-foreground), 0.1);
+    margin-top: -0.5rem;
+    padding-top: 1rem;
+  }
+  .special__description { 
+    font-size: 0.95rem; 
+    line-height: 1.6; 
+    opacity: 0.85; 
+    margin-bottom: 1rem;
+  }
+  .special__description p { margin: 0 0 0.75rem; }
+  .special__description p:last-child { margin-bottom: 0; }
+  .special__description ul, .special__description ol { margin: 0.5rem 0; padding-left: 1.25rem; }
+  .special__description li { margin-bottom: 0.25rem; }
+  .special__conditions { 
+    margin-top: 1rem; 
+    padding-top: 1rem; 
+    border-top: 1px dashed rgba(var(--color-foreground), 0.15);
+  }
+  .special__conditions-title { 
+    font-size: 0.8rem; 
+    font-weight: 600; 
+    text-transform: uppercase; 
+    letter-spacing: 0.05em; 
+    opacity: 0.6; 
+    margin-bottom: 0.5rem;
+  }
+  .special__conditions-content { 
+    font-size: 0.85rem; 
+    line-height: 1.5; 
+    opacity: 0.75;
+  }
+  .special__conditions-content p { margin: 0 0 0.5rem; }
+  .special__conditions-content p:last-child { margin-bottom: 0; }
+  .special__conditions-content ul, .special__conditions-content ol { margin: 0.5rem 0; padding-left: 1.25rem; }
+  .special__conditions-content li { margin-bottom: 0.25rem; }
+
+  /* AGGREGATE PRICE GRAPH STYLES */
+  .aggregate-price-graph {
+    margin: 3rem 0;
+    padding: 2rem;
+    background: #fff;
+    border: 1px solid rgba(var(--color-foreground), 0.1);
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+  }
+  
+  .agg-graph__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  
+  .agg-graph__title {
+    font-size: 1.5rem;
+    font-weight: 500;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  
+  .agg-graph__legend {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+  }
+  
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .legend-line {
+    width: 30px;
+    height: 3px;
+    display: inline-block;
+  }
+  
+  .legend-line--dashed {
+    background: repeating-linear-gradient(
+      to right,
+      #666,
+      #666 4px,
+      transparent 4px,
+      transparent 8px
+    );
+  }
+  
+  .legend-item--max .legend-line {
+    background: #333;
+  }
+  
+  .legend-item--min .legend-line:not(.legend-line--dashed) {
+    background: #999;
+  }
+  
+  .legend-room-link {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  
+  .legend-room-link:hover {
+    opacity: 0.7;
+  }
+  
+  .agg-graph__visual {
+    position: relative;
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .agg-graph__y-axis {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 10px 0;
+    min-width: 80px;
+    font-size: 0.75rem;
+    color: rgba(var(--color-foreground), 0.6);
+    text-align: right;
+    padding-right: 10px;
+  }
+  
+  .agg-graph__canvas {
+    flex: 1;
+    position: relative;
+    height: 180px;
+    aspect-ratio: 16 / 9;
+    max-height: 200px;
+  }
+  
+  .agg-graph__canvas svg {
+    width: 100%;
+    height: 100%;
+  }
+  
+  .agg-grid line {
+    stroke: rgba(var(--color-foreground), 0.08);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+  
+  .agg-shaded-area {
+    fill: rgba(100, 100, 100, 0.08);
+  }
+  
+  .agg-line {
+    fill: none;
+    vector-effect: non-scaling-stroke;
+    stroke-width: 3;
+  }
+  
+  .agg-line--max {
+    stroke: #333;
+  }
+  
+  .agg-line--min {
+    stroke: #999;
+    stroke-dasharray: 5, 5;
+  }
+  
+  .agg-graph__x-axis {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0 0 90px;
+    font-size: 0.75rem;
+    color: rgba(var(--color-foreground), 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  .agg-graph__x-axis span {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  
+  .agg-graph__x-axis .year-label {
+    font-weight: 600;
+    color: rgba(var(--color-foreground), 0.8);
+    font-size: 0.7rem;
+  }
+
+  /* Documents */
+  .horizon-rates__section--documents .doc-group__title {
+    margin: 2rem 0 1rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+    letter-spacing: 0.05em;
+  }
+
+  /* Base Rate Only Display */
+  .room-base-rate-display {
+    margin: 1.5rem 0;
+    padding: 1.5rem;
+    background: rgba(var(--color-foreground), 0.02);
+    border: 1px solid rgba(var(--color-foreground), 0.08);
+    border-left: 3px solid rgba(var(--color-foreground), 0.2);
+    text-align: center;
+  }
+  
+  .room-base-rate__label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgba(var(--color-foreground), 0.6);
+    margin-bottom: 0.5rem;
+  }
+  
+  .room-base-rate__price {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 0.375rem;
+    margin-bottom: 0.25rem;
+  }
+  
+  .room-base-rate__currency {
+    font-size: 1rem;
+    color: rgba(var(--color-foreground), 0.7);
+    font-weight: 500;
+  }
+  
+  .room-base-rate__amount {
+    font-size: 2rem;
+    font-weight: 600;
+    font-family: var(--font-heading-family);
+    letter-spacing: -0.02em;
+    color: rgb(var(--color-foreground));
+  }
+  
+  .room-base-rate__context {
+    font-size: 0.8125rem;
+    color: rgba(var(--color-foreground), 0.6);
+    margin-bottom: 1rem;
+  }
+  
+  .room-base-rate__note {
+    font-size: 0.8125rem;
+    color: rgba(var(--color-foreground), 0.5);
+    margin: 0;
+    font-style: italic;
+  }
+
+  @media (max-width: 900px) {
+    .horizon-rates__range-row { flex-direction: column; align-items: flex-start; gap: 1rem; }
+    .room-accordion__summary { flex-direction: column; gap: 1rem; }
+    .room-accordion__media { width: 100%; }
+    .tier__row { flex-direction: column; gap: 0.5rem; }
+    .tier__right { text-align: left; }
+    .room-graph__visual { flex-direction: column; }
+    .room-graph__y-axis { flex-direction: row; min-width: auto; padding: 0; margin-bottom: 0.5rem; }
+    .room-graph__x-axis { padding-left: 0; }
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const allOccupancySelectors = document.querySelectorAll('[data-occupancy-selector]');
+    const todayStr = document.querySelector('.horizon-rates')?.dataset.todayDate || new Date().toISOString().split('T')[0];
+    const today = new Date(todayStr);
+    today.setHours(0, 0, 0, 0);
+    
+    // Sync all occupancy dropdowns when any one changes
+    function syncAllOccupancyDropdowns(newValue) {
+      allOccupancySelectors.forEach(sel => {
+        if (sel.value !== newValue) {
+          sel.value = newValue;
+        }
+      });
+    }
+    
+    // Add change listener to all occupancy selectors
+    allOccupancySelectors.forEach(selector => {
+      selector.addEventListener('change', (e) => {
+        const newValue = e.target.value;
+        syncAllOccupancyDropdowns(newValue);
+        filterAndUpdateRates();
+        initRoomGraphs();
+      });
+    });
+
+    function filterAndUpdateRates() {
+      // Get current occupancy from any selector (they're all synced)
+      const firstSelector = document.querySelector('[data-occupancy-selector]');
+      const selectedOcc = firstSelector ? firstSelector.value : 'per_person_sharing';
+
+      // Update header price range based on selected occupancy
+      const rangeContainer = document.querySelector('.horizon-rates__range');
+      if (rangeContainer) {
+        const currency = rangeContainer.dataset.currency || 'USD';
+        let minVal, maxVal;
+        
+        if (selectedOcc === 'single') {
+          minVal = parseFloat(rangeContainer.dataset.singleMin) || 0;
+          maxVal = parseFloat(rangeContainer.dataset.singleMax) || 0;
+        } else {
+          minVal = parseFloat(rangeContainer.dataset.ppsMin) || 0;
+          maxVal = parseFloat(rangeContainer.dataset.ppsMax) || 0;
+        }
+        
+        const minEl = rangeContainer.querySelector('.horizon-rates__amount--min');
+        const maxEl = rangeContainer.querySelector('.horizon-rates__amount--max');
+        const sepEl = rangeContainer.querySelector('.horizon-rates__sep');
+        const toLabel = rangeContainer.querySelectorAll('.horizon-rates__label')[1];
+        
+        if (minEl && minVal > 0) {
+          minEl.textContent = `${currency} ${Math.round(minVal)}`;
+        }
+        
+        if (maxEl && maxVal > 0 && maxVal !== minVal) {
+          maxEl.textContent = `${currency} ${Math.round(maxVal)}`;
+          maxEl.style.display = '';
+          if (sepEl) sepEl.style.display = '';
+          if (toLabel) toLabel.style.display = '';
+        } else if (maxEl) {
+          maxEl.style.display = 'none';
+          if (sepEl) sepEl.style.display = 'none';
+          if (toLabel) toLabel.style.display = 'none';
+        }
+      }
+
+      document.querySelectorAll('.room-accordion').forEach(acc => {
+        const tiers = acc.querySelectorAll('.tier');
+        let foundMatch = false;
+        let lowestPrice = Infinity;
+        let currency = 'USD';
+
+        const minPps = parseFloat(acc.dataset.minPps) || 0;
+        const minSingle = parseFloat(acc.dataset.minSingle) || 0;
+
+        tiers.forEach(tier => {
+          const tEnd = new Date(tier.dataset.end);
+          tEnd.setHours(23, 59, 59, 999);
+          const tType = tier.dataset.type;
+          const tPriceText = tier.querySelector('.tier__price')?.innerText || '';
+          const priceMatch = tPriceText.match(/([A-Z]{3}|[A-Z$€£]+)\s*([\d,.]+)/i);
+          let tPrice = 0;
+
+          if (priceMatch) {
+            currency = priceMatch[1];
+            tPrice = Math.round(parseFloat(priceMatch[2].replace(/,/g, '')));
+          }
+
+          const isFuture = tEnd >= today;
+          const isOccMatch = (tType === selectedOcc);
+
+          if (isFuture && isOccMatch) {
+            tier.hidden = false;
+            tier.classList.remove('past-rate');
+            foundMatch = true;
+            if (tPrice < lowestPrice && tPrice > 0) lowestPrice = tPrice;
+          } else {
+            tier.hidden = true;
+            if (!isFuture) tier.classList.add('past-rate');
+          }
+        });
+
+        // Update Summary Card Price
+        const pricePreviewContainer = acc.querySelector('.room-accordion__price-preview');
+        const pricePreview = acc.querySelector('.room-accordion__price-preview .amount');
+
+        if (pricePreview) {
+          let displayPrice = 0;
+          const baseRate = parseFloat(pricePreview.dataset.lowestRate) || 0;
+          
+          if (selectedOcc === 'per_person_sharing' && minPps > 0) {
+            displayPrice = minPps;
+          } else if (selectedOcc === 'single' && minSingle > 0) {
+            displayPrice = minSingle;
+          } else if (lowestPrice !== Infinity && lowestPrice > 0) {
+            displayPrice = lowestPrice;
+          } else if (baseRate > 0) {
+            // Fallback to base rate when no tier matches
+            displayPrice = baseRate;
+          }
+
+          const currencyCode = pricePreview.dataset.currency || 'USD';
+          if (displayPrice > 0) {
+            pricePreview.innerHTML = `${currencyCode} ${Math.round(displayPrice)}`;
+            if (pricePreviewContainer) pricePreviewContainer.style.display = '';
+          } else {
+            // Hide the entire price preview when there's no valid price
+            if (pricePreviewContainer) pricePreviewContainer.style.display = 'none';
+          }
+        }
+        
+        // Update occupancy label text
+        const occLabel = acc.querySelector('.room-accordion__price-preview .occupancy-label');
+        if (occLabel) {
+          occLabel.textContent = selectedOcc === 'single' 
+            ? occLabel.dataset.singleLabel 
+            : occLabel.dataset.ppsLabel;
+        }
+
+        // Show/hide empty message
+        const emptyMsg = acc.querySelector('.tier-empty-message');
+        if (emptyMsg) {
+          emptyMsg.style.display = foundMatch ? 'none' : 'block';
+        }
+      });
+    }
+
+    filterAndUpdateRates();
+    initAggregateGraph();
+    initRoomGraphs();
+  });
+
+  function initAggregateGraph() {
+    const graphContainer = document.getElementById('aggregate-graph');
+    if (!graphContainer) return;
+
+    const rateDataRaw = graphContainer.dataset.rates;
+    if (!rateDataRaw) return;
+
+    const currency = graphContainer.dataset.currency || 'USD';
+    const entries = rateDataRaw.split('||').filter(e => e).map(e => {
+      const parts = e.split('|');
+      return {
+        start: new Date(parts[0]),
+        end: new Date(parts[1]),
+        amount: parseFloat(parts[2])
+      };
+    });
+
+    const today = new Date();
+    today.setDate(1);
+    const months = [];
+
+    for (let i = 0; i < 18; i++) {
+      const m = new Date(today);
+      m.setMonth(today.getMonth() + i);
+      months.push(m);
+    }
+
+    const monthlyStats = months.map(month => {
+      const monthStart = new Date(month.getFullYear(), month.getMonth(), 1);
+      const monthEnd = new Date(month.getFullYear(), month.getMonth() + 1, 0);
+
+      const activeRates = entries.filter(r => {
+        return (r.start <= monthEnd && r.end >= monthStart);
+      });
+
+      if (activeRates.length === 0) return null;
+
+      const amounts = activeRates.map(r => r.amount);
+      return {
+        date: month,
+        min: Math.min(...amounts),
+        max: Math.max(...amounts)
+      };
+    }).filter(s => s !== null);
+
+    if (monthlyStats.length < 2) return;
+
+    const allPrices = monthlyStats.flatMap(s => [s.min, s.max]);
+    const minPrice = Math.min(...allPrices);
+    const maxPrice = Math.max(...allPrices);
+    const yMin = Math.floor(minPrice * 0.9);
+    const yMax = Math.ceil(maxPrice * 1.1);
+    const yRange = yMax - yMin;
+
+    const yAxisEl = document.getElementById('agg-y-axis');
+    yAxisEl.innerHTML = '';
+    [1, 0.66, 0.33, 0].forEach(pct => {
+      const val = Math.round(yMin + (yRange * pct));
+      const div = document.createElement('div');
+      div.innerText = `${currency} ${val.toLocaleString()}`;
+      yAxisEl.appendChild(div);
+    });
+
+    const xAxisEl = document.getElementById('agg-x-axis');
+    xAxisEl.innerHTML = '';
+    monthlyStats.forEach((stat, idx) => {
+      const span = document.createElement('span');
+      const monthName = stat.date.toLocaleDateString('en-US', { month: 'short' });
+      const year = stat.date.getFullYear();
+      const month = stat.date.getMonth();
+
+      if (month === 0) {
+        span.innerHTML = `<span class="month-label">${monthName}</span><span class="year-label">${year}</span>`;
+      } else {
+        span.innerText = monthName;
+      }
+      xAxisEl.appendChild(span);
+    });
+
+    const width = 1600;
+    const height = 225;
+
+    const getX = (index) => {
+      return (index / (monthlyStats.length - 1)) * width;
+    };
+
+    const getY = (val) => {
+      const pct = (val - yMin) / yRange;
+      return height - (pct * height);
+    };
+
+    const maxPoints = monthlyStats.map((s, i) => `${getX(i)},${getY(s.max)}`).join(' ');
+    const minPoints = monthlyStats.map((s, i) => `${getX(i)},${getY(s.min)}`).join(' ');
+
+    const shadePoints = [
+      ...monthlyStats.map((s, i) => `${getX(i)},${getY(s.max)}`),
+      ...monthlyStats.slice().reverse().map((s, i) => {
+        const realIndex = monthlyStats.length - 1 - i;
+        return `${getX(realIndex)},${getY(s.min)}`;
+      })
+    ].join(' ');
+
+    document.getElementById('agg-max-line').setAttribute('points', maxPoints);
+    document.getElementById('agg-min-line').setAttribute('points', minPoints);
+    document.getElementById('agg-shaded-area').setAttribute('points', shadePoints);
+  }
+
+  function initRoomGraphs() {
+    document.querySelectorAll('.room-graph-container').forEach(container => {
+      const rateDataRaw = container.dataset.roomRates;
+      if (!rateDataRaw) return;
+
+      const currency = container.dataset.currency || 'USD';
+      const firstSelector = document.querySelector('[data-occupancy-selector]');
+      const selectedOcc = firstSelector ? firstSelector.value : 'per_person_sharing';
+
+      const entries = rateDataRaw.split('||').filter(e => e).map(e => {
+        const parts = e.split('|');
+        return {
+          start: new Date(parts[0]),
+          end: new Date(parts[1]),
+          amount: parseFloat(parts[2]),
+          type: parts[3] || 'per_person_sharing'
+        };
+      }).filter(e => e.type === selectedOcc);
+
+      if (entries.length === 0) {
+        container.style.display = 'none';
+        return;
+      }
+      container.style.display = 'block';
+
+      const today = new Date();
+      today.setDate(1);
+      const months = [];
+
+      for (let i = 0; i < 18; i++) {
+        const m = new Date(today);
+        m.setMonth(today.getMonth() + i);
+        months.push(m);
+      }
+
+      const monthlyPrices = months.map(month => {
+        const monthStart = new Date(month.getFullYear(), month.getMonth(), 1);
+        const monthEnd = new Date(month.getFullYear(), month.getMonth() + 1, 0);
+
+        const activeRates = entries.filter(r => {
+          return (r.start <= monthEnd && r.end >= monthStart);
+        });
+
+        if (activeRates.length === 0) return null;
+
+        const amounts = activeRates.map(r => r.amount);
+        return {
+          date: month,
+          price: amounts[0]
+        };
+      }).filter(s => s !== null);
+
+      if (monthlyPrices.length < 2) {
+        container.style.display = 'none';
+        return;
+      }
+
+      const allPrices = monthlyPrices.map(s => s.price);
+      const minPrice = Math.min(...allPrices);
+      const maxPrice = Math.max(...allPrices);
+      const yMin = Math.floor(minPrice * 0.9);
+      const yMax = Math.ceil(maxPrice * 1.1);
+      const yRange = yMax - yMin || 1;
+
+      const yAxisEl = container.querySelector('.room-graph__y-axis');
+      if (yAxisEl) {
+        yAxisEl.innerHTML = '';
+        [1, 0.5, 0].forEach(pct => {
+          const val = Math.round(yMin + (yRange * pct));
+          const div = document.createElement('div');
+          div.innerText = `${currency} ${val.toLocaleString()}`;
+          yAxisEl.appendChild(div);
+        });
+      }
+
+      const xAxisEl = container.querySelector('.room-graph__x-axis');
+      if (xAxisEl) {
+        xAxisEl.innerHTML = '';
+        monthlyPrices.forEach((stat) => {
+          const span = document.createElement('span');
+          const monthName = stat.date.toLocaleDateString('en-US', { month: 'short' });
+          const year = stat.date.getFullYear();
+          const month = stat.date.getMonth();
+
+          if (month === 0) {
+            span.innerHTML = `<span class="month-label">${monthName}</span><span class="year-label">${year}</span>`;
+          } else {
+            span.innerText = monthName;
+          }
+          xAxisEl.appendChild(span);
+        });
+      }
+
+      const width = 1600;
+      const height = 225;
+
+      const getX = (index) => {
+        return (index / (monthlyPrices.length - 1)) * width;
+      };
+
+      const getY = (val) => {
+        const pct = (val - yMin) / yRange;
+        return height - (pct * height);
+      };
+
+      const linePoints = monthlyPrices.map((s, i) => `${getX(i)},${getY(s.price)}`).join(' ');
+
+      const lineEl = container.querySelector('.room-line');
+      if (lineEl) {
+        lineEl.setAttribute('points', linePoints);
+      }
+    });
+  }
+
+</script>

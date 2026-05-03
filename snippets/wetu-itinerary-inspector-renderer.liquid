@@ -1,0 +1,897 @@
+{% javascript %}
+(() => {
+  const ROOT_SELECTOR = '.itin-command-center[data-section-id]';
+
+  const MAPBOX_GL_SCRIPT_ID = 'wetu-mapbox-gl-script';
+  const MAPBOX_GL_STYLE_ID = 'wetu-mapbox-gl-style';
+  const MAPBOX_GL_SCRIPT_URL = 'https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.js';
+  const MAPBOX_GL_STYLE_URL = 'https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.css';
+
+  const FLIGHT_EVENT_TYPES = new Set(['scheduled-flight']);
+  const ROAD_EVENT_TYPES = new Set(['private-transfer', 'self-drive', 'car-hire', 'arrival-greeting']);
+  const ARC_SEGMENTS = 64;
+
+  const inspectorMapInstances = new WeakMap();
+  let mapboxResourcePromise = null;
+
+  const strip = (v) => String(v || '').replace(/\s+/g, ' ').trim();
+  const stripHtml = (v) => String(v || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  const escAttr = (v) =>
+    String(v || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  const normalizePin = (v) => {
+    const t = strip(v);
+    if (!t) return '';
+    return /^\d+$/.test(t) ? String(Number.parseInt(t, 10)) : t.toLowerCase();
+  };
+
+  const setText = (parent, selector, text) => {
+    const el = parent.querySelector(selector);
+    if (el) el.textContent = strip(text);
+  };
+
+  const setHtml = (parent, selector, html) => {
+    const el = parent.querySelector(selector);
+    if (el) el.innerHTML = String(html || '');
+  };
+
+  const showIf = (parent, selector, condition) => {
+    const el = parent.querySelector(selector);
+    if (el) el.hidden = !condition;
+  };
+
+  const ensureMapboxGl = () => {
+    if (window.mapboxgl) return Promise.resolve(window.mapboxgl);
+    if (mapboxResourcePromise) return mapboxResourcePromise;
+
+    mapboxResourcePromise = new Promise((resolve, reject) => {
+      if (!document.getElementById(MAPBOX_GL_STYLE_ID)) {
+        const link = document.createElement('link');
+        link.id = MAPBOX_GL_STYLE_ID;
+        link.rel = 'stylesheet';
+        link.href = MAPBOX_GL_STYLE_URL;
+        document.head.appendChild(link);
+      }
+
+      const existing = document.getElementById(MAPBOX_GL_SCRIPT_ID);
+      if (existing instanceof HTMLScriptElement) {
+        const onLoad = () => {
+          window.mapboxgl ? resolve(window.mapboxgl) : reject(new Error('mapboxgl unavailable'));
+        };
+        existing.addEventListener('load', onLoad, { once: true });
+        existing.addEventListener('error', () => reject(new Error('Mapbox script failed')), { once: true });
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.id = MAPBOX_GL_SCRIPT_ID;
+      script.src = MAPBOX_GL_SCRIPT_URL;
+      script.async = true;
+      script.addEventListener('load', () => {
+        window.mapboxgl ? resolve(window.mapboxgl) : reject(new Error('mapboxgl unavailable'));
+      }, { once: true });
+      script.addEventListener('error', () => reject(new Error('Mapbox script failed')), { once: true });
+      document.head.appendChild(script);
+    });
+
+    return mapboxResourcePromise;
+  };
+
+  const getCoordIndex = (root) => {
+    if (!(root instanceof HTMLElement)) return new Map();
+    const raw = strip(root.dataset.componentProductCandidates);
+    if (!raw) return new Map();
+    const index = new Map();
+    try {
+      const arr = JSON.parse(raw);
+      if (!Array.isArray(arr)) return index;
+      arr.forEach((entry) => {
+        if (!entry || typeof entry !== 'object') return;
+        const lng = Number.parseFloat(String(entry.driving_longitude ?? entry.longitude ?? ''));
+        const lat = Number.parseFloat(String(entry.driving_latitude ?? entry.latitude ?? ''));
+        if (!Number.isFinite(lng) || !Number.isFinite(lat)) return;
+        [entry.pin, entry.content_entity_id, entry.primary_pin]
+          .map(normalizePin)
+          .filter(Boolean)
+          .forEach((key) => index.set(key, { lng, lat }));
+      });
+    } catch (_e) {}
+    return index;
+  };
+
+  const toRadians = (deg) => (deg * Math.PI) / 180;
+  const toDegrees = (rad) => (rad * 180) / Math.PI;
+
+  const greatCircleArc = (startLng, startLat, endLng, endLat, segments = ARC_SEGMENTS) => {
+    const coords = [];
+    const lat1 = toRadians(startLat);
+    const lon1 = toRadians(startLng);
+    const lat2 = toRadians(endLat);
+    const lon2 = toRadians(endLng);
+
+    const dLon = lon2 - lon1;
+    const d = 2 * Math.asin(
+      Math.sqrt(
+        Math.sin((lat2 - lat1) / 2) ** 2 +
+        Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2
+      )
+    );
+
+    if (d < 1e-10) return [[startLng, startLat], [endLng, endLat]];
+
+    for (let i = 0; i <= segments; i++) {
+      const f = i / segments;
+      const a = Math.sin((1 - f) * d) / Math.sin(d);
+      const b = Math.sin(f * d) / Math.sin(d);
+      const x = a * Math.cos(lat1) * Math.cos(lon1) + b * Math.cos(lat2) * Math.cos(lon2);
+      const y = a * Math.cos(lat1) * Math.sin(lon1) + b * Math.cos(lat2) * Math.sin(lon2);
+      const z = a * Math.sin(lat1) + b * Math.sin(lat2);
+      coords.push([toDegrees(Math.atan2(y, x)), toDegrees(Math.atan2(z, Math.sqrt(x * x + y * y)))]);
+    }
+    return coords;
+  };
+
+  const fetchDirectionsRoute = async (token, startCoord, endCoord) => {
+    const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${startCoord.lng},${startCoord.lat};${endCoord.lng},${endCoord.lat}?geometries=geojson&overview=full&access_token=${encodeURIComponent(token)}`;
+    try {
+      const resp = await fetch(url);
+      if (!resp.ok) return null;
+      const data = await resp.json();
+      const route = data?.routes?.[0];
+      if (!route?.geometry?.coordinates) return null;
+      return route.geometry.coordinates;
+    } catch (_e) {
+      return null;
+    }
+  };
+
+  const resolveCoords = (root, payload) => {
+    const index = getCoordIndex(root);
+    const pins = payload.mapPins || {};
+    const result = { start: null, end: null };
+
+    const resolve = (pinId) => {
+      const key = normalizePin(pinId);
+      return key ? (index.get(key) || null) : null;
+    };
+
+    result.start = resolve(pins.startPin);
+    result.end = resolve(pins.endPin);
+    if (!result.start && !result.end) {
+      result.start = resolve(pins.primaryPin);
+    }
+    return result;
+  };
+
+  const destroyInspectorMap = (container) => {
+    const existing = inspectorMapInstances.get(container);
+    if (existing?.map && typeof existing.map.remove === 'function') {
+      existing.map.remove();
+    }
+    if (existing?.resizeObserver) {
+      existing.resizeObserver.disconnect();
+    }
+    inspectorMapInstances.delete(container);
+  };
+
+  const getThemeMode = (root) => {
+    if (!(root instanceof HTMLElement)) return 'light';
+    if (root.classList.contains('is-theme-dark') || strip(root.dataset.theme).toLowerCase() === 'dark') {
+      return 'dark';
+    }
+    return 'light';
+  };
+
+  const mountInspectorMap = async (root, container, payload, coords) => {
+    destroyInspectorMap(container);
+
+    const token = strip(root.dataset.mapboxToken);
+    if (!token || !/^pk\./i.test(token)) return;
+    if (!coords.start && !coords.end) return;
+
+    container.style.height = '280px';
+
+    let mapboxgl;
+    try {
+      mapboxgl = await ensureMapboxGl();
+    } catch (_e) {
+      return;
+    }
+
+    mapboxgl.accessToken = token;
+
+    const themeMode = getThemeMode(root);
+    const isFlight = FLIGHT_EVENT_TYPES.has(strip(payload.eventTypeId));
+    const center = coords.start || coords.end;
+
+    const map = new mapboxgl.Map({
+      container,
+      style: themeMode === 'dark' ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/light-v11',
+      center: [center.lng, center.lat],
+      zoom: coords.start && coords.end ? 5 : 10,
+      antialias: true,
+      attributionControl: false,
+      cooperativeGestures: true,
+    });
+
+    const resizeObserver = 'ResizeObserver' in window
+      ? new ResizeObserver(() => map.resize())
+      : null;
+    if (resizeObserver) resizeObserver.observe(container);
+
+    inspectorMapInstances.set(container, { map, resizeObserver });
+
+    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
+
+    if (coords.start) {
+      new mapboxgl.Marker({ color: themeMode === 'dark' ? '#ffffff' : '#111111', scale: 0.7 })
+        .setLngLat([coords.start.lng, coords.start.lat])
+        .addTo(map);
+    }
+    if (coords.end && coords.end !== coords.start) {
+      new mapboxgl.Marker({ color: themeMode === 'dark' ? '#cccccc' : '#444444', scale: 0.7 })
+        .setLngLat([coords.end.lng, coords.end.lat])
+        .addTo(map);
+    }
+
+    map.on('load', async () => {
+      if (!coords.start || !coords.end) {
+        return;
+      }
+
+      const routeColor = themeMode === 'dark' ? '#ffffff' : '#111111';
+      let lineCoordinates = null;
+
+      if (isFlight) {
+        lineCoordinates = greatCircleArc(
+          coords.start.lng, coords.start.lat,
+          coords.end.lng, coords.end.lat
+        );
+      } else {
+        lineCoordinates = await fetchDirectionsRoute(token, coords.start, coords.end);
+        if (!lineCoordinates) {
+          lineCoordinates = [
+            [coords.start.lng, coords.start.lat],
+            [coords.end.lng, coords.end.lat],
+          ];
+        }
+      }
+
+      if (lineCoordinates && lineCoordinates.length >= 2) {
+        map.addSource('inspector-route', {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            properties: {},
+            geometry: { type: 'LineString', coordinates: lineCoordinates },
+          },
+        });
+
+        map.addLayer({
+          id: 'inspector-route-line',
+          type: 'line',
+          source: 'inspector-route',
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: {
+            'line-color': routeColor,
+            'line-width': isFlight ? 2 : 3,
+            'line-opacity': 0.85,
+            'line-dasharray': isFlight ? [3, 3] : [1],
+          },
+        });
+
+        const allCoords = lineCoordinates;
+        const bounds = allCoords.reduce(
+          (b, c) => b.extend(c),
+          new mapboxgl.LngLatBounds(allCoords[0], allCoords[0])
+        );
+        map.fitBounds(bounds, { padding: 48, maxZoom: 13, duration: 600 });
+      }
+    });
+  };
+
+  const renderLogisticsInspector = (clonedNode, payload, rootEl) => {
+    if (!clonedNode || !payload) return;
+
+    const t = payload;
+
+    setText(clonedNode, '[data-inspector-logistics-mode]', t.modeLabel || t.eventTypeLabel || '');
+    setText(clonedNode, '[data-inspector-logistics-title]', t.title || 'Logistics');
+
+    const originName = strip(t.originName);
+    const destinationName = strip(t.destinationName);
+    const hasEndpoints = Boolean(originName || destinationName);
+    showIf(clonedNode, '[data-inspector-logistics-endpoints]', hasEndpoints);
+    if (hasEndpoints) {
+      setText(clonedNode, '[data-inspector-logistics-origin]', originName || 'Origin');
+      setText(clonedNode, '[data-inspector-logistics-destination]', destinationName || 'Destination');
+    }
+
+    const departureTime = strip(t.departureTimeRaw);
+    const durationRaw = strip(t.durationRaw);
+    const arrivalTime = strip(t.arrivalTimeRaw);
+    const hasTiming = Boolean(departureTime || durationRaw || arrivalTime);
+    showIf(clonedNode, '[data-inspector-logistics-timing]', hasTiming);
+    if (hasTiming) {
+      setText(clonedNode, '[data-inspector-logistics-departure]', departureTime || '--');
+      setText(clonedNode, '[data-inspector-logistics-duration]', durationRaw || '--');
+      setText(clonedNode, '[data-inspector-logistics-arrival]', arrivalTime || '--');
+    }
+
+    const descHtml = strip(t.descriptionHtml);
+    const hasDesc = Boolean(descHtml);
+    showIf(clonedNode, '[data-inspector-logistics-description]', hasDesc);
+    if (hasDesc) setHtml(clonedNode, '[data-inspector-logistics-description]', descHtml);
+
+    const dirHtml = strip(t.directionsHtml);
+    const hasDir = Boolean(dirHtml);
+    showIf(clonedNode, '[data-inspector-logistics-directions]', hasDir);
+    if (hasDir) setHtml(clonedNode, '[data-inspector-logistics-directions]', dirHtml);
+
+    const contactName = strip(t.contactNameRaw);
+    const contactPhone = strip(t.contactPhoneRaw);
+    const contactEmail = strip(t.contactEmailRaw);
+    const hasContact = Boolean(contactName || contactPhone || contactEmail);
+
+    const meeting = strip(t.meetingInstructionsRaw);
+    const hasMeeting = Boolean(meeting);
+    const reference = strip(t.referenceCodeRaw);
+    const hasReference = Boolean(reference);
+    const flightCode = strip(t.flightCodeRaw);
+    const terminal = strip(t.terminalRaw);
+    const hasFlight = Boolean(flightCode);
+
+    const hasAnySectionBelow = hasContact || hasMeeting || hasReference || hasFlight;
+    showIf(clonedNode, '[data-inspector-logistics-separator]', hasAnySectionBelow && (hasDesc || hasDir || hasTiming));
+
+    showIf(clonedNode, '[data-inspector-logistics-contact-section]', hasContact);
+    if (hasContact) {
+      setText(clonedNode, '[data-inspector-logistics-contact-name]', contactName);
+
+      const phoneEl = clonedNode.querySelector('[data-inspector-logistics-contact-phone]');
+      if (phoneEl) {
+        if (contactPhone) {
+          phoneEl.href = `tel:${contactPhone.replace(/\s+/g, '')}`;
+          phoneEl.textContent = contactPhone;
+          phoneEl.hidden = false;
+        } else {
+          phoneEl.hidden = true;
+        }
+      }
+
+      const emailEl = clonedNode.querySelector('[data-inspector-logistics-contact-email]');
+      if (emailEl) {
+        if (contactEmail) {
+          emailEl.href = `mailto:${contactEmail}`;
+          emailEl.textContent = contactEmail;
+          emailEl.hidden = false;
+        } else {
+          emailEl.hidden = true;
+        }
+      }
+    }
+
+    showIf(clonedNode, '[data-inspector-logistics-meeting-section]', hasMeeting);
+    if (hasMeeting) setText(clonedNode, '[data-inspector-logistics-meeting]', meeting);
+
+    showIf(clonedNode, '[data-inspector-logistics-reference-section]', hasReference);
+    if (hasReference) setText(clonedNode, '[data-inspector-logistics-reference]', reference);
+
+    showIf(clonedNode, '[data-inspector-logistics-flight-section]', hasFlight);
+    if (hasFlight) {
+      setText(clonedNode, '[data-inspector-logistics-flight-code]', flightCode);
+      const termEl = clonedNode.querySelector('[data-inspector-logistics-terminal]');
+      if (termEl) {
+        if (terminal) {
+          termEl.textContent = terminal;
+          termEl.hidden = false;
+        } else {
+          termEl.hidden = true;
+        }
+      }
+    }
+
+    const mapsLink = clonedNode.querySelector('[data-inspector-logistics-maps-link]');
+    if (mapsLink) {
+      if (originName && destinationName) {
+        const gmUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(originName)}&destination=${encodeURIComponent(destinationName)}&travelmode=driving`;
+        mapsLink.href = gmUrl;
+        mapsLink.hidden = false;
+      } else {
+        mapsLink.hidden = true;
+      }
+    }
+
+    const mapboxContainer = clonedNode.querySelector('[data-inspector-logistics-mapbox-container]');
+    if (mapboxContainer && rootEl) {
+      const coords = resolveCoords(rootEl, t);
+      if (coords.start || coords.end) {
+        mountInspectorMap(rootEl, mapboxContainer, t, coords);
+      } else {
+        const mapShell = clonedNode.querySelector('[data-inspector-logistics-map-shell]');
+        if (mapShell) mapShell.hidden = true;
+      }
+    }
+  };
+
+  const renderGuestsInspector = (clonedNode, payload, _rootEl) => {
+    if (!clonedNode || !payload) return;
+
+    const t = payload;
+    setText(clonedNode, '[data-inspector-guests-mode]', t.modeLabel || 'Guest list');
+    setText(clonedNode, '[data-inspector-guests-title]', t.title || 'Your Travel Party');
+
+    const metaEl = clonedNode.querySelector('[data-inspector-guests-meta]');
+    if (metaEl) {
+      const value = strip(t.meta);
+      metaEl.textContent = value;
+      metaEl.hidden = !value;
+    }
+
+    const summaryEl = clonedNode.querySelector('[data-inspector-guests-summary]');
+    if (summaryEl) {
+      const value = strip(t.summary);
+      summaryEl.textContent = value;
+      summaryEl.hidden = !value;
+    }
+
+    const groupsHost = clonedNode.querySelector('[data-inspector-guests-groups]');
+    const emptyEl = clonedNode.querySelector('[data-inspector-guests-empty]');
+    if (!groupsHost) return;
+
+    const toBool = (value) => {
+      if (value === true) return true;
+      if (typeof value === 'number') return value > 0;
+      const normalized = strip(value).toLowerCase();
+      return ['1', 'true', 'yes', 'y', 'lead', 'primary'].includes(normalized);
+    };
+
+    const normalizeCategory = (value) => {
+      const text = strip(value).toLowerCase();
+      if (/(infant|baby|toddler)/.test(text)) return 'infant';
+      if (/(child|children|kid|teen|minor|youth)/.test(text)) return 'child';
+      return 'adult';
+    };
+
+    const collectTags = (entry) => {
+      const tags = [];
+      const seen = new Set();
+
+      const ingest = (value) => {
+        if (Array.isArray(value)) {
+          value.forEach((item) => ingest(item));
+          return;
+        }
+        const text = strip(value);
+        if (!text) return;
+        const parts = text.includes(',') ? text.split(',') : [text];
+        parts.forEach((part) => {
+          const normalized = strip(part);
+          if (!normalized) return;
+          const key = normalized.toLowerCase();
+          if (seen.has(key)) return;
+          seen.add(key);
+          tags.push(normalized);
+        });
+      };
+
+      ingest(entry?.interests);
+      ingest(entry?.preferences);
+      ingest(entry?.specialInterests);
+      ingest(entry?.special_interests);
+      return tags.slice(0, 8);
+    };
+
+    const rawTravellers = Array.isArray(t.travellers)
+      ? t.travellers
+      : Array.isArray(t.travelers)
+        ? t.travelers
+        : Array.isArray(t.profiles)
+          ? t.profiles
+          : [];
+
+    const travellers = rawTravellers
+      .map((entry, index) => {
+        if (!entry || typeof entry !== 'object') return null;
+        const displayName = strip(
+          entry.displayName || entry.knownAs || entry.firstName || entry.name || entry.fullName
+        );
+        if (!displayName) return null;
+        const roleText = strip(entry.role || entry.relationship || entry.relationship_to_lead);
+        return {
+          name: displayName,
+          category: normalizeCategory(
+            entry.ageCategory || entry.age_category || entry.type || entry.traveller_type || entry.traveler_type
+          ),
+          interests: collectTags(entry),
+          isLead:
+            toBool(entry.isLead) ||
+            toBool(entry.isPrimary) ||
+            toBool(entry.primaryContact) ||
+            toBool(entry.isPrimaryContact) ||
+            toBool(entry.leadTraveller) ||
+            toBool(entry.leadTraveler) ||
+            /\b(lead|primary|main)\b/i.test(roleText),
+          sourceIndex: index,
+        };
+      })
+      .filter(Boolean);
+
+    if (travellers.length === 0) {
+      groupsHost.innerHTML = '';
+      if (emptyEl) emptyEl.hidden = false;
+      return;
+    }
+
+    const groups = {
+      adult: { label: 'The Party', travellers: [] },
+      child: { label: 'Young Explorers', travellers: [] },
+      infant: { label: 'Little Ones', travellers: [] },
+    };
+
+    travellers.forEach((traveller) => {
+      const key = traveller.category in groups ? traveller.category : 'adult';
+      groups[key].travellers.push(traveller);
+    });
+
+    Object.keys(groups).forEach((key) => {
+      groups[key].travellers.sort((a, b) => {
+        if (a.isLead === b.isLead) return a.sourceIndex - b.sourceIndex;
+        return a.isLead ? -1 : 1;
+      });
+    });
+
+    const orderedKeys = ['adult', 'child', 'infant'].filter(
+      (key) => groups[key].travellers.length > 0
+    );
+    const showGroupTitles = orderedKeys.length > 1;
+
+    groupsHost.innerHTML = orderedKeys
+      .map((key) => {
+        const group = groups[key];
+        const listHtml = group.travellers
+          .map((traveller) => {
+            const interests = traveller.interests.join(', ');
+            return `<li class="itin-command-center__guest-detail-item${traveller.isLead ? ' is-lead' : ''}">
+              <div class="itin-command-center__guest-detail-name-row">
+                <p class="itin-command-center__guest-detail-name">${escAttr(traveller.name)}</p>
+                ${traveller.isLead ? '<p class="itin-command-center__guest-detail-lead">Lead traveller</p>' : ''}
+              </div>
+              ${interests ? `<p class="itin-command-center__guest-detail-interests">${escAttr(interests)}</p>` : ''}
+            </li>`;
+          })
+          .join('');
+
+        return `<section class="itin-command-center__guest-detail-group">
+          ${showGroupTitles ? `<p class="itin-command-center__guest-detail-group-title">${escAttr(group.label)}</p>` : ''}
+          <ul class="itin-command-center__guest-detail-list">${listHtml}</ul>
+        </section>`;
+      })
+      .join('');
+
+    if (emptyEl) emptyEl.hidden = true;
+  };
+
+  const renderPricingInspector = (clonedNode, payload, rootEl) => {
+    if (!clonedNode || !payload) return;
+
+    const currencyCode = (() => {
+      if (rootEl instanceof HTMLElement) {
+        const c = strip(rootEl.dataset.currencyCode);
+        if (c) return c;
+      }
+      return strip(payload.currency) || 'USD';
+    })();
+
+    const fmtCurrency = (value) => {
+      const n = Number.isFinite(value) ? value : 0;
+      if (n === 0) return '—';
+      try {
+        return new Intl.NumberFormat(undefined, {
+          style: 'currency',
+          currency: currencyCode,
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0,
+        }).format(n);
+      } catch (_e) {
+        return `${currencyCode} ${Math.round(n)}`;
+      }
+    };
+
+    const toNum = (v, fallback = 0) => {
+      if (typeof v === 'number' && Number.isFinite(v)) return v;
+      const n = Number.parseFloat(String(v ?? '').replace(/[^0-9.-]/g, ''));
+      return Number.isFinite(n) ? n : fallback;
+    };
+
+    const t = payload;
+
+    setText(clonedNode, '[data-inspector-pricing-mode]', t.modeLabel || 'Pricing breakdown');
+    setText(clonedNode, '[data-inspector-pricing-title]', t.title || 'Pricing & Inclusions');
+
+    const totalInvestment = toNum(t.totalInvestment);
+    const perPerson = toNum(t.perPerson);
+    const partySize = toNum(t.partySize, 1);
+
+    setText(clonedNode, '[data-inspector-pricing-per-person]',
+      perPerson > 0 ? fmtCurrency(perPerson) : (totalInvestment > 0 ? fmtCurrency(totalInvestment) : '—'));
+    setText(clonedNode, '[data-inspector-pricing-total]',
+      totalInvestment > 0 ? fmtCurrency(totalInvestment) : '—');
+
+    const partyNote = clonedNode.querySelector('[data-inspector-pricing-party-note]');
+    if (partyNote) {
+      if (partySize > 1 && totalInvestment > 0) {
+        partyNote.textContent = `Based on ${partySize} guest${partySize !== 1 ? 's' : ''}`;
+        partyNote.hidden = false;
+      } else {
+        partyNote.hidden = true;
+      }
+    }
+
+    const adultAvg = toNum(t.adultAverage);
+    const childAvg = toNum(t.childAverage);
+    const logisticsTotal = toNum(t.logisticsTotal);
+    const hasMetrics = adultAvg > 0 || childAvg > 0 || logisticsTotal > 0;
+    const metricsWrap = clonedNode.querySelector('[data-inspector-pricing-summary-metrics]');
+    if (metricsWrap) {
+      metricsWrap.hidden = !hasMetrics;
+      const adultEl = metricsWrap.querySelector('[data-inspector-pricing-metric-adult]');
+      if (adultEl) { adultEl.textContent = `Adult average: ${fmtCurrency(adultAvg)}`; adultEl.hidden = adultAvg <= 0; }
+      const childEl = metricsWrap.querySelector('[data-inspector-pricing-metric-child]');
+      if (childEl) { childEl.textContent = `Child average: ${fmtCurrency(childAvg)}`; childEl.hidden = childAvg <= 0; }
+      const logEl = metricsWrap.querySelector('[data-inspector-pricing-metric-logistics]');
+      if (logEl) { logEl.textContent = `Fixed logistics: ${fmtCurrency(logisticsTotal)}`; logEl.hidden = logisticsTotal <= 0; }
+    }
+
+    let rawPhases = Array.isArray(t.phases) ? t.phases : [];
+    if (rawPhases.length === 0 && Array.isArray(t.priceComponents)) {
+      rawPhases = t.priceComponents.map(pc => ({
+        name: pc.component_name || pc.name || 'Phase',
+        dateRange: pc.days || pc.date_range || '',
+        total: pc.phase_total ?? pc.total ?? null,
+        lineItems: (Array.isArray(pc.sub_items) ? pc.sub_items : Array.isArray(pc.line_items) ? pc.line_items : []).map(si => ({
+          description: si.label || si.description || 'Item',
+          quantity: si.quantity || 0,
+          unitPrice: si.unit_cost ?? si.unit_price ?? null,
+          total: si.total ?? si.line_total ?? null,
+        })),
+      }));
+    }
+    const phases = rawPhases;
+    const hasPhases = phases.length > 0;
+    showIf(clonedNode, '[data-inspector-pricing-phases-separator]', hasPhases);
+    showIf(clonedNode, '[data-inspector-pricing-phases]', hasPhases);
+    if (hasPhases) {
+      const list = clonedNode.querySelector('[data-inspector-pricing-phases-list]');
+      if (list) {
+        list.innerHTML = phases.map((phase) => {
+          const name = escAttr(strip(phase.name || phase.label || 'Phase'));
+          const dateRange = escAttr(strip(phase.dateRange || ''));
+          const phaseTotal = toNum(phase.total, Number.NaN);
+          const phaseTotalStr = Number.isFinite(phaseTotal) ? escAttr(fmtCurrency(phaseTotal)) : '';
+          const items = Array.isArray(phase.lineItems) ? phase.lineItems : [];
+          const itemsHtml = items.map((item) => {
+            const desc = escAttr(strip(item.description || item.label || item.name || 'Item'));
+            const qty = toNum(item.quantity, 0);
+            const unitPrice = toNum(item.unitPrice || item.unit_price, Number.NaN);
+            const lineTotal = toNum(item.total || item.lineTotal || item.line_total, Number.NaN);
+            const lineTotalStr = Number.isFinite(lineTotal) ? escAttr(fmtCurrency(lineTotal)) : '';
+            const metaParts = [];
+            if (qty > 0) metaParts.push(`Qty: ${qty}`);
+            if (Number.isFinite(unitPrice)) metaParts.push(`Unit: ${fmtCurrency(unitPrice)}`);
+            const metaStr = metaParts.length > 0 ? escAttr(metaParts.join(' · ')) : '';
+            return `<div class="itin-command-center__pricing-detail-line-item">
+              <span class="itin-command-center__pricing-detail-line-desc">${desc}</span>
+              ${lineTotalStr ? `<span class="itin-command-center__pricing-detail-line-total">${lineTotalStr}</span>` : ''}
+              ${metaStr ? `<span class="itin-command-center__pricing-detail-line-meta">${metaStr}</span>` : ''}
+            </div>`;
+          }).join('');
+          return `<details class="itin-command-center__pricing-detail-phase">
+            <summary>
+              <span>
+                <span class="itin-command-center__pricing-detail-phase-name">${name}</span>
+                ${dateRange ? `<span class="itin-command-center__pricing-detail-phase-dates">${dateRange}</span>` : ''}
+              </span>
+              ${phaseTotalStr ? `<span class="itin-command-center__pricing-detail-phase-total">${phaseTotalStr}</span>` : ''}
+            </summary>
+            ${items.length > 0 ? `<div class="itin-command-center__pricing-detail-phase-items">${itemsHtml}</div>` : ''}
+          </details>`;
+        }).join('');
+      }
+    }
+
+    const includes = Array.isArray(t.includes) ? t.includes : [];
+    const excludes = Array.isArray(t.excludes) ? t.excludes : [];
+    const hasInclExcl = includes.length > 0 || excludes.length > 0;
+    showIf(clonedNode, '[data-inspector-pricing-inclusions-separator]', hasInclExcl && (hasPhases || hasMetrics));
+    showIf(clonedNode, '[data-inspector-pricing-inclusions-section]', includes.length > 0);
+    if (includes.length > 0) {
+      const ul = clonedNode.querySelector('[data-inspector-pricing-includes-list]');
+      if (ul) ul.innerHTML = includes.map((item) => `<li>${escAttr(strip(item))}</li>`).join('');
+    }
+    showIf(clonedNode, '[data-inspector-pricing-exclusions-section]', excludes.length > 0);
+    if (excludes.length > 0) {
+      const ul = clonedNode.querySelector('[data-inspector-pricing-excludes-list]');
+      if (ul) ul.innerHTML = excludes.map((item) => `<li>${escAttr(strip(item))}</li>`).join('');
+    }
+
+    const milestones = Array.isArray(t.paymentSchedule) ? t.paymentSchedule : [];
+    const hasMilestones = milestones.length > 0;
+    showIf(clonedNode, '[data-inspector-pricing-schedule-separator]', hasMilestones);
+    showIf(clonedNode, '[data-inspector-pricing-schedule]', hasMilestones);
+    if (hasMilestones) {
+      const schedList = clonedNode.querySelector('[data-inspector-pricing-schedule-list]');
+      if (schedList) {
+        schedList.innerHTML = milestones.map((ms) => {
+          const label = escAttr(strip(ms.label || ms.name || ms.milestone || 'Payment'));
+          const amount = toNum(ms.amount, Number.NaN);
+          const amountStr = Number.isFinite(amount) ? escAttr(fmtCurrency(amount)) : '';
+          const dueDate = escAttr(strip(ms.dueDate || ms.due_date || ''));
+          const pct = toNum(ms.percentage, Number.NaN);
+          const status = escAttr(strip(ms.status || ''));
+          const metaParts = [];
+          if (dueDate) metaParts.push(`Due: ${dueDate}`);
+          if (Number.isFinite(pct)) metaParts.push(`${pct}%`);
+          const metaStr = metaParts.length > 0 ? escAttr(metaParts.join(' · ')) : '';
+          return `<div class="itin-command-center__pricing-detail-milestone">
+            <span class="itin-command-center__pricing-detail-milestone-label">${label}</span>
+            ${amountStr ? `<span class="itin-command-center__pricing-detail-milestone-amount">${amountStr}</span>` : ''}
+            ${metaStr ? `<span class="itin-command-center__pricing-detail-milestone-meta">${metaStr}</span>` : ''}
+            ${status ? `<span class="itin-command-center__pricing-detail-milestone-status">${status}</span>` : ''}
+          </div>`;
+        }).join('');
+      }
+    }
+
+    if (rootEl) {
+      renderInlineBookingPrompt(clonedNode, rootEl);
+    }
+  };
+
+  const renderInlineBookingPrompt = (container, rootEl) => {
+    if (!container || !(rootEl instanceof HTMLElement)) return;
+
+    const variantId = strip(rootEl.dataset.productSelectedVariantId);
+    if (!variantId) return;
+
+    const currencyCode = strip(rootEl.dataset.currencyCode) || 'USD';
+    const localeCode = strip(rootEl.dataset.localeCode) || 'en';
+
+    const fmtPrice = (cents) => {
+      const n = (Number.isFinite(cents) ? cents : 0) / 100;
+      if (n === 0) return '';
+      try {
+        return new Intl.NumberFormat(localeCode, {
+          style: 'currency',
+          currency: currencyCode,
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }).format(n);
+      } catch (_e) {
+        return `${currencyCode} ${n.toFixed(2)}`;
+      }
+    };
+
+    const productId = strip(rootEl.dataset.productId);
+    const productUrl = productId
+      ? `/products/${strip(rootEl.dataset.productHandle)}.js`
+      : '';
+
+    const wrapper = document.createElement('section');
+    wrapper.className = 'itin-command-center__inline-booking-prompt';
+    wrapper.setAttribute('data-inline-booking-prompt', '');
+
+    const priceLabel = document.createElement('p');
+    priceLabel.className = 'itin-command-center__inline-booking-price';
+    priceLabel.setAttribute('data-inline-booking-price', '');
+    priceLabel.textContent = 'Loading price\u2026';
+
+    const cta = document.createElement('button');
+    cta.type = 'button';
+    cta.className = 'itin-command-center__booking-cta';
+    cta.setAttribute('data-inline-booking-cta', '');
+    cta.setAttribute('aria-disabled', 'true');
+    cta.textContent = 'Book this journey';
+
+    const status = document.createElement('p');
+    status.className = 'itin-command-center__booking-status';
+    status.setAttribute('role', 'status');
+    status.setAttribute('aria-live', 'polite');
+    status.hidden = true;
+
+    wrapper.appendChild(priceLabel);
+    wrapper.appendChild(cta);
+    wrapper.appendChild(status);
+    container.appendChild(wrapper);
+
+    (async () => {
+      try {
+        const resp = await fetch(productUrl);
+        if (!resp.ok) throw new Error('Could not load product');
+        const product = await resp.json();
+        const variants = Array.isArray(product.variants) ? product.variants : [];
+        const variant = variants.find((v) => String(v.id) === variantId) ||
+          variants.find((v) => v.available) || variants[0];
+        if (!variant) {
+          priceLabel.textContent = 'Pricing unavailable';
+          return;
+        }
+        const price = Number(variant.price);
+        const formatted = fmtPrice(price);
+        priceLabel.textContent = formatted ? `From ${formatted} per person` : 'Pricing unavailable';
+        if (formatted && variant.available !== false) {
+          cta.setAttribute('aria-disabled', 'false');
+          cta.addEventListener('click', async () => {
+            if ('true' === cta.getAttribute('aria-disabled')) return;
+            cta.textContent = 'Adding\u2026';
+            cta.setAttribute('aria-disabled', 'true');
+            try {
+              const addResp = await fetch('/cart/add.js', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                body: JSON.stringify({ id: variant.id, quantity: 1 }),
+              });
+              if (!addResp.ok) {
+                const errData = await addResp.json().catch(() => ({}));
+                throw new Error(errData.description || errData.message || 'Could not add to cart');
+              }
+              window.location.href = '/cart';
+            } catch (err) {
+              status.textContent = String(err?.message || 'Something went wrong. Please try again.');
+              status.hidden = false;
+              cta.textContent = 'Book this journey';
+              cta.setAttribute('aria-disabled', 'false');
+            }
+          });
+        }
+      } catch (_e) {
+        priceLabel.textContent = 'Pricing unavailable';
+      }
+    })();
+  };
+
+  const wireBookingCta = (bookingEl, state, setStatus, setControlsDisabled, toInt) => {
+    const cta = bookingEl.querySelector('[data-inspector-booking-cta]');
+    if (!cta) return;
+    cta.addEventListener('click', async (ev) => {
+      if ('true' === cta.getAttribute('aria-disabled')) return ev.preventDefault();
+      ev.preventDefault();
+      const vid = strip(state.variantId);
+      const qty = Math.max(1, toInt(state.guests, 1));
+      if (!vid) return void setStatus(bookingEl, 'No variant selected.');
+      cta.textContent = 'Adding\u2026';
+      cta.setAttribute('aria-disabled', 'true');
+      setControlsDisabled(bookingEl, true);
+      try {
+        const resp = await fetch('/cart/add.js', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ id: Number(vid), quantity: qty }),
+        });
+        if (!resp.ok) {
+          const errData = await resp.json().catch(() => ({}));
+          throw new Error(errData.description || errData.message || 'Could not add to cart');
+        }
+        window.location.href = '/cart';
+      } catch (err) {
+        setStatus(bookingEl, String(err?.message || 'Something went wrong. Please try again.'));
+        cta.textContent = 'Confirm journey';
+        cta.setAttribute('aria-disabled', 'false');
+        setControlsDisabled(bookingEl, false);
+      }
+    });
+  };
+
+  window.__plekifyInspectorRenderer = {
+    renderLogistics: renderLogisticsInspector,
+    renderGuests: renderGuestsInspector,
+    renderPricing: renderPricingInspector,
+    renderInlineBooking: renderInlineBookingPrompt,
+    wireBookingCta: wireBookingCta,
+  };
+})();
+{% endjavascript %}

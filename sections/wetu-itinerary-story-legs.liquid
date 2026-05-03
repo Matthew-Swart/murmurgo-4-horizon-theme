@@ -1,0 +1,2154 @@
+{% comment %}
+  ============================================================================
+  WETU ITINERARY STORY LEGS - DAY-BY-DAY ORCHESTRATION
+  ============================================================================
+
+  Renders the itinerary as a TRUE day-by-day experience, iterating through
+  each day chronologically rather than by accommodation leg.
+
+  This section orchestrates the following components:
+  - wetu-destination-hero.liquid    → Full destination intro on first visit
+  - wetu-accommodation-hero.liquid  → Full accommodation intro on arrival day
+  - wetu-accommodation-mention.liquid → Subtle reference on subsequent days
+  - wetu-route-display.liquid       → Transfers/flights display
+  - wetu-day-activities.liquid      → Day's activities
+
+  LAYOUT MODES:
+  - day-by-day (default): True chronological day display
+  - editorial: Legacy 50-50 split layout
+  - hero-gallery: Legacy full-width hero + masonry
+  - magazine: Legacy bento grid
+
+  ============================================================================
+{% endcomment %}
+
+{% # theme-check-disable UnknownObject %}
+{% # theme-check-disable ThemeCheckUnknownObject %}
+
+{% comment %} ================================================================
+   DATA LOADING
+   Load base itinerary data and process into day-indexed structure
+================================================================ {% endcomment %}
+
+{% # theme-check-disable UnknownFilter %}
+{% # theme-check-disable UnusedAssign %}
+{% render 'wetu-itinerary-data' %}
+{% render 'wetu-day-by-day-data', product: product %}
+{% # theme-check-enable UnusedAssign %}
+{% # theme-check-enable UnknownFilter %}
+
+{%- liquid
+  assign itinerary_obj = product.metafields.wetu.itinerary_metaobject.value
+  if itinerary_obj != blank
+    assign itinerary_legs = itinerary_obj.legs.value | sort: 'sequence.value'
+    assign itinerary_routes = itinerary_obj.routes.value | sort: 'sequence.value'
+  else
+    assign itinerary_legs = '' | split: ','
+    assign itinerary_routes = '' | split: ','
+  endif
+
+  assign pin_ids_list = ''
+  assign product_handles_list = ''
+  assign component_handles = product.metafields.wetu_itinerary.component_products.value
+
+  if component_handles.size > 0
+    for comp_product in component_handles
+      if comp_product.handle
+        assign prod_obj = comp_product
+      else
+        assign prod_obj = all_products[comp_product]
+      endif
+
+      assign prod_pin = prod_obj.metafields.wetu.pin_id.value | default: prod_obj.metafields.wetu.content_entity_id.value
+      assign prod_handle = prod_obj.handle
+
+      if prod_pin != blank and prod_handle != blank
+        if pin_ids_list == ''
+          assign pin_ids_list = prod_pin
+          assign product_handles_list = prod_handle
+        else
+          assign pin_ids_list = pin_ids_list | append: ',' | append: prod_pin
+          assign product_handles_list = product_handles_list | append: ',' | append: prod_handle
+        endif
+      endif
+    endfor
+  endif
+
+  assign pin_ids_array = pin_ids_list | split: ','
+  assign handles_array = product_handles_list | split: ','
+-%}
+
+{% comment %} --------------------------------------------------------
+    BUILD ACTIVITY MAP
+    Map Wetu Item IDs to Shopify Product Handles for smart linking
+-------------------------------------------------------- {% endcomment %}
+{% # theme-check-disable UnknownObject %}
+{%- liquid
+  assign activity_map_ids = ''
+  assign activity_map_handles = ''
+
+  assign itinerary_activities = product.metafields.wetu_itinerary.activities.value
+
+  if itinerary_activities != blank
+    for activity_ref in itinerary_activities
+      # Check if this product has the linking metafield
+      assign act_id = activity_ref.metafields.wetu_linked_activity.wetu_item_id.value | default: activity_ref.metafields.wetu_linked_activity.wetu_item_id
+
+      if act_id != blank
+        assign activity_map_ids = activity_map_ids | append: act_id | append: ','
+        assign activity_map_handles = activity_map_handles | append: activity_ref.handle | append: ','
+      endif
+    endfor
+  endif
+
+  assign activity_map_ids_array = activity_map_ids | split: ','
+  assign activity_map_handles_array = activity_map_handles | split: ','
+-%}
+{% # theme-check-enable UnknownObject %}
+
+{% comment %} ================================================================
+   SECTION SETTINGS
+================================================================ {% endcomment %}
+
+{%- liquid
+  assign color_scheme = section.settings.color_scheme | default: 'scheme-5'
+  assign show_transfers = section.settings.show_transfers | default: true
+  assign show_activities = section.settings.show_activities | default: true
+  assign show_day_headers = section.settings.show_day_headers | default: true
+  assign day_header_style = section.settings.day_header_style | default: 'full'
+  assign subsequent_accommodation_style = section.settings.subsequent_accommodation_style | default: 'subtle'
+  assign show_alternate_accommodations = section.settings.show_alternate_accommodations | default: true
+  assign show_driving_directions = section.settings.show_driving_directions | default: true
+
+  # Reset tracking for first-visit logic (use pipe delimiters to prevent substring matches)
+  assign seen_destinations = '|'
+  assign seen_accommodations = '|'
+
+  # Get total days
+  assign total_days = product.metafields.wetu.itinerary_days.value | plus: 0
+  if total_days < 1
+    assign total_days = total_days | plus: 1
+  endif
+
+  # Get itinerary start date
+  assign start_date = product.metafields.wetu.start_date.value
+-%}
+
+{% comment %} ================================================================
+   DAY-BY-DAY LAYOUT MODE
+   True chronological iteration through each day
+================================================================ {% endcomment %}
+
+{% # theme-check-disable UnknownFilter %}
+{% # theme-check-disable UnusedAssign %}
+<div class="itinerary-days color-{{ color_scheme }}" data-layout="day-by-day" id="itinerary-days-container">
+  
+  {% comment %} === SUMMARY SECTION === {% endcomment %}
+  {% # theme-check-disable UnknownObject %}
+  {%- liquid
+    assign summary_text = itinerary_obj.summary.value | default: itinerary_obj.description.value | default: product.description
+    
+    if summary_text == blank
+      assign summary_text = product.metafields.wetu.itinerary_summary.value.summary
+    endif
+  -%}
+  {% # theme-check-enable UnknownObject %}
+  
+  {% comment %}
+  {% if summary_text != blank %}
+    <div class="itinerary-summary">
+      <div class="page-width">
+        <div class="itinerary-summary__content rte">
+          {% capture raw_summary %}
+            {% if summary_text.type == 'root' %}
+              {% for child in summary_text.children %}
+                {% for node in child.children %}
+                  {{ node.value }}
+                {% endfor %}
+              {% endfor %}
+            {% else %}
+              {{ summary_text }}
+            {% endif %}
+          {% endcapture %}
+          
+          {% assign sentences = raw_summary | split: '. ' %}
+          {% for sentence in sentences %}
+            {% assign clean_sentence = sentence | strip %}
+            {% if clean_sentence != blank %}
+              <p>{{ clean_sentence | remove_last: '.' }}.</p>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  {% endif %}
+  {% endcomment %}
+
+  {% comment %} Iterate through each day of the itinerary {% endcomment %}
+  {% assign previous_day_notes = nil %}
+  {% for day_num in (1..total_days) %}
+    
+    {% comment %} --------------------------------------------------------
+       FIND LEG FOR THIS DAY
+       Determine which accommodation leg this day belongs to
+    -------------------------------------------------------- {% endcomment %}
+    {% assign current_leg = nil %}
+    {% assign leg_start = 0 %}
+    {% assign leg_total_nights = 0 %}
+    {% assign day_within_leg = 0 %}
+    {% assign running_day = 1 %}
+    
+    {% # theme-check-disable UnknownObject %}
+    {% for leg in itinerary_legs %}
+      {% assign leg_type = leg.type.value | default: 'Standard' %}
+      {% assign leg_nights = leg.nights.value | default: 0 | plus: 0 %}
+      
+      {% assign this_leg_start = running_day %}
+      {% if leg_nights > 0 %}
+        {% assign this_leg_end = running_day | plus: leg_nights | minus: 1 %}
+      {% else %}
+        {% assign this_leg_end = running_day %}
+      {% endif %}
+      
+      {% if day_num >= this_leg_start and day_num <= this_leg_end %}
+        {% assign current_leg = leg %}
+        {% assign leg_index = forloop.index0 %}
+        {% assign leg_start = this_leg_start %}
+        {% assign leg_total_nights = leg_nights %}
+        {% assign day_within_leg = day_num | minus: this_leg_start | plus: 1 %}
+        {% break %}
+      {% endif %}
+      
+      {% assign running_day = running_day | plus: leg_nights %}
+    {% endfor %}
+    {% # theme-check-enable UnknownObject %}
+    
+    {% comment %} Skip if no leg found {% endcomment %}
+    {% unless current_leg %}
+      {% continue %}
+    {% endunless %}
+    
+    {% comment %} --------------------------------------------------------
+       EXTRACT LEG DATA
+    -------------------------------------------------------- {% endcomment %}
+    {%- liquid
+      assign leg_type = current_leg.type.value | default: 'Standard'
+      assign acc_pin_id = current_leg.content_entity_id.value
+      assign acc_name = current_leg.accommodation_name.value
+      assign dest_pin_id = current_leg.destination_content_entity_id.value
+      assign periods = current_leg.periods.value
+      assign total_days = total_days
+      assign leg_check_in_time = current_leg.check_in_time.value | default: current_leg.check_in_time
+      assign leg_check_out_time = current_leg.check_out_time.value | default: current_leg.check_out_time
+      
+      # Arrival/Departure flags
+      assign is_arrival_day = false
+      assign is_departure_day = false
+      if day_within_leg == 1
+        assign is_arrival_day = true
+      endif
+      if day_within_leg == leg_total_nights
+        assign is_departure_day = true
+      endif
+      
+    -%}
+    
+    {% comment %} --------------------------------------------------------
+       FIND LINKED PRODUCTS
+    -------------------------------------------------------- {% endcomment %}
+    {% # theme-check-disable UnknownObject %}
+    {%- liquid
+      assign acc_product = nil
+      assign acc_handle = nil
+      assign dest_product = nil
+      assign dest_handle = nil
+      assign dest_name = ''
+      
+      # Find Accommodation Product
+      if acc_pin_id != blank
+        assign search_pin = acc_pin_id | append: ''
+        for check_pin in pin_ids_array
+          assign current_pin = check_pin | append: ''
+          if current_pin == search_pin
+            assign acc_handle = handles_array[forloop.index0]
+            assign acc_product = all_products[acc_handle]
+            break
+          endif
+        endfor
+      endif
+      
+      # Find Destination Product
+      if dest_pin_id != blank
+        assign search_dest = dest_pin_id | append: ''
+        for check_pin in pin_ids_array
+          assign current_pin = check_pin | append: ''
+          if current_pin == search_dest
+            assign dest_handle = handles_array[forloop.index0]
+            assign dest_product = all_products[dest_handle]
+            assign dest_name = dest_product.title
+            break
+          endif
+        endfor
+      endif
+    -%}
+    {% # theme-check-enable UnknownObject %}
+    
+    {% comment %} --------------------------------------------------------
+       FIRST VISIT FLAGS
+       Check if this is the first time visiting destination/accommodation
+       Using pipe delimiters to prevent substring matches (e.g., "123" matching "9123")
+    -------------------------------------------------------- {% endcomment %}
+    {% # theme-check-disable UnknownObject %}
+    {%- liquid
+      assign dest_is_first_visit = false
+      
+      if dest_pin_id != blank
+        assign dest_check = '|' | append: dest_pin_id | append: '|'
+        unless seen_destinations contains dest_check
+          assign dest_is_first_visit = true
+          assign seen_destinations = seen_destinations | append: dest_pin_id | append: '|'
+        endunless
+      endif
+      
+      if acc_pin_id != blank
+        assign acc_check = '|' | append: acc_pin_id | append: '|'
+        unless seen_accommodations contains acc_check
+          assign seen_accommodations = seen_accommodations | append: acc_pin_id | append: '|'
+        endunless
+      endif
+    -%}
+    {% # theme-check-enable UnknownObject %}
+    
+    {% comment %} --------------------------------------------------------
+       GET PERIOD DATA FOR THIS DAY
+       Note: For rich_text fields (notes), pass the metaobject reference, not .value
+    -------------------------------------------------------- {% endcomment %}
+    {% # theme-check-disable UnknownObject %}
+    {%- liquid
+      assign day_activities = nil
+      assign day_period_notes = nil
+      assign day_consultant_notes = nil
+      assign day_greetings = nil
+      assign day_room_basis = ''
+      assign day_drinks_basis = ''
+      assign day_included = ''
+      assign day_excluded = ''
+      
+      assign current_period = nil
+      
+      if periods.size > 0
+        # Iterate through periods to find the one covering the current day
+        assign period_day_cursor = 1
+        
+        for period in periods
+          assign period_duration = period.days.value | default: period.days | default: 1 | plus: 0
+          if period_duration < 1
+            assign period_duration = 1
+          endif
+          
+          assign period_end_cursor = period_day_cursor | plus: period_duration | minus: 1
+          
+          if day_within_leg >= period_day_cursor and day_within_leg <= period_end_cursor
+            assign current_period = period
+            assign period_start_day = period_day_cursor
+            break
+          endif
+          
+          assign period_day_cursor = period_day_cursor | plus: period_duration
+        endfor
+        
+        # Fallback: If no period found but we have periods, check if single period applies
+        if current_period == nil and periods.size == 1
+          assign current_period = periods[0]
+        endif
+        
+        if current_period
+          assign day_activities_raw = current_period.activities.value
+          assign day_activities = '' | split: ','
+          
+          # Calculate day of period (ensure period_start_day has a value)
+          assign period_start_day = period_start_day | default: 1
+          assign day_of_period = day_within_leg | minus: period_start_day | plus: 1
+          
+          # --------------------------------------------------------
+          #  FILTER ACTIVITIES FOR THIS DAY
+          #  Use period_sequence or day_offset to assign to specific day
+          # --------------------------------------------------------
+          
+          if day_activities_raw != blank and day_activities_raw.size > 0
+            # Initialize empty array for this day's activities
+            assign day_activities = '' | split: ','
+            
+            for activity in day_activities_raw
+              assign show_activity = false
+              
+              # Get Activity Properties
+              assign act_day_offset = activity.day_offset.value | default: activity.day_offset | default: 0 | plus: 0
+              assign act_period_seq = activity.period_sequence.value | default: activity.period_sequence | default: 0 | plus: 0
+              
+              # Logic 1: Check period_sequence (1001 = Day 1, 1002 = Day 2)
+              assign seq_day = 0
+              if act_period_seq > 1000
+                assign seq_day = act_period_seq | modulo: 1000
+              endif
+              
+              # Logic 2: Check day_offset (0-based index)
+              assign offset_day = act_day_offset | plus: 1
+              
+              # Determine Target Day
+              assign target_day = 1
+              
+              if seq_day > 0
+                assign target_day = seq_day
+              elsif offset_day > 1
+                assign target_day = offset_day
+              endif
+              
+              # Check if Activity Belongs to Current Day
+              if target_day == day_of_period
+                assign show_activity = true
+              endif
+              
+              # Add to list if valid
+              if show_activity
+                assign day_activities = day_activities | concat: activity
+              endif
+            endfor
+          endif
+          
+          # Enhance Data Mapping for Notes
+          # Try: notes, Notes
+          assign day_period_notes = current_period.notes.value | default: current_period.notes | default: current_period.Notes
+          
+          # Try: consultant_notes, ConsultantNotes, expert_tips
+          assign day_consultant_notes = current_period.consultant_notes.value | default: current_period.consultant_notes | default: current_period.ConsultantNotes | default: current_period.expert_tips
+
+          assign day_greetings = current_period.greetings.value | default: current_period.greetings
+          
+          assign day_room_basis = current_period.room_basis.value | default: current_period.room_basis
+          assign day_drinks_basis = current_period.drinks_basis.value | default: current_period.drinks_basis
+          assign day_included = current_period.included.value | default: current_period.included
+          assign day_excluded = current_period.excluded.value | default: current_period.excluded
+        endif
+      endif
+    -%}
+    {% # theme-check-enable UnknownObject %}
+    
+      {% comment %} --------------------------------------------------------
+       FIND ROUTES FOR THIS DAY (Journey Flow)
+       Wetu API uses 0-based day index.
+       Day 1 = Index 0
+    -------------------------------------------------------- {% endcomment %}
+    {% # theme-check-disable UnknownObject %}
+    {%- liquid
+      assign day_routes = ''
+      assign day_route_ids = '|'
+      assign wetu_day_index = day_num | minus: 1
+
+      assign current_leg_sequence = current_leg.sequence.value | default: leg_index | plus: 0
+      assign current_leg_id = current_leg.leg_id.value | default: current_leg.itinerary_leg_id.value
+      if current_leg_id == blank
+        assign current_leg_id = current_leg_sequence
+      endif
+      assign current_leg_id = current_leg_id | plus: 0
+      assign current_leg_id_alt = current_leg_id | plus: 1
+
+      for route in itinerary_routes
+        assign route_mode = route.mode.value | default: ''
+        assign route_start = route.start_day.value | default: 0 | plus: 0
+        assign route_end = route.end_day.value | default: route_start | plus: 0
+        assign route_type = route.type.value | default: ''
+        assign route_start_leg_id = route.start_leg_id.value | default: 0 | plus: 0
+        assign route_end_leg_id = route.end_leg_id.value | default: 0 | plus: 0
+        assign has_leg_reference = false
+        assign matches_today = false
+
+        if route_type == 'InterLeg' or route_start_leg_id > 0 or route_end_leg_id > 0
+          assign has_leg_reference = true
+        endif
+
+        if has_leg_reference
+          if is_arrival_day
+            if route_end_leg_id == current_leg_id or route_end_leg_id == current_leg_id_alt
+              assign matches_today = true
+            endif
+          endif
+        elsif route_start == wetu_day_index or route_end == wetu_day_index
+          assign matches_today = true
+        endif
+
+        if matches_today
+          assign route_key = route_start_leg_id | append: '-' | append: route_end_leg_id | append: '-' | append: route_mode | append: '-' | append: route_start | append: '-' | append: route_end
+          unless day_route_ids contains route_key
+            assign day_route_ids = day_route_ids | append: route_key | append: '|'
+            if day_routes == ''
+              assign day_routes = forloop.index0 | append: ''
+            else
+              assign day_routes = day_routes | append: ',' | append: forloop.index0
+            endif
+          endunless
+        endif
+      endfor
+
+      assign day_routes_array = day_routes | split: ','
+      
+      # Previous Leg Logic (for Wake Up at...)
+      assign previous_acc_name = nil
+      if leg_index > 0
+        assign prev_leg_idx = leg_index | minus: 1
+        assign prev_leg = itinerary_legs[prev_leg_idx]
+        assign previous_acc_name = prev_leg.accommodation_name.value
+      endif
+    -%}
+    {% # theme-check-enable UnknownObject %}
+    
+    {% comment %} --------------------------------------------------------
+       CALCULATE DATE FOR THIS DAY
+    -------------------------------------------------------- {% endcomment %}
+    {% # theme-check-disable UnknownObject %}
+    {%- liquid
+      assign day_date = nil
+      assign day_date_formatted = ''
+      assign check_in_date = nil
+      assign check_out_date = nil
+      
+      if start_date != blank
+        assign days_to_add = day_num | minus: 1
+        assign seconds_to_add = days_to_add | times: 86400
+        assign start_timestamp = start_date | date: '%s' | plus: 0
+        assign day_timestamp = start_timestamp | plus: seconds_to_add
+        assign day_date = day_timestamp | date: '%Y-%m-%d'
+        assign day_date_formatted = day_timestamp | date: '%A, %B %e, %Y'
+        
+        # Calculate Check-in/Check-out dates for the leg
+        assign ci_days_to_add = leg_start | minus: 1
+        assign ci_seconds = ci_days_to_add | times: 86400
+        assign ci_timestamp = start_timestamp | plus: ci_seconds
+        assign check_in_date = ci_timestamp | date: '%d %b %Y'
+        
+        assign co_seconds = leg_total_nights | times: 86400
+        assign co_timestamp = ci_timestamp | plus: co_seconds
+        assign check_out_date = co_timestamp | date: '%d %b %Y'
+      endif
+    -%}
+    {% # theme-check-enable UnknownObject %}
+    
+    {% comment %} ========================================================
+       DAY SECTION OUTPUT
+    ======================================================== {% endcomment %}
+    
+    {% comment %} Build descriptive day title {% endcomment %}
+    {% # theme-check-disable UnknownObject %}
+    {%- liquid
+      assign day_title = ''
+      assign leg_type_check = current_leg.type.value | default: 'Standard'
+      
+      if day_num == 1
+        if dest_name != blank
+          assign day_title = 'Arrive in ' | append: dest_name
+        else
+          assign day_title = 'Arrival'
+        endif
+      elsif leg_type_check == 'Departure' or day_num == total_days
+        assign day_title = 'Departure'
+      elsif is_arrival_day and day_routes != ''
+        if dest_name != blank
+          assign day_title = 'Journey to ' | append: dest_name
+        elsif acc_name != blank
+          assign day_title = 'Arrive at ' | append: acc_name | truncatewords: 3, ''
+        endif
+      elsif is_arrival_day
+        if acc_name != blank
+          assign day_title = 'Check in at ' | append: acc_name | truncatewords: 4, ''
+        endif
+      elsif dest_name != blank
+        assign day_title = 'Explore ' | append: dest_name
+      endif
+    -%}
+    {% # theme-check-enable UnknownObject %}
+    
+    <section class="itinerary-day" id="day-{{ day_num }}" data-day="{{ day_num }}" data-leg="{{ leg_index }}">
+      
+      {% comment %} === DAY HEADER === {% endcomment %}
+      {% if show_day_headers %}
+        <header class="itinerary-day__header{% if day_header_style == 'minimal' %} itinerary-day__header--minimal{% endif %}">
+          <div class="page-width">
+            <span class="itinerary-day__number">Day {{ day_num }}</span>
+            <div class="itinerary-day__details">
+              {% if day_title != blank %}
+                <span class="itinerary-day__title">{{ day_title }}</span>
+              {% endif %}
+              {% if day_header_style == 'full' and day_date_formatted != blank %}
+                <span class="itinerary-day__date">{{ day_date_formatted }}</span>
+              {% endif %}
+            </div>
+          </div>
+        </header>
+      {% endif %}
+
+
+      {% comment %} === LOCAL TIPS (Consultant Notes) === {% endcomment %}
+      {% if day_consultant_notes != blank %}
+        <div class="itinerary-day__notes-intro page-width" style="padding-top: 16px;">
+          <div class="itinerary-day__notes-content rte">
+            <h4>Local Tips</h4>
+            {% if day_consultant_notes.children %}
+              {% for child in day_consultant_notes.children %}
+                {% if child.type == 'paragraph' %}
+                  {% capture consultant_text %}
+                    {% for text in child.children %}
+                      {{ text.value }}
+                    {% endfor %}
+                  {% endcapture %}
+                  {% assign consultant_text_normalized = consultant_text | strip | downcase %}
+                  <p{% if consultant_text_normalized contains 'snoop' %} class="itinerary-day__note--snoop"{% endif %}>
+                    {% if consultant_text_normalized contains 'snoop' %}
+                      <span class="itinerary-day__snoop-icon" aria-hidden="true">S</span>
+                    {% endif %}
+                    {{ consultant_text }}
+                  </p>
+                {% endif %}
+              {% endfor %}
+            {% else %}
+              {% assign consultant_notes_text = day_consultant_notes | strip %}
+              {% assign consultant_notes_normalized = consultant_notes_text | downcase %}
+              <div{% if consultant_notes_normalized contains 'snoop' %} class="itinerary-day__note--snoop"{% endif %}>
+                {% if consultant_notes_normalized contains 'snoop' %}
+                  <span class="itinerary-day__snoop-icon" aria-hidden="true">S</span>
+                {% endif %}
+                {{ day_consultant_notes }}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      {% endif %}
+
+      {% if day_greetings != blank and day_greetings.size > 0 %}
+        <div class="itinerary-day__greetings page-width">
+          <h4 class="itinerary-day__greetings-title">Welcome & Contacts</h4>
+          <div class="itinerary-day__greetings-grid">
+            {% for greeting in day_greetings %}
+              <div class="itinerary-day__greeting">
+                <div class="itinerary-day__greeting-name">{{ greeting.name.value | default: greeting.name }}</div>
+                {% if greeting.company.value or greeting.company %}
+                  <div class="itinerary-day__greeting-company">{{ greeting.company.value | default: greeting.company }}</div>
+                {% endif %}
+                {% if greeting.description.value or greeting.description %}
+                  <div class="itinerary-day__greeting-description">{{ greeting.description.value | default: greeting.description }}</div>
+                {% endif %}
+                <div class="itinerary-day__greeting-contacts">
+                  {% if greeting.contact_name.value or greeting.contact_name %}
+                    <span>{{ greeting.contact_name.value | default: greeting.contact_name }}</span>
+                  {% endif %}
+                  {% if greeting.contact_number.value or greeting.contact_number %}
+                    <span>{{ greeting.contact_number.value | default: greeting.contact_number }}</span>
+                  {% endif %}
+                  {% if greeting.contact_email.value or greeting.contact_email %}
+                    <span>{{ greeting.contact_email.value | default: greeting.contact_email }}</span>
+                  {% endif %}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+      
+      {% comment %} === START: WAKE UP AT (Logical Flow) === {% endcomment %}
+      {% assign wakeup_location = acc_name %}
+      {% if is_arrival_day and previous_acc_name != blank %}
+        {% assign wakeup_location = previous_acc_name %}
+      {% endif %}
+      {% if wakeup_location != blank %}
+        <div class="itinerary-day__wakeup">
+          Wake up at {{ wakeup_location }}
+        </div>
+      {% endif %}
+
+      {% if is_departure_day and leg_check_out_time != blank and acc_name != blank %}
+        <div class="itinerary-day__time-callout">
+          Check-out at {{ acc_name }} · {{ leg_check_out_time }}
+        </div>
+      {% endif %}
+      
+      {% comment %} === MIDDLE: TRAVEL SEGMENTS === {% endcomment %}
+      {% if show_transfers and day_routes != '' %}
+        <div class="itinerary-day__routes itinerary-day__routes--arriving">
+          {% for route_idx in day_routes_array %}
+            {% assign route_index = route_idx | plus: 0 %}
+            {% assign route = itinerary_routes[route_index] %}
+            {% if route %}
+              {% comment %} Find linked products for route endpoints {% endcomment %}
+              {% assign from_product = nil %}
+              {% assign to_product = nil %}
+              {% assign route_from_pin = route.start_content_entity_id.value %}
+              {% assign route_to_pin = route.end_content_entity_id.value %}
+
+              {% if route_from_pin != blank %}
+                {% assign search_pin = route_from_pin | append: '' %}
+                {% for check_pin in pin_ids_array %}
+                  {% assign current_pin = check_pin | append: '' %}
+                  {% if current_pin == search_pin %}
+                    {% assign from_handle = handles_array[forloop.index0] %}
+                    {% assign from_product = all_products[from_handle] %}
+                    {% break %}
+                  {% endif %}
+                {% endfor %}
+              {% endif %}
+
+              {% if route_to_pin != blank %}
+                {% assign search_pin = route_to_pin | append: '' %}
+                {% for check_pin in pin_ids_array %}
+                  {% assign current_pin = check_pin | append: '' %}
+                  {% if current_pin == search_pin %}
+                    {% assign to_handle = handles_array[forloop.index0] %}
+                    {% assign to_product = all_products[to_handle] %}
+                    {% break %}
+                  {% endif %}
+                {% endfor %}
+              {% endif %}
+
+              {% # theme-check-disable UnknownObject %}
+              {% render 'wetu-transfer-journey',
+                route: route,
+                from_product: from_product,
+                to_product: to_product,
+                day_number: day_num,
+                color_scheme: color_scheme,
+                show_map: true,
+                show_directions: show_driving_directions,
+                itinerary_date: day_date
+              %}
+              {% # theme-check-enable UnknownObject %}
+            {% endif %}
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      {% if is_arrival_day and leg_check_in_time != blank and acc_name != blank %}
+        <div class="itinerary-day__time-callout">
+          Check-in at {{ acc_name }} · {{ leg_check_in_time }}
+        </div>
+      {% endif %}
+      
+      {% comment %} === MOBILE LEG STOPS === {% endcomment %}
+      {% assign leg_stops = current_leg.stops.value %}
+      {% if leg_stops != blank and leg_stops.size > 0 %}
+        <div class="itinerary-day__stops">
+          {% for stop in leg_stops %}
+            {% assign stop_arrival_day = stop.arrival_day.value | default: stop.arrival_day | plus: 1 %}
+            {% assign stop_departure_day = stop.departure_day.value | default: stop.departure_day | plus: 1 %}
+            
+            {% comment %} Check if stop is active today {% endcomment %}
+            {% if day_within_leg >= stop_arrival_day and day_within_leg <= stop_departure_day %}
+              {% assign stop_pin_id = stop.content_entity_id.value %}
+              {% assign stop_product = nil %}
+
+              {% # theme-check-disable UnknownObject %}
+              {% if stop_pin_id != blank %}
+                 {% assign search_pin = stop_pin_id | append: '' %}
+                 {% for check_pin in pin_ids_array %}
+                   {% assign current_pin = check_pin | append: '' %}
+                   {% if current_pin == search_pin %}
+                     {% assign stop_handle = handles_array[forloop.index0] %}
+                     {% assign stop_product = all_products[stop_handle] %}
+                     {% break %}
+                   {% endif %}
+                 {% endfor %}
+              {% endif %}
+              {% # theme-check-enable UnknownObject %}
+
+              {% render 'wetu-mobile-stop',
+                  stop: stop,
+                  product: stop_product,
+                  day_number: day_num,
+                  is_arrival: (day_within_leg == stop_arrival_day),
+                  is_departure: (day_within_leg == stop_departure_day),
+                  color_scheme: color_scheme
+              %}
+            {% endif %}
+          {% endfor %}
+        </div>
+      {% endif %}
+      
+      {% comment %} === END: DESTINATION & ACCOMMODATION (Check-in) === {% endcomment %}
+      {% if leg_type == 'Departure' %}
+        {% comment %} Departure Leg Rendering {% endcomment %}
+        <div class="itinerary-day__departure-hero" style="padding: 48px 24px; text-align: center; background: rgba(var(--color-foreground-rgb), 0.02);">
+          <h2 style="font-size: 2rem; margin-bottom: 16px;">Departure Day</h2>
+          <p style="font-size: 1.1rem; color: rgba(var(--color-foreground-rgb), 0.7);">
+            Today marks the end of your journey. Safe travels!
+          </p>
+        </div>
+      
+      {% else %}
+        {% comment %} Standard Leg Rendering {% endcomment %}
+        
+        {% comment %} === DESTINATION HERO (First Visit Only) === {% endcomment %}
+        {% if dest_is_first_visit and dest_product %}
+          {% comment %} Get itinerary-level destination description if available {% endcomment %}
+          {% assign dest_itinerary_description = current_leg.destination_description %}
+          
+          {% render 'wetu-destination-hero',
+            destination_product: dest_product,
+            destination_name: dest_name,
+            itinerary_description: dest_itinerary_description,
+            day_number: day_num,
+            nights_here: leg_total_nights,
+            color_scheme: color_scheme
+          %}
+        {% endif %}
+        
+        {% comment %} === DAILY NOTES === {% endcomment %}
+        {% assign show_notes = false %}
+        {% if day_period_notes != blank %}
+          {% if day_within_leg == 1 %}
+            {% assign show_notes = true %}
+          {% elsif day_period_notes != previous_day_notes %}
+            {% assign show_notes = true %}
+          {% endif %}
+        {% endif %}
+
+        {% if show_notes %}
+          <div class="itinerary-day__notes-intro page-width" style="padding-bottom: 24px; padding-top: 24px; text-align: left;">
+            <div class="itinerary-day__notes-content rte">
+              {% if day_period_notes.children %}
+                {% for child in day_period_notes.children %}
+                  {% if child.type == 'paragraph' %}
+                    {% capture day_notes_text %}
+                      {% for text in child.children %}
+                        {{ text.value | replace: '&nbsp;', ' ' | replace: '&', '&' }}
+                      {% endfor %}
+                    {% endcapture %}
+                    {% assign day_notes_normalized = day_notes_text | strip | downcase %}
+                    <p{% if day_notes_normalized contains 'snoop' %} class="itinerary-day__note--snoop"{% endif %}>
+                      {% if day_notes_normalized contains 'snoop' %}
+                        <span class="itinerary-day__snoop-icon" aria-hidden="true">S</span>
+                      {% endif %}
+                      {{ day_notes_text }}
+                    </p>
+                  {% endif %}
+                {% endfor %}
+              {% else %}
+                {% assign clean_notes = day_period_notes | replace: '&nbsp;', ' ' | replace: '&', '&' | strip_html %}
+                {% assign clean_notes_normalized = clean_notes | downcase %}
+                {% assign sentences = clean_notes | split: '.' %}
+                {% for sentence in sentences %}
+                  {% assign s = sentence | strip %}
+                  {% if s != blank %}
+                    <p{% if clean_notes_normalized contains 'snoop' %} class="itinerary-day__note--snoop"{% endif %}>
+                      {% if clean_notes_normalized contains 'snoop' %}
+                        <span class="itinerary-day__snoop-icon" aria-hidden="true">S</span>
+                      {% endif %}
+                      {{ s }}.
+                    </p>
+                  {% endif %}
+                {% endfor %}
+              {% endif %}
+            </div>
+          </div>
+        {% endif %}
+
+        {% comment %} === INCLUDED / EXCLUDED === {% endcomment %}
+        {% if day_included != blank or day_excluded != blank %}
+          <div class="itinerary-day__inclusions page-width" style="padding-bottom: 24px;">
+             <div style="max-width: 900px; margin: 0 auto;">
+               {% if day_included != blank %}
+                 {% capture included_html %}{% render 'wetu-rich-text', content: day_included %}{% endcapture %}
+                 {{ included_html }}
+                 {% render 'wetu-ui-collapsible-text',
+                    label: 'What\'s Included',
+                    html: included_html,
+                    id: 'included-' | append: day_num,
+                    truncate_chars: 1000
+                 %}
+               {% endif %}
+               
+               {% if day_excluded != blank %}
+                 <div style="margin-top: 16px;">
+                   {% capture excluded_html %}{% render 'wetu-rich-text', content: day_excluded %}{% endcapture %}
+                   {{ excluded_html }}
+                   {% render 'wetu-ui-collapsible-text',
+                      label: 'What\'s Not Included',
+                      html: excluded_html,
+                      id: 'excluded-' | append: day_num,
+                      truncate_chars: 1000
+                   %}
+                 </div>
+               {% endif %}
+             </div>
+          </div>
+        {% endif %}
+
+        {% comment %} === ACCOMMODATION === {% endcomment %}
+        {% if is_arrival_day %}
+          
+          {% comment %} Full hero for arrival day {% endcomment %}
+          {% render 'wetu-accommodation-hero',
+            accommodation_product: acc_product,
+            accommodation_name: acc_name,
+            nights: leg_total_nights,
+            check_in_date: check_in_date,
+            check_out_date: check_out_date,
+            room_basis: day_room_basis,
+            drinks_basis: day_drinks_basis,
+            day_number: day_num,
+            itinerary_description: nil,
+            included: day_included,
+            excluded: day_excluded,
+            color_scheme: color_scheme
+          %}
+          
+          {% comment %} Show alternative accommodation options if available {% endcomment %}
+          {% if show_alternate_accommodations %}
+            {% assign alternates = current_leg.alternate_accommodations.value %}
+            {% if alternates != blank and alternates.size > 0 %}
+              {% # theme-check-disable UnknownObject %}
+              {% render 'wetu-alternate-accommodations',
+                alternates: alternates,
+                color_scheme: color_scheme,
+                wetu_pin_ids_array: pin_ids_array,
+                wetu_handles_array: handles_array,
+                destination_name: dest_name
+              %}
+              {% # theme-check-enable UnknownObject %}
+            {% endif %}
+          {% endif %}
+          
+          {% comment %} === ON-SITE ACTIVITIES (Property Content) === {% endcomment %}
+          {% if acc_product != nil and section.settings.show_onsite_activities %}
+            {% assign property_activities = acc_product.metafields.wetu.activities.value %}
+            {% assign activities_collection = acc_product.metafields.wetu.activities_collection_ref.value %}
+            
+            {% if property_activities != blank and property_activities.size > 0 %}
+              {% comment %} Filter activities by location type {% endcomment %}
+              {%- liquid
+                assign onsite_list = ''
+                assign offsite_list = ''
+                
+                for activity in property_activities
+                  assign loc_type = activity.location_type.value | default: 'On-site' | downcase
+                  if loc_type contains 'on-site' or loc_type contains 'onsite'
+                    if onsite_list == ''
+                      assign onsite_list = forloop.index0 | append: ''
+                    else
+                      assign onsite_list = onsite_list | append: ',' | append: forloop.index0
+                    endif
+                  else
+                    if offsite_list == ''
+                      assign offsite_list = forloop.index0 | append: ''
+                    else
+                      assign offsite_list = offsite_list | append: ',' | append: forloop.index0
+                    endif
+                  endif
+                endfor
+                
+                assign onsite_indices = onsite_list | split: ','
+                assign offsite_indices = offsite_list | split: ','
+                assign max_display = section.settings.onsite_activities_limit | default: 6
+              -%}
+              
+              {% if onsite_indices.size > 0 or offsite_indices.size > 0 %}
+                <div class="itinerary-day__onsite-activities page-width">
+                  <div class="onsite-activities">
+                    <div class="onsite-activities__header">
+                      <h4 class="onsite-activities__title">Available at {{ acc_product.title }}</h4>
+                      {% if activities_collection %}
+                        <a href="{{ activities_collection.url }}" class="onsite-activities__view-all">
+                          View all {{ property_activities.size }} activities →
+                        </a>
+                      {% endif %}
+                    </div>
+                    
+                    <div class="onsite-activities__grid">
+                      {% assign display_count = 0 %}
+                      
+                      {% comment %} Show on-site activities first {% endcomment %}
+                      {% for idx_str in onsite_indices %}
+                        {% if display_count >= max_display %}{% break %}{% endif %}
+                        {% assign idx = idx_str | plus: 0 %}
+                        {% assign activity = property_activities[idx] %}
+                        
+                        <div class="onsite-activity-card" data-location="on-site">
+                          {% assign images = activity.image_gallery.value %}
+                          {% if images != blank and images.size > 0 %}
+                            {% assign first_image = images | first %}
+                            <div class="onsite-activity-card__image">
+                              <img src="{{ first_image.url | image_url: width: 400 }}" 
+                                   alt="{{ activity.name.value }}"
+                                   loading="lazy"
+                                   width="400"
+                                   height="300">
+                            </div>
+                          {% endif %}
+                          
+                          <div class="onsite-activity-card__content">
+                            {% if activity.category.value %}
+                              <span class="onsite-activity-card__category">{{ activity.category.value }}</span>
+                            {% endif %}
+                            <h5 class="onsite-activity-card__name">{{ activity.name.value }}</h5>
+                            {% if activity.description.value %}
+                              <p class="onsite-activity-card__description">{{ activity.description.value | truncate: 100 }}</p>
+                            {% endif %}
+                            {% if activity.duration.value %}
+                              <span class="onsite-activity-card__duration">{{ activity.duration.value }}</span>
+                            {% endif %}
+                          </div>
+                        </div>
+                        
+                        {% assign display_count = display_count | plus: 1 %}
+                      {% endfor %}
+                      
+                      {% comment %} Fill remaining slots with off-site activities {% endcomment %}
+                      {% for idx_str in offsite_indices %}
+                        {% if display_count >= max_display %}{% break %}{% endif %}
+                        {% assign idx = idx_str | plus: 0 %}
+                        {% assign activity = property_activities[idx] %}
+                        
+                        <div class="onsite-activity-card" data-location="off-site">
+                          {% assign images = activity.image_gallery.value %}
+                          {% if images != blank and images.size > 0 %}
+                            {% assign first_image = images | first %}
+                            <div class="onsite-activity-card__image">
+                              <img src="{{ first_image.url | image_url: width: 400 }}" 
+                                   alt="{{ activity.name.value }}"
+                                   loading="lazy"
+                                   width="400"
+                                   height="300">
+                            </div>
+                          {% endif %}
+                          
+                          <div class="onsite-activity-card__content">
+                            {% if activity.category.value %}
+                              <span class="onsite-activity-card__category">{{ activity.category.value }}</span>
+                            {% endif %}
+                            <h5 class="onsite-activity-card__name">{{ activity.name.value }}</h5>
+                            {% if activity.description.value %}
+                              <p class="onsite-activity-card__description">{{ activity.description.value | truncate: 100 }}</p>
+                            {% endif %}
+                            {% if activity.duration.value %}
+                              <span class="onsite-activity-card__duration">{{ activity.duration.value }}</span>
+                            {% endif %}
+                          </div>
+                        </div>
+                        
+                        {% assign display_count = display_count | plus: 1 %}
+                      {% endfor %}
+                    </div>
+                  </div>
+                </div>
+              {% endif %}
+            {% endif %}
+          {% endif %}
+          
+        {% else %}
+          {% comment %} Subtle mention for subsequent days {% endcomment %}
+          {% if subsequent_accommodation_style != 'hidden' %}
+          {% comment %} Determine context based on activities {% endcomment %}
+          {% assign mention_context = 'overnight' %}
+          {% if day_activities != blank and day_activities.size > 0 %}
+            {% assign mention_context = 'morning' %}
+          {% endif %}
+          {% if is_departure_day %}
+            {% assign mention_context = 'morning' %}
+          {% endif %}
+          
+          <div class="itinerary-day__accommodation-mention">
+            {% render 'wetu-accommodation-mention',
+              accommodation_product: acc_product,
+              accommodation_name: acc_name,
+              context: mention_context,
+              day_number: day_num,
+              color_scheme: color_scheme,
+              show_thumbnail: true
+            %}
+          </div>
+        {% endif %}
+      {% endif %}
+      {% endif %}
+      
+      {% comment %} === DAY ACTIVITIES === {% endcomment %}
+      {% if show_activities and day_activities != blank and day_activities.size > 0 %}
+        <div class="itinerary-day__activities">
+          {% render 'wetu-day-activities',
+            activities: day_activities,
+            day_number: day_num,
+            show_images: true,
+            color_scheme: color_scheme,
+            activity_map_ids: activity_map_ids_array,
+            activity_map_handles: activity_map_handles_array
+          %}
+        </div>
+      {% endif %}
+      
+      
+      {% assign previous_day_notes = day_period_notes %}
+    </section>
+    
+  {% endfor %}
+  
+</div>
+{% # theme-check-enable UnusedAssign %}
+{% # theme-check-enable UnknownFilter %}
+
+{% comment %} ================================================================
+   STYLES
+================================================================ {% endcomment %}
+
+<style>
+/* ============================================
+   DAY-BY-DAY LAYOUT STYLES
+   ============================================ */
+
+.itinerary-days {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: rgb(var(--color-background-rgb));
+}
+
+/* --- Day Section --- */
+.itinerary-day {
+  scroll-margin-top: 60px; /* Account for sticky navigator */
+  padding: 0;
+  background: rgb(var(--color-background-rgb));
+}
+
+/* --- Day Header --- */
+.itinerary-day__header {
+  padding: 48px 24px 24px;
+  text-align: center;
+  background: linear-gradient(
+    to bottom,
+    rgba(var(--color-foreground-rgb), 0.03) 0%,
+    transparent 100%
+  );
+}
+
+.itinerary-day__header--minimal {
+  padding: 32px 24px 16px;
+}
+
+.itinerary-day__number {
+  display: block;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: rgb(var(--color-foreground-rgb));
+}
+
+.itinerary-day__title {
+  display: block;
+  font-size: 1rem;
+  font-weight: 400;
+  color: rgba(var(--color-foreground-rgb), 0.7);
+  margin-top: 4px;
+  letter-spacing: 0.01em;
+}
+
+.itinerary-day__date {
+  display: block;
+  font-size: 0.8125rem;
+  color: rgba(var(--color-foreground-rgb), 0.5);
+  margin-top: 6px;
+  text-transform: none;
+  letter-spacing: 0.02em;
+  font-weight: 400;
+}
+
+/* --- Routes Section --- */
+.itinerary-day__routes {
+  padding: 16px 24px;
+  background: rgba(var(--color-foreground-rgb), 0.02);
+  border-top: 1px solid rgba(var(--color-foreground-rgb), 0.06);
+  border-bottom: 1px solid rgba(var(--color-foreground-rgb), 0.06);
+}
+
+.itinerary-day__wakeup {
+  text-align: center;
+  padding: 16px;
+  color: rgba(var(--color-foreground-rgb), 0.6);
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.itinerary-day__time-callout {
+  text-align: center;
+  padding: 12px 16px 0;
+  color: rgba(var(--color-foreground-rgb), 0.7);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.itinerary-day__greetings {
+  padding: 16px 24px 0;
+}
+
+.itinerary-day__greetings-title {
+  margin: 0 0 12px;
+  font-size: 1rem;
+}
+
+.itinerary-day__greetings-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.itinerary-day__greeting {
+  padding: 12px 16px;
+  border: 1px solid rgba(var(--color-foreground-rgb), 0.08);
+  border-radius: 12px;
+  background: rgba(var(--color-foreground-rgb), 0.02);
+}
+
+.itinerary-day__greeting-name {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.itinerary-day__greeting-company {
+  font-size: 0.85rem;
+  color: rgba(var(--color-foreground-rgb), 0.7);
+}
+
+.itinerary-day__greeting-description {
+  margin-top: 6px;
+  font-size: 0.9rem;
+}
+
+.itinerary-day__greeting-contacts {
+  margin-top: 8px;
+  display: grid;
+  gap: 2px;
+  font-size: 0.85rem;
+  color: rgba(var(--color-foreground-rgb), 0.7);
+}
+
+.itinerary-day__routes--arriving {
+  margin-bottom: 0;
+}
+
+.itinerary-day__routes--departing {
+  margin-top: 24px;
+  background: rgba(var(--color-foreground-rgb), 0.03);
+}
+
+.itinerary-day__routes-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(var(--color-foreground-rgb), 0.5);
+  margin-bottom: 12px;
+}
+
+.itinerary-day__routes-label svg {
+  opacity: 0.6;
+}
+
+/* --- Accommodation Mention Wrapper --- */
+.itinerary-day__accommodation-mention {
+  padding: 16px 24px;
+  background: transparent;
+}
+
+@media (min-width: 768px) {
+  .itinerary-day__accommodation-mention {
+    padding: 16px 48px;
+    max-width: 600px;
+  }
+}
+
+/* --- Activities Section --- */
+.itinerary-day__activities {
+  padding: 24px;
+  background: rgba(var(--color-foreground-rgb), 0.02);
+  border-top: 1px solid rgba(var(--color-foreground-rgb), 0.05);
+}
+
+/* --- Snoop Wisdom Callouts --- */
+.itinerary-day__note--snoop {
+  position: relative;
+  padding-left: 32px;
+}
+
+.itinerary-day__snoop-icon {
+  position: absolute;
+  left: 0;
+  top: 2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(var(--color-foreground-rgb), 0.12);
+  color: rgb(var(--color-foreground-rgb));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+@media (min-width: 768px) {
+  .itinerary-day__activities {
+    padding: 32px 48px;
+  }
+}
+
+/* --- On-Site Activities Section --- */
+.itinerary-day__onsite-activities {
+  padding: 32px 0;
+  background: rgb(var(--color-background-rgb));
+}
+
+.onsite-activities {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.onsite-activities__header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.onsite-activities__title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: rgb(var(--color-foreground-rgb));
+  margin: 0;
+}
+
+.onsite-activities__view-all {
+  font-size: 0.875rem;
+  color: rgba(var(--color-foreground-rgb), 0.7);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.onsite-activities__view-all:hover {
+  color: rgb(var(--color-foreground-rgb));
+}
+
+.onsite-activities__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+@media (min-width: 768px) {
+  .onsite-activities__grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+}
+
+.onsite-activity-card {
+  background: rgba(var(--color-foreground-rgb), 0.02);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.onsite-activity-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.onsite-activity-card__image {
+  aspect-ratio: 4/3;
+  overflow: hidden;
+}
+
+.onsite-activity-card__image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.onsite-activity-card:hover .onsite-activity-card__image img {
+  transform: scale(1.05);
+}
+
+.onsite-activity-card__content {
+  padding: 16px;
+}
+
+.onsite-activity-card__category {
+  display: inline-block;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(var(--color-foreground-rgb), 0.5);
+  margin-bottom: 6px;
+}
+
+.onsite-activity-card__name {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: rgb(var(--color-foreground-rgb));
+  margin: 0 0 8px 0;
+  line-height: 1.3;
+}
+
+.onsite-activity-card__description {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: rgba(var(--color-foreground-rgb), 0.7);
+  margin: 0;
+}
+
+.onsite-activity-card__duration {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 0.75rem;
+  color: rgba(var(--color-foreground-rgb), 0.5);
+}
+
+/* Off-site indicator */
+.onsite-activity-card[data-location="off-site"] .onsite-activity-card__category::before {
+  content: "Nearby • ";
+}
+
+/* --- Summary Section --- */
+.itinerary-summary {
+  padding: 20px 0;
+  background: rgb(var(--color-background-rgb));
+}
+
+.itinerary-summary__heading {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: rgb(var(--color-foreground-rgb));
+}
+
+.itinerary-summary__content {
+  font-size: 1.1rem;
+  line-height: 1.7;
+  color: rgba(var(--color-foreground-rgb), 0.85);
+  max-width: 900px;
+}
+
+/* --- Period Notes --- */
+.itinerary-day__notes-intro,
+.itinerary-day__notes {
+  padding: 32px 24px;
+  background: rgb(var(--color-background-rgb));
+}
+
+.itinerary-day__notes-content {
+  font-size: 1.05rem;
+  line-height: 1.7;
+  color: rgba(var(--color-foreground-rgb), 0.85);
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.itinerary-day__notes-intro h4 {
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(var(--color-foreground-rgb), 0.6);
+  margin-bottom: 16px;
+}
+
+.itinerary-day__notes-content p {
+  margin-bottom: 1em;
+}
+
+.itinerary-day__notes-content p:last-child {
+  margin-bottom: 0;
+}
+
+@media (min-width: 768px) {
+  .itinerary-day__notes-intro,
+  .itinerary-day__notes {
+    padding: 48px 64px;
+  }
+}
+
+/* ============================================
+   ROUTE PREVIEW STYLES (Tomorrow's Journey)
+   ============================================ */
+
+.itinerary-day__route-preview {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 0;
+  font-size: 0.95rem;
+}
+
+.itinerary-day__route-mode {
+  font-weight: 600;
+  color: var(--color-foreground);
+}
+
+.itinerary-day__route-journey {
+  color: var(--color-foreground);
+}
+
+.itinerary-day__route-journey::before {
+  content: '';
+  display: inline;
+}
+
+.itinerary-day__route-duration {
+  color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+}
+
+/* ============================================
+   LEGACY LAYOUT STYLES (Preserved)
+   ============================================ */
+
+.itinerary-legs-enhanced {
+  width: 100%;
+  overflow-x: hidden;
+  --gap-size: 2px;
+  --bg-color: rgba(var(--color-background-rgb, 255, 255, 255), 1);
+  --text-color: rgb(var(--color-foreground-rgb, 26, 26, 26));
+  --content-padding-desktop: 64px;
+  --content-padding-mobile: 24px;
+}
+
+.page-width {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* Editorial Transfer */
+.editorial-transfer {
+  background: rgba(var(--color-foreground-rgb, 0, 0, 0), 0.03);
+  padding: 16px 24px;
+  border-bottom: 1px solid rgba(var(--color-foreground-rgb, 0, 0, 0), 0.08);
+}
+
+.editorial-transfer__content {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+
+/* Editorial Leg Grid */
+.editorial-leg {
+  display: block;
+  margin-bottom: 0;
+  border-bottom: 1px solid rgba(var(--color-foreground-rgb, 0, 0, 0), 0.05);
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.editorial-leg:not(.is-visible) {
+  opacity: 0.3;
+}
+
+.editorial-leg.is-visible {
+  opacity: 1;
+}
+
+.editorial-leg__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  min-height: auto;
+}
+
+@media (min-width: 1024px) {
+  .editorial-leg__grid {
+    display: grid;
+    grid-template-columns: 50% 50%;
+    min-height: auto;
+  }
+}
+
+/* Left: Image Column */
+.editorial-leg__image-col {
+  position: relative;
+  min-height: 50vh;
+  overflow: hidden;
+  background: #000;
+}
+
+@media (min-width: 1024px) {
+  .editorial-leg__image-col {
+    min-height: auto;
+  }
+  
+  .editorial-leg__image-col--sticky {
+    position: sticky;
+    top: 48px;
+    height: calc(100vh - 48px);
+    align-self: start;
+  }
+}
+
+.editorial-leg__image-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.editorial-leg__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+@media (hover: hover) {
+  .editorial-leg__image-wrapper:hover .editorial-leg__image {
+    transform: scale(1.03);
+  }
+}
+
+.editorial-leg__image-placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+}
+
+/* Day Badge */
+.editorial-leg__day-badge {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  padding: 8px 16px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* Right: Content Column */
+.editorial-leg__content-col {
+  padding: var(--content-padding-mobile);
+  background: rgb(var(--color-background-rgb, 255, 255, 255));
+  min-height: 100vh;
+}
+
+@media (min-width: 1024px) {
+  .editorial-leg__content-col {
+    padding: var(--content-padding-desktop);
+    min-height: 120vh;
+  }
+}
+
+/* Typography */
+.editorial-leg__title {
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  margin: 0 0 24px;
+  color: rgb(var(--color-foreground-rgb, 26, 26, 26));
+}
+
+.editorial-leg__description {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: rgba(var(--color-foreground-rgb, 26, 26, 26), 0.75);
+  margin-bottom: 40px;
+}
+
+.editorial-leg__description p {
+  margin-bottom: 1em;
+}
+
+.editorial-leg__description p:last-child {
+  margin-bottom: 0;
+}
+
+/* Accommodation Block */
+.editorial-leg__accommodation {
+  padding: 32px 0;
+  border-top: 1px solid rgba(var(--color-foreground-rgb, 0, 0, 0), 0.1);
+  margin-bottom: 32px;
+}
+
+.editorial-leg__label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(var(--color-foreground-rgb, 0, 0, 0), 0.5);
+  margin-bottom: 8px;
+}
+
+.editorial-leg__acc-name {
+  font-size: 1.5rem;
+  font-weight: 500;
+  margin: 0 0 8px;
+}
+
+.editorial-leg__acc-link {
+  color: inherit;
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+.editorial-leg__acc-link:hover {
+  opacity: 0.7;
+}
+
+/* Meta Pills */
+.editorial-leg__meta-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.editorial-leg__pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  background: rgba(var(--color-foreground-rgb, 0, 0, 0), 0.05);
+  color: rgba(var(--color-foreground-rgb, 0, 0, 0), 0.75);
+  border-radius: 20px;
+}
+
+/* Hero Gallery Transfer */
+.hero-gallery-transfer {
+  display: flex;
+  gap: 16px;
+  padding: 24px;
+  background: rgba(var(--color-foreground-rgb), 0.02);
+  border-bottom: 1px solid rgba(var(--color-foreground-rgb), 0.08);
+  flex-wrap: wrap;
+}
+
+/* Magazine Layout */
+.itinerary-leg {
+  margin-bottom: 0;
+}
+
+.itinerary-leg__hero {
+  position: relative;
+  width: 100%;
+  height: 60vh;
+  min-height: 400px;
+}
+
+.itinerary-leg__hero-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.itinerary-leg__hero-placeholder {
+  width: 100%;
+  height: 100%;
+  background: #333;
+}
+
+.itinerary-leg__hero-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+  padding: 40px 0;
+  color: #fff;
+}
+
+.itinerary-leg__days-label {
+  display: inline-block;
+  background: #fff;
+  color: #000;
+  padding: 4px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.itinerary-leg__hero-title {
+  font-size: 3rem;
+  margin: 0;
+  font-weight: 300;
+}
+
+.itinerary-leg__section-title {
+  font-size: 1.8rem;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 24px;
+  margin-top: 40px;
+}
+
+.itinerary-leg__section-subtitle {
+  font-size: 1.2rem;
+  font-weight: 500;
+  margin-bottom: 16px;
+  color: var(--color-primary);
+}
+
+.itinerary-leg__description {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: rgba(var(--color-foreground-rgb, 0, 0, 0), 0.8);
+  max-width: 800px;
+}
+
+.itinerary-leg__intro {
+  padding: 60px 0;
+}
+
+.itinerary-leg__transfer-section {
+  background: rgba(var(--color-foreground-rgb, 0, 0, 0), 0.03);
+  padding: 30px 0;
+  margin-bottom: 0;
+}
+
+.itinerary-leg__transfers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 2px;
+}
+
+.itinerary-leg__acc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding-bottom: 24px;
+  border-bottom: 1px solid rgba(var(--color-foreground-rgb, 0, 0, 0), 0.1);
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.itinerary-leg__label {
+  display: block;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  opacity: 0.6;
+  margin-bottom: 8px;
+}
+
+.itinerary-leg__acc-title {
+  font-size: 2.2rem;
+  margin: 0;
+  font-weight: 400;
+}
+
+.itinerary-leg__acc-link {
+  text-decoration: none;
+  color: inherit;
+  transition: opacity 0.2s;
+}
+
+.itinerary-leg__acc-link:hover {
+  opacity: 0.7;
+}
+
+.itinerary-leg__acc-meta {
+  display: flex;
+  gap: 30px;
+}
+
+.itinerary-leg__meta-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.itinerary-leg__meta-item .label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+.itinerary-leg__meta-item .value {
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+/* ============================================
+   REDUCED MOTION
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .editorial-leg {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .editorial-leg__image {
+    transition: none;
+  }
+
+  .editorial-leg__image-wrapper:hover .editorial-leg__image {
+    transform: none;
+  }
+}
+</style>
+
+{% comment %} ================================================================
+   JAVASCRIPT
+================================================================ {% endcomment %}
+
+<script>
+(function() {
+  'use strict';
+
+  // Lightbox functionality
+  window.openLightbox = function(src, alt) {
+    if (!src) return;
+    
+    var modal = document.createElement('div');
+    modal.className = 'itinerary-lightbox';
+    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;transition:opacity 0.3s ease;';
+    modal.innerHTML = '<img src="' + src + '" alt="' + (alt || '') + '" style="max-width:90%;max-height:90vh;object-fit:contain;transform:scale(0.95);transition:transform 0.3s ease;"><button style="position:absolute;top:20px;right:20px;background:rgba(255,255,255,0.1);border:none;color:#fff;width:44px;height:44px;border-radius:50%;cursor:pointer;font-size:24px;backdrop-filter:blur(8px);">×</button>';
+    
+    var close = function() {
+      modal.style.opacity = '0';
+      setTimeout(function() { 
+        if (modal.parentNode) modal.parentNode.removeChild(modal); 
+      }, 300);
+    };
+    
+    modal.onclick = close;
+    modal.onkeydown = function(e) { if (e.key === 'Escape') close(); };
+    
+    document.body.appendChild(modal);
+    modal.focus();
+    
+    requestAnimationFrame(function() {
+      modal.style.opacity = '1';
+      modal.querySelector('img').style.transform = 'scale(1)';
+    });
+  };
+
+  // Scroll Animation for Editorial Layout
+  function initScrollAnimations() {
+    var editorialLegs = document.querySelectorAll('.editorial-leg');
+    if (!editorialLegs.length) return;
+    
+    // Respect reduced motion preference
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      editorialLegs.forEach(function(leg) { leg.classList.add('is-visible'); });
+      return;
+    }
+    
+    var observer = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+        }
+      });
+    }, {
+      root: null,
+      rootMargin: '0px 0px -10% 0px',
+      threshold: 0.1
+    });
+    
+    editorialLegs.forEach(function(leg) {
+      observer.observe(leg);
+    });
+  }
+
+  // Day Navigator Integration
+  function initDayNavigator() {
+    var daysContainer = document.getElementById('itinerary-days-container');
+    if (!daysContainer) return;
+    
+    var daySections = daysContainer.querySelectorAll('.itinerary-day');
+    
+    // Update active day indicator on scroll
+    var observer = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (entry.isIntersecting) {
+          var dayNum = entry.target.dataset.day;
+          // Dispatch custom event for navigator to update
+          window.dispatchEvent(new CustomEvent('itinerary:day-visible', {
+            detail: { day: dayNum }
+          }));
+        }
+      });
+    }, {
+      root: null,
+      rootMargin: '-20% 0px -60% 0px',
+      threshold: 0
+    });
+    
+    daySections.forEach(function(section) {
+      observer.observe(section);
+    });
+  }
+
+  // Initialize on DOM ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      initScrollAnimations();
+      initDayNavigator();
+    });
+  } else {
+    initScrollAnimations();
+    initDayNavigator();
+  }
+})();
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Build lookup map from Liquid variables
+  const wetuActivityMap = {
+    {% for id in activity_map_ids_array %}
+      {% if id != blank %}
+        "{{ id | strip }}": "{{ activity_map_handles_array[forloop.index0] | strip }}",
+      {% endif %}
+    {% endfor %}
+  };
+
+  // Parse custom PIN links in notes (Pattern: PIN:ID|Text wrapped in double curly braces)
+  // These are injected by the uploader to survive Wetu sanitization
+  // Note: Using string concatenation to avoid Liquid syntax conflict
+  const notesElements = document.querySelectorAll('.itinerary-day__notes-content, .period-notes, .day-notes');
+  
+  notesElements.forEach(el => {
+    // Look for pattern
+    if (el.innerHTML.includes('{' + '{PIN:')) {
+      // Replace with Shopify product link
+      // Uses map if available, otherwise falls back to wetu-{id} convention
+      // Using RegExp constructor to avoid Liquid processing of curly braces
+      const pinRegex = new RegExp('{' + '{PIN:(\\d+)\\|([^}]+)}' + '}', 'g');
+      
+      el.innerHTML = el.innerHTML.replace(pinRegex, (match, id, text) => {
+        const handle = wetuActivityMap[id] || `wetu-${id}`;
+        return `<a href="/products/${handle}" class="text-link wetu-product-link" style="color: var(--color-primary); text-decoration: underline;">${text}</a>`;
+      });
+    }
+  });
+});
+</script>
+
+{% schema %}
+{
+  "name": "Itinerary Story Legs",
+  "tag": "section",
+  "class": "section-itinerary-legs",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-5"
+    },
+    {
+      "type": "header",
+      "content": "Day Headers"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_day_headers",
+      "label": "Show day headers",
+      "default": true,
+      "info": "Display 'Day X' header at the start of each day"
+    },
+    {
+      "type": "select",
+      "id": "day_header_style",
+      "label": "Day header style",
+      "options": [
+        { "value": "minimal", "label": "Minimal (day number only)" },
+        { "value": "full", "label": "Full (day number + date)" }
+      ],
+      "default": "full"
+    },
+    {
+      "type": "header",
+      "content": "Content Display"
+    },
+    {
+      "type": "select",
+      "id": "subsequent_accommodation_style",
+      "label": "Subsequent days accommodation",
+      "options": [
+        { "value": "subtle", "label": "Subtle mention" },
+        { "value": "hidden", "label": "Hidden" }
+      ],
+      "default": "subtle",
+      "info": "How to display accommodation on days after arrival"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_transfers",
+      "label": "Show transfer information",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_activities",
+      "label": "Show activities",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_alternate_accommodations",
+      "label": "Show alternative accommodations",
+      "default": true,
+      "info": "Display alternative accommodation options when available"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_driving_directions",
+      "label": "Show driving directions",
+      "default": true,
+      "info": "Display turn-by-turn directions for self-drive routes"
+    },
+    {
+      "type": "header",
+      "content": "On-Site Activities"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_onsite_activities",
+      "label": "Show property on-site activities",
+      "default": true,
+      "info": "Display available activities at each accommodation on arrival day"
+    },
+    {
+      "type": "range",
+      "id": "onsite_activities_limit",
+      "min": 3,
+      "max": 12,
+      "step": 1,
+      "label": "Maximum activities to display",
+      "default": 6
+    }
+  ],
+  "presets": [
+    {
+      "name": "Itinerary Story Legs"
+    }
+  ]
+}
+{% endschema %}
+
+{% # theme-check-enable UnknownObject %}
+{% # theme-check-enable ThemeCheckUnknownObject %}

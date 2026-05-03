@@ -1,0 +1,136 @@
+{% comment %}
+  WETU Rich Text Helper Snippet
+  
+  Extracts plain text from WETU metaobject rich text fields which 
+  may be stored as JSON structures instead of rendered HTML.
+  
+  The rich text fields can come in several formats:
+  1. Ruby hash string: {"type"=>"root", "children"=>[...]}
+  2. JSON string: {"type":"root","children":[...]}
+  3. Plain HTML: <p>...</p>
+  4. Plain text
+  
+  USAGE:
+    {% render 'wetu-rich-text', content: activity.description.value %}
+    {% render 'wetu-rich-text', content: leg.period_notes.value, truncate: 50 %}
+{% endcomment %}
+
+{% if content == blank or content == nil %}
+  {% comment %} Nothing to render {% endcomment %}
+{% else %}
+  {% comment %} Convert to string for analysis {% endcomment %}
+  {% assign content_str = content | strip %}
+  {% assign has_ruby_hash = false %}
+  {% assign has_json = false %}
+  {% assign has_html = false %}
+  
+  {% comment %} Check for Ruby hash format (=>) {% endcomment %}
+  {% if content_str contains '"=>"' or content_str contains "'=>'" %}
+    {% assign has_ruby_hash = true %}
+  {% endif %}
+  
+  {% comment %} Check for JSON format (":") {% endcomment %}
+  {% if content_str contains '"type":"' or content_str contains '"value":"' %}
+    {% assign has_json = true %}
+  {% endif %}
+  
+  {% comment %} Check for HTML {% endcomment %}
+  {% if content_str contains '<p>' or content_str contains '</p>' or content_str contains '<div>' or content_str contains '<br>' %}
+    {% assign has_html = true %}
+  {% endif %}
+
+  {% if has_ruby_hash %}
+    {% comment %} 
+      Ruby hash representation of rich text JSON (from Ruby's to_s)
+      Format: {"type"=>"root", "children"=>[{"type"=>"paragraph", "children"=>[{"type"=>"text", "value"=>"..."}]}]}
+      Extract all text after "value"=>"
+    {% endcomment %}
+    
+    {% assign value_split = content_str | split: '"value"=>"' %}
+    
+    {% capture extracted_text %}
+      {% for part in value_split %}
+        {% if forloop.first %}{% continue %}{% endif %}
+        
+        {% comment %} Find the end of this value - look for closing patterns {% endcomment %}
+        {% assign text_chunk = part %}
+        
+        {% comment %} Try different ending patterns in order of specificity {% endcomment %}
+        {% if text_chunk contains '"}]' %}
+          {% assign text_chunk = text_chunk | split: '"}]' | first %}
+        {% elsif text_chunk contains '"}, {' %}
+          {% assign text_chunk = text_chunk | split: '"}, {' | first %}
+        {% elsif text_chunk contains '"}' %}
+          {% assign text_chunk = text_chunk | split: '"}' | first %}
+        {% elsif text_chunk contains '"]' %}
+          {% assign text_chunk = text_chunk | split: '"]' | first %}
+        {% endif %}
+        
+        {% comment %} Clean up HTML entities and escape sequences {% endcomment %}
+        {% assign clean_text = text_chunk 
+          | replace: '&nbsp;', ' ' 
+          | replace: '&amp;', '&' 
+          | replace: '&lt;', '<' 
+          | replace: '&gt;', '>' 
+          | replace: "\'", "'" 
+          | replace: '\\n', ' '
+          | replace: '\n', ' '
+          | replace: '\"', '"'
+        %}
+        {{ clean_text }}{% unless forloop.last %} {% endunless %}
+      {% endfor %}
+    {% endcapture %}
+    
+    {% assign final_text = extracted_text | strip | replace: '  ', ' ' %}
+    {% if truncate and truncate > 0 %}
+      {{ final_text | truncatewords: truncate }}
+    {% else %}
+      {{ final_text }}
+    {% endif %}
+    
+  {% elsif has_json %}
+    {% comment %} 
+      JSON format (proper JSON)
+      Format: {"type":"root","children":[{"type":"paragraph","children":[{"type":"text","value":"..."}]}]}
+    {% endcomment %}
+    
+    {% assign value_split = content_str | split: '"value":"' %}
+    
+    {% capture extracted_text %}
+      {% for part in value_split %}
+        {% if forloop.first %}{% continue %}{% endif %}
+        {% assign text_chunk = part | split: '"}' | first %}
+        {% assign text_chunk = text_chunk | split: '"]' | first %}
+        {% assign clean_text = text_chunk 
+          | replace: '&nbsp;', ' ' 
+          | replace: '&amp;', '&' 
+          | replace: '\\n', ' ' 
+          | replace: '\\"', '"' 
+        %}
+        {{ clean_text }}{% unless forloop.last %} {% endunless %}
+      {% endfor %}
+    {% endcapture %}
+    
+    {% assign final_text = extracted_text | strip | replace: '  ', ' ' %}
+    {% if truncate and truncate > 0 %}
+      {{ final_text | truncatewords: truncate }}
+    {% else %}
+      {{ final_text }}
+    {% endif %}
+    
+  {% elsif has_html %}
+    {% comment %} Already HTML - render as-is {% endcomment %}
+    {% if truncate and truncate > 0 %}
+      {{ content | strip_html | truncatewords: truncate }}
+    {% else %}
+      {{ content }}
+    {% endif %}
+  {% else %}
+    {% comment %} Plain text - render as-is {% endcomment %}
+    {% if truncate and truncate > 0 %}
+      {{ content | truncatewords: truncate }}
+    {% else %}
+      {{ content }}
+    {% endif %}
+  {% endif %}
+{% endif %}

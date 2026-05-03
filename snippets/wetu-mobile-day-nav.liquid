@@ -1,0 +1,382 @@
+{% comment %}
+  ============================================================================
+  WETU MOBILE DAY NAVIGATION SNIPPET
+  ============================================================================
+  
+  A sticky mobile navigation bar that shows all days in a horizontally
+  scrollable layout. Updates active state based on scroll position.
+  Hidden on desktop where the full journey overview serves this purpose.
+  
+  TEMPLATE: product.wetu-itinerary3.json
+  
+  ============================================================================
+  USAGE
+  ============================================================================
+  
+  Include after loading itinerary data:
+  
+  {% render 'wetu-itinerary-data', product: product %}
+  {% render 'wetu-mobile-day-nav' %}
+  
+  ============================================================================
+  PARAMETERS
+  ============================================================================
+  
+  - legs: Array of leg metaobjects (required, from wetu-itinerary-data)
+  - sticky: Boolean to enable sticky positioning (default: true)
+  - show_location: Boolean to show truncated location names (default: true)
+  - scroll_offset: Pixel offset when scrolling to day (default: 80)
+  
+  ============================================================================
+{% endcomment %}
+
+{% comment %} Use passed legs or try global variable {% endcomment %}
+{% assign nav_legs = legs | default: wetu_legs %}
+{% assign is_sticky = sticky | default: true %}
+{% assign show_location_name = show_location | default: true %}
+{% assign nav_scroll_offset = scroll_offset | default: 80 %}
+
+{% if nav_legs == blank or nav_legs.size == 0 %}
+  {% comment %} Try to load from product if not passed {% endcomment %}
+  {% assign itinerary = product.metafields.wetu.itinerary_metaobject.value %}
+  {% assign nav_legs = itinerary.legs.value %}
+{% endif %}
+
+{% if nav_legs and nav_legs.size > 0 %}
+<nav 
+  class="wetu-mobile-nav{% if is_sticky %} wetu-mobile-nav--sticky{% endif %}" 
+  aria-label="Day navigation"
+  data-mobile-nav
+  data-scroll-offset="{{ nav_scroll_offset }}"
+>
+  <div class="wetu-mobile-nav__container">
+    <div class="wetu-mobile-nav__scroll" role="tablist">
+      {% for leg in nav_legs %}
+        {% assign day_num = leg.sequence.value | plus: 1 %}
+        {% assign location_name = leg.accommodation_name.value | default: 'En Route' %}
+        {% assign truncated_location = location_name | truncate: 12, '...' %}
+        
+        <a 
+          href="#day-{{ day_num }}" 
+          class="wetu-mobile-nav__item{% if forloop.first %} is-active{% endif %}"
+          data-day="{{ day_num }}"
+          data-scroll-to-day="{{ day_num }}"
+          role="tab"
+          aria-selected="{% if forloop.first %}true{% else %}false{% endif %}"
+          aria-controls="day-{{ day_num }}"
+        >
+          <span class="wetu-mobile-nav__day">{{ day_num }}</span>
+          {% if show_location_name %}
+            <span class="wetu-mobile-nav__label">{{ truncated_location }}</span>
+          {% endif %}
+          {% if leg.nights.value > 0 %}
+            <span class="wetu-mobile-nav__nights">
+              {{ leg.nights.value }}<span class="sr-only"> night{% if leg.nights.value > 1 %}s{% endif %}</span>
+            </span>
+          {% endif %}
+        </a>
+      {% endfor %}
+    </div>
+    
+    {% comment %} Progress indicator {% endcomment %}
+    <div class="wetu-mobile-nav__progress" aria-hidden="true">
+      <div class="wetu-mobile-nav__progress-bar" data-progress-bar style="width: 0%;"></div>
+    </div>
+  </div>
+</nav>
+{% endif %}
+
+<style>
+  /* ============================================
+     Mobile Day Navigation Styles
+     ============================================ */
+  
+  .wetu-mobile-nav {
+    background: var(--wetu-bg, var(--color-background));
+    border-bottom: 1px solid var(--wetu-border, var(--color-border));
+    z-index: var(--wetu-z-sticky, 200);
+    overflow: hidden;
+  }
+  
+  .wetu-mobile-nav--sticky {
+    position: sticky;
+    top: var(--header-height, 0);
+  }
+  
+  .wetu-mobile-nav__container {
+    position: relative;
+  }
+  
+  .wetu-mobile-nav__scroll {
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 4px;
+    padding: 12px 16px;
+    scroll-snap-type: x proximity;
+  }
+  
+  .wetu-mobile-nav__scroll::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .wetu-mobile-nav__item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 14px;
+    min-width: 70px;
+    min-height: 60px;
+    border-radius: 10px;
+    text-decoration: none;
+    color: var(--wetu-text-muted, color-mix(in srgb, var(--color-foreground) 60%, transparent));
+    background: var(--wetu-bg-secondary, color-mix(in srgb, var(--color-foreground) 5%, transparent));
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    scroll-snap-align: start;
+    position: relative;
+  }
+  
+  .wetu-mobile-nav__item:hover {
+    background: var(--wetu-bg-tertiary, color-mix(in srgb, var(--color-foreground) 8%, transparent));
+    color: var(--wetu-text, var(--color-foreground));
+  }
+  
+  .wetu-mobile-nav__item.is-active {
+    background: var(--wetu-accent, var(--color-primary));
+    color: white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  
+  .wetu-mobile-nav__day {
+    font-weight: 700;
+    font-size: 1.1rem;
+    line-height: 1;
+    margin-bottom: 2px;
+  }
+  
+  .wetu-mobile-nav__label {
+    font-size: 0.65rem;
+    font-weight: 500;
+    white-space: nowrap;
+    max-width: 60px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0.9;
+  }
+  
+  .wetu-mobile-nav__nights {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.2);
+    border-radius: 50%;
+    font-size: 0.6rem;
+    font-weight: 600;
+  }
+  
+  .wetu-mobile-nav__item.is-active .wetu-mobile-nav__nights {
+    background: rgba(255,255,255,0.3);
+  }
+  
+  /* Progress bar */
+  .wetu-mobile-nav__progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--wetu-bg-secondary, color-mix(in srgb, var(--color-foreground) 10%, transparent));
+  }
+  
+  .wetu-mobile-nav__progress-bar {
+    height: 100%;
+    background: var(--wetu-accent, var(--color-primary));
+    transition: width 0.3s ease;
+  }
+  
+  /* With icons variant */
+  .wetu-mobile-nav__item--with-icon {
+    flex-direction: row;
+    gap: 8px;
+    padding: 8px 16px;
+    min-width: auto;
+  }
+  
+  .wetu-mobile-nav__item--with-icon .wetu-mobile-nav__day {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: currentColor;
+    border-radius: 50%;
+    color: white;
+    font-size: 0.8rem;
+    margin-bottom: 0;
+  }
+  
+  .wetu-mobile-nav__item--with-icon.is-active .wetu-mobile-nav__day {
+    background: white;
+    color: var(--wetu-accent, var(--color-primary));
+  }
+  
+  /* Hide on desktop */
+  @media screen and (min-width: 1024px) {
+    .wetu-mobile-nav {
+      display: none;
+    }
+  }
+  
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .wetu-mobile-nav__item,
+    .wetu-mobile-nav__progress-bar {
+      transition: none;
+    }
+  }
+</style>
+
+<script>
+  (function() {
+    'use strict';
+    
+    class MobileDayNav {
+      constructor(nav) {
+        this.nav = nav;
+        this.scrollContainer = nav.querySelector('.wetu-mobile-nav__scroll');
+        this.items = nav.querySelectorAll('.wetu-mobile-nav__item');
+        this.progressBar = nav.querySelector('[data-progress-bar]');
+        this.scrollOffset = parseInt(nav.dataset.scrollOffset) || 80;
+        
+        this.currentDay = 1;
+        this.days = document.querySelectorAll('.wetu-day, [id^="day-"]');
+        
+        if (this.days.length === 0) return;
+        
+        this.init();
+      }
+      
+      init() {
+        this.setupClickHandlers();
+        this.setupScrollObserver();
+        this.updateProgress();
+        
+        // Listen for day change events from other components
+        document.addEventListener('wetu:day-change', (e) => {
+          if (e.detail && e.detail.day) {
+            this.setActiveDay(e.detail.day);
+          }
+        });
+      }
+      
+      setupClickHandlers() {
+        this.items.forEach(item => {
+          item.addEventListener('click', (e) => {
+            e.preventDefault();
+            const dayNumber = item.dataset.day;
+            this.scrollToDay(dayNumber);
+          });
+        });
+      }
+      
+      setupScrollObserver() {
+        const options = {
+          root: null,
+          rootMargin: `-${this.scrollOffset}px 0px -50% 0px`,
+          threshold: 0
+        };
+        
+        const observer = new IntersectionObserver((entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              const dayId = entry.target.id;
+              const dayMatch = dayId.match(/day-(\d+)/);
+              if (dayMatch) {
+                this.setActiveDay(dayMatch[1]);
+              }
+            }
+          });
+        }, options);
+        
+        this.days.forEach(day => observer.observe(day));
+      }
+      
+      scrollToDay(dayNumber) {
+        const target = document.getElementById(`day-${dayNumber}`);
+        if (!target) return;
+        
+        const headerHeight = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--header-height')) || 0;
+        const navHeight = this.nav.offsetHeight;
+        const offset = headerHeight + navHeight + 20;
+        
+        const targetPosition = target.getBoundingClientRect().top + window.pageYOffset - offset;
+        
+        window.scrollTo({
+          top: targetPosition,
+          behavior: 'smooth'
+        });
+        
+        this.setActiveDay(dayNumber);
+      }
+      
+      setActiveDay(dayNumber) {
+        if (this.currentDay === parseInt(dayNumber)) return;
+        this.currentDay = parseInt(dayNumber);
+        
+        // Update item states
+        this.items.forEach(item => {
+          const isActive = item.dataset.day === String(dayNumber);
+          item.classList.toggle('is-active', isActive);
+          item.setAttribute('aria-selected', isActive);
+        });
+        
+        // Scroll active item into view
+        const activeItem = this.nav.querySelector(`.wetu-mobile-nav__item[data-day="${dayNumber}"]`);
+        if (activeItem && this.scrollContainer) {
+          const containerRect = this.scrollContainer.getBoundingClientRect();
+          const itemRect = activeItem.getBoundingClientRect();
+          
+          if (itemRect.left < containerRect.left || itemRect.right > containerRect.right) {
+            activeItem.scrollIntoView({
+              behavior: 'smooth',
+              inline: 'center',
+              block: 'nearest'
+            });
+          }
+        }
+        
+        this.updateProgress();
+        
+        // Dispatch event for other components
+        this.nav.dispatchEvent(new CustomEvent('wetu:mobile-nav-change', {
+          bubbles: true,
+          detail: { day: this.currentDay }
+        }));
+      }
+      
+      updateProgress() {
+        if (!this.progressBar) return;
+        const totalDays = this.items.length;
+        const progress = (this.currentDay / totalDays) * 100;
+        this.progressBar.style.width = `${progress}%`;
+      }
+    }
+    
+    // Initialize on DOM ready
+    document.addEventListener('DOMContentLoaded', () => {
+      const nav = document.querySelector('[data-mobile-nav]');
+      if (nav) {
+        new MobileDayNav(nav);
+      }
+    });
+  })();
+</script>
+

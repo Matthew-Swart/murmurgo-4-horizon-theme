@@ -1,0 +1,766 @@
+{% comment %}
+  ============================================================================
+  WETU JOURNEY OVERVIEW SECTION
+  ============================================================================
+  
+  Horizontal scrollable journey timeline showing all destinations at a glance.
+  Features:
+  - Touch-swipeable horizontal scroll on mobile
+  - Full-width timeline display on desktop
+  - Day badges, thumbnails, location names, nights count
+  - Click to smooth scroll to corresponding day section
+  - Current day highlighting based on scroll position
+  - Optional sticky positioning on desktop
+  - Progress indicator showing journey completion
+  
+  TEMPLATE: product.wetu-itinerary3.json
+  
+  ============================================================================
+  DATA ACCESS ARCHITECTURE
+  ============================================================================
+  
+  Uses wetu-itinerary-data snippet for centralized data loading:
+  {% render 'wetu-itinerary-data', product: product %}
+  
+  LINKING TO PIN ID PRODUCTS:
+  {% assign property_handle = 'wetu-' | append: leg.content_entity_id.value %}
+  {% assign property_product = all_products[property_handle] %}
+  
+  ============================================================================
+{% endcomment %}
+
+{% comment %} Load itinerary data {% endcomment %}
+{% render 'wetu-itinerary-data', product: product %}
+
+{% assign itinerary = product.metafields.wetu.itinerary_metaobject.value %}
+{% assign legs_array = itinerary.legs.value %}
+
+<section 
+  id="journey-overview"
+  class="wetu-journey-overview color-{{ section.settings.color_scheme }}{% if section.settings.sticky_on_desktop %} wetu-journey-overview--sticky{% endif %}"
+  style="
+    --section-padding-top: {{ section.settings.padding_top }}px;
+    --section-padding-bottom: {{ section.settings.padding_bottom }}px;
+  "
+  data-section-type="journey-overview"
+>
+  <div class="wetu-journey-overview__container">
+    {% comment %} Section Header {% endcomment %}
+    <div class="wetu-journey-overview__header page-width">
+      <div class="wetu-journey-overview__header-content">
+        {% if section.settings.heading != blank %}
+          <h2 class="wetu-journey-overview__title h4">{{ section.settings.heading }}</h2>
+        {% endif %}
+        
+        {% comment %} Progress Indicator {% endcomment %}
+        <div class="wetu-journey-overview__progress" aria-hidden="true">
+          <div class="progress-bar">
+            <div class="progress-bar__fill" style="width: 0%"></div>
+          </div>
+          <span class="progress-text">
+            <span class="progress-current">1</span> / <span class="progress-total">{{ legs_array.size }}</span>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    {% comment %} Timeline Container {% endcomment %}
+    <div class="wetu-journey-overview__timeline-wrapper">
+      <div class="wetu-journey-overview__timeline{% if section.settings.layout == 'cards' %} wetu-journey-overview__timeline--cards{% endif %}" role="list">
+        
+        {% assign current_day = 1 %}
+        {% for leg in legs_array %}
+          {% assign leg_type = leg.type.value | default: "Standard" %}
+          {% assign leg_nights = leg.nights.value | default: 0 %}
+          
+          {% comment %} Skip departure legs {% endcomment %}
+          {% if leg_type == "Departure" %}
+            {% continue %}
+          {% endif %}
+          
+          {% comment %} Get linked property product {% endcomment %}
+          {% assign content_id = leg.content_entity_id.value %}
+          {% assign property_handle = 'wetu-' | append: content_id %}
+          {% assign property_product = all_products[property_handle] %}
+          
+          {% assign accommodation_name = leg.accommodation_name.value | default: property_product.title | default: "Destination" %}
+          {% assign day_end = current_day | plus: leg_nights | minus: 1 %}
+          
+          <div 
+            class="wetu-journey-overview__day" 
+            data-day="{{ current_day }}"
+            data-leg-index="{{ forloop.index0 }}"
+            role="listitem"
+          >
+            <button 
+              type="button" 
+              class="wetu-journey-overview__day-card"
+              aria-label="View Day {{ current_day }}{% if leg_nights > 1 %} to {{ day_end }}{% endif %}: {{ accommodation_name }}"
+              data-scroll-to="day-{{ current_day }}"
+            >
+              {% comment %} Thumbnail {% endcomment %}
+              <div class="wetu-journey-overview__thumbnail">
+                {% if property_product != blank and property_product.featured_image %}
+                  <img 
+                    src="{{ property_product.featured_image | image_url: width: 400 }}" 
+                    alt="{{ accommodation_name }}"
+                    loading="lazy"
+                    width="160"
+                    height="120"
+                  >
+                {% else %}
+                  <div class="wetu-journey-overview__placeholder">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                      <polyline points="9 22 9 12 15 12 15 22"/>
+                    </svg>
+                  </div>
+                {% endif %}
+                
+                {% comment %} Day Badge {% endcomment %}
+                <span class="wetu-journey-overview__day-badge">
+                  {% if leg_nights > 1 %}
+                    {{ current_day }}-{{ day_end }}
+                  {% else %}
+                    {{ current_day }}
+                  {% endif %}
+                </span>
+              </div>
+              
+              {% comment %} Content {% endcomment %}
+              <div class="wetu-journey-overview__content">
+                <h3 class="wetu-journey-overview__location">{{ accommodation_name }}</h3>
+                <span class="wetu-journey-overview__nights">
+                  {{ leg_nights }} {{ leg_nights | pluralize: 'Night', 'Nights' }}
+                </span>
+              </div>
+              
+              {% comment %} Connector Line (except last item) {% endcomment %}
+              {% unless forloop.last %}
+                <div class="wetu-journey-overview__connector" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                  </svg>
+                </div>
+              {% endunless %}
+            </button>
+          </div>
+          
+          {% assign current_day = current_day | plus: leg_nights %}
+        {% endfor %}
+        
+        {% comment %} Final Destination Marker {% endcomment %}
+        <div class="wetu-journey-overview__day wetu-journey-overview__day--end" role="listitem">
+          <div class="wetu-journey-overview__day-card wetu-journey-overview__day-card--end">
+            <div class="wetu-journey-overview__thumbnail wetu-journey-overview__thumbnail--end">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+            </div>
+            <div class="wetu-journey-overview__content">
+              <h3 class="wetu-journey-overview__location">End</h3>
+              <span class="wetu-journey-overview__nights">Day {{ current_day }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {% comment %} Scroll Arrows (Desktop) {% endcomment %}
+      <button type="button" class="wetu-journey-overview__arrow wetu-journey-overview__arrow--prev" aria-label="Previous destinations" hidden>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M15 18l-6-6 6-6"/>
+        </svg>
+      </button>
+      <button type="button" class="wetu-journey-overview__arrow wetu-journey-overview__arrow--next" aria-label="Next destinations" hidden>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 18l6-6-6-6"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</section>
+
+{% stylesheet %}
+  .wetu-journey-overview {
+    padding-top: var(--section-padding-top);
+    padding-bottom: var(--section-padding-bottom);
+    background: var(--color-background);
+    position: relative;
+    z-index: 10;
+  }
+
+  /* Sticky Variant */
+  .wetu-journey-overview--sticky {
+    position: sticky;
+    top: var(--header-height, 0);
+    z-index: 100;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  }
+
+  @media screen and (max-width: 989px) {
+    .wetu-journey-overview--sticky {
+      position: relative;
+      top: auto;
+    }
+  }
+
+  /* Header */
+  .wetu-journey-overview__header {
+    margin-bottom: 24px;
+  }
+
+  .wetu-journey-overview__header-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .wetu-journey-overview__title {
+    margin: 0;
+    font-size: 1.25rem;
+    color: var(--color-foreground);
+  }
+
+  /* Progress Indicator */
+  .wetu-journey-overview__progress {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .progress-bar {
+    width: 100px;
+    height: 4px;
+    background: color-mix(in srgb, var(--color-foreground) 15%, transparent);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .progress-bar__fill {
+    height: 100%;
+    background: var(--color-primary);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+  }
+
+  .progress-text {
+    font-size: 0.85rem;
+    color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .progress-current {
+    font-weight: 600;
+    color: var(--color-foreground);
+  }
+
+  /* Timeline Wrapper */
+  .wetu-journey-overview__timeline-wrapper {
+    position: relative;
+  }
+
+  /* Timeline */
+  .wetu-journey-overview__timeline {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    padding: 8px 16px 16px;
+    margin: 0 -16px;
+    
+    /* Hide scrollbar but keep functionality */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .wetu-journey-overview__timeline::-webkit-scrollbar {
+    display: none;
+  }
+
+  @media screen and (min-width: 750px) {
+    .wetu-journey-overview__timeline {
+      padding: 8px 0 16px;
+      margin: 0;
+      gap: 12px;
+    }
+  }
+
+  @media screen and (min-width: 990px) {
+    .wetu-journey-overview__timeline {
+      flex-wrap: nowrap;
+      justify-content: flex-start;
+    }
+  }
+
+  /* Day Item */
+  .wetu-journey-overview__day {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+    min-width: 140px;
+    max-width: 180px;
+  }
+
+  @media screen and (min-width: 750px) {
+    .wetu-journey-overview__day {
+      min-width: 160px;
+      max-width: 200px;
+    }
+  }
+
+  /* Day Card */
+  .wetu-journey-overview__day-card {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    padding: 0;
+    background: color-mix(in srgb, var(--color-foreground) 3%, transparent);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    text-align: left;
+    color: inherit;
+  }
+
+  .wetu-journey-overview__day-card:hover {
+    border-color: var(--color-primary);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  }
+
+  .wetu-journey-overview__day-card:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  /* Active State */
+  .wetu-journey-overview__day--active .wetu-journey-overview__day-card {
+    border-color: var(--color-primary);
+    box-shadow: 0 4px 16px color-mix(in srgb, var(--color-primary) 30%, transparent);
+  }
+
+  .wetu-journey-overview__day--active .wetu-journey-overview__day-badge {
+    background: var(--color-primary);
+    color: var(--color-background);
+  }
+
+  /* Thumbnail */
+  .wetu-journey-overview__thumbnail {
+    position: relative;
+    aspect-ratio: 4/3;
+    background: color-mix(in srgb, var(--color-foreground) 8%, transparent);
+    overflow: hidden;
+  }
+
+  .wetu-journey-overview__thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+  }
+
+  .wetu-journey-overview__day-card:hover .wetu-journey-overview__thumbnail img {
+    transform: scale(1.05);
+  }
+
+  .wetu-journey-overview__placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: color-mix(in srgb, var(--color-foreground) 30%, transparent);
+  }
+
+  /* End Marker Thumbnail */
+  .wetu-journey-overview__thumbnail--end {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+    color: var(--color-primary);
+  }
+
+  /* Day Badge */
+  .wetu-journey-overview__day-badge {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    padding: 4px 10px;
+    background: var(--color-background);
+    color: var(--color-foreground);
+    font-size: 0.75rem;
+    font-weight: 700;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    z-index: 1;
+    transition: all 0.2s ease;
+  }
+
+  /* Content */
+  .wetu-journey-overview__content {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .wetu-journey-overview__location {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--color-foreground);
+    margin: 0;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .wetu-journey-overview__nights {
+    font-size: 0.8rem;
+    color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+  }
+
+  /* Connector */
+  .wetu-journey-overview__connector {
+    position: absolute;
+    right: -16px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: color-mix(in srgb, var(--color-foreground) 30%, transparent);
+    z-index: 2;
+  }
+
+  @media screen and (max-width: 749px) {
+    .wetu-journey-overview__connector {
+      right: -12px;
+      width: 20px;
+      height: 20px;
+    }
+  }
+
+  /* End Card */
+  .wetu-journey-overview__day--end {
+    min-width: 100px;
+    max-width: 120px;
+  }
+
+  .wetu-journey-overview__day-card--end {
+    cursor: default;
+  }
+
+  .wetu-journey-overview__day-card--end:hover {
+    transform: none;
+    box-shadow: none;
+  }
+
+  /* Scroll Arrows */
+  .wetu-journey-overview__arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-background);
+    border: 1px solid var(--color-border);
+    border-radius: 50%;
+    color: var(--color-foreground);
+    cursor: pointer;
+    z-index: 10;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+  }
+
+  .wetu-journey-overview__arrow:hover {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: var(--color-background);
+  }
+
+  .wetu-journey-overview__arrow--prev {
+    left: 0;
+  }
+
+  .wetu-journey-overview__arrow--next {
+    right: 0;
+  }
+
+  .wetu-journey-overview__arrow[hidden] {
+    display: none;
+  }
+
+  @media screen and (max-width: 989px) {
+    .wetu-journey-overview__arrow {
+      display: none;
+    }
+  }
+
+  /* Cards Layout Variant */
+  .wetu-journey-overview__timeline--cards {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 16px;
+  }
+
+  .wetu-journey-overview__timeline--cards .wetu-journey-overview__day {
+    min-width: 180px;
+    max-width: 220px;
+  }
+
+  .wetu-journey-overview__timeline--cards .wetu-journey-overview__connector {
+    display: none;
+  }
+
+  /* Touch Feedback */
+  @media (hover: none) {
+    .wetu-journey-overview__day-card:active {
+      transform: scale(0.98);
+    }
+  }
+{% endstylesheet %}
+
+{% javascript %}
+  class JourneyOverview {
+    constructor(section) {
+      this.section = section;
+      this.timeline = section.querySelector('.wetu-journey-overview__timeline');
+      this.dayCards = section.querySelectorAll('.wetu-journey-overview__day');
+      this.progressFill = section.querySelector('.progress-bar__fill');
+      this.progressCurrent = section.querySelector('.progress-current');
+      this.prevArrow = section.querySelector('.wetu-journey-overview__arrow--prev');
+      this.nextArrow = section.querySelector('.wetu-journey-overview__arrow--next');
+      
+      if (!this.timeline) return;
+      
+      this.init();
+    }
+
+    init() {
+      this.bindClickHandlers();
+      this.bindScrollHandler();
+      this.bindArrowHandlers();
+      this.updateArrowVisibility();
+      this.observeDaySections();
+    }
+
+    bindClickHandlers() {
+      this.dayCards.forEach(card => {
+        const button = card.querySelector('.wetu-journey-overview__day-card');
+        if (!button || button.classList.contains('wetu-journey-overview__day-card--end')) return;
+
+        button.addEventListener('click', () => {
+          const targetId = button.dataset.scrollTo;
+          const targetSection = document.getElementById(targetId) || 
+                               document.querySelector(`[data-day="${card.dataset.day}"]`);
+          
+          if (targetSection) {
+            const headerOffset = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--header-height') || 80);
+            const stickyOffset = this.section.classList.contains('wetu-journey-overview--sticky') ? this.section.offsetHeight : 0;
+            const totalOffset = headerOffset + stickyOffset + 20;
+            
+            const targetPosition = targetSection.getBoundingClientRect().top + window.scrollY - totalOffset;
+            
+            window.scrollTo({
+              top: targetPosition,
+              behavior: 'smooth'
+            });
+          }
+        });
+      });
+    }
+
+    bindScrollHandler() {
+      this.timeline.addEventListener('scroll', () => {
+        this.updateArrowVisibility();
+      }, { passive: true });
+    }
+
+    bindArrowHandlers() {
+      if (!this.prevArrow || !this.nextArrow) return;
+
+      const scrollAmount = 200;
+
+      this.prevArrow.addEventListener('click', () => {
+        this.timeline.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+      });
+
+      this.nextArrow.addEventListener('click', () => {
+        this.timeline.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+      });
+    }
+
+    updateArrowVisibility() {
+      if (!this.prevArrow || !this.nextArrow) return;
+
+      const { scrollLeft, scrollWidth, clientWidth } = this.timeline;
+      const threshold = 10;
+
+      this.prevArrow.hidden = scrollLeft <= threshold;
+      this.nextArrow.hidden = scrollLeft + clientWidth >= scrollWidth - threshold;
+    }
+
+    observeDaySections() {
+      // Find all day sections in the day-by-day section
+      const daySections = document.querySelectorAll('.timeline-day[data-day], .day-card[data-day]');
+      if (!daySections.length) return;
+
+      const observerOptions = {
+        root: null,
+        rootMargin: '-30% 0px -60% 0px',
+        threshold: 0
+      };
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const dayNumber = entry.target.dataset.day;
+            this.setActiveDay(dayNumber);
+          }
+        });
+      }, observerOptions);
+
+      daySections.forEach(section => observer.observe(section));
+    }
+
+    setActiveDay(dayNumber) {
+      // Update active state
+      this.dayCards.forEach(card => {
+        const cardDay = parseInt(card.dataset.day);
+        const isActive = cardDay === parseInt(dayNumber);
+        card.classList.toggle('wetu-journey-overview__day--active', isActive);
+        
+        if (isActive) {
+          // Scroll card into view in the timeline
+          this.scrollCardIntoView(card);
+        }
+      });
+
+      // Update progress
+      const activeIndex = Array.from(this.dayCards).findIndex(card => 
+        card.classList.contains('wetu-journey-overview__day--active')
+      );
+      
+      if (activeIndex >= 0 && this.progressFill && this.progressCurrent) {
+        const total = this.dayCards.length - 1; // Exclude end marker
+        const progress = ((activeIndex + 1) / total) * 100;
+        this.progressFill.style.width = `${progress}%`;
+        this.progressCurrent.textContent = activeIndex + 1;
+      }
+    }
+
+    scrollCardIntoView(card) {
+      if (!this.timeline) return;
+
+      const cardRect = card.getBoundingClientRect();
+      const timelineRect = this.timeline.getBoundingClientRect();
+      
+      if (cardRect.left < timelineRect.left) {
+        this.timeline.scrollBy({
+          left: cardRect.left - timelineRect.left - 16,
+          behavior: 'smooth'
+        });
+      } else if (cardRect.right > timelineRect.right) {
+        this.timeline.scrollBy({
+          left: cardRect.right - timelineRect.right + 16,
+          behavior: 'smooth'
+        });
+      }
+    }
+  }
+
+  // Initialize
+  document.querySelectorAll('.wetu-journey-overview').forEach(section => {
+    new JourneyOverview(section);
+  });
+{% endjavascript %}
+
+{% schema %}
+{
+  "name": "Journey Overview",
+  "tag": "section",
+  "class": "section-wetu-journey-overview",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Section heading",
+      "default": "Your Journey at a Glance"
+    },
+    {
+      "type": "select",
+      "id": "layout",
+      "label": "Layout style",
+      "options": [
+        {
+          "value": "timeline",
+          "label": "Timeline"
+        },
+        {
+          "value": "cards",
+          "label": "Cards"
+        }
+      ],
+      "default": "timeline"
+    },
+    {
+      "type": "checkbox",
+      "id": "sticky_on_desktop",
+      "label": "Sticky navigation on desktop",
+      "default": true,
+      "info": "Section stays visible while scrolling through the itinerary"
+    },
+    {
+      "type": "header",
+      "content": "Spacing"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "Top padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "Bottom padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 24
+    }
+  ],
+  "presets": [
+    {
+      "name": "Journey Overview"
+    }
+  ]
+}
+{% endschema %}
+

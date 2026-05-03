@@ -1,0 +1,875 @@
+{% comment %}
+  ============================================================================
+  WETU ITINERARY DAY NAVIGATOR
+  ============================================================================
+  
+  Horizontal sticky navigation strip for WETU itinerary templates.
+  Provides quick access to Cover, Overview, Map, and individual days.
+  Now links to individual day sections (day-1, day-2, etc.) for true
+  chronological navigation with visual grouping for multi-day stays.
+  
+  ============================================================================
+{% endcomment %}
+
+{% comment %} Load itinerary data {% endcomment %}
+{% include 'wetu-itinerary-data' %}
+{% include 'wetu-day-by-day-data' %}
+
+{% comment %} Get start date {% endcomment %}
+{% assign start_date = wetu_itinerary.start_date.value | default: product.metafields.wetu.start_date.value %}
+{% assign has_start_date = false %}
+{% if start_date != blank %}
+  {% assign has_start_date = true %}
+  {% assign start_date_epoch = start_date | date: '%s' | plus: 0 %}
+{% endif %}
+
+{% comment %} Calculate map URL {% endcomment %}
+{% assign map_url = product.url | append: '?view=wetu-itinerary-map' %}
+
+{% comment %} Calculate total days {% endcomment %}
+{% assign total_days = wetu_total_days | plus: 0 %}
+{% if total_days < 1 %}
+  {% assign total_days = wetu_total_nights | plus: 1 %}
+{% endif %}
+
+{% comment %} Build accommodation spans for visual grouping {% endcomment %}
+{% assign accommodation_spans = '' %}
+{% assign running_day = 1 %}
+{% assign span_index = 0 %}
+
+{% for leg in wetu_legs %}
+  {% assign leg_type = leg.type.value | default: 'Standard' %}
+  {% assign leg_nights = leg.nights.value | default: 0 | plus: 0 %}
+  {% assign acc_name = leg.accommodation_name.value | default: '' %}
+  
+  {% if leg_type != 'Departure' and leg_nights > 0 %}
+    {% assign span_start = running_day %}
+    {% assign span_end = running_day | plus: leg_nights | minus: 1 %}
+    {% assign span_index = span_index | plus: 1 %}
+    
+    {% comment %} Build span entry: start|end|name|index {% endcomment %}
+    {% capture span_entry %}{{ span_start }}|{{ span_end }}|{{ acc_name }}|{{ span_index }}{% endcapture %}
+    {% if accommodation_spans == '' %}
+      {% assign accommodation_spans = span_entry %}
+    {% else %}
+      {% assign accommodation_spans = accommodation_spans | append: '|||' | append: span_entry %}
+    {% endif %}
+    
+    {% assign running_day = running_day | plus: leg_nights %}
+  {% endif %}
+{% endfor %}
+
+{% comment %} Add departure day span if needed (fixes last day malformation) {% endcomment %}
+{% if running_day <= total_days %}
+  {% assign span_index = span_index | plus: 1 %}
+  {% capture departure_span %}{{ total_days }}|{{ total_days }}|Departure|{{ span_index }}{% endcapture %}
+  {% if accommodation_spans == '' %}
+    {% assign accommodation_spans = departure_span %}
+  {% else %}
+    {% assign accommodation_spans = accommodation_spans | append: '|||' | append: departure_span %}
+  {% endif %}
+{% endif %}
+
+{% assign accommodation_spans_array = accommodation_spans | split: '|||' %}
+
+<nav 
+  class="day-navigator color-{{ section.settings.color_scheme }}"
+  id="day-navigator"
+  aria-label="Itinerary navigation"
+  data-day-navigator
+>
+  <div class="day-navigator__container">
+    <div class="day-navigator__scroll-wrapper" data-scroll-container>
+      <ul class="day-navigator__list" role="list">
+        
+        {% comment %} Cover Link {% endcomment %}
+        <li class="day-navigator__item">
+          <a 
+            href="#hero" 
+            class="day-navigator__link day-navigator__link--cover" 
+            data-nav-target="hero"
+            aria-label="Go to cover"
+          >
+            <svg class="day-navigator__icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+              <rect x="3" y="3" width="14" height="14" rx="2"/>
+              <path d="M7 10l2 2 4-4"/>
+            </svg>
+            <span class="day-navigator__label">Cover</span>
+          </a>
+        </li>
+        
+        {% comment %} Overview Link {% endcomment %}
+        {% if section.settings.show_overview_link %}
+          <li class="day-navigator__item">
+            <a 
+              href="#journey" 
+              class="day-navigator__link" 
+              data-nav-target="journey"
+            >
+              <span class="day-navigator__label">Overview</span>
+            </a>
+          </li>
+        {% endif %}
+        
+        {% comment %} Map Link {% endcomment %}
+        {% if section.settings.show_map_link %}
+          <li class="day-navigator__item">
+            <a 
+              href="{{ map_url }}" 
+              class="day-navigator__link day-navigator__link--external"
+              target="_blank"
+              rel="noopener"
+            >
+              <span class="day-navigator__label">Map</span>
+              <svg class="day-navigator__external-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                <path d="M6 3h7v7M13 3L6 10"/>
+              </svg>
+            </a>
+          </li>
+        {% endif %}
+        
+        {% comment %} Divider {% endcomment %}
+        <li class="day-navigator__divider" aria-hidden="true"></li>
+        
+        {% comment %} Day Links - Individual days with visual grouping {% endcomment %}
+        {% for day_num in (1..total_days) %}
+          {% comment %} Calculate display date {% endcomment %}
+          {% if has_start_date %}
+            {% assign day_offset_seconds = day_num | minus: 1 | times: 86400 %}
+            {% assign day_epoch = start_date_epoch | plus: day_offset_seconds %}
+            {% assign display_date = day_epoch | date: '%b %d' %}
+            {% assign display_weekday = day_epoch | date: '%a' %}
+          {% else %}
+            {% assign display_date = 'Day ' | append: day_num %}
+            {% assign display_weekday = '' %}
+          {% endif %}
+          
+          {% comment %} Find which accommodation span this day belongs to {% endcomment %}
+          {% assign current_span_index = 0 %}
+          {% assign current_acc_name = '' %}
+          {% assign is_span_start = false %}
+          {% assign is_span_end = false %}
+          {% assign is_multi_night = false %}
+          {% assign span_nights = 0 %}
+          
+          {% for span_entry in accommodation_spans_array %}
+            {% assign span_parts = span_entry | split: '|' %}
+            {% assign span_start = span_parts[0] | plus: 0 %}
+            {% assign span_end = span_parts[1] | plus: 0 %}
+            {% assign span_acc_name = span_parts[2] %}
+            {% assign span_idx = span_parts[3] | plus: 0 %}
+            {% assign span_nights = span_end | minus: span_start | plus: 1 %}
+            
+            {% if day_num >= span_start and day_num <= span_end %}
+              {% assign current_span_index = span_idx %}
+              {% assign current_acc_name = span_acc_name %}
+              {% assign is_multi_night = span_end | minus: span_start | plus: 1 | at_least: 2 %}
+              
+              {% if day_num == span_start %}
+                {% assign is_span_start = true %}
+              {% endif %}
+              
+              {% if day_num == span_end %}
+                {% assign is_span_end = true %}
+              {% endif %}
+              
+              {% break %}
+            {% endif %}
+          {% endfor %}
+          
+          {% comment %} Create abbreviated accommodation name {% endcomment %}
+          {% assign acc_abbrev = current_acc_name | truncate: 12, '...' %}
+          
+          {% comment %} Determine grouping class {% endcomment %}
+          {% assign grouping_class = '' %}
+          {% if is_multi_night %}
+            {% assign grouping_class = 'day-navigator__link--grouped' %}
+            {% if is_span_start %}
+              {% assign grouping_class = grouping_class | append: ' day-navigator__link--group-start' %}
+            {% endif %}
+            {% if is_span_end %}
+              {% assign grouping_class = grouping_class | append: ' day-navigator__link--group-end' %}
+            {% endif %}
+            {% unless is_span_start or is_span_end %}
+              {% assign grouping_class = grouping_class | append: ' day-navigator__link--group-middle' %}
+            {% endunless %}
+          {% endif %}
+          
+          {% comment %} Alternate group colors for visual distinction {% endcomment %}
+          {% assign color_variant = current_span_index | modulo: 4 | plus: 1 %}
+          
+          <li class="day-navigator__item">
+            <a 
+              href="#day-{{ day_num }}" 
+              class="day-navigator__link day-navigator__link--day {{ grouping_class }}" 
+              data-nav-target="day-{{ day_num }}"
+              data-day="{{ day_num }}"
+              data-span="{{ current_span_index }}"
+              data-color-variant="{{ color_variant }}"
+              title="{{ current_acc_name }}"
+              aria-label="Day {{ day_num }}{% if current_acc_name != blank %} at {{ current_acc_name }}{% endif %}"
+            >
+              <span class="day-navigator__date">{{ display_date }}</span>
+              {% if section.settings.show_property_indicator and current_acc_name != blank %}
+                <span class="day-navigator__property-indicator" aria-hidden="true">
+                  <svg class="day-navigator__property-icon" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true">
+                    <path d="M6 1L1 5v6h4V8h2v3h4V5L6 1z"/>
+                  </svg>
+                </span>
+              {% endif %}
+            </a>
+            {% comment %} Tooltip on hover {% endcomment %}
+            {% if current_acc_name != blank %}
+              <div class="day-navigator__tooltip" role="tooltip">
+                <span class="day-navigator__tooltip-day">Day {{ day_num }}</span>
+                <span class="day-navigator__tooltip-property">{{ current_acc_name }}</span>
+                {% if is_span_start and is_multi_night %}
+                  <span class="day-navigator__tooltip-nights">{{ span_nights }} nights</span>
+                {% endif %}
+              </div>
+            {% endif %}
+          </li>
+        {% endfor %}
+        
+      </ul>
+    </div>
+    
+    {% comment %} Scroll indicators {% endcomment %}
+    <div class="day-navigator__scroll-hint day-navigator__scroll-hint--left" data-scroll-hint-left aria-hidden="true"></div>
+    <div class="day-navigator__scroll-hint day-navigator__scroll-hint--right" data-scroll-hint-right aria-hidden="true"></div>
+  </div>
+</nav>
+
+<style>
+/* ====================================
+   Day Navigator - Base Styles
+   ==================================== */
+
+.day-navigator {
+  --dn-height: 52px;
+  --dn-gap: 2px;
+  --dn-font-size: 12px;
+  --dn-font-weight: 500;
+  --dn-transition: 0.15s ease;
+  --dn-active-indicator: 2px;
+  --dn-group-line-height: 3px;
+  --dn-group-color-1: var(--color-primary, #c9a227);
+  --dn-group-color-2: #6b8e9f;
+  --dn-group-color-3: #9b7a5c;
+  --dn-group-color-4: #7a9b6b;
+  
+  position: relative;
+  width: 100%;
+  height: var(--dn-height);
+  background: color-mix(in srgb, var(--color-background) 85%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-foreground) 8%, transparent);
+  z-index: var(--wetu-z-sticky, 200);
+  transition: transform var(--dn-transition), box-shadow var(--dn-transition);
+}
+
+.day-navigator.is-sticky {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.day-navigator__container {
+  position: relative;
+  max-width: var(--page-width, 1400px);
+  margin: 0 auto;
+  padding: 0 var(--wetu-space-md, 16px);
+  height: 100%;
+}
+
+/* ====================================
+   Scroll Container
+   ==================================== */
+
+.day-navigator__scroll-wrapper {
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+.day-navigator__scroll-wrapper::-webkit-scrollbar {
+  display: none;
+}
+
+.day-navigator__list {
+  display: flex;
+  align-items: center;
+  gap: var(--dn-gap);
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  white-space: nowrap;
+}
+
+/* ====================================
+   Navigation Items
+   ==================================== */
+
+.day-navigator__item {
+  flex-shrink: 0;
+  position: relative;
+}
+
+.day-navigator__link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: var(--dn-height);
+  padding: 0 12px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: var(--dn-font-size);
+  font-weight: var(--dn-font-weight);
+  color: color-mix(in srgb, var(--color-foreground) 70%, transparent);
+  text-decoration: none;
+  border-bottom: var(--dn-active-indicator) solid transparent;
+  transition: color var(--dn-transition), border-color var(--dn-transition), transform var(--dn-transition);
+  cursor: pointer;
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.day-navigator__link:hover {
+  color: var(--color-foreground);
+}
+
+.day-navigator__link.is-active {
+  color: var(--color-foreground);
+  border-bottom-color: var(--color-primary);
+}
+
+/* Cover icon link */
+.day-navigator__link--cover {
+  padding: 0 8px;
+}
+
+.day-navigator__icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+/* External link icon */
+.day-navigator__external-icon {
+  width: 12px;
+  height: 12px;
+  opacity: 0.6;
+}
+
+/* ====================================
+   Day Link Styles
+   ==================================== */
+
+.day-navigator__link--day {
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 8px;
+  min-width: 48px;
+  position: relative;
+}
+
+.day-navigator__date {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.day-navigator__property-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.4;
+  transition: opacity var(--dn-transition);
+}
+
+.day-navigator__property-icon {
+  width: 10px;
+  height: 10px;
+}
+
+.day-navigator__link--day:hover .day-navigator__property-indicator {
+  opacity: 0.8;
+}
+
+/* ====================================
+   Visual Grouping for Multi-Day Stays
+   ==================================== */
+
+.day-navigator__link--grouped {
+  position: relative;
+}
+
+.day-navigator__link--grouped::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--dn-group-line-height);
+  background: var(--dn-group-color);
+  opacity: 0.6;
+  transition: opacity var(--dn-transition);
+}
+
+.day-navigator__link--grouped:hover::after,
+.day-navigator__link--grouped.is-active::after {
+  opacity: 1;
+}
+
+/* Group start - rounded left */
+.day-navigator__link--group-start::after {
+  border-radius: 2px 0 0 2px;
+  left: 4px;
+}
+
+/* Group end - rounded right */
+.day-navigator__link--group-end::after {
+  border-radius: 0 2px 2px 0;
+  right: 4px;
+}
+
+/* Group middle - no rounding */
+.day-navigator__link--group-middle::after {
+  border-radius: 0;
+}
+
+/* Single day that's both start and end */
+.day-navigator__link--group-start.day-navigator__link--group-end::after {
+  border-radius: 2px;
+  left: 4px;
+  right: 4px;
+}
+
+/* Color variants for alternating groups */
+[data-color-variant="1"] { --dn-group-color: var(--dn-group-color-1); }
+[data-color-variant="2"] { --dn-group-color: var(--dn-group-color-2); }
+[data-color-variant="3"] { --dn-group-color: var(--dn-group-color-3); }
+[data-color-variant="4"] { --dn-group-color: var(--dn-group-color-4); }
+
+/* Property indicator gets group color */
+.day-navigator__link--grouped .day-navigator__property-indicator {
+  color: var(--dn-group-color);
+  opacity: 0.7;
+}
+
+/* ====================================
+   Tooltip Styles
+   ==================================== */
+
+.day-navigator__tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-8px);
+  background: var(--color-foreground);
+  color: var(--color-background);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.2s ease, visibility 0.2s ease, transform 0.2s ease;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.day-navigator__tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: var(--color-foreground);
+}
+
+.day-navigator__item:hover .day-navigator__tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(-12px);
+}
+
+.day-navigator__tooltip-day {
+  font-weight: 600;
+  opacity: 0.7;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.day-navigator__tooltip-property {
+  font-weight: 500;
+}
+
+.day-navigator__tooltip-nights {
+  font-size: 10px;
+  opacity: 0.7;
+  margin-top: 2px;
+}
+
+/* ====================================
+   Divider
+   ==================================== */
+
+.day-navigator__divider {
+  width: 1px;
+  height: 24px;
+  background: color-mix(in srgb, var(--color-foreground) 15%, transparent);
+  margin: 0 8px;
+}
+
+/* ====================================
+   Scroll Hints
+   ==================================== */
+
+.day-navigator__scroll-hint {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 32px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--dn-transition);
+  z-index: 5;
+}
+
+.day-navigator__scroll-hint--left {
+  left: 0;
+  background: linear-gradient(to right, var(--color-background), transparent);
+}
+
+.day-navigator__scroll-hint--right {
+  right: 0;
+  background: linear-gradient(to left, var(--color-background), transparent);
+}
+
+.day-navigator__scroll-hint.is-visible {
+  opacity: 1;
+}
+
+/* ====================================
+   Label Styles
+   ==================================== */
+
+.day-navigator__label {
+  font-size: var(--dn-font-size);
+}
+
+/* ====================================
+   Responsive Adjustments
+   ==================================== */
+
+@media screen and (max-width: 749px) {
+  .day-navigator {
+    --dn-height: 48px;
+    --dn-gap: 1px;
+    --dn-font-size: 11px;
+  }
+  
+  .day-navigator__container {
+    padding: 0 12px;
+  }
+  
+  .day-navigator__link--day {
+    padding: 4px 6px;
+    min-width: 42px;
+  }
+  
+  .day-navigator__date {
+    font-size: 10px;
+  }
+  
+  .day-navigator__label {
+    display: none;
+  }
+  
+  .day-navigator__link--cover .day-navigator__label,
+  .day-navigator__link:not(.day-navigator__link--cover):not(.day-navigator__link--day) .day-navigator__label {
+    display: inline;
+  }
+  
+  .day-navigator__tooltip {
+    display: none;
+  }
+}
+
+/* ====================================
+   Dark Scheme Adjustments
+   ==================================== */
+
+.day-navigator.color-scheme-5 {
+  background: color-mix(in srgb, var(--color-background) 90%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--color-foreground) 12%, transparent);
+}
+
+.day-navigator.color-scheme-5 .day-navigator__scroll-hint--left {
+  background: linear-gradient(to right, var(--color-background), transparent);
+}
+
+.day-navigator.color-scheme-5 .day-navigator__scroll-hint--right {
+  background: linear-gradient(to left, var(--color-background), transparent);
+}
+
+.day-navigator.color-scheme-5 .day-navigator__tooltip {
+  background: var(--color-foreground);
+  color: var(--color-background);
+}
+
+.day-navigator.color-scheme-5 .day-navigator__tooltip::after {
+  border-top-color: var(--color-foreground);
+}
+
+/* ====================================
+   Reduced Motion
+   ==================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .day-navigator,
+  .day-navigator__link,
+  .day-navigator__scroll-hint,
+  .day-navigator__tooltip {
+    transition: none;
+  }
+  
+  .day-navigator__scroll-wrapper {
+    scroll-behavior: auto;
+  }
+  
+  .day-navigator__link:hover {
+    transform: none;
+  }
+}
+
+/* ====================================
+   Print Styles
+   ==================================== */
+
+@media print {
+  .day-navigator {
+    display: none;
+  }
+}
+</style>
+
+<script>
+(function() {
+  const navigator = document.querySelector('[data-day-navigator]');
+  if (!navigator) return;
+  
+  const heroSection = document.getElementById('hero');
+  const scrollContainer = navigator.querySelector('[data-scroll-container]');
+  const leftHint = navigator.querySelector('[data-scroll-hint-left]');
+  const rightHint = navigator.querySelector('[data-scroll-hint-right]');
+  const navLinks = navigator.querySelectorAll('[data-nav-target]');
+  
+  let isSticky = false;
+  let navOffsetTop = 0;
+  let ticking = false;
+  
+  // Observe scroll position for sticky behavior
+  function updateStickyState() {
+    if (!heroSection) {
+      navOffsetTop = navigator.offsetTop;
+    }
+    
+    const heroBottom = heroSection 
+      ? heroSection.offsetTop + heroSection.offsetHeight 
+      : navOffsetTop;
+    
+    const scrollY = window.scrollY;
+    const shouldBeSticky = scrollY >= heroBottom;
+    
+    if (shouldBeSticky !== isSticky) {
+      isSticky = shouldBeSticky;
+      navigator.classList.toggle('is-sticky', isSticky);
+    }
+  }
+  
+  // Update active link based on scroll position
+  function updateActiveLink() {
+    const scrollY = window.scrollY;
+    const viewportMiddle = scrollY + (window.innerHeight / 3);
+    
+    let activeTarget = null;
+    let activeSpan = null;
+    
+    // Check each target section
+    navLinks.forEach(link => {
+      const targetId = link.dataset.navTarget;
+      const targetEl = document.getElementById(targetId);
+      
+      if (targetEl) {
+        const rect = targetEl.getBoundingClientRect();
+        const absoluteTop = rect.top + scrollY;
+        
+        if (absoluteTop <= viewportMiddle) {
+          activeTarget = link;
+          activeSpan = link.dataset.span || null;
+        }
+      }
+    });
+    
+    // Update active states
+    navLinks.forEach(link => {
+      const isActive = link === activeTarget;
+      const inSameSpan = activeSpan && link.dataset.span === activeSpan && link.classList.contains('day-navigator__link--day');
+      
+      link.classList.toggle('is-active', isActive);
+      link.classList.toggle('is-span-active', inSameSpan && !isActive);
+    });
+    
+    // Scroll active link into view if needed
+    if (activeTarget && scrollContainer) {
+      const linkRect = activeTarget.getBoundingClientRect();
+      const containerRect = scrollContainer.getBoundingClientRect();
+      
+      if (linkRect.left < containerRect.left || linkRect.right > containerRect.right) {
+        activeTarget.scrollIntoView({ 
+          behavior: 'smooth', 
+          inline: 'center', 
+          block: 'nearest' 
+        });
+      }
+    }
+    
+    ticking = false;
+  }
+  
+  // Update scroll hints visibility
+  function updateScrollHints() {
+    if (!scrollContainer || !leftHint || !rightHint) return;
+    
+    const { scrollLeft, scrollWidth, clientWidth } = scrollContainer;
+    const canScrollLeft = scrollLeft > 5;
+    const canScrollRight = scrollLeft < (scrollWidth - clientWidth - 5);
+    
+    leftHint.classList.toggle('is-visible', canScrollLeft);
+    rightHint.classList.toggle('is-visible', canScrollRight);
+  }
+  
+  // Smooth scroll to target
+  function scrollToTarget(targetId) {
+    const targetEl = document.getElementById(targetId);
+    if (!targetEl) return;
+    
+    const navHeight = navigator.offsetHeight;
+    const targetTop = targetEl.getBoundingClientRect().top + window.scrollY - navHeight - 16;
+    
+    window.scrollTo({
+      top: targetTop,
+      behavior: 'smooth'
+    });
+  }
+  
+  // Handle click on nav links
+  navLinks.forEach(link => {
+    link.addEventListener('click', (e) => {
+      const href = link.getAttribute('href');
+      if (href && href.startsWith('#')) {
+        e.preventDefault();
+        const targetId = href.slice(1);
+        scrollToTarget(targetId);
+      }
+    });
+  });
+  
+  // Scroll event handler with throttling
+  function onScroll() {
+    updateStickyState();
+    
+    if (!ticking) {
+      requestAnimationFrame(updateActiveLink);
+      ticking = true;
+    }
+  }
+  
+  // Initialize
+  window.addEventListener('scroll', onScroll, { passive: true });
+  
+  if (scrollContainer) {
+    scrollContainer.addEventListener('scroll', updateScrollHints, { passive: true });
+    updateScrollHints();
+  }
+  
+  // Initial state
+  updateStickyState();
+  updateActiveLink();
+  
+  // Recalculate on resize
+  let resizeTimeout;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+      updateScrollHints();
+      navOffsetTop = navigator.offsetTop;
+    }, 100);
+  }, { passive: true });
+  
+})();
+</script>
+
+{% schema %}
+{
+  "name": "Day Navigator",
+  "tag": "section",
+  "class": "section-day-navigator",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-5"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_map_link",
+      "label": "Show Map link",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_overview_link",
+      "label": "Show Overview link",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_property_indicator",
+      "label": "Show property indicator icon",
+      "info": "Shows a small house icon to indicate accommodation days",
+      "default": false
+    }
+  ],
+  "presets": [
+    {
+      "name": "Day Navigator",
+      "settings": {
+        "color_scheme": "scheme-5",
+        "show_map_link": true,
+        "show_overview_link": true,
+        "show_property_indicator": false
+      }
+    }
+  ],
+  "templates": ["product"]
+}
+{% endschema %}

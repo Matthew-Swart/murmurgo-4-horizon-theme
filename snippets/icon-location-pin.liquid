@@ -1,0 +1,50 @@
+{% comment %}
+  ============================================================================
+  LOCATION PIN ICON SNIPPET
+  ============================================================================
+  
+  PARAMETERS:
+  - size: Icon size in pixels (default: 24)
+  - class: Additional CSS classes
+  - filled: Boolean to use filled style (default: false)
+  
+  USAGE:
+  {% render 'icon-location-pin', size: 24 %}
+  {% render 'icon-location-pin', size: 32, filled: true %}
+  
+  ============================================================================
+{% endcomment %}
+
+{% assign icon_size = size | default: 24 %}
+{% assign icon_class = class | default: '' %}
+{% assign is_filled = filled | default: false %}
+
+{% if is_filled %}
+  <svg 
+    class="icon icon-location-pin icon-location-pin--filled {{ icon_class }}" 
+    width="{{ icon_size }}" 
+    height="{{ icon_size }}" 
+    viewBox="0 0 24 24" 
+    fill="currentColor"
+    aria-hidden="true"
+  >
+    <path d="M12 0C7.31 0 3.5 3.81 3.5 8.5c0 6.375 8.5 15.5 8.5 15.5s8.5-9.125 8.5-15.5C20.5 3.81 16.69 0 12 0zm0 12c-1.93 0-3.5-1.57-3.5-3.5S10.07 5 12 5s3.5 1.57 3.5 3.5S13.93 12 12 12z"/>
+  </svg>
+{% else %}
+  <svg 
+    class="icon icon-location-pin {{ icon_class }}" 
+    width="{{ icon_size }}" 
+    height="{{ icon_size }}" 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    stroke-width="2" 
+    stroke-linecap="round" 
+    stroke-linejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+    <circle cx="12" cy="10" r="3"/>
+  </svg>
+{% endif %}
+

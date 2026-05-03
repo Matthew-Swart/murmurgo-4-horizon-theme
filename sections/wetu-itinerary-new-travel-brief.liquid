@@ -1,0 +1,1698 @@
+{% comment %}
+  ============================================================================
+  WETU ITINERARY NEW TRAVEL BRIEF
+  ============================================================================
+  
+  Practical travel information for the itinerary:
+  - Itinerary identifier code (for WETU app access)
+  - Party details (travelers, room configuration)
+  - Check-in/Check-out times for each accommodation
+  - Special interests (as themed badges)
+  - Contacts (primary + additional contacts)
+  - Additional info (spoken languages, group size)
+  - Terms & Conditions (collapsible)
+  
+  ============================================================================
+{% endcomment %}
+
+{% include 'wetu-itinerary-data' %}
+
+{%- liquid
+  assign has_checkin_data = false
+  for leg in wetu_legs
+    assign leg_type = leg.type.value | default: 'Standard'
+    if leg_type != 'Departure'
+      assign leg_check_in = leg.check_in_time.value
+      assign leg_check_out = leg.check_out_time.value
+      if leg_check_in != blank or leg_check_out != blank
+        assign has_checkin_data = true
+        break
+      endif
+      
+      assign acc_id = leg.content_entity_id.value
+      assign acc_handle = nil
+      for check_pin in wetu_pin_ids_array
+        if check_pin == acc_id
+          assign pin_index = forloop.index0
+          assign acc_handle = wetu_handles_array[pin_index]
+          break
+        endif
+      endfor
+      
+      if acc_handle != blank
+        assign acc_product = all_products[acc_handle]
+        if acc_product.metafields.wetu.check_in_time.value != blank or acc_product.metafields.wetu.check_out_time.value != blank
+          assign has_checkin_data = true
+          break
+        endif
+      endif
+    endif
+  endfor
+  
+  assign special_interests_raw = wetu_itinerary.special_interests.value
+  assign has_special_interests = false
+  if special_interests_raw != blank
+    assign has_special_interests = true
+  endif
+  
+  assign contacts_raw = wetu_itinerary.contacts.value
+  assign has_contacts = false
+  if contacts_raw != blank and contacts_raw.size > 0
+    assign has_contacts = true
+  endif
+  
+  assign terms_raw = wetu_itinerary.terms_and_conditions.value
+  assign has_terms = false
+  if terms_raw != blank
+    assign has_terms = true
+  endif
+  
+  assign identifier_key = wetu_itinerary.identifier_key.value
+  assign has_identifier = false
+  if identifier_key != blank
+    assign has_identifier = true
+  endif
+  
+  assign travellers_adult = wetu_itinerary.travellers_adult.value | default: 0 | times: 1
+  assign travellers_children = wetu_itinerary.travellers_children.value | default: 0 | times: 1
+  assign has_travellers = false
+  if travellers_adult > 0 or travellers_children > 0
+    assign has_travellers = true
+  endif
+  
+  assign rooms_single = wetu_itinerary.rooms_single.value | default: 0 | times: 1
+  assign rooms_double = wetu_itinerary.rooms_double.value | default: 0 | times: 1
+  assign rooms_twin = wetu_itinerary.rooms_twin.value | default: 0 | times: 1
+  assign rooms_triple = wetu_itinerary.rooms_triple.value | default: 0 | times: 1
+  assign rooms_family = wetu_itinerary.rooms_family.value | default: 0 | times: 1
+  assign rooms_quadruple = wetu_itinerary.rooms_quadruple.value | default: 0 | times: 1
+  assign rooms_campsite = wetu_itinerary.rooms_campsite.value | default: 0 | times: 1
+  assign has_rooms = false
+  if rooms_single > 0 or rooms_double > 0 or rooms_twin > 0 or rooms_triple > 0 or rooms_family > 0 or rooms_quadruple > 0 or rooms_campsite > 0
+    assign has_rooms = true
+  endif
+  
+  assign additional_info = wetu_itinerary.additional_info.value
+  assign spoken_languages = wetu_itinerary.spoken_languages.value
+  assign group_size = wetu_itinerary.group_size.value
+  assign day_tour_duration = wetu_itinerary.duration.value | default: wetu_itinerary.duration | default: product.metafields.wetu.itinerary_duration.value | default: product.metafields.wetu.itinerary_duration
+  assign departure_location = wetu_itinerary.departure_location.value | default: wetu_itinerary.departure_location | default: wetu_itinerary.departure.value | default: wetu_itinerary.departure
+  assign return_location = wetu_itinerary.return_location.value | default: wetu_itinerary.return_location | default: wetu_itinerary.return.value | default: wetu_itinerary.return
+  assign departure_time = wetu_itinerary.departure_time.value | default: wetu_itinerary.departure_time
+  assign return_time = wetu_itinerary.return_time.value | default: wetu_itinerary.return_time
+
+  assign first_route = wetu_routes | first
+  assign last_route = wetu_routes | last
+
+  if departure_location == blank and first_route
+    assign departure_location = first_route.from_name.value | default: first_route.from_name | default: first_route.start_location.value | default: first_route.start_location
+  endif
+  if departure_time == blank and first_route
+    assign departure_time = first_route.start_time.value | default: first_route.start_time
+  endif
+  if return_location == blank and last_route
+    assign return_location = last_route.to_name.value | default: last_route.to_name | default: last_route.end_location.value | default: last_route.end_location
+  endif
+  if return_time == blank and last_route
+    assign return_time = last_route.end_time.value | default: last_route.end_time
+  endif
+
+  assign has_day_tour_logistics = false
+  if day_tour_duration != blank or departure_location != blank or departure_time != blank or return_location != blank or return_time != blank
+    assign has_day_tour_logistics = true
+  endif
+
+  assign has_additional_info = false
+  if additional_info != blank or spoken_languages != blank or group_size != blank or has_day_tour_logistics
+    assign has_additional_info = true
+  endif
+  
+  assign show_section = false
+  if section.settings.show_identifier and has_identifier
+    assign show_section = true
+  elsif section.settings.show_party_details and has_travellers
+    assign show_section = true
+  elsif section.settings.show_checkin_times and has_checkin_data
+    assign show_section = true
+  elsif section.settings.show_special_interests and has_special_interests
+    assign show_section = true
+  elsif section.settings.show_contacts and has_contacts
+    assign show_section = true
+  elsif section.settings.show_primary_contact and has_contacts
+    assign show_section = true
+  elsif section.settings.show_terms and has_terms
+    assign show_section = true
+  elsif section.settings.show_additional_info and has_additional_info
+    assign show_section = true
+  elsif section.settings.show_additional_info and section.settings.show_duration_string and day_tour_duration != blank
+    assign show_section = true
+  elsif section.settings.show_additional_info and section.settings.show_departure_locations and departure_location != blank
+    assign show_section = true
+  elsif section.settings.show_additional_info and section.settings.show_departure_times and departure_time != blank
+    assign show_section = true
+  elsif section.settings.show_additional_info and section.settings.show_returns and return_location != blank
+    assign show_section = true
+  elsif section.settings.show_additional_info and section.settings.show_returns and return_time != blank
+    assign show_section = true
+  endif
+-%}
+
+{% if show_section %}
+<section 
+  class="itin-travel-brief color-{{ section.settings.color_scheme }}" 
+  id="travel-brief"
+  aria-labelledby="travel-brief-heading"
+>
+  <div class="page-width">
+    <header class="itin-travel-brief__header">
+      <h2 id="travel-brief-heading" class="itin-travel-brief__title">
+        {{ 'wetu.itinerary.travel_brief' | t | default: 'Travel Brief' }}
+      </h2>
+    </header>
+    
+    {% comment %} ============================================================
+      ITINERARY IDENTIFIER CODE
+    ============================================================ {% endcomment %}
+    {% if section.settings.show_identifier and has_identifier %}
+      <div class="itin-travel-brief__identifier">
+        <div class="itin-travel-brief__identifier-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="4" width="18" height="18" rx="2"/>
+            <path d="M7 8h10M7 12h10M7 16h6"/>
+            <path d="M16 2v4"/>
+            <path d="M8 2v4"/>
+          </svg>
+        </div>
+        <div class="itin-travel-brief__identifier-content">
+          <span class="itin-travel-brief__identifier-label">{{ 'wetu.itinerary.itinerary_code' | t | default: 'Itinerary Code' }}</span>
+          <span class="itin-travel-brief__identifier-code">{{ identifier_key }}</span>
+        </div>
+        <a href="https://wetu.com/Itinerary/{{ identifier_key }}" target="_blank" rel="noopener" class="itin-travel-brief__identifier-link">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+            <polyline points="15 3 21 3 21 9"/>
+            <line x1="10" y1="14" x2="21" y2="3"/>
+          </svg>
+          <span>{{ 'wetu.itinerary.open_in_wetu' | t | default: 'Open in WETU' }}</span>
+        </a>
+      </div>
+    {% endif %}
+    
+    {% comment %} ============================================================
+      SPECIAL INTERESTS STRIP (Promoted)
+    ============================================================ {% endcomment %}
+    {% if section.settings.promote_special_interests and has_special_interests %}
+      <div class="itin-travel-brief__interests-strip">
+        {% if special_interests_raw.first != blank %}
+          {% assign interests_array = special_interests_raw %}
+        {% else %}
+          {% assign interests_array = special_interests_raw | split: ',' %}
+        {% endif %}
+        {% for interest in interests_array %}
+          {% assign interest_clean = interest | strip %}
+          {% if interest_clean != blank %}
+            <span class="itin-travel-brief__interest-pill">{{ interest_clean }}</span>
+          {% endif %}
+        {% endfor %}
+      </div>
+    {% endif %}
+    
+    {% comment %} ============================================================
+      PRIMARY CONTACT CARD (Prominent)
+    ============================================================ {% endcomment %}
+    {% if section.settings.show_primary_contact and has_contacts %}
+      {% assign primary_contact = contacts_raw | first %}
+      {% if primary_contact %}
+        {%- liquid
+          assign contact_name = primary_contact.contact_person.value | default: primary_contact.name.value
+          assign contact_company = primary_contact.company.value
+          assign contact_email = primary_contact.email.value
+          assign contact_phone = primary_contact.telephone.value | default: primary_contact.phone.value
+          assign contact_alt_phone = primary_contact.alternative_telephone.value
+        -%}
+        <div class="itin-travel-brief__primary-contact">
+          <div class="itin-travel-brief__contact-avatar">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <circle cx="12" cy="8" r="5"/>
+              <path d="M20 21a8 8 0 1 0-16 0"/>
+            </svg>
+          </div>
+          <div class="itin-travel-brief__contact-main">
+            <span class="itin-travel-brief__contact-role">{{ 'wetu.itinerary.primary_contact' | t | default: 'Your Contact' }}</span>
+            {% if contact_name != blank %}
+              <span class="itin-travel-brief__contact-primary-name">{{ contact_name }}</span>
+            {% endif %}
+            {% if contact_company != blank %}
+              <span class="itin-travel-brief__contact-company-name">{{ contact_company }}</span>
+            {% endif %}
+          </div>
+          <div class="itin-travel-brief__contact-actions">
+            {% if contact_email != blank %}
+              <a href="mailto:{{ contact_email }}" class="itin-travel-brief__contact-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+                </svg>
+                <span class="itin-travel-brief__contact-btn-text">{{ contact_email }}</span>
+              </a>
+            {% endif %}
+            {% if contact_phone != blank %}
+              <a href="tel:{{ contact_phone | remove: ' ' }}" class="itin-travel-brief__contact-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                </svg>
+                <span class="itin-travel-brief__contact-btn-text">{{ contact_phone }}</span>
+              </a>
+            {% endif %}
+            {% if contact_alt_phone != blank %}
+              <a href="tel:{{ contact_alt_phone | remove: ' ' }}" class="itin-travel-brief__contact-btn itin-travel-brief__contact-btn--secondary">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                </svg>
+                <span class="itin-travel-brief__contact-btn-text">{{ contact_alt_phone }}</span>
+              </a>
+            {% endif %}
+          </div>
+        </div>
+      {% endif %}
+    {% endif %}
+    
+    {% comment %} ============================================================
+      PARTY DETAILS PANEL
+    ============================================================ {% endcomment %}
+    {% assign show_party_panel = false %}
+    {% if has_travellers %}{% assign show_party_panel = true %}{% endif %}
+    {% if has_rooms %}{% assign show_party_panel = true %}{% endif %}
+    {% if section.settings.show_party_details and show_party_panel %}
+      <div class="itin-travel-brief__party-details">
+        <div class="itin-travel-brief__party-header">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          <span class="itin-travel-brief__party-title">{{ 'wetu.itinerary.party_details' | t | default: 'Party Details' }}</span>
+        </div>
+        <div class="itin-travel-brief__party-content">
+          {% if has_travellers %}
+            <div class="itin-travel-brief__party-travellers">
+              {% if travellers_adult > 0 %}
+                <span class="itin-travel-brief__party-stat">
+                  <span class="itin-travel-brief__party-stat-value">{{ travellers_adult }}</span>
+                  <span class="itin-travel-brief__party-stat-label">{{ 'wetu.itinerary.adults' | t | default: 'Adults' }}</span>
+                </span>
+              {% endif %}
+              {% if travellers_children > 0 %}
+                <span class="itin-travel-brief__party-stat">
+                  <span class="itin-travel-brief__party-stat-value">{{ travellers_children }}</span>
+                  <span class="itin-travel-brief__party-stat-label">{{ 'wetu.itinerary.children' | t | default: 'Children' }}</span>
+                </span>
+              {% endif %}
+            </div>
+          {% endif %}
+          {% if has_rooms %}
+            <div class="itin-travel-brief__party-rooms">
+              <span class="itin-travel-brief__party-rooms-label">{{ 'wetu.itinerary.room_configuration' | t | default: 'Room Configuration' }}:</span>
+              <div class="itin-travel-brief__party-rooms-list">
+                {%- liquid
+                  assign room_parts = ''
+                  if rooms_single > 0
+                    assign single_text = rooms_single | append: ' Single'
+                    assign room_parts = room_parts | append: single_text | append: '|||'
+                  endif
+                  if rooms_double > 0
+                    assign double_text = rooms_double | append: ' Double'
+                    assign room_parts = room_parts | append: double_text | append: '|||'
+                  endif
+                  if rooms_twin > 0
+                    assign twin_text = rooms_twin | append: ' Twin'
+                    assign room_parts = room_parts | append: twin_text | append: '|||'
+                  endif
+                  if rooms_triple > 0
+                    assign triple_text = rooms_triple | append: ' Triple'
+                    assign room_parts = room_parts | append: triple_text | append: '|||'
+                  endif
+                  if rooms_family > 0
+                    assign family_text = rooms_family | append: ' Family'
+                    assign room_parts = room_parts | append: family_text | append: '|||'
+                  endif
+                  if rooms_quadruple > 0
+                    assign quad_text = rooms_quadruple | append: ' Quadruple'
+                    assign room_parts = room_parts | append: quad_text | append: '|||'
+                  endif
+                  if rooms_campsite > 0
+                    assign camp_text = rooms_campsite | append: ' Campsite'
+                    assign room_parts = room_parts | append: camp_text | append: '|||'
+                  endif
+                  assign room_parts = room_parts | split: '|||'
+                -%}
+                {% for room_part in room_parts %}
+                  {% if room_part != blank %}
+                    <span class="itin-travel-brief__room-badge">{{ room_part }}</span>
+                  {% endif %}
+                {% endfor %}
+              </div>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+    
+    <div class="itin-travel-brief__panels">
+      
+      {% comment %} ============================================================
+        CHECK-IN / CHECK-OUT TIMES
+      ============================================================ {% endcomment %}
+      {% if section.settings.show_checkin_times and has_checkin_data %}
+        <div class="itin-travel-brief__panel" data-panel="checkin">
+          <button 
+            type="button" 
+            class="itin-travel-brief__panel-header"
+            aria-expanded="true"
+            aria-controls="panel-checkin"
+          >
+            <span class="itin-travel-brief__panel-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+            </span>
+            <span class="itin-travel-brief__panel-title">
+              {{ 'wetu.itinerary.check_in' | t | default: 'Check-in' }} / {{ 'wetu.itinerary.check_out' | t | default: 'Check-out' }}
+            </span>
+            <span class="itin-travel-brief__panel-chevron" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </span>
+          </button>
+          <div id="panel-checkin" class="itin-travel-brief__panel-content" aria-hidden="false">
+            {% if section.settings.use_table_layout %}
+              <div class="itin-travel-brief__checkin-table-wrapper">
+                <table class="itin-travel-brief__checkin-table">
+                  <thead>
+                    <tr>
+                      <th>{{ 'wetu.itinerary.accommodation_summary' | t | default: 'Accommodation' }}</th>
+                      <th>{{ 'wetu.itinerary.check_in' | t | default: 'Check-in' }}</th>
+                      <th>{{ 'wetu.itinerary.check_out' | t | default: 'Check-out' }}</th>
+                      <th>{{ 'wetu.itinerary.meal_basis' | t | default: 'Basis' }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for leg in wetu_legs %}
+                      {%- liquid
+                        assign leg_type = leg.type.value | default: 'Standard'
+                        if leg_type == 'Departure'
+                          continue
+                        endif
+                        
+                        assign acc_name = leg.accommodation_name.value
+                        assign check_in_time = leg.check_in_time.value
+                        assign check_out_time = leg.check_out_time.value
+                        assign meal_basis = leg.meal_plan.value | default: leg.room_basis.value
+                        
+                        assign acc_id = leg.content_entity_id.value
+                        assign acc_handle = nil
+                        for check_pin in wetu_pin_ids_array
+                          if check_pin == acc_id
+                            assign pin_idx = forloop.index0
+                            assign acc_handle = wetu_handles_array[pin_idx]
+                            break
+                          endif
+                        endfor
+                        
+                        if acc_handle != blank
+                          assign acc_product = all_products[acc_handle]
+                          if check_in_time == blank
+                            assign check_in_time = acc_product.metafields.wetu.check_in_time.value
+                          endif
+                          if check_out_time == blank
+                            assign check_out_time = acc_product.metafields.wetu.check_out_time.value
+                          endif
+                        endif
+                      -%}
+                      
+                      {% if acc_name != blank %}
+                        <tr>
+                          <td class="itin-travel-brief__checkin-table-name">{{ acc_name }}</td>
+                          <td>{{ check_in_time | default: '-' }}</td>
+                          <td>{{ check_out_time | default: '-' }}</td>
+                          <td>
+                            {% if meal_basis != blank %}
+                              <span class="itin-travel-brief__basis-badge">{{ meal_basis }}</span>
+                            {% else %}
+                              -
+                            {% endif %}
+                          </td>
+                        </tr>
+                      {% endif %}
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% else %}
+              <div class="itin-travel-brief__checkin-list">
+                {% for leg in wetu_legs %}
+                  {%- liquid
+                    assign leg_type = leg.type.value | default: 'Standard'
+                    if leg_type == 'Departure'
+                      continue
+                    endif
+                    
+                    assign acc_name = leg.accommodation_name.value
+                    assign acc_id = leg.content_entity_id.value
+                    
+                    assign check_in_time = leg.check_in_time.value
+                    assign check_out_time = leg.check_out_time.value
+                    
+                    assign acc_handle = nil
+                    for check_pin in wetu_pin_ids_array
+                      if check_pin == acc_id
+                        assign pin_idx = forloop.index0
+                        assign acc_handle = wetu_handles_array[pin_idx]
+                        break
+                      endif
+                    endfor
+                    
+                    if acc_handle != blank
+                      assign acc_product = all_products[acc_handle]
+                      if check_in_time == blank
+                        assign check_in_time = acc_product.metafields.wetu.check_in_time.value
+                      endif
+                      if check_out_time == blank
+                        assign check_out_time = acc_product.metafields.wetu.check_out_time.value
+                      endif
+                    endif
+                    
+                    assign has_times = false
+                    if check_in_time != blank or check_out_time != blank
+                      assign has_times = true
+                    endif
+                  -%}
+                  
+                  {% if acc_name != blank and has_times %}
+                    <div class="itin-travel-brief__checkin-item">
+                      <span class="itin-travel-brief__checkin-name">{{ acc_name }}</span>
+                      <div class="itin-travel-brief__checkin-times">
+                        {% if check_in_time != blank %}
+                          <span class="itin-travel-brief__time">
+                            <span class="itin-travel-brief__time-label">{{ 'wetu.itinerary.check_in' | t | default: 'Check-in' }}:</span>
+                            <span class="itin-travel-brief__time-value">{{ check_in_time }}</span>
+                          </span>
+                        {% endif %}
+                        {% if check_out_time != blank %}
+                          <span class="itin-travel-brief__time">
+                            <span class="itin-travel-brief__time-label">{{ 'wetu.itinerary.check_out' | t | default: 'Check-out' }}:</span>
+                            <span class="itin-travel-brief__time-value">{{ check_out_time }}</span>
+                          </span>
+                        {% endif %}
+                      </div>
+                    </div>
+                  {% endif %}
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      {% endif %}
+      
+      {% comment %} ============================================================
+        SPECIAL INTERESTS
+      ============================================================ {% endcomment %}
+      {% if section.settings.show_special_interests and has_special_interests %}
+        {%- liquid
+          if special_interests_raw.first != blank
+            assign interests_array = special_interests_raw
+          else
+            assign interests_array = special_interests_raw | split: ','
+          endif
+        -%}
+        
+        <div class="itin-travel-brief__panel" data-panel="interests">
+          <button 
+            type="button" 
+            class="itin-travel-brief__panel-header"
+            aria-expanded="false"
+            aria-controls="panel-interests"
+          >
+            <span class="itin-travel-brief__panel-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+            </span>
+            <span class="itin-travel-brief__panel-title">
+              {{ 'wetu.itinerary.special_interests' | t | default: 'Special Interests' }}
+            </span>
+            <span class="itin-travel-brief__panel-chevron" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </span>
+          </button>
+          <div id="panel-interests" class="itin-travel-brief__panel-content" aria-hidden="true">
+            <div class="itin-travel-brief__badges">
+              {% for interest in interests_array %}
+                {% assign interest_clean = interest | strip %}
+                {% if interest_clean != blank %}
+                  <span class="itin-travel-brief__badge">{{ interest_clean }}</span>
+                {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      {% endif %}
+      
+      {% comment %} ============================================================
+        ADDITIONAL CONTACTS
+      ============================================================ {% endcomment %}
+      {% if section.settings.show_contacts and has_contacts and contacts_raw.size > 1 %}
+        <div class="itin-travel-brief__panel" data-panel="contacts">
+          <button 
+            type="button" 
+            class="itin-travel-brief__panel-header"
+            aria-expanded="false"
+            aria-controls="panel-contacts"
+          >
+            <span class="itin-travel-brief__panel-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+            </span>
+            <span class="itin-travel-brief__panel-title">
+              {{ 'wetu.itinerary.additional_contacts' | t | default: 'Additional Contacts' }}
+            </span>
+            <span class="itin-travel-brief__panel-chevron" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </span>
+          </button>
+          <div id="panel-contacts" class="itin-travel-brief__panel-content" aria-hidden="true">
+            <div class="itin-travel-brief__contacts">
+              {% for contact in contacts_raw %}
+                {% if forloop.first %}
+                  {% continue %}
+                {% endif %}
+                {%- liquid
+                  assign c_name = contact.contact_person.value | default: contact.name.value
+                  assign c_company = contact.company.value
+                  assign c_email = contact.email.value
+                  assign c_phone = contact.telephone.value | default: contact.phone.value
+                  assign c_alt_phone = contact.alternative_telephone.value
+                -%}
+                <div class="itin-travel-brief__contact-card">
+                  {% if c_company != blank %}
+                    <span class="itin-travel-brief__contact-company">{{ c_company }}</span>
+                  {% endif %}
+                  {% if c_name != blank %}
+                    <span class="itin-travel-brief__contact-name">{{ c_name }}</span>
+                  {% endif %}
+                  <div class="itin-travel-brief__contact-details">
+                    {% if c_phone != blank %}
+                      <a href="tel:{{ c_phone | replace: ' ', '' }}" class="itin-travel-brief__contact-link">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                        </svg>
+                        {{ c_phone }}
+                      </a>
+                    {% endif %}
+                    {% if c_alt_phone != blank %}
+                      <a href="tel:{{ c_alt_phone | replace: ' ', '' }}" class="itin-travel-brief__contact-link">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                        </svg>
+                        {{ c_alt_phone }}
+                      </a>
+                    {% endif %}
+                    {% if c_email != blank %}
+                      <a href="mailto:{{ c_email }}" class="itin-travel-brief__contact-link">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                          <polyline points="22,6 12,13 2,6"/>
+                        </svg>
+                        {{ c_email }}
+                      </a>
+                    {% endif %}
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      {% elsif section.settings.show_contacts and has_contacts and contacts_raw.size == 1 and section.settings.show_primary_contact == false %}
+        <div class="itin-travel-brief__panel" data-panel="contacts">
+          <button 
+            type="button" 
+            class="itin-travel-brief__panel-header"
+            aria-expanded="false"
+            aria-controls="panel-contacts"
+          >
+            <span class="itin-travel-brief__panel-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+            </span>
+            <span class="itin-travel-brief__panel-title">
+              {{ 'wetu.itinerary.contact_us' | t | default: 'Contact' }}
+            </span>
+            <span class="itin-travel-brief__panel-chevron" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </span>
+          </button>
+          <div id="panel-contacts" class="itin-travel-brief__panel-content" aria-hidden="true">
+            <div class="itin-travel-brief__contacts">
+              {% for contact in contacts_raw %}
+                {%- liquid
+                  assign c_name = contact.contact_person.value | default: contact.name.value
+                  assign c_company = contact.company.value
+                  assign c_email = contact.email.value
+                  assign c_phone = contact.telephone.value | default: contact.phone.value
+                  assign c_alt_phone = contact.alternative_telephone.value
+                -%}
+                <div class="itin-travel-brief__contact-card">
+                  {% if c_company != blank %}
+                    <span class="itin-travel-brief__contact-company">{{ c_company }}</span>
+                  {% endif %}
+                  {% if c_name != blank %}
+                    <span class="itin-travel-brief__contact-name">{{ c_name }}</span>
+                  {% endif %}
+                  <div class="itin-travel-brief__contact-details">
+                    {% if c_phone != blank %}
+                      <a href="tel:{{ c_phone | replace: ' ', '' }}" class="itin-travel-brief__contact-link">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                        </svg>
+                        {{ c_phone }}
+                      </a>
+                    {% endif %}
+                    {% if c_alt_phone != blank %}
+                      <a href="tel:{{ c_alt_phone | replace: ' ', '' }}" class="itin-travel-brief__contact-link">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                        </svg>
+                        {{ c_alt_phone }}
+                      </a>
+                    {% endif %}
+                    {% if c_email != blank %}
+                      <a href="mailto:{{ c_email }}" class="itin-travel-brief__contact-link">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                          <polyline points="22,6 12,13 2,6"/>
+                        </svg>
+                        {{ c_email }}
+                      </a>
+                    {% endif %}
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      {% endif %}
+      
+      {% comment %} ============================================================
+        ADDITIONAL INFO (Languages, Group Size)
+      ============================================================ {% endcomment %}
+      {% if section.settings.show_additional_info and has_additional_info %}
+        <div class="itin-travel-brief__panel" data-panel="additional-info">
+          <button 
+            type="button" 
+            class="itin-travel-brief__panel-header"
+            aria-expanded="false"
+            aria-controls="panel-additional-info"
+          >
+            <span class="itin-travel-brief__panel-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="16" x2="12" y2="12"/>
+                <line x1="12" y1="8" x2="12.01" y2="8"/>
+              </svg>
+            </span>
+            <span class="itin-travel-brief__panel-title">
+              {{ 'wetu.itinerary.additional_info' | t | default: 'Additional Information' }}
+            </span>
+            <span class="itin-travel-brief__panel-chevron" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </span>
+          </button>
+          <div id="panel-additional-info" class="itin-travel-brief__panel-content" aria-hidden="true">
+            <div class="itin-travel-brief__additional-info">
+              {% if section.settings.show_duration_string and day_tour_duration != blank %}
+                <div class="itin-travel-brief__info-row">
+                  <span class="itin-travel-brief__info-label">{{ 'wetu.itinerary.duration' | t | default: 'Duration' }}</span>
+                  <span class="itin-travel-brief__info-value">{{ day_tour_duration }}</span>
+                </div>
+              {% endif %}
+              {% if section.settings.show_departure_locations and departure_location != blank %}
+                <div class="itin-travel-brief__info-row">
+                  <span class="itin-travel-brief__info-label">{{ 'wetu.itinerary.departure_location' | t | default: 'Departure Location' }}</span>
+                  <span class="itin-travel-brief__info-value">{{ departure_location }}</span>
+                </div>
+              {% endif %}
+              {% if section.settings.show_departure_times and departure_time != blank %}
+                <div class="itin-travel-brief__info-row">
+                  <span class="itin-travel-brief__info-label">{{ 'wetu.itinerary.departure_time' | t | default: 'Departure Time' }}</span>
+                  <span class="itin-travel-brief__info-value">{{ departure_time }}</span>
+                </div>
+              {% endif %}
+              {% if section.settings.show_returns and return_location != blank %}
+                <div class="itin-travel-brief__info-row">
+                  <span class="itin-travel-brief__info-label">{{ 'wetu.itinerary.return_location' | t | default: 'Return Location' }}</span>
+                  <span class="itin-travel-brief__info-value">{{ return_location }}</span>
+                </div>
+              {% endif %}
+              {% if section.settings.show_returns and return_time != blank %}
+                <div class="itin-travel-brief__info-row">
+                  <span class="itin-travel-brief__info-label">{{ 'wetu.itinerary.return_time' | t | default: 'Return Time' }}</span>
+                  <span class="itin-travel-brief__info-value">{{ return_time }}</span>
+                </div>
+              {% endif %}
+              {% if section.settings.show_spoken_languages and spoken_languages != blank %}
+                <div class="itin-travel-brief__info-row">
+                  <span class="itin-travel-brief__info-label">{{ 'wetu.itinerary.spoken_languages' | t | default: 'Languages Spoken' }}</span>
+                  <span class="itin-travel-brief__info-value">{{ spoken_languages }}</span>
+                </div>
+              {% endif %}
+              {% if group_size != blank %}
+                <div class="itin-travel-brief__info-row">
+                  <span class="itin-travel-brief__info-label">{{ 'wetu.itinerary.group_size' | t | default: 'Group Size' }}</span>
+                  <span class="itin-travel-brief__info-value">{{ group_size }}</span>
+                </div>
+              {% endif %}
+              {% if additional_info != blank %}
+                <div class="itin-travel-brief__info-block">
+                  {{ additional_info }}
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      {% endif %}
+      
+      {% comment %} ============================================================
+        TERMS & CONDITIONS
+      ============================================================ {% endcomment %}
+      {% if section.settings.show_terms and has_terms %}
+        <div class="itin-travel-brief__panel" data-panel="terms">
+          <button 
+            type="button" 
+            class="itin-travel-brief__panel-header"
+            aria-expanded="false"
+            aria-controls="panel-terms"
+          >
+            <span class="itin-travel-brief__panel-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+                <polyline points="10 9 9 9 8 9"/>
+              </svg>
+            </span>
+            <span class="itin-travel-brief__panel-title">
+              {{ 'wetu.itinerary.terms_conditions' | t | default: 'Terms & Conditions' }}
+            </span>
+            <span class="itin-travel-brief__panel-chevron" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </span>
+          </button>
+          <div id="panel-terms" class="itin-travel-brief__panel-content" aria-hidden="true">
+            <div class="itin-travel-brief__terms">
+              <div class="itin-travel-brief__terms-content">
+                {{ terms_raw }}
+              </div>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+      
+    </div>
+  </div>
+</section>
+
+<style>
+.itin-travel-brief {
+  padding: 60px 0;
+}
+
+.itin-travel-brief__header {
+  margin-bottom: 32px;
+}
+
+.itin-travel-brief__title {
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Itinerary Identifier */
+.itin-travel-brief__identifier {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, rgba(var(--color-foreground), 0.04), rgba(var(--color-foreground), 0.02));
+  border: 1px solid rgba(var(--color-foreground), 0.1);
+  border-radius: 12px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.itin-travel-brief__identifier-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: var(--color-primary, #d4a574);
+  border-radius: 10px;
+  color: white;
+  flex-shrink: 0;
+}
+
+.itin-travel-brief__identifier-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.itin-travel-brief__identifier-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(var(--color-foreground), 0.6);
+}
+
+.itin-travel-brief__identifier-code {
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  letter-spacing: 0.1em;
+  color: rgb(var(--color-foreground));
+}
+
+.itin-travel-brief__identifier-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background: var(--color-primary, #d4a574);
+  color: white;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.itin-travel-brief__identifier-link:hover {
+  background: var(--color-primary-darker, #c49463);
+  transform: translateY(-1px);
+}
+
+/* Party Details */
+.itin-travel-brief__party-details {
+  background: rgba(var(--color-foreground), 0.02);
+  border: 1px solid rgba(var(--color-foreground), 0.08);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.itin-travel-brief__party-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  color: var(--color-primary, #d4a574);
+}
+
+.itin-travel-brief__party-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: rgb(var(--color-foreground));
+}
+
+.itin-travel-brief__party-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.itin-travel-brief__party-travellers {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.itin-travel-brief__party-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.itin-travel-brief__party-stat-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: rgb(var(--color-foreground));
+  line-height: 1;
+}
+
+.itin-travel-brief__party-stat-label {
+  font-size: 0.8125rem;
+  color: rgba(var(--color-foreground), 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.itin-travel-brief__party-rooms {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.itin-travel-brief__party-rooms-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: rgba(var(--color-foreground), 0.7);
+}
+
+.itin-travel-brief__party-rooms-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.itin-travel-brief__room-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  background: rgba(var(--color-foreground), 0.05);
+  border: 1px solid rgba(var(--color-foreground), 0.1);
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: rgb(var(--color-foreground));
+}
+
+/* Interests Strip */
+.itin-travel-brief__interests-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.itin-travel-brief__interest-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, var(--color-primary, #d4a574), var(--color-primary-darker, #c49463));
+  color: white;
+  border-radius: 20px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+/* Panels */
+.itin-travel-brief__panels {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.itin-travel-brief__panel {
+  background: rgba(var(--color-foreground), 0.02);
+  border: 1px solid rgba(var(--color-foreground), 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.itin-travel-brief__panel-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 16px 20px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: background 0.2s ease;
+}
+
+.itin-travel-brief__panel-header:hover {
+  background: rgba(var(--color-foreground), 0.03);
+}
+
+.itin-travel-brief__panel-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: rgba(var(--color-foreground), 0.05);
+  border-radius: 8px;
+  color: var(--color-primary, #d4a574);
+  flex-shrink: 0;
+}
+
+.itin-travel-brief__panel-title {
+  flex: 1;
+  font-size: 1rem;
+  font-weight: 600;
+  color: rgb(var(--color-foreground));
+}
+
+.itin-travel-brief__panel-chevron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(var(--color-foreground), 0.5);
+  transition: transform 0.2s ease;
+}
+
+.itin-travel-brief__panel-header[aria-expanded="true"] .itin-travel-brief__panel-chevron {
+  transform: rotate(180deg);
+}
+
+.itin-travel-brief__panel-content {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 0.3s ease;
+}
+
+.itin-travel-brief__panel-content[aria-hidden="true"] {
+  grid-template-rows: 0fr;
+}
+
+.itin-travel-brief__panel-content > * {
+  overflow: hidden;
+}
+
+.itin-travel-brief__panel-content[aria-hidden="false"] > * {
+  padding: 0 20px 20px;
+}
+
+/* Check-in List */
+.itin-travel-brief__checkin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.itin-travel-brief__checkin-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 16px;
+  background: rgba(var(--color-foreground), 0.03);
+  border-radius: 8px;
+}
+
+.itin-travel-brief__checkin-name {
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+.itin-travel-brief__checkin-times {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.itin-travel-brief__time {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+}
+
+.itin-travel-brief__time-label {
+  color: rgba(var(--color-foreground), 0.6);
+}
+
+.itin-travel-brief__time-value {
+  font-weight: 500;
+}
+
+/* Badges */
+.itin-travel-brief__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.itin-travel-brief__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 14px;
+  background: linear-gradient(135deg, rgba(var(--color-foreground), 0.05), rgba(var(--color-foreground), 0.02));
+  border: 1px solid rgba(var(--color-foreground), 0.1);
+  border-radius: 20px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: rgb(var(--color-foreground));
+  transition: all 0.2s ease;
+}
+
+.itin-travel-brief__badge:hover {
+  background: linear-gradient(135deg, rgba(var(--color-foreground), 0.08), rgba(var(--color-foreground), 0.04));
+  border-color: var(--color-primary, #d4a574);
+}
+
+/* Contacts */
+.itin-travel-brief__contacts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.itin-travel-brief__contact-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  background: rgba(var(--color-foreground), 0.03);
+  border-radius: 8px;
+}
+
+.itin-travel-brief__contact-company {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-primary, #d4a574);
+}
+
+.itin-travel-brief__contact-name {
+  font-weight: 600;
+  font-size: 1rem;
+  color: rgb(var(--color-foreground));
+}
+
+.itin-travel-brief__contact-details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.itin-travel-brief__contact-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  color: rgba(var(--color-foreground), 0.8);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.itin-travel-brief__contact-link:hover {
+  color: var(--color-primary, #d4a574);
+}
+
+.itin-travel-brief__contact-link svg {
+  flex-shrink: 0;
+  color: var(--color-primary, #d4a574);
+}
+
+/* Primary Contact Card */
+.itin-travel-brief__primary-contact {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, rgba(var(--color-foreground), 0.04), rgba(var(--color-foreground), 0.02));
+  border: 1px solid rgba(var(--color-foreground), 0.1);
+  border-radius: 12px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.itin-travel-brief__contact-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: var(--color-primary, #d4a574);
+  border-radius: 50%;
+  color: white;
+  flex-shrink: 0;
+}
+
+.itin-travel-brief__contact-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.itin-travel-brief__contact-role {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-primary, #d4a574);
+}
+
+.itin-travel-brief__contact-primary-name {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: rgb(var(--color-foreground));
+}
+
+.itin-travel-brief__contact-company-name {
+  font-size: 0.875rem;
+  color: rgba(var(--color-foreground), 0.7);
+}
+
+.itin-travel-brief__contact-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.itin-travel-brief__contact-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: rgba(var(--color-foreground), 0.05);
+  border: 1px solid rgba(var(--color-foreground), 0.1);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: rgb(var(--color-foreground));
+  text-decoration: none;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.itin-travel-brief__contact-btn:hover {
+  background: rgba(var(--color-foreground), 0.08);
+  border-color: var(--color-primary, #d4a574);
+  color: var(--color-primary, #d4a574);
+}
+
+.itin-travel-brief__contact-btn--secondary {
+  background: transparent;
+  border-style: dashed;
+}
+
+.itin-travel-brief__contact-btn svg {
+  flex-shrink: 0;
+}
+
+/* Check-in Table Layout */
+.itin-travel-brief__checkin-table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.itin-travel-brief__checkin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+.itin-travel-brief__checkin-table thead th {
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(var(--color-foreground), 0.6);
+  border-bottom: 1px solid rgba(var(--color-foreground), 0.1);
+  white-space: nowrap;
+}
+
+.itin-travel-brief__checkin-table tbody td {
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(var(--color-foreground), 0.06);
+  vertical-align: middle;
+}
+
+.itin-travel-brief__checkin-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.itin-travel-brief__checkin-table tbody tr:hover {
+  background: rgba(var(--color-foreground), 0.02);
+}
+
+.itin-travel-brief__checkin-table-name {
+  font-weight: 600;
+  color: rgb(var(--color-foreground));
+}
+
+.itin-travel-brief__basis-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  background: rgba(var(--color-foreground), 0.05);
+  border: 1px solid rgba(var(--color-foreground), 0.1);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgba(var(--color-foreground), 0.8);
+  white-space: nowrap;
+}
+
+/* Additional Info */
+.itin-travel-brief__additional-info {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.itin-travel-brief__info-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 14px;
+  background: rgba(var(--color-foreground), 0.03);
+  border-radius: 6px;
+}
+
+.itin-travel-brief__info-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: rgba(var(--color-foreground), 0.6);
+  min-width: 140px;
+  flex-shrink: 0;
+}
+
+.itin-travel-brief__info-value {
+  font-size: 0.9375rem;
+  color: rgb(var(--color-foreground));
+}
+
+.itin-travel-brief__info-block {
+  padding: 14px 16px;
+  background: rgba(var(--color-foreground), 0.03);
+  border-radius: 6px;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: rgba(var(--color-foreground), 0.85);
+}
+
+/* Terms Content */
+.itin-travel-brief__terms-content {
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: rgba(var(--color-foreground), 0.85);
+}
+
+.itin-travel-brief__terms-content h1,
+.itin-travel-brief__terms-content h2,
+.itin-travel-brief__terms-content h3,
+.itin-travel-brief__terms-content h4 {
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+  color: rgb(var(--color-foreground));
+}
+
+.itin-travel-brief__terms-content h1:first-child,
+.itin-travel-brief__terms-content h2:first-child,
+.itin-travel-brief__terms-content h3:first-child {
+  margin-top: 0;
+}
+
+.itin-travel-brief__terms-content p {
+  margin-bottom: 1em;
+}
+
+.itin-travel-brief__terms-content ul,
+.itin-travel-brief__terms-content ol {
+  margin: 1em 0;
+  padding-left: 1.5em;
+}
+
+.itin-travel-brief__terms-content li {
+  margin-bottom: 0.5em;
+}
+
+.itin-travel-brief__terms-content a {
+  color: var(--color-primary, #d4a574);
+  text-decoration: underline;
+}
+
+.itin-travel-brief__terms-content a:hover {
+  text-decoration: none;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 767px) {
+  .itin-travel-brief {
+    padding: 40px 0;
+  }
+  
+  .itin-travel-brief__identifier {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .itin-travel-brief__identifier-link {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .itin-travel-brief__primary-contact {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .itin-travel-brief__contact-actions {
+    width: 100%;
+  }
+  
+  .itin-travel-brief__contact-btn {
+    flex: 1;
+    justify-content: center;
+  }
+  
+  .itin-travel-brief__contact-btn-text {
+    display: none;
+  }
+  
+  .itin-travel-brief__panel-header {
+    padding: 14px 16px;
+  }
+  
+  .itin-travel-brief__panel-content[aria-hidden="false"] > * {
+    padding: 0 16px 16px;
+  }
+  
+  .itin-travel-brief__checkin-item {
+    padding: 10px 12px;
+  }
+  
+  .itin-travel-brief__checkin-times {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .itin-travel-brief__contacts {
+    grid-template-columns: 1fr;
+  }
+  
+  .itin-travel-brief__info-row {
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .itin-travel-brief__info-label {
+    min-width: auto;
+  }
+}
+</style>
+
+<script>
+(function() {
+  const section = document.getElementById('travel-brief');
+  if (!section) return;
+  
+  const panels = section.querySelectorAll('.itin-travel-brief__panel');
+  
+  panels.forEach(function(panel) {
+    const header = panel.querySelector('.itin-travel-brief__panel-header');
+    const content = panel.querySelector('.itin-travel-brief__panel-content');
+    
+    if (!header || !content) return;
+    
+    header.addEventListener('click', function() {
+      const isExpanded = header.getAttribute('aria-expanded') === 'true';
+      
+      header.setAttribute('aria-expanded', !isExpanded);
+      content.setAttribute('aria-hidden', isExpanded);
+    });
+  });
+})();
+</script>
+{% endif %}
+
+{% schema %}
+{
+  "name": "Itinerary Travel Brief",
+  "tag": "section",
+  "class": "section-itin-travel-brief",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "header",
+      "content": "Itinerary Code"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_identifier",
+      "label": "Show itinerary code",
+      "default": true,
+      "info": "Display the WETU identifier key for app access"
+    },
+    {
+      "type": "header",
+      "content": "Party Details"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_party_details",
+      "label": "Show party details",
+      "default": true,
+      "info": "Display traveler count and room configuration"
+    },
+    {
+      "type": "header",
+      "content": "Contact Display"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_primary_contact",
+      "label": "Show primary contact prominently",
+      "default": true,
+      "info": "Display main contact at top of section"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_contacts",
+      "label": "Show additional contacts in panel",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Special Interests"
+    },
+    {
+      "type": "checkbox",
+      "id": "promote_special_interests",
+      "label": "Show special interests prominently",
+      "default": true,
+      "info": "Display as badges at top of section"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_special_interests",
+      "label": "Show special interests in panel",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Check-in Times"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_checkin_times",
+      "label": "Show check-in/check-out times",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "use_table_layout",
+      "label": "Use table layout",
+      "default": true,
+      "info": "Display as a table instead of list"
+    },
+    {
+      "type": "header",
+      "content": "Additional Information"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_additional_info",
+      "label": "Show additional info panel",
+      "default": true,
+      "info": "Display spoken languages, group size, etc."
+    },
+    {
+      "type": "checkbox",
+      "id": "show_duration_string",
+      "label": "Show duration",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_departure_locations",
+      "label": "Show departure locations",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_departure_times",
+      "label": "Show departure times",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_returns",
+      "label": "Show return details",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_spoken_languages",
+      "label": "Show spoken languages",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Terms & Conditions"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_terms",
+      "label": "Show terms & conditions",
+      "default": true
+    }
+  ],
+  "presets": [
+    {
+      "name": "Itinerary Travel Brief"
+    }
+  ]
+}
+{% endschema %}

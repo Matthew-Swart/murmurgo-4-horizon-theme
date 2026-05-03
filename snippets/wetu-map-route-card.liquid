@@ -1,0 +1,222 @@
+{% comment %}
+  ============================================================================
+  WETU MAP ROUTE CARD (Enhanced)
+  ============================================================================
+  
+  A card component for displaying route/transfer/flight information between stops.
+  Shows "From X → To Y" with linked destination names.
+  
+  PARAMETERS:
+    - route: The itinerary route metaobject
+    - show_google_maps: Boolean to show Google Maps link
+    - start_product: The start location product (optional)
+    - end_product: The end location product (optional)
+    - route_day: The day this route occurs on
+  
+  ============================================================================
+{% endcomment %}
+
+{% assign route_mode = route.mode.value | default: "Transfer" %}
+{% assign route_label = route.route_label.value | default: route.label.value %}
+{% assign start_location = route.start_location.value %}
+{% assign end_location = route.end_location.value %}
+{% assign duration = route.duration.value %}
+{% assign distance = route.distance.value | default: 0 %}
+{% assign distance_km = distance | divided_by: 1000.0 | round: 1 %}
+{% assign agency = route.agency.value %}
+{% assign vehicle = route.vehicle.value %}
+{% assign start_day = route.start_day.value %}
+{% assign end_day = route.end_day.value %}
+
+{% comment %} Determine route type for styling {% endcomment %}
+{% assign route_mode_lower = route_mode | downcase %}
+{% assign is_flight = false %}
+{% assign is_drive = false %}
+{% assign is_transfer = false %}
+{% assign route_type_label = route_mode %}
+
+{% if route_mode_lower contains 'flight' or route_mode_lower contains 'helicopter' %}
+  {% assign is_flight = true %}
+  {% assign route_icon = 'flight' %}
+  {% assign route_type_label = 'Flight' %}
+{% elsif route_mode_lower contains 'self' or route_mode_lower contains 'drive' %}
+  {% assign is_drive = true %}
+  {% assign route_icon = 'drive' %}
+  {% assign route_type_label = 'Self-drive' %}
+{% elsif route_mode_lower contains 'transfer' %}
+  {% assign is_transfer = true %}
+  {% assign route_icon = 'transfer' %}
+  {% assign route_type_label = 'Transfer' %}
+{% elsif route_mode_lower contains 'train' %}
+  {% assign route_icon = 'train' %}
+  {% assign route_type_label = 'Train' %}
+{% elsif route_mode_lower contains 'boat' %}
+  {% assign route_icon = 'boat' %}
+  {% assign route_type_label = 'Boat' %}
+{% else %}
+  {% assign route_icon = 'route' %}
+{% endif %}
+
+{% comment %} Get clean location names (remove airport codes for display) {% endcomment %}
+{% assign start_display = start_location | remove: '[' | split: ']' | first | strip %}
+{% assign end_display = end_location | remove: '[' | split: ']' | first | strip %}
+
+<div 
+  class="wetu-route-card wetu-route-card--{{ route_icon }}"
+  data-route-card
+  data-route-id="route-{{ route.id }}"
+  data-route-day="{{ route_day | default: start_day }}"
+>
+  {% comment %} Day indicator {% endcomment %}
+  {% if route_day != blank %}
+    <div class="wetu-route-card__day-indicator">
+      <span>Day {{ route_day }}</span>
+    </div>
+  {% endif %}
+  
+  <div class="wetu-route-card__icon">
+    {% case route_icon %}
+      {% when 'flight' %}
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
+        </svg>
+      {% when 'drive' %}
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/>
+          <path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/>
+          <path d="M5 17H3v-6l2-5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0H9m-6-6h15m-6 0V6"/>
+        </svg>
+      {% when 'transfer' %}
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="1" y="3" width="15" height="13"/>
+          <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
+          <circle cx="5.5" cy="18.5" r="2.5"/>
+          <circle cx="18.5" cy="18.5" r="2.5"/>
+        </svg>
+      {% when 'train' %}
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="4" y="3" width="16" height="16" rx="2"/>
+          <path d="M4 11h16"/>
+          <path d="M12 3v8"/>
+          <path d="M8 19l-2 3"/>
+          <path d="M16 19l2 3"/>
+          <circle cx="8" cy="15" r="1" fill="currentColor"/>
+          <circle cx="16" cy="15" r="1" fill="currentColor"/>
+        </svg>
+      {% when 'boat' %}
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M2 21c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.5 0 2.5 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/>
+          <path d="M19.38 20A11.6 11.6 0 0 0 21 14l-9-4-9 4c0 2.9.94 5.34 2.81 7.76"/>
+          <path d="M19 13V7a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v6"/>
+          <path d="M12 10V5"/>
+        </svg>
+      {% else %}
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
+    {% endcase %}
+  </div>
+  
+  <div class="wetu-route-card__content">
+    {% comment %} Route type header {% endcomment %}
+    <div class="wetu-route-card__header">
+      <span class="wetu-route-card__type">{{ route_type_label }}</span>
+      {% if duration != blank or distance_km > 0 %}
+        <span class="wetu-route-card__stats">
+          {% if duration != blank %}{{ duration }}{% endif %}
+          {% if duration != blank and distance_km > 0 %} · {% endif %}
+          {% if distance_km > 0 %}{{ distance_km }} km{% endif %}
+        </span>
+      {% endif %}
+    </div>
+    
+    {% comment %} From → To with links {% endcomment %}
+    <div class="wetu-route-card__destinations">
+      <div class="wetu-route-card__from">
+        <span class="wetu-route-card__label">From</span>
+        {% if start_product != blank and start_product.url != blank %}
+          <a href="{{ start_product.url }}" class="wetu-route-card__destination-link" target="_blank" rel="noopener">
+            {{ start_display }}
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+              <polyline points="15 3 21 3 21 9"/>
+              <line x1="10" y1="14" x2="21" y2="3"/>
+            </svg>
+          </a>
+        {% else %}
+          <span class="wetu-route-card__destination-name">{{ start_display }}</span>
+        {% endif %}
+      </div>
+      
+      <div class="wetu-route-card__arrow">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+      </div>
+      
+      <div class="wetu-route-card__to">
+        <span class="wetu-route-card__label">To</span>
+        {% if end_product != blank and end_product.url != blank %}
+          <a href="{{ end_product.url }}" class="wetu-route-card__destination-link" target="_blank" rel="noopener">
+            {{ end_display }}
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+              <polyline points="15 3 21 3 21 9"/>
+              <line x1="10" y1="14" x2="21" y2="3"/>
+            </svg>
+          </a>
+        {% else %}
+          <span class="wetu-route-card__destination-name">{{ end_display }}</span>
+        {% endif %}
+      </div>
+    </div>
+    
+    {% comment %} Additional details {% endcomment %}
+    {% if agency != blank or vehicle != blank %}
+      <div class="wetu-route-card__details">
+        {% if agency != blank %}
+          <span class="wetu-route-card__agency">{{ agency }}</span>
+        {% endif %}
+        {% if vehicle != blank %}
+          <span class="wetu-route-card__vehicle">{{ vehicle }}</span>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+  
+  {% comment %} Action buttons {% endcomment %}
+  <div class="wetu-route-card__actions">
+    {% if show_google_maps and is_drive or is_transfer %}
+      {% capture google_maps_url %}https://www.google.com/maps/dir/?api=1&origin={{ start_location | url_encode }}&destination={{ end_location | url_encode }}&travelmode=driving{% endcapture %}
+      
+      <a 
+        href="{{ google_maps_url }}"
+        class="wetu-route-card__action-btn"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Open route in Google Maps"
+        title="Open in Google Maps"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+          <polyline points="15 3 21 3 21 9"/>
+          <line x1="10" y1="14" x2="21" y2="3"/>
+        </svg>
+      </a>
+    {% endif %}
+    
+    <button 
+      type="button"
+      class="wetu-route-card__action-btn"
+      data-route-expand
+      aria-label="Show route on map"
+      title="Show route on map"
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4z"/>
+        <path d="M8 2v16M16 6v16"/>
+      </svg>
+    </button>
+  </div>
+</div>

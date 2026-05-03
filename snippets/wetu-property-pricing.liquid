@@ -1,0 +1,1949 @@
+{%- comment -%}
+  Wetu Property Pricing Display - Metaobject-Based Version
+  
+  Shows comprehensive property-level pricing with accommodation options,
+  seasonal sparklines, and travel documents
+  
+  Accepts:
+  - product: {Object} Property product object
+  
+  Usage:
+  {% render 'wetu-property-pricing', product: product %}
+{%- endcomment -%}
+
+{%- assign property_name = product.title -%}
+{%- assign special_offers = product.metafields.wetu.special_offers.value -%}
+{%- assign linked_rooms = product.metafields.wetu.linked_rooms.value -%}
+{%- assign property_image = product.featured_image -%}
+{%- assign currency = product.metafields.wetu_property.min_base_rate_currency.value | default: 'USD' -%}
+{%- assign min_rate = product.metafields.wetu_property.min_base_rate.value -%}
+{%- assign max_rate = product.metafields.wetu_property.max_base_rate.value -%}
+{%- assign documents = product.metafields.wetu.documents.value -%}
+{%- assign current_timestamp = 'now' | date: '%s' | times: 1 -%}
+
+{%- comment -%} Fallback: If linked_rooms is empty, use accommodation collection {%- endcomment -%}
+{%- assign has_linked_rooms = false -%}
+{%- for room in linked_rooms limit: 1 -%}
+  {%- assign has_linked_rooms = true -%}
+{%- endfor -%}
+{%- unless has_linked_rooms -%}
+  {%- assign accom_collection = product.metafields.wetu.accommodation_collection.value -%}
+  {%- if accom_collection -%}
+    {%- assign linked_rooms = accom_collection.products -%}
+  {%- endif -%}
+{%- endunless -%}
+
+{%- liquid
+  
+  comment Check if we have documents
+  endcomment
+  assign has_documents = false
+  if documents
+    for doc in documents limit: 1
+      assign has_documents = true
+    endfor
+  endif
+-%}
+
+
+{%- if linked_rooms != blank and linked_rooms.size > 0 or special_offers != blank -%}
+  <div class="wetu-property-comprehensive-pricing">
+    {%- comment -%} Header with Property Context {%- endcomment -%}
+    <div class="wetu-pricing-header">
+      <div class="wetu-property-context">
+        {%- if property_image -%}
+          <img 
+            src="{{ property_image | image_url: width: 160, height: 90, crop: 'center' }}" 
+            alt="{{ property_name | escape }}"
+            class="wetu-property-thumb"
+            width="160"
+            height="90"
+            loading="lazy"
+          >
+        {%- endif -%}
+        <div class="wetu-property-info">
+          <h2 class="wetu-pricing-title">{{ property_name }} – {{ 'wetu.pricing.title' | t | default: 'RATES & SPECIAL OFFERS' }}</h2>
+          <div class="wetu-property-label">{{ 'wetu.pricing.all_accommodation_rates' | t | default: 'All accommodation options and seasonal rates' }}</div>
+          {%- if min_rate or max_rate -%}
+            <div class="wetu-property-price-range">
+              {%- if min_rate -%}
+                <span class="wetu-price-label">{{ 'wetu.rates.from' | t | default: 'from' }}</span>
+                <span class="wetu-price-amount">{{ currency }} {{ min_rate | round: 0 }}</span>
+              {%- endif -%}
+              {%- if max_rate and max_rate > min_rate -%}
+                <span class="wetu-price-separator">–</span>
+                <span class="wetu-price-amount">{{ currency }} {{ max_rate | round: 0 }}</span>
+              {%- endif -%}
+              <span class="wetu-price-note">{{ 'wetu.pricing.per_person_or_unit' | t | default: 'per person per night' }}</span>
+            </div>
+          {%- endif -%}
+          
+          {%- comment -%} Property-Level Sparkline from Metaobject Rate Tiers {%- endcomment -%}
+          {%- if linked_rooms and linked_rooms.size > 0 -%}
+            {%- liquid
+              comment Build 12-month average from all room rate tiers
+              endcomment
+              assign month_totals = '0,0,0,0,0,0,0,0,0,0,0,0' | split: ','
+              assign month_counts = '0,0,0,0,0,0,0,0,0,0,0,0' | split: ','
+              
+              for room in linked_rooms
+                assign rate_tiers = room.metafields.wetu_room.aggregated_rate_tiers.value
+                if rate_tiers
+                  for tier in rate_tiers
+                    assign rate_amount = tier.rate_amount.value | plus: 0
+                    assign start_date = tier.start_date.value
+                    if start_date and rate_amount > 0
+                      assign start_month = start_date | date: '%m' | plus: 0
+                      assign month_idx = start_month | minus: 1
+                      if month_idx >= 0 and month_idx < 12
+                        assign month_totals[month_idx] = month_totals[month_idx] | plus: rate_amount
+                        assign month_counts[month_idx] = month_counts[month_idx] | plus: 1
+                      endif
+                    endif
+                  endfor
+                endif
+              endfor
+              
+              comment Calculate averages and build sparkline data
+              endcomment
+              assign spark_values = ''
+              assign spark_min = nil
+              assign spark_max = 0
+              assign valid_months = 0
+              
+              for i in (0..11)
+                assign total = month_totals[i] | plus: 0
+                assign count = month_counts[i] | plus: 0
+                if count > 0
+                  assign avg = total | divided_by: count
+                  if spark_min == nil or avg < spark_min
+                    assign spark_min = avg
+                  endif
+                  if avg > spark_max
+                    assign spark_max = avg
+                  endif
+                  if valid_months > 0
+                    assign spark_values = spark_values | append: ','
+                  endif
+                  assign spark_values = spark_values | append: avg
+                  assign valid_months = valid_months | plus: 1
+                endif
+              endfor
+            -%}
+            
+            {%- if valid_months >= 2 -%}
+              {%- liquid
+                if spark_max == spark_min
+                  assign spark_max = spark_max | plus: 1
+                endif
+                assign w = 200
+                assign h = 48
+                assign path = ''
+                assign idx = 0
+                assign n1 = valid_months | minus: 1
+                assign spark_array = spark_values | split: ','
+                
+                for v in spark_array
+                  assign x = 0
+                  if n1 > 0
+                    assign x = idx | times: w | divided_by: n1
+                  endif
+                  assign num = v | plus: 0 | minus: spark_min
+                  assign den = spark_max | minus: spark_min
+                  if den > 0
+                    assign pct = num | times: 1000 | divided_by: den
+                  else
+                    assign pct = 500
+                  endif
+                  assign yspan = h | minus: 8
+                  assign yoff = 4
+                  assign y1 = yspan | times: pct | divided_by: 1000
+                  assign y = yspan | minus: y1 | plus: yoff
+                  if idx == 0
+                    assign path = 'M ' | append: x | append: ',' | append: y
+                  else
+                    assign path = path | append: ' L ' | append: x | append: ',' | append: y
+                  endif
+                  assign idx = idx | plus: 1
+                endfor
+              -%}
+              
+              <div class="wetu-property-seasonality">
+                <div class="wetu-seasonality-label">
+                  <svg class="wetu-seasonality-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/>
+                  </svg>
+                  <span>{{ 'wetu.pricing.seasonal_trend' | t | default: '12-Month Pricing Trend (Average Across All Units)' }}</span>
+                </div>
+                <svg class="wetu-property-spark" width="{{ w }}" height="{{ h }}" viewBox="0 0 {{ w }} {{ h }}" aria-label="12-month pricing trend">
+                  <defs>
+                    <linearGradient id="sparkGradient-{{ product.id }}" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" style="stop-color:currentColor;stop-opacity:0.3" />
+                      <stop offset="100%" style="stop-color:currentColor;stop-opacity:0" />
+                    </linearGradient>
+                  </defs>
+                  <path d="{{ path }} L {{ w }},{{ h }} L 0,{{ h }} Z" fill="url(#sparkGradient-{{ product.id }})" />
+                  <path d="{{ path }}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </div>
+            {%- endif -%}
+          {%- endif -%}
+        </div>
+      </div>
+    </div>
+
+    {%- comment -%} Special Offers Section {%- endcomment -%}
+    {%- if special_offers != blank and special_offers.size > 0 -%}
+      <div class="wetu-property-specials">
+        <h3 class="wetu-section-subheader">{{ 'wetu.pricing.current_offers' | t | default: 'CURRENT SPECIAL OFFERS' }}</h3>
+        
+        <div class="wetu-specials-accordion">
+          {%- for offer in special_offers -%}
+            {%- liquid
+              assign show_offer = true
+              if offer.end != blank
+                assign offer_end = offer.end | date: '%s' | times: 1
+                if offer_end < current_timestamp
+                  assign show_offer = false
+                endif
+              endif
+            -%}
+            
+            {%- if show_offer -%}
+            <details class="wetu-special-accordion" {% if forloop.first %}open{% endif %}>
+              <summary class="wetu-special-header">
+                <div class="wetu-special-title-area">
+                  <div class="wetu-special-name">{{ offer.name }}</div>
+                  <div class="wetu-special-meta">
+                    {%- if offer.type -%}
+                      <span class="wetu-special-type">{{ offer.type }}</span>
+                    {%- endif -%}
+                    {%- if offer.start and offer.end -%}
+                      <span class="wetu-special-dates">{{ offer.start | date: "%b %d, %Y" }} to {{ offer.end | date: "%b %d, %Y" }}</span>
+                    {%- endif -%}
+                  </div>
+                </div>
+                <svg class="wetu-special-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="square" stroke-linejoin="miter" stroke-width="1.5" d="M19 9l-7 7-7-7"/>
+                </svg>
+              </summary>
+              
+              <div class="wetu-special-content">
+                {%- if offer.description != blank -%}
+                  <div class="wetu-special-description">{{ offer.description }}</div>
+                {%- endif -%}
+                {%- if offer.conditions != blank -%}
+                  <details class="wetu-offer-terms">
+                    <summary class="wetu-offer-terms__toggle">
+                      <span>{{ 'wetu.pricing.terms_conditions' | t | default: 'Terms & conditions' }}</span>
+                      <svg class="wetu-offer-terms__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                      </svg>
+                    </summary>
+                    <div class="wetu-offer-terms__content">{{ offer.conditions }}</div>
+                  </details>
+                {%- endif -%}
+              </div>
+            </details>
+            {%- endif -%}
+          {%- endfor -%}
+        </div>
+      </div>
+    {%- endif -%}
+
+    {%- comment -%} Pre-count rooms that have rate data {%- endcomment -%}
+    {%- liquid
+      assign rooms_with_rates_count = 0
+      assign rooms_with_detailed_rates = 0
+      assign current_ts = 'now' | date: '%s' | times: 1
+      
+      if linked_rooms != blank and linked_rooms.size > 0
+        for room in linked_rooms
+          assign room_rate_tiers = room.metafields.wetu_room.aggregated_rate_tiers.value
+          assign room_seasonal_json = room.metafields.wetu_room.seasonal_rates.value
+          assign room_structure_json = room.metafields.wetu_room.rate_structure.value
+          
+          if room_rate_tiers == blank or room_rate_tiers == empty
+            assign room_rate_tiers = room.metafields.wetu.rate_tiers.value
+          endif
+          
+          assign room_has_rates = false
+          assign room_has_detailed_rates = false
+          
+          if room_rate_tiers != blank and room_rate_tiers != empty
+            for tier in room_rate_tiers
+              assign tier_end_ts = tier.end_date.value | date: '%s' | times: 1
+              assign tier_expired = false
+              if tier_end_ts > 0 and tier_end_ts < current_ts
+                assign tier_expired = true
+              endif
+              unless tier_expired
+                assign tier_amt = tier.rate_amount.value | plus: 0
+                if tier_amt > 0
+                  assign room_has_rates = true
+                  assign room_has_detailed_rates = true
+                  break
+                endif
+              endunless
+            endfor
+          endif
+          
+          if room_has_rates == false and room_seasonal_json != blank
+            assign room_has_rates = true
+            assign room_has_detailed_rates = true
+          endif
+          
+          if room_has_rates == false and room_structure_json != blank
+            assign room_has_rates = true
+            assign room_has_detailed_rates = true
+          endif
+          
+          comment Fallback: check for simple base_rate
+          endcomment
+          if room_has_rates == false
+            assign room_base_rate = room.metafields.wetu_room.base_rate.value | plus: 0
+            if room_base_rate > 0
+              assign room_has_rates = true
+            endif
+          endif
+          
+          if room_has_rates
+            assign rooms_with_rates_count = rooms_with_rates_count | plus: 1
+          endif
+          if room_has_detailed_rates
+            assign rooms_with_detailed_rates = rooms_with_detailed_rates | plus: 1
+          endif
+        endfor
+      endif
+    -%}
+
+    {%- comment -%} Comprehensive Accommodations with Full Rate Tiers {%- endcomment -%}
+    {%- if rooms_with_rates_count > 0 -%}
+      <div class="wetu-accommodations-wrapper wetu-accommodations-wrapper--comprehensive">
+        {%- comment -%} Full Width: Accommodation Sections with Rates {%- endcomment -%}
+        <div class="wetu-accommodations-section wetu-accommodations-section--full">
+          <h3 class="wetu-section-subheader">{{ 'wetu.pricing.accommodation_options' | t | default: 'ACCOMMODATION RATES' }}</h3>
+          {%- if rooms_with_detailed_rates > 0 -%}
+            <p class="wetu-accommodations-intro">{{ 'wetu.pricing.comprehensive_intro' | t | default: 'Comprehensive seasonal rates for all accommodation options. Expand each section to view detailed pricing, inclusions, and terms.' }}</p>
+          {%- else -%}
+            <p class="wetu-accommodations-intro">{{ 'wetu.pricing.basic_intro' | t | default: 'All rates are subject to availability and may change without notice. Seasonal rates, special offers, and package deals may apply. Please contact us for the most current pricing and availability.' }}</p>
+          {%- endif -%}
+          
+          <div class="wetu-accommodations-accordion">
+            {%- for room in linked_rooms -%}
+              {%- liquid
+                assign room_image = room.featured_image
+                assign room_currency = room.metafields.wetu_room.currency.value | default: currency
+                assign rate_tiers = room.metafields.wetu_room.aggregated_rate_tiers.value
+                assign room_basis = room.metafields.wetu_room.room_basis.value
+                assign max_occupancy = room.metafields.wetu_room.max_occupancy.value
+                assign room_description = room.metafields.wetu_room.room_description.value | default: room.description | strip_html | truncate: 200
+                assign seasonal_rates_json = room.metafields.wetu_room.seasonal_rates.value
+                assign rate_structure_json = room.metafields.wetu_room.rate_structure.value
+                assign base_rate = room.metafields.wetu_room.base_rate.value | plus: 0
+                
+                comment Fallback to wetu.rate_tiers if no room-level tiers
+                endcomment
+                if rate_tiers == blank or rate_tiers == empty
+                  assign rate_tiers = room.metafields.wetu.rate_tiers.value
+                endif
+                
+                comment Calculate min/max and count valid tiers
+                endcomment
+                assign room_min = nil
+                assign room_max = nil
+                assign valid_tier_count = 0
+                assign current_timestamp = 'now' | date: '%s' | times: 1
+                
+                assign has_per_person = false
+                assign has_single = false
+                assign has_room_rate = false
+                
+                if rate_tiers
+                  for tier in rate_tiers
+                    assign tier_end = tier.end_date.value | date: '%s' | times: 1
+                    assign tier_expired = false
+                    if tier_end > 0 and tier_end < current_timestamp
+                      assign tier_expired = true
+                    endif
+                    
+                    unless tier_expired
+                      assign rate_amount = tier.rate_amount.value | plus: 0
+                      if rate_amount > 0
+                        assign valid_tier_count = valid_tier_count | plus: 1
+                        if room_min == nil or rate_amount < room_min
+                          assign room_min = rate_amount
+                        endif
+                        if room_max == nil or rate_amount > room_max
+                          assign room_max = rate_amount
+                        endif
+                        
+                        assign tier_type = tier.rate_type.value
+                        if tier_type == 'per_person_sharing' or tier_type == 'per_person'
+                          assign has_per_person = true
+                        elsif tier_type == 'single' or tier_type == 'single_occupancy'
+                          assign has_single = true
+                        elsif tier_type == 'room' or tier_type == 'per_room' or tier_type == 'unit'
+                          assign has_room_rate = true
+                        endif
+                      endif
+                    endunless
+                  endfor
+                endif
+                
+                comment Build sparkline data
+                endcomment
+                assign room_spark_values = ''
+                assign room_spark_count = 0
+                
+                if rate_tiers
+                  for tier in rate_tiers limit: 12
+                    assign tier_end = tier.end_date.value | date: '%s' | times: 1
+                    assign tier_expired = false
+                    if tier_end > 0 and tier_end < current_timestamp
+                      assign tier_expired = true
+                    endif
+                    
+                    unless tier_expired
+                      assign rate_amount = tier.rate_amount.value | plus: 0
+                      if rate_amount > 0
+                        if room_spark_count > 0
+                          assign room_spark_values = room_spark_values | append: ','
+                        endif
+                        assign room_spark_values = room_spark_values | append: rate_amount
+                        assign room_spark_count = room_spark_count | plus: 1
+                      endif
+                    endunless
+                  endfor
+                endif
+                
+                comment Check if room has any rate data (metaobject tiers, JSON seasonal, JSON structure, or base_rate)
+                endcomment
+                assign has_any_rates = false
+                assign has_base_rate_only = false
+                if valid_tier_count > 0
+                  assign has_any_rates = true
+                elsif seasonal_rates_json != blank
+                  assign has_any_rates = true
+                elsif rate_structure_json != blank
+                  assign has_any_rates = true
+                elsif base_rate > 0
+                  assign has_any_rates = true
+                  assign has_base_rate_only = true
+                  comment Use base_rate for room_min/max when no tiers exist
+                  endcomment
+                  assign room_min = base_rate
+                  assign room_max = base_rate
+                endif
+              -%}
+              
+              {%- if has_any_rates -%}
+              <details class="wetu-room-accordion" {% if forloop.first %}open{% endif %}>
+                <summary class="wetu-room-accordion__header">
+                  <div class="wetu-room-accordion__preview">
+                    {%- if room_image -%}
+                      <img 
+                        src="{{ room_image | image_url: width: 160, height: 90, crop: 'center' }}" 
+                        alt="{{ room.title | escape }}"
+                        class="wetu-room-accordion__thumb"
+                        width="160"
+                        height="90"
+                        loading="lazy"
+                      >
+                    {%- endif -%}
+                    <div class="wetu-room-accordion__info">
+                      <h4 class="wetu-room-accordion__title"><a href="{{ room.url }}" class="wetu-room-accordion__title-link">{{ room.title }}</a></h4>
+                      {%- assign room_min_num = room_min | plus: 0 -%}
+                      {%- if room_min_num > 0 -%}
+                        <div class="wetu-room-accordion__price-range">
+                          <span class="wetu-price-label">{{ 'wetu.rates.from' | t | default: 'From' }}</span>
+                          <span class="wetu-price-amount">{{ room_currency }} {{ room_min | round: 0 }}</span>
+                          {%- assign room_max_num = room_max | plus: 0 -%}
+                          {%- if room_max_num > room_min_num -%}
+                            <span class="wetu-price-separator">–</span>
+                            <span class="wetu-price-amount">{{ room_currency }} {{ room_max | round: 0 }}</span>
+                          {%- endif -%}
+                          <span class="wetu-price-context">
+                            {%- if has_per_person -%}
+                              {{ 'wetu.rates.per_person_per_night' | t | default: 'per person per night' }}
+                            {%- elsif has_room_rate -%}
+                              {{ 'wetu.rates.per_unit_per_night' | t | default: 'per unit per night' }}
+                            {%- else -%}
+                              {{ 'wetu.rates.per_night' | t | default: 'per night' }}
+                            {%- endif -%}
+                          </span>
+                        </div>
+                      {%- endif -%}
+                      {%- if valid_tier_count > 0 -%}
+                        <div class="wetu-room-accordion__meta">
+                          <span class="wetu-tier-count">{{ valid_tier_count }} {{ 'wetu.rates.seasonal_rates' | t | default: 'seasonal rates' }}</span>
+                          {%- if room_basis != blank -%}
+                            <span class="wetu-basis-tag">{{ room_basis }}</span>
+                          {%- endif -%}
+                          {%- if max_occupancy != blank -%}
+                            <span class="wetu-occupancy-tag">{{ 'wetu.rates.max_occupancy' | t | default: 'Max' }} {{ max_occupancy }}</span>
+                          {%- endif -%}
+                        </div>
+                      {%- endif -%}
+                    </div>
+                    
+                    {%- if room_spark_count >= 2 -%}
+                      {%- liquid
+                        assign rspark_min = room_min
+                        assign rspark_max = room_max
+                        if rspark_max == rspark_min
+                          assign rspark_max = rspark_max | plus: 1
+                        endif
+                        assign w = 120
+                        assign h = 40
+                        assign rpath = ''
+                        assign ridx = 0
+                        assign rn1 = room_spark_count | minus: 1
+                        assign rspark_array = room_spark_values | split: ','
+                        
+                        for rv in rspark_array
+                          assign rx = 0
+                          if rn1 > 0
+                            assign rx = ridx | times: w | divided_by: rn1
+                          endif
+                          assign rnum = rv | plus: 0 | minus: rspark_min
+                          assign rden = rspark_max | minus: rspark_min
+                          if rden > 0
+                            assign rpct = rnum | times: 1000 | divided_by: rden
+                          else
+                            assign rpct = 500
+                          endif
+                          assign ryspan = h | minus: 4
+                          assign ryoff = 2
+                          assign ry1 = ryspan | times: rpct | divided_by: 1000
+                          assign ry = ryspan | minus: ry1 | plus: ryoff
+                          if ridx == 0
+                            assign rpath = 'M ' | append: rx | append: ',' | append: ry
+                          else
+                            assign rpath = rpath | append: ' L ' | append: rx | append: ',' | append: ry
+                          endif
+                          assign ridx = ridx | plus: 1
+                        endfor
+                      -%}
+                      
+                      <div class="wetu-room-accordion__sparkline">
+                        <svg width="{{ w }}" height="{{ h }}" viewBox="0 0 {{ w }} {{ h }}" aria-hidden="true">
+                          <defs>
+                            <linearGradient id="sparkGrad-{{ room.id }}" x1="0%" y1="0%" x2="0%" y2="100%">
+                              <stop offset="0%" style="stop-color:currentColor;stop-opacity:0.2" />
+                              <stop offset="100%" style="stop-color:currentColor;stop-opacity:0" />
+                            </linearGradient>
+                          </defs>
+                          <path d="{{ rpath }} L {{ w }},{{ h }} L 0,{{ h }} Z" fill="url(#sparkGrad-{{ room.id }})" />
+                          <path d="{{ rpath }}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                      </div>
+                    {%- endif -%}
+                  </div>
+                  
+                  <div class="wetu-room-accordion__toggle">
+                    <svg class="wetu-accordion-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  </div>
+                </summary>
+                
+                <div class="wetu-room-accordion__content">
+                  {%- if room_description != blank -%}
+                    <div class="wetu-room-accordion__description">
+                      {{ room_description }}
+                      <a href="{{ room.url }}" class="wetu-room-link">{{ 'wetu.pricing.view_full_details' | t | default: 'View full details →' }}</a>
+                    </div>
+                  {%- endif -%}
+                  
+                  {%- comment -%} Rate Tiers from Metaobjects {%- endcomment -%}
+                  {%- if valid_tier_count > 0 -%}
+                    <div class="wetu-rate-tiers-comprehensive">
+                      <div class="wetu-rate-tiers-header">
+                        <h5 class="wetu-rate-tiers-title">{{ 'wetu.rates.seasonal_rate_schedule' | t | default: 'Seasonal Rate Schedule' }}</h5>
+                        {%- if has_per_person or has_single or has_room_rate -%}
+                          <div class="wetu-rate-type-legend">
+                            {%- if has_per_person -%}
+                              <span class="wetu-legend-item wetu-legend-item--pps">{{ 'wetu.rates.per_person_sharing_abbr' | t | default: 'PPS' }}</span>
+                            {%- endif -%}
+                            {%- if has_single -%}
+                              <span class="wetu-legend-item wetu-legend-item--single">{{ 'wetu.rates.single_abbr' | t | default: 'SGL' }}</span>
+                            {%- endif -%}
+                            {%- if has_room_rate -%}
+                              <span class="wetu-legend-item wetu-legend-item--room">{{ 'wetu.rates.per_room_abbr' | t | default: 'UNIT' }}</span>
+                            {%- endif -%}
+                          </div>
+                        {%- endif -%}
+                      </div>
+                      
+                      <div class="wetu-rate-tiers-grid">
+                        {%- for tier in rate_tiers -%}
+                          {%- liquid
+                            assign tier_end = tier.end_date.value | date: '%s' | times: 1
+                            assign tier_expired = false
+                            if tier_end > 0 and tier_end < current_timestamp
+                              assign tier_expired = true
+                            endif
+                          -%}
+                          
+                          {%- unless tier_expired -%}
+                            {%- liquid
+                              assign tier_amount = tier.rate_amount.value | plus: 0
+                              assign tier_currency = tier.currency.value | default: room_currency
+                              assign tier_type = tier.rate_type.value | default: 'per_person_sharing'
+                              assign tier_season = tier.seasonal_label.value | default: 'Standard'
+                              assign tier_start = tier.start_date.value
+                              assign tier_end_date = tier.end_date.value
+                              assign tier_included = tier.rate_included.value
+                              assign tier_conditions = tier.rate_conditions.value
+                              
+                              assign type_class = 'pps'
+                              if tier_type == 'single' or tier_type == 'single_occupancy'
+                                assign type_class = 'single'
+                              elsif tier_type == 'room' or tier_type == 'per_room' or tier_type == 'unit'
+                                assign type_class = 'room'
+                              endif
+                            -%}
+                            
+                            {%- if tier_amount > 0 -%}
+                              <div class="wetu-rate-tier wetu-rate-tier--{{ type_class }}">
+                                <div class="wetu-rate-tier__header">
+                                  <span class="wetu-rate-tier__season">{{ tier_season }}</span>
+                                  <span class="wetu-rate-tier__type">
+                                    {%- case tier_type -%}
+                                      {%- when 'per_person_sharing' or 'per_person' -%}
+                                        {{ 'wetu.rates.per_person_sharing' | t | default: 'Per Person Sharing' }}
+                                      {%- when 'single' or 'single_occupancy' -%}
+                                        {{ 'wetu.rates.single' | t | default: 'Single Occupancy' }}
+                                      {%- when 'room' or 'per_room' -%}
+                                        {{ 'wetu.rates.per_room' | t | default: 'Per Room' }}
+                                      {%- when 'unit' -%}
+                                        {{ 'wetu.rates.per_unit' | t | default: 'Per Unit' }}
+                                      {%- else -%}
+                                        {{ tier_type | replace: '_', ' ' | capitalize }}
+                                    {%- endcase -%}
+                                  </span>
+                                </div>
+                                
+                                <div class="wetu-rate-tier__price">
+                                  <span class="wetu-rate-tier__currency">{{ tier_currency }}</span>
+                                  <span class="wetu-rate-tier__amount">{{ tier_amount | round: 0 | money_without_currency }}</span>
+                                </div>
+                                
+                                {%- if tier_start != blank and tier_end_date != blank -%}
+                                  <div class="wetu-rate-tier__dates">
+                                    <time datetime="{{ tier_start }}">{{ tier_start | date: '%d %b %Y' }}</time>
+                                    <span class="wetu-date-separator">–</span>
+                                    <time datetime="{{ tier_end_date }}">{{ tier_end_date | date: '%d %b %Y' }}</time>
+                                  </div>
+                                {%- endif -%}
+                                
+                                {%- if tier_included != blank or tier_conditions != blank -%}
+                                  <div class="wetu-rate-tier__details">
+                                    {%- if tier_included != blank -%}
+                                      <details class="wetu-tier-details">
+                                        <summary class="wetu-tier-details__summary">
+                                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M9 12l2 2 4-4"></path>
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                          </svg>
+                                          {{ 'wetu.rates.whats_included' | t | default: "What's Included" }}
+                                        </summary>
+                                        <div class="wetu-tier-details__content">{{ tier_included }}</div>
+                                      </details>
+                                    {%- endif -%}
+                                    
+                                    {%- if tier_conditions != blank -%}
+                                      <details class="wetu-tier-details wetu-tier-details--conditions">
+                                        <summary class="wetu-tier-details__summary">
+                                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                            <polyline points="14 2 14 8 20 8"></polyline>
+                                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                                          </svg>
+                                          {{ 'wetu.rates.terms_conditions' | t | default: 'Terms & Conditions' }}
+                                        </summary>
+                                        <div class="wetu-tier-details__content">{{ tier_conditions }}</div>
+                                      </details>
+                                    {%- endif -%}
+                                  </div>
+                                {%- endif -%}
+                              </div>
+                            {%- endif -%}
+                          {%- endunless -%}
+                        {%- endfor -%}
+                      </div>
+                    </div>
+                  {%- endif -%}
+                  
+                  {%- comment -%} Fallback: JSON Seasonal Rates if no metaobject tiers {%- endcomment -%}
+                  {%- if valid_tier_count == 0 and seasonal_rates_json != blank -%}
+                    {%- assign seasonal_rates = seasonal_rates_json -%}
+                    {%- if seasonal_rates.size > 0 -%}
+                      <div class="wetu-rate-tiers-comprehensive">
+                        <h5 class="wetu-rate-tiers-title">{{ 'wetu.rates.seasonal_rate_schedule' | t | default: 'Seasonal Rate Schedule' }}</h5>
+                        <div class="wetu-rate-tiers-grid">
+                          {%- for rate in seasonal_rates -%}
+                            <div class="wetu-rate-tier wetu-rate-tier--pps">
+                              <div class="wetu-rate-tier__header">
+                                <span class="wetu-rate-tier__season">{{ rate.season | default: 'Season' }}</span>
+                                <span class="wetu-rate-tier__type">
+                                  {%- if rate.rate_type -%}
+                                    {{ rate.rate_type | replace: '_', ' ' | capitalize }}
+                                  {%- else -%}
+                                    {{ 'wetu.rates.per_person_sharing' | t | default: 'Per Person Sharing' }}
+                                  {%- endif -%}
+                                </span>
+                              </div>
+                              <div class="wetu-rate-tier__price">
+                                <span class="wetu-rate-tier__currency">{{ rate.currency | default: room_currency }}</span>
+                                <span class="wetu-rate-tier__amount">{{ rate.amount | default: rate.rate | round: 0 }}</span>
+                              </div>
+                              {%- if rate.start_date and rate.end_date -%}
+                                <div class="wetu-rate-tier__dates">
+                                  <time>{{ rate.start_date | date: '%d %b %Y' }}</time>
+                                  <span class="wetu-date-separator">–</span>
+                                  <time>{{ rate.end_date | date: '%d %b %Y' }}</time>
+                                </div>
+                              {%- endif -%}
+                            </div>
+                          {%- endfor -%}
+                        </div>
+                      </div>
+                    {%- endif -%}
+                  {%- endif -%}
+                  
+                  {%- comment -%} Fallback: Rate Structure JSON {%- endcomment -%}
+                  {%- if valid_tier_count == 0 and seasonal_rates_json == blank and rate_structure_json != blank -%}
+                    {%- assign rate_structure = rate_structure_json -%}
+                    <div class="wetu-rate-structure-fallback">
+                      <h5 class="wetu-rate-tiers-title">{{ 'wetu.rates.rate_structure' | t | default: 'Rate Structure' }}</h5>
+                      {%- if rate_structure.per_person_sharing.size > 0 -%}
+                        <div class="wetu-rate-structure-group">
+                          <h6>{{ 'wetu.rates.per_person_sharing' | t | default: 'Per Person Sharing' }}</h6>
+                          <ul class="wetu-rate-structure-list">
+                            {%- for rate in rate_structure.per_person_sharing -%}
+                              <li>{{ rate.currency | default: room_currency }} {{ rate.rate | round: 0 }}{% if rate.type %} <em>({{ rate.type }})</em>{% endif %}</li>
+                            {%- endfor -%}
+                          </ul>
+                        </div>
+                      {%- endif -%}
+                      {%- if rate_structure.single_rates.size > 0 -%}
+                        <div class="wetu-rate-structure-group">
+                          <h6>{{ 'wetu.rates.single' | t | default: 'Single Occupancy' }}</h6>
+                          <ul class="wetu-rate-structure-list">
+                            {%- for rate in rate_structure.single_rates -%}
+                              <li>{{ rate.currency | default: room_currency }} {{ rate.rate | round: 0 }}{% if rate.type %} <em>({{ rate.type }})</em>{% endif %}</li>
+                            {%- endfor -%}
+                          </ul>
+                        </div>
+                      {%- endif -%}
+                      {%- if rate_structure.room_rates.size > 0 -%}
+                        <div class="wetu-rate-structure-group">
+                          <h6>{{ 'wetu.rates.per_room' | t | default: 'Per Room' }}</h6>
+                          <ul class="wetu-rate-structure-list">
+                            {%- for rate in rate_structure.room_rates -%}
+                              <li>{{ rate.currency | default: room_currency }} {{ rate.rate | round: 0 }}{% if rate.type %} <em>({{ rate.type }})</em>{% endif %}</li>
+                            {%- endfor -%}
+                          </ul>
+                        </div>
+                      {%- endif -%}
+                    </div>
+                  {%- endif -%}
+                  
+                  {%- comment -%} Fallback: Base Rate Only (no detailed tiers/structure) {%- endcomment -%}
+                  {%- if has_base_rate_only -%}
+                    <div class="wetu-base-rate-display">
+                      <div class="wetu-base-rate-card">
+                        <div class="wetu-base-rate__label">{{ 'wetu.rates.starting_from' | t | default: 'Starting from' }}</div>
+                        <div class="wetu-base-rate__price">
+                          <span class="wetu-base-rate__currency">{{ room_currency }}</span>
+                          <span class="wetu-base-rate__amount">{{ base_rate | round: 0 }}</span>
+                        </div>
+                        <div class="wetu-base-rate__context">{{ 'wetu.rates.per_person_per_night' | t | default: 'per person per night' }}</div>
+                        <p class="wetu-base-rate__note">{{ 'wetu.rates.contact_for_details' | t | default: 'Please contact us for seasonal rates and availability.' }}</p>
+                      </div>
+                    </div>
+                  {%- endif -%}
+                  
+                  <div class="wetu-room-accordion__footer">
+                    <a href="{{ room.url }}" class="wetu-btn wetu-btn--secondary">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                      </svg>
+                      {{ 'wetu.pricing.view_accommodation' | t | default: 'View Accommodation Details' }}
+                    </a>
+                  </div>
+                </div>
+              </details>
+              {%- endif -%}
+            {%- endfor -%}
+          </div>
+        </div>
+        
+        {%- comment -%} Sidebar: Travel Documents {%- endcomment -%}
+        {%- if has_documents -%}
+          <aside class="wetu-rates-documents wetu-rates-documents--sidebar">
+            {% render 'wetu-documents-display',
+              product: product,
+              heading: 'Travel Documents',
+              show_categories: true,
+              layout: 'list',
+              css_class: 'wetu-documents-display--pricing-sidebar'
+            %}
+          </aside>
+        {%- endif -%}
+      </div>
+    {%- elsif has_documents -%}
+      {%- comment -%} No rates exist - show documents full width, left aligned {%- endcomment -%}
+      <div class="wetu-documents-only">
+        {% render 'wetu-documents-display',
+          product: product,
+          heading: 'Travel Documents',
+          show_categories: true,
+          layout: 'list',
+          css_class: 'wetu-documents-display--pricing-full'
+        %}
+      </div>
+    {%- endif -%}
+
+    {%- comment -%} Important Pricing Notice {%- endcomment -%}
+    <div class="wetu-pricing-notice">
+      <strong>{{ 'wetu.pricing.notice_title' | t | default: 'IMPORTANT PRICING INFORMATION' }}</strong>
+      {{ 'wetu.pricing.notice_text' | t | default: 'All rates are subject to availability and may change without notice. Additional conservation fees and transfers may apply. Please contact us for a detailed quote tailored to your specific travel dates and requirements.' }}
+    </div>
+  </div>
+
+  <style>
+    .wetu-property-comprehensive-pricing {
+      margin-top: 3rem;
+      margin-bottom: 4rem;
+    }
+    
+    .wetu-pricing-header {
+      margin-bottom: 2.5rem;
+    }
+    
+    .wetu-property-context {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      padding: 1.5rem;
+      background: rgba(var(--color-foreground), 0.03);
+      border: 1px solid rgba(var(--color-foreground), 0.12);
+    }
+    
+    .wetu-property-thumb {
+      flex-shrink: 0;
+      width: 160px;
+      height: 90px;
+      object-fit: cover;
+      border: 1px solid rgba(var(--color-foreground), 0.12);
+    }
+    
+    .wetu-property-info {
+      flex: 1;
+    }
+    
+    .wetu-pricing-title {
+      font-size: 1.5rem;
+      font-weight: 400;
+      margin: 0 0 0.5rem 0;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      font-family: var(--font-heading-family);
+      line-height: 1.3;
+    }
+    
+    .wetu-property-label {
+      font-size: 0.875rem;
+      color: rgba(var(--color-foreground), 0.6);
+      line-height: 1.5;
+    }
+    
+    .wetu-property-price-range {
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-top: 0.5rem;
+    }
+    
+    .wetu-price-label {
+      font-size: 0.875rem;
+      color: rgba(var(--color-foreground), 0.6);
+    }
+    
+    .wetu-price-amount {
+      font-family: var(--font-heading-family);
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+    
+    .wetu-price-separator {
+      color: rgba(var(--color-foreground), 0.4);
+      margin: 0 0.25rem;
+    }
+    
+    .wetu-price-note {
+      font-size: 0.75rem;
+      color: rgba(var(--color-foreground), 0.6);
+    }
+    
+    .wetu-property-seasonality {
+      margin-top: 1.25rem;
+      padding: 1rem 1.25rem;
+      background: rgba(var(--color-foreground), 0.02);
+      border: 1px solid rgba(var(--color-foreground), 0.08);
+      border-radius: 4px;
+    }
+    
+    .wetu-seasonality-label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8125rem;
+      color: rgba(var(--color-foreground), 0.7);
+      margin-bottom: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 500;
+    }
+    
+    .wetu-seasonality-icon {
+      flex-shrink: 0;
+      color: rgba(var(--color-foreground), 0.5);
+    }
+    
+    .wetu-property-spark {
+      width: 100%;
+      max-width: 200px;
+      height: 48px;
+      color: rgba(var(--color-foreground), 0.7);
+    }
+    
+    .wetu-section-subheader {
+      font-size: 1.125rem;
+      font-weight: 400;
+      margin-bottom: 1.25rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      font-family: var(--font-heading-family);
+    }
+    
+    .wetu-property-specials {
+      margin-bottom: 3rem;
+    }
+    
+    .wetu-specials-accordion {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    
+    .wetu-special-accordion {
+      border: 1px solid rgba(var(--color-foreground), 0.15);
+      background: rgba(var(--color-foreground), 0.03);
+    }
+    
+    .wetu-special-header {
+      padding: 1.25rem 1.5rem;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: transparent;
+      transition: background 0.2s ease;
+      list-style: none;
+    }
+    
+    .wetu-special-header::-webkit-details-marker,
+    .wetu-special-header::marker {
+      display: none;
+    }
+    
+    .wetu-special-header:hover {
+      background: rgba(var(--color-foreground), 0.03);
+    }
+    
+    .wetu-special-title-area {
+      flex: 1;
+    }
+    
+    .wetu-special-name {
+      font-weight: 500;
+      font-size: 1.0625rem;
+      margin-bottom: 0.5rem;
+      font-family: var(--font-heading-family);
+    }
+    
+    .wetu-special-meta {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    
+    .wetu-special-type {
+      font-size: 0.6875rem;
+      color: rgba(var(--color-foreground), 0.6);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 2px 8px;
+      background: rgba(var(--color-foreground), 0.05);
+      border-radius: 3px;
+    }
+    
+    .wetu-special-dates {
+      font-size: 0.75rem;
+      color: rgba(var(--color-foreground), 0.6);
+    }
+    
+    .wetu-special-icon {
+      width: 1.125rem;
+      height: 1.125rem;
+      margin-left: 1rem;
+      flex-shrink: 0;
+      transition: transform 0.2s ease;
+    }
+    
+    .wetu-special-accordion[open] .wetu-special-icon {
+      transform: rotate(180deg);
+    }
+    
+    .wetu-special-content {
+      padding: 0 1.5rem 1.5rem;
+      background: rgba(var(--color-foreground), 0.02);
+      border-top: 1px solid rgba(var(--color-foreground), 0.1);
+      font-size: 0.875rem;
+      line-height: 1.7;
+    }
+    
+    .wetu-special-description {
+      margin-bottom: 1.25rem;
+      color: rgba(var(--color-foreground), 0.8);
+    }
+    
+    .wetu-special-description p {
+      margin-bottom: 0.75rem;
+    }
+    
+    .wetu-special-description p:last-child {
+      margin-bottom: 0;
+    }
+    
+    .wetu-offer-terms {
+      margin-top: 0.75rem;
+    }
+    
+    .wetu-offer-terms__toggle {
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      list-style: none;
+      user-select: none;
+      padding: 0.75rem 1rem;
+      background: rgba(var(--color-foreground), 0.03);
+      transition: background 0.2s ease;
+    }
+    
+    .wetu-offer-terms__toggle::-webkit-details-marker,
+    .wetu-offer-terms__toggle::marker {
+      display: none;
+    }
+    
+    .wetu-offer-terms__toggle:hover {
+      background: rgba(var(--color-foreground), 0.05);
+    }
+    
+    .wetu-offer-terms__icon {
+      width: 1rem;
+      height: 1rem;
+      color: rgba(var(--color-foreground), 0.45);
+      transition: transform 0.25s ease;
+    }
+    
+    .wetu-offer-terms[open] .wetu-offer-terms__icon {
+      transform: rotate(180deg);
+    }
+    
+    .wetu-offer-terms__content {
+      padding: 1rem;
+      font-size: 0.8125rem;
+      line-height: 1.6;
+      color: rgba(var(--color-foreground), 0.65);
+    }
+    
+    .wetu-accommodations-wrapper {
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: 3rem;
+      margin-bottom: 3rem;
+    }
+    
+    .wetu-accommodations-section {
+      min-width: 0;
+    }
+    
+    .wetu-accommodations-intro {
+      font-size: 0.9375rem;
+      line-height: 1.6;
+      color: rgba(var(--color-foreground), 0.7);
+      margin: -0.5rem 0 1.5rem 0;
+      padding: 1rem 1.25rem;
+      background: rgba(var(--color-foreground), 0.03);
+      border-left: 3px solid rgba(var(--color-foreground), 0.15);
+    }
+    
+    .wetu-rooms-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.25rem;
+    }
+    
+    .wetu-room-card {
+      display: block;
+      background: rgba(var(--color-foreground), 0.03);
+      border: 1px solid rgba(var(--color-foreground), 0.15);
+      text-decoration: none;
+      color: inherit;
+      transition: all 0.2s ease;
+    }
+    
+    .wetu-room-card:hover {
+      border-color: rgba(var(--color-foreground), 0.25);
+      background: rgba(var(--color-foreground), 0.05);
+    }
+    
+    .wetu-room-card__media {
+      position: relative;
+      aspect-ratio: 16 / 9;
+      background: rgba(var(--color-foreground), 0.03);
+      overflow: hidden;
+    }
+    
+    .wetu-room-card__media img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.3s ease;
+    }
+    
+    .wetu-room-card:hover .wetu-room-card__media img {
+      transform: scale(1.05);
+    }
+    
+    .wetu-room-card__badge {
+      position: absolute;
+      bottom: 0.75rem;
+      right: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+      padding: 0.375rem 0.75rem;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(4px);
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-radius: 2px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    .wetu-room-card:hover .wetu-room-card__badge {
+      opacity: 1;
+    }
+    
+    .wetu-room-card__body {
+      padding: 1rem 1.125rem;
+    }
+    
+    .wetu-room-card__title {
+      margin: 0 0 0.75rem 0;
+      font-size: 1.0625rem;
+      font-weight: 500;
+      font-family: var(--font-heading-family);
+      line-height: 1.3;
+    }
+    
+    .wetu-room-card__pricing {
+      margin-bottom: 0.75rem;
+    }
+    
+    .wetu-room-card__price-range {
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    
+    .wetu-room-card__from-label,
+    .wetu-room-card__to {
+      font-size: 0.6875rem;
+      color: rgba(var(--color-foreground), 0.6);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    
+    .wetu-room-card__from-amount,
+    .wetu-room-card__to-amount {
+      font-size: 1.125rem;
+      font-weight: 600;
+      font-family: var(--font-heading-family);
+      color: rgb(var(--color-foreground));
+    }
+    
+    .wetu-room-card__sparkline-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid rgba(var(--color-foreground), 0.08);
+    }
+    
+    .wetu-room-card__sparkline-label {
+      font-size: 0.6875rem;
+      color: rgba(var(--color-foreground), 0.5);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      flex-shrink: 0;
+    }
+    
+    .wetu-room-card__spark {
+      flex: 1;
+      max-width: 100px;
+      color: rgba(var(--color-foreground), 0.5);
+    }
+    
+    .wetu-rates-documents {
+      position: sticky;
+      top: 2rem;
+      height: fit-content;
+      max-height: calc(100vh - 4rem);
+      overflow-y: auto;
+      padding: 1.5rem;
+      background: rgba(var(--color-foreground), 0.02);
+      border: 1px solid rgba(var(--color-foreground), 0.08);
+    }
+    
+    .wetu-pricing-notice {
+      margin-top: 2.5rem;
+      margin-bottom: 2rem;
+      padding: 1.5rem;
+      background: rgba(var(--color-foreground), 0.03);
+      border: 1px solid rgba(var(--color-foreground), 0.1);
+      border-left: 3px solid rgba(var(--color-foreground), 0.3);
+      font-size: 0.8125rem;
+      line-height: 1.7;
+      color: rgba(var(--color-foreground), 0.6);
+    }
+    
+    .wetu-pricing-notice strong {
+      display: block;
+      margin-bottom: 0.625rem;
+      color: rgb(var(--color-foreground));
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-size: 0.75rem;
+    }
+    
+    @media screen and (max-width: 989px) {
+      .wetu-accommodations-wrapper {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+      }
+      
+      .wetu-rates-documents {
+        position: static;
+        max-height: none;
+        padding: 1.25rem;
+      }
+      
+      .wetu-rooms-grid {
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 1rem;
+      }
+    }
+    
+    @media screen and (max-width: 749px) {
+      .wetu-property-context {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 1.25rem;
+      }
+      
+      .wetu-property-thumb {
+        width: 100%;
+        height: auto;
+        max-height: 220px;
+      }
+      
+      .wetu-pricing-title {
+        font-size: 1.25rem;
+      }
+      
+      .wetu-property-seasonality {
+        padding: 0.875rem 1rem;
+      }
+      
+      .wetu-seasonality-label {
+        font-size: 0.75rem;
+      }
+      
+      .wetu-property-spark {
+        max-width: 160px;
+        height: 40px;
+      }
+      
+      .wetu-accommodations-intro {
+        font-size: 0.875rem;
+        padding: 0.875rem 1rem;
+      }
+      
+      .wetu-rooms-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+      }
+      
+      .wetu-room-card__body {
+        padding: 0.875rem 1rem;
+      }
+      
+      .wetu-room-card__title {
+        font-size: 1rem;
+        margin-bottom: 0.625rem;
+      }
+      
+      .wetu-room-card__from-amount,
+      .wetu-room-card__to-amount {
+        font-size: 1rem;
+      }
+      
+      .wetu-room-card__sparkline-wrapper {
+        padding-top: 0.625rem;
+      }
+      
+      .wetu-room-card__spark {
+        max-width: 80px;
+      }
+      
+      .wetu-rates-documents {
+        padding: 1rem;
+      }
+    }
+    
+    /* =========================================
+       COMPREHENSIVE RATE TIERS - ACCORDION LAYOUT
+       ========================================= */
+    
+    .wetu-accommodations-wrapper--comprehensive {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3rem;
+      align-items: start;
+    }
+    
+    .wetu-accommodations-section--full {
+      min-width: 0;
+    }
+    
+    .wetu-accommodations-accordion {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      background: rgba(var(--color-foreground), 0.1);
+      border: 1px solid rgba(var(--color-foreground), 0.1);
+    }
+    
+    .wetu-room-accordion {
+      background: rgb(var(--color-background));
+    }
+    
+    .wetu-room-accordion__header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem 1.25rem;
+      cursor: pointer;
+      list-style: none;
+      background: rgb(var(--color-background));
+      transition: background-color 0.2s ease;
+    }
+    
+    .wetu-room-accordion__header::-webkit-details-marker,
+    .wetu-room-accordion__header::marker {
+      display: none;
+    }
+    
+    .wetu-room-accordion__header:hover {
+      background: rgba(var(--color-foreground), 0.02);
+    }
+    
+    .wetu-room-accordion[open] .wetu-room-accordion__header {
+      background: rgba(var(--color-foreground), 0.03);
+      border-bottom: 1px solid rgba(var(--color-foreground), 0.08);
+    }
+    
+    .wetu-room-accordion__preview {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .wetu-room-accordion__thumb {
+      flex-shrink: 0;
+      width: 120px;
+      height: 68px;
+      object-fit: cover;
+      border: 1px solid rgba(var(--color-foreground), 0.08);
+    }
+    
+    .wetu-room-accordion__info {
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .wetu-room-accordion__title {
+      margin: 0 0 0.375rem 0;
+      font-size: 1.0625rem;
+      font-weight: 500;
+      font-family: var(--font-heading-family);
+      line-height: 1.3;
+    }
+    
+    .wetu-room-accordion__price-range {
+      display: flex;
+      align-items: baseline;
+      gap: 0.375rem;
+      flex-wrap: wrap;
+      margin-bottom: 0.375rem;
+    }
+    
+    .wetu-room-accordion__price-range .wetu-price-amount {
+      font-size: 1.125rem;
+    }
+    
+    .wetu-room-accordion__price-range .wetu-price-context {
+      font-size: 0.75rem;
+      color: rgba(var(--color-foreground), 0.5);
+    }
+    
+    .wetu-room-accordion__meta {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    
+    .wetu-tier-count {
+      font-size: 0.75rem;
+      color: rgba(var(--color-foreground), 0.6);
+    }
+    
+    .wetu-basis-tag,
+    .wetu-occupancy-tag {
+      font-size: 0.6875rem;
+      padding: 0.125rem 0.5rem;
+      background: rgba(var(--color-foreground), 0.06);
+      border-radius: 3px;
+      color: rgba(var(--color-foreground), 0.7);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    
+    .wetu-room-accordion__sparkline {
+      flex-shrink: 0;
+      color: rgba(var(--color-foreground), 0.4);
+    }
+    
+    .wetu-room-accordion__toggle {
+      flex-shrink: 0;
+      padding: 0.5rem;
+    }
+    
+    .wetu-accordion-icon {
+      color: rgba(var(--color-foreground), 0.4);
+      transition: transform 0.25s ease;
+    }
+    
+    .wetu-room-accordion[open] .wetu-accordion-icon {
+      transform: rotate(180deg);
+    }
+    
+    .wetu-room-accordion__content {
+      padding: 1.5rem;
+      background: rgba(var(--color-foreground), 0.015);
+      animation: accordion-expand 0.25s ease-out;
+    }
+    
+    @keyframes accordion-expand {
+      from {
+        opacity: 0;
+        transform: translateY(-8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .wetu-room-accordion__description {
+      font-size: 0.9375rem;
+      line-height: 1.7;
+      color: rgba(var(--color-foreground), 0.75);
+      margin-bottom: 1.5rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid rgba(var(--color-foreground), 0.08);
+    }
+    
+    .wetu-room-link {
+      display: inline-block;
+      margin-top: 0.5rem;
+      font-size: 0.875rem;
+      color: rgb(var(--color-foreground));
+      text-decoration: none;
+      opacity: 0.7;
+      transition: opacity 0.2s ease;
+    }
+    
+    .wetu-room-link:hover {
+      opacity: 1;
+      text-decoration: underline;
+    }
+    
+    /* Rate Tiers Grid */
+    .wetu-rate-tiers-comprehensive {
+      margin-bottom: 1.5rem;
+    }
+    
+    .wetu-rate-tiers-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    
+    .wetu-rate-tiers-title {
+      margin: 0;
+      font-size: 0.9375rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: rgba(var(--color-foreground), 0.8);
+    }
+    
+    .wetu-rate-type-legend {
+      display: flex;
+      gap: 0.5rem;
+    }
+    
+    .wetu-legend-item {
+      font-size: 0.625rem;
+      padding: 0.125rem 0.5rem;
+      border-radius: 3px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 500;
+    }
+    
+    .wetu-legend-item--pps {
+      background: rgba(var(--color-foreground), 0.08);
+      color: rgba(var(--color-foreground), 0.7);
+    }
+    
+    .wetu-legend-item--single {
+      background: rgba(var(--color-foreground), 0.04);
+      color: rgba(var(--color-foreground), 0.6);
+    }
+    
+    .wetu-legend-item--room {
+      background: rgba(var(--color-foreground), 0.06);
+      color: rgba(var(--color-foreground), 0.65);
+    }
+    
+    .wetu-rate-tiers-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 0.75rem;
+    }
+    
+    .wetu-rate-tier {
+      padding: 1rem 1.25rem;
+      background: rgb(var(--color-background));
+      border: 1px solid rgba(var(--color-foreground), 0.08);
+      border-left: 3px solid rgba(var(--color-foreground), 0.15);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .wetu-rate-tier:hover {
+      border-color: rgba(var(--color-foreground), 0.15);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+    
+    .wetu-rate-tier--pps {
+      border-left-color: rgba(var(--color-foreground), 0.25);
+    }
+    
+    .wetu-rate-tier--single {
+      border-left-color: rgba(var(--color-foreground), 0.15);
+    }
+    
+    .wetu-rate-tier--room {
+      border-left-color: rgba(var(--color-foreground), 0.2);
+    }
+    
+    .wetu-rate-tier__header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .wetu-rate-tier__season {
+      font-weight: 500;
+      font-size: 0.9375rem;
+      color: rgb(var(--color-foreground));
+      font-family: var(--font-heading-family);
+    }
+    
+    .wetu-rate-tier__type {
+      font-size: 0.625rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: rgba(var(--color-foreground), 0.5);
+      padding: 0.125rem 0.375rem;
+      background: rgba(var(--color-foreground), 0.05);
+      border-radius: 2px;
+      white-space: nowrap;
+    }
+    
+    .wetu-rate-tier__price {
+      display: flex;
+      align-items: baseline;
+      gap: 0.25rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .wetu-rate-tier__currency {
+      font-size: 0.875rem;
+      color: rgba(var(--color-foreground), 0.6);
+      font-weight: 500;
+    }
+    
+    .wetu-rate-tier__amount {
+      font-size: 1.5rem;
+      font-weight: 600;
+      font-family: var(--font-heading-family);
+      letter-spacing: -0.02em;
+      color: rgb(var(--color-foreground));
+    }
+    
+    .wetu-rate-tier__dates {
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+      font-size: 0.75rem;
+      color: rgba(var(--color-foreground), 0.55);
+      margin-bottom: 0.75rem;
+    }
+    
+    .wetu-date-separator {
+      color: rgba(var(--color-foreground), 0.3);
+    }
+    
+    .wetu-rate-tier__details {
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid rgba(var(--color-foreground), 0.06);
+    }
+    
+    .wetu-tier-details {
+      margin-bottom: 0.5rem;
+    }
+    
+    .wetu-tier-details:last-child {
+      margin-bottom: 0;
+    }
+    
+    .wetu-tier-details__summary {
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+      cursor: pointer;
+      font-size: 0.75rem;
+      color: rgba(var(--color-foreground), 0.6);
+      list-style: none;
+      user-select: none;
+      transition: color 0.2s ease;
+    }
+    
+    .wetu-tier-details__summary::-webkit-details-marker,
+    .wetu-tier-details__summary::marker {
+      display: none;
+    }
+    
+    .wetu-tier-details__summary:hover {
+      color: rgb(var(--color-foreground));
+    }
+    
+    .wetu-tier-details__summary svg {
+      flex-shrink: 0;
+      opacity: 0.6;
+    }
+    
+    .wetu-tier-details__content {
+      margin-top: 0.5rem;
+      padding: 0.75rem;
+      background: rgba(var(--color-foreground), 0.02);
+      border-radius: 4px;
+      font-size: 0.8125rem;
+      line-height: 1.6;
+      color: rgba(var(--color-foreground), 0.7);
+      white-space: pre-line;
+    }
+    
+    /* Rate Structure Fallback */
+    .wetu-rate-structure-fallback {
+      margin-bottom: 1.5rem;
+    }
+    
+    .wetu-rate-structure-group {
+      margin-bottom: 1rem;
+    }
+    
+    .wetu-rate-structure-group h6 {
+      margin: 0 0 0.5rem 0;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: rgba(var(--color-foreground), 0.7);
+    }
+    
+    .wetu-rate-structure-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    
+    .wetu-rate-structure-list li {
+      padding: 0.5rem 0.75rem;
+      background: rgba(var(--color-foreground), 0.02);
+      border-left: 2px solid rgba(var(--color-foreground), 0.1);
+      margin-bottom: 0.375rem;
+      font-size: 0.875rem;
+    }
+    
+    .wetu-rate-structure-list li em {
+      color: rgba(var(--color-foreground), 0.5);
+      font-size: 0.8125rem;
+    }
+    
+    /* Base Rate Only Display */
+    .wetu-base-rate-display {
+      margin-bottom: 1.5rem;
+    }
+    
+    .wetu-base-rate-card {
+      padding: 1.5rem;
+      background: rgba(var(--color-foreground), 0.02);
+      border: 1px solid rgba(var(--color-foreground), 0.08);
+      border-left: 3px solid rgba(var(--color-foreground), 0.2);
+      text-align: center;
+    }
+    
+    .wetu-base-rate__label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: rgba(var(--color-foreground), 0.6);
+      margin-bottom: 0.5rem;
+    }
+    
+    .wetu-base-rate__price {
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: 0.375rem;
+      margin-bottom: 0.25rem;
+    }
+    
+    .wetu-base-rate__currency {
+      font-size: 1rem;
+      color: rgba(var(--color-foreground), 0.7);
+      font-weight: 500;
+    }
+    
+    .wetu-base-rate__amount {
+      font-size: 2rem;
+      font-weight: 600;
+      font-family: var(--font-heading-family);
+      letter-spacing: -0.02em;
+      color: rgb(var(--color-foreground));
+    }
+    
+    .wetu-base-rate__context {
+      font-size: 0.8125rem;
+      color: rgba(var(--color-foreground), 0.6);
+      margin-bottom: 1rem;
+    }
+    
+    .wetu-base-rate__note {
+      font-size: 0.8125rem;
+      color: rgba(var(--color-foreground), 0.5);
+      margin: 0;
+      font-style: italic;
+    }
+    
+    /* Footer Actions */
+    .wetu-room-accordion__footer {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid rgba(var(--color-foreground), 0.08);
+    }
+    
+    .wetu-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.25rem;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      text-decoration: none;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      transition: all 0.2s ease;
+    }
+    
+    .wetu-btn--secondary {
+      background: transparent;
+      border: 1px solid rgba(var(--color-foreground), 0.2);
+      color: rgb(var(--color-foreground));
+    }
+    
+    .wetu-btn--secondary:hover {
+      background: rgb(var(--color-foreground));
+      color: rgb(var(--color-background));
+    }
+    
+    .wetu-btn svg {
+      flex-shrink: 0;
+    }
+    
+    /* Title Link */
+    .wetu-room-accordion__title-link {
+      color: inherit;
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+    
+    .wetu-room-accordion__title-link:hover {
+      color: rgba(var(--color-foreground), 0.7);
+      text-decoration: underline;
+    }
+    
+    /* Documents Section - 50/50 Layout */
+    .wetu-rates-documents--sidebar {
+      position: sticky;
+      top: 2rem;
+      height: fit-content;
+      max-height: calc(100vh - 4rem);
+      overflow-y: auto;
+      background: rgb(var(--color-background));
+      border: 1px solid rgba(var(--color-foreground), 0.08);
+      padding: 1.5rem 2rem;
+    }
+    
+    /* Documents Only - No Rates Layout */
+    .wetu-documents-only {
+      max-width: 600px;
+      padding: 1.5rem 2rem;
+      background: rgb(var(--color-background));
+      border: 1px solid rgba(var(--color-foreground), 0.08);
+    }
+    
+    /* Responsive Adjustments */
+    @media screen and (max-width: 989px) {
+      .wetu-accommodations-wrapper--comprehensive {
+        grid-template-columns: 1fr;
+        gap: 2.5rem;
+      }
+      
+      .wetu-rates-documents--sidebar {
+        position: static;
+        max-height: none;
+        padding: 1.5rem;
+      }
+      
+      .wetu-documents-only {
+        max-width: 100%;
+        padding: 1.25rem;
+      }
+    }
+    
+    @media screen and (max-width: 749px) {
+      .wetu-room-accordion__header {
+        flex-wrap: wrap;
+        padding: 1rem;
+      }
+      
+      .wetu-room-accordion__preview {
+        flex-wrap: wrap;
+        gap: 0.75rem;
+      }
+      
+      .wetu-room-accordion__thumb {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 16 / 9;
+      }
+      
+      .wetu-room-accordion__info {
+        width: 100%;
+      }
+      
+      .wetu-room-accordion__sparkline {
+        display: none;
+      }
+      
+      .wetu-room-accordion__toggle {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+      }
+      
+      .wetu-room-accordion__content {
+        padding: 1rem;
+      }
+      
+      .wetu-rate-tiers-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .wetu-rate-tier__amount {
+        font-size: 1.25rem;
+      }
+      
+      .wetu-rate-tiers-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      
+      .wetu-rate-type-legend {
+        flex-wrap: wrap;
+      }
+    }
+  </style>
+{%- endif -%}

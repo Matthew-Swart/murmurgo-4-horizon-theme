@@ -1,0 +1,81 @@
+{% comment %}
+  ============================================================================
+  WETU MEAL BASIS DISPLAY SNIPPET
+  ============================================================================
+
+  Converts WETU room_basis codes to human-readable abbreviations.
+
+  USAGE:
+    {% render 'wetu-meal-basis', basis: period.room_basis.value %}
+    {% render 'wetu-meal-basis', basis: period.room_basis.value, format: 'full' %}
+
+  PARAMETERS:
+    - basis: (required) The WETU room_basis value
+    - format: (optional) 'abbr' (default) or 'full' for expanded name
+
+  SUPPORTED BASIS CODES:
+    BedAndBreakfast                      -> B&B / Bed & Breakfast
+    FullyInclusive                       -> FI  / Fully Inclusive
+    DinnerBedAndBreakfast                -> DBB / Dinner, Bed & Breakfast
+    DinnerBedBreakfastLunchAndActivities -> FB+ / Full Board Plus Activities
+    HalfBoard                            -> HB  / Half Board
+    FullBoard                            -> FB  / Full Board
+    SelfCatering                         -> SC  / Self Catering
+    RoomOnly                             -> RO  / Room Only
+    AllInclusive                         -> AI  / All Inclusive
+
+  ============================================================================
+{% endcomment %}
+
+{%- liquid
+  assign format = format | default: 'abbr'
+  assign basis_code = basis | default: ''
+
+  if basis_code == blank or basis_code == 'None'
+    assign display_abbr = ''
+    assign display_full = ''
+  else
+    case basis_code
+      when 'BedAndBreakfast'
+        assign display_abbr = 'B&B'
+        assign display_full = 'Bed & Breakfast'
+      when 'FullyInclusive'
+        assign display_abbr = 'FI'
+        assign display_full = 'Fully Inclusive'
+      when 'DinnerBedAndBreakfast'
+        assign display_abbr = 'DBB'
+        assign display_full = 'Dinner, Bed & Breakfast'
+      when 'DinnerBedBreakfastLunchAndActivities'
+        assign display_abbr = 'FB+'
+        assign display_full = 'Full Board Plus Activities'
+      when 'HalfBoard'
+        assign display_abbr = 'HB'
+        assign display_full = 'Half Board'
+      when 'FullBoard'
+        assign display_abbr = 'FB'
+        assign display_full = 'Full Board'
+      when 'SelfCatering'
+        assign display_abbr = 'SC'
+        assign display_full = 'Self Catering'
+      when 'RoomOnly'
+        assign display_abbr = 'RO'
+        assign display_full = 'Room Only'
+      when 'AllInclusive'
+        assign display_abbr = 'AI'
+        assign display_full = 'All Inclusive'
+      else
+        comment Fallback: humanize the code
+        endcomment
+        assign display_abbr = basis_code | truncate: 3, '' | upcase
+        assign display_full = basis_code | replace: '_', ' ' | replace: 'And', '&'
+    endcase
+  endif
+-%}
+
+{%- if display_abbr != blank -%}
+  {%- if format == 'full' -%}
+    {{- display_full -}}
+  {%- else -%}
+    <span class="wetu-meal-basis" title="{{ display_full }}">{{ display_abbr }}</span>
+  {%- endif -%}
+{%- endif -%}

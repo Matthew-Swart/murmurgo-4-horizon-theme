@@ -1,0 +1,338 @@
+{% comment %}
+  ============================================================================
+  WETU ALTERNATE ACCOMMODATIONS SNIPPET
+  ============================================================================
+  
+  Displays alternative accommodation options as clickable cards with thumbnails,
+  linking to the PIN ID product pages in Shopify.
+  
+  USAGE:
+    {% render 'wetu-alternate-accommodations',
+      alternates: leg.alternate_accommodations.value,
+      color_scheme: 'scheme-5',
+      wetu_pin_ids_array: wetu_pin_ids_array,
+      wetu_handles_array: wetu_handles_array,
+      destination_name: 'Cape Town'
+    %}
+  
+  PARAMETERS:
+    - alternates: Array of alternate accommodation objects with content_entity_id
+    - color_scheme: Color scheme class (default: 'scheme-5')
+    - wetu_pin_ids_array: Array of PIN IDs for lookup
+    - wetu_handles_array: Array of product handles for lookup
+    - destination_name: Name of the destination (optional)
+  
+  ============================================================================
+{% endcomment %}
+
+{%- liquid
+  assign color_scheme = color_scheme | default: 'scheme-5'
+  
+  # Check if we have alternates
+  assign has_alternates = false
+  if alternates != blank and alternates.size > 0
+    assign has_alternates = true
+  endif
+-%}
+
+{%- if has_alternates -%}
+  <div class="wetu-alt-accom color-{{ color_scheme }}">
+    <div class="page-width">
+      <div class="wetu-alt-accom__container">
+        <div class="wetu-alt-accom__header">
+          <span class="wetu-alt-accom__label">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+            </svg>
+            {% if destination_name != blank %}
+              Alternative accommodation for your stay in {{ destination_name }}
+            {% else %}
+              Alternative accommodation options
+            {% endif %}
+          </span>
+        </div>
+        
+        <div class="wetu-alt-accom__grid">
+          {%- for alt in alternates limit: 4 -%}
+            {%- comment -%} Get PIN ID - Try multiple variations {%- endcomment -%}
+            {%- assign alt_pin_id = alt.content_entity_id.value -%}
+            {%- if alt_pin_id == blank -%}{%- assign alt_pin_id = alt.content_entity_id -%}{%- endif -%}
+            {%- if alt_pin_id == blank -%}{%- assign alt_pin_id = alt._content_entity_id -%}{%- endif -%}
+            {%- if alt_pin_id == blank -%}{%- assign alt_pin_id = alt.ContentEntityId -%}{%- endif -%}
+            {%- if alt_pin_id == blank -%}{%- assign alt_pin_id = alt.id -%}{%- endif -%}
+            
+            {%- if alt_pin_id == blank -%}
+                 <!-- DEBUG: Could not find PIN ID in alt object: {{ alt | json }} -->
+            {%- endif -%}
+    
+            {%- comment -%} Find matching product {%- endcomment -%}
+            {%- assign alt_product = nil -%}
+            {%- assign alt_handle = nil -%}
+            
+            {%- if alt_pin_id != blank and wetu_pin_ids_array != blank -%}
+              {%- assign search_pin = alt_pin_id | append: '' -%}
+              {%- for check_pin in wetu_pin_ids_array -%}
+                {%- assign current_pin = check_pin | append: '' -%}
+                {%- if current_pin == search_pin -%}
+                  {%- assign alt_handle = wetu_handles_array[forloop.index0] -%}
+                  {%- assign alt_product = all_products[alt_handle] -%}
+                  {%- break -%}
+                {%- endif -%}
+              {%- endfor -%}
+            {%- endif -%}
+            
+            {%- if alt_product -%}
+              <a href="{{ alt_product.url }}" class="wetu-alt-accom__card">
+                {%- if alt_product.featured_image -%}
+                  <img 
+                    src="{{ alt_product.featured_image | image_url: width: 320, height: 180, crop: 'center' }}"
+                    alt="{{ alt_product.title }}"
+                    class="wetu-alt-accom__image"
+                    loading="lazy"
+                  >
+                {%- else -%}
+                  <div class="wetu-alt-accom__image wetu-alt-accom__image--placeholder">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                      <rect x="3" y="3" width="18" height="18" rx="2"/>
+                      <circle cx="9" cy="9" r="2"/>
+                      <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                    </svg>
+                  </div>
+                {%- endif -%}
+                
+                <div class="wetu-alt-accom__info">
+                  <span class="wetu-alt-accom__name">{{ alt_product.title }}</span>
+                  
+                  {%- comment -%} Show tagline {%- endcomment -%}
+                  {%- assign tagline = alt_product.metafields.wetu.tagline.value -%}
+                  {%- if tagline != blank -%}
+                    <span class="wetu-alt-accom__tagline">{{ tagline }}</span>
+                  {%- endif -%}
+    
+                  {%- comment -%} Show star rating if available {%- endcomment -%}
+                  {%- assign stars = alt_product.metafields.wetu.star_rating.value | plus: 0 -%}
+                  {%- if stars > 0 -%}
+                    <span class="wetu-alt-accom__stars">
+                      {%- for i in (1..5) -%}
+                        {%- if i <= stars -%}
+                          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                        {%- else -%}
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                        {%- endif -%}
+                      {%- endfor -%}
+                    </span>
+                  {%- endif -%}
+                  
+                </div>
+                
+                <span class="wetu-alt-accom__arrow">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                  </svg>
+                </span>
+              </a>
+            {%- elsif alt_pin_id != blank -%}
+              {%- comment -%} No product found, show PIN ID placeholder {%- endcomment -%}
+              <div class="wetu-alt-accom__card wetu-alt-accom__card--no-link">
+                <div class="wetu-alt-accom__image wetu-alt-accom__image--placeholder">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <circle cx="9" cy="9" r="2"/>
+                    <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                  </svg>
+                </div>
+                <div class="wetu-alt-accom__info">
+                  <span class="wetu-alt-accom__name">Alternative Option</span>
+                  <span class="wetu-alt-accom__pin-id">PIN: {{ alt_pin_id }}</span>
+                </div>
+              </div>
+            {%- endif -%}
+          {%- endfor -%}
+        </div>
+      </div>
+    </div>
+  </div>
+{%- endif -%}
+
+<style>
+  .wetu-alt-accom {
+    margin-top: 0;
+    padding: 24px 0;
+    background: transparent;
+    border-top: 1px solid rgba(var(--color-foreground-rgb), 0.08);
+  }
+  
+  .wetu-alt-accom__container {
+    padding: 20px;
+    background: color-mix(in srgb, var(--color-foreground) 3%, transparent);
+    border: 1px dashed color-mix(in srgb, var(--color-foreground) 15%, transparent);
+    border-radius: 12px;
+  }
+  
+  .wetu-alt-accom__header {
+    margin-bottom: 16px;
+  }
+  
+  .wetu-alt-accom__label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+  }
+  
+  .wetu-alt-accom__label svg {
+    opacity: 0.7;
+  }
+  
+  .wetu-alt-accom__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+  }
+  
+  .wetu-alt-accom__card {
+    display: flex;
+    flex-direction: column;
+    background: var(--color-background);
+    border-radius: 8px;
+    overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    position: relative;
+    height: 100%;
+    border: 1px solid rgba(var(--color-foreground-rgb), 0.05);
+  }
+  
+  .wetu-alt-accom__card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px -4px rgba(0,0,0,0.15);
+    border-color: rgba(var(--color-foreground-rgb), 0.1);
+  }
+  
+  .wetu-alt-accom__card--no-link {
+    pointer-events: none;
+    opacity: 0.7;
+  }
+  
+  .wetu-alt-accom__image {
+    width: 100%;
+    aspect-ratio: 16/9;
+    object-fit: cover;
+  }
+  
+  .wetu-alt-accom__image--placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--color-foreground) 5%, transparent);
+    color: color-mix(in srgb, var(--color-foreground) 30%, transparent);
+    aspect-ratio: 16/9;
+  }
+  
+  .wetu-alt-accom__image--placeholder svg {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .wetu-alt-accom__info {
+    padding: 12px 14px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex-grow: 1;
+  }
+  
+  .wetu-alt-accom__name {
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--color-foreground);
+  }
+  
+  .wetu-alt-accom__tagline {
+    font-size: 0.75rem;
+    color: color-mix(in srgb, var(--color-foreground) 75%, transparent);
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-style: italic;
+  }
+  
+  .wetu-alt-accom__stars {
+    display: flex;
+    gap: 2px;
+    color: #fbbf24;
+    margin-top: auto;
+    padding-top: 4px;
+  }
+  
+  .wetu-alt-accom__stars svg {
+    width: 12px;
+    height: 12px;
+  }
+  
+  .wetu-alt-accom__pin-id {
+    font-size: 0.7rem;
+    font-family: monospace;
+    color: color-mix(in srgb, var(--color-foreground) 40%, transparent);
+  }
+  
+  .wetu-alt-accom__arrow {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.95);
+    border-radius: 50%;
+    color: var(--color-foreground);
+    opacity: 0;
+    transform: translateX(-8px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  
+  .wetu-alt-accom__card:hover .wetu-alt-accom__arrow {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  
+  .wetu-alt-accom__arrow svg {
+    width: 14px;
+    height: 14px;
+  }
+  
+  @media screen and (max-width: 600px) {
+    .wetu-alt-accom {
+      padding: 16px 0;
+    }
+    
+    .wetu-alt-accom__container {
+      padding: 16px;
+    }
+    
+    .wetu-alt-accom__grid {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    
+    .wetu-alt-accom__name {
+      font-size: 0.9rem;
+    }
+    
+    .wetu-alt-accom__info {
+      padding: 12px;
+    }
+  }
+</style>

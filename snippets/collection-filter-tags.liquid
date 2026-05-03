@@ -1,0 +1,361 @@
+{%- doc -%}
+  Renders visual pill-shaped filter tags for Region/Area and Special Interests
+  
+  This snippet displays clickable pill tags above the standard dropdown filters
+  to make filter options immediately visible and accessible.
+  
+  @param {object} filters - The collection filters object
+
+  @example
+  {% render 'collection-filter-tags', filters: collection.filters %}
+{%- enddoc -%}
+
+{%- liquid
+  # Find the Region, Area, and Special Interests filters
+  assign region_filter = null
+  assign area_filter = null
+  assign special_interests_filter = null
+  
+  for filter in filters
+    assign filter_label_lower = filter.label | downcase
+    if filter_label_lower == 'region'
+      assign region_filter = filter
+    elsif filter_label_lower == 'area'
+      assign area_filter = filter
+    elsif filter_label_lower contains 'special interest'
+      assign special_interests_filter = filter
+    endif
+  endfor
+  
+  # Check if we have any tags to show
+  assign has_location_tags = false
+  assign has_interest_tags = false
+  
+  if region_filter != blank and region_filter.values.size > 0
+    assign has_location_tags = true
+  endif
+  if area_filter != blank and area_filter.values.size > 0
+    assign has_location_tags = true
+  endif
+  if special_interests_filter != blank and special_interests_filter.values.size > 0
+    assign has_interest_tags = true
+  endif
+-%}
+
+{% if has_location_tags or has_interest_tags %}
+  <div class="visual-filter-tags-outer">
+    <div class="visual-filter-tags-inner page-width">
+      <div class="visual-filter-tags-grid">
+        
+        {%- comment -%} Region & Area Tags (Left Side - 50%) {%- endcomment -%}
+        <div class="visual-filter-col visual-filter-col--left">
+          {% if has_location_tags %}
+            <h4 class="visual-filter-col__heading">Destinations</h4>
+            <div class="visual-filter-col__tags">
+              
+              {%- comment -%} Region Tags {%- endcomment -%}
+              {% if region_filter != blank %}
+                {% for value in region_filter.values %}
+                  {% if value.count > 0 %}
+                    <button 
+                      type="button"
+                      class="vf-tag vf-tag--location{% if value.active %} vf-tag--active{% endif %}"
+                      data-filter-param="{{ region_filter.param_name }}"
+                      data-filter-value="{{ value.value | escape }}"
+                      data-filter-active="{{ value.active }}"
+                      aria-pressed="{{ value.active }}"
+                    >
+                      <span class="vf-tag__text">{{ value.label }}</span>
+                      <span class="vf-tag__num">({{ value.count }})</span>
+                      {% if value.active %}<span class="vf-tag__x">×</span>{% endif %}
+                    </button>
+                  {% endif %}
+                {% endfor %}
+              {% endif %}
+              
+              {%- comment -%} Area Tags {%- endcomment -%}
+              {% if area_filter != blank %}
+                {% for value in area_filter.values %}
+                  {% if value.count > 0 %}
+                    <button 
+                      type="button"
+                      class="vf-tag vf-tag--location{% if value.active %} vf-tag--active{% endif %}"
+                      data-filter-param="{{ area_filter.param_name }}"
+                      data-filter-value="{{ value.value | escape }}"
+                      data-filter-active="{{ value.active }}"
+                      aria-pressed="{{ value.active }}"
+                    >
+                      <span class="vf-tag__text">{{ value.label }}</span>
+                      <span class="vf-tag__num">({{ value.count }})</span>
+                      {% if value.active %}<span class="vf-tag__x">×</span>{% endif %}
+                    </button>
+                  {% endif %}
+                {% endfor %}
+              {% endif %}
+              
+            </div>
+          {% endif %}
+        </div>
+        
+        {%- comment -%} Special Interests Tags (Right Side - 50%) {%- endcomment -%}
+        <div class="visual-filter-col visual-filter-col--right">
+          {% if has_interest_tags %}
+            <h4 class="visual-filter-col__heading">Special Interests</h4>
+            <div class="visual-filter-col__tags">
+              {% for value in special_interests_filter.values %}
+                {% if value.count > 0 %}
+                  <button 
+                    type="button"
+                    class="vf-tag vf-tag--interest{% if value.active %} vf-tag--active{% endif %}"
+                    data-filter-param="{{ special_interests_filter.param_name }}"
+                    data-filter-value="{{ value.value | escape }}"
+                    data-filter-active="{{ value.active }}"
+                    aria-pressed="{{ value.active }}"
+                  >
+                    <span class="vf-tag__text">{{ value.label }}</span>
+                    <span class="vf-tag__num">({{ value.count }})</span>
+                    {% if value.active %}<span class="vf-tag__x">×</span>{% endif %}
+                  </button>
+                {% endif %}
+              {% endfor %}
+            </div>
+          {% endif %}
+        </div>
+        
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    (function() {
+      var tags = document.querySelectorAll('.vf-tag');
+      tags.forEach(function(tag) {
+        tag.addEventListener('click', function() {
+          var param = this.dataset.filterParam;
+          var value = this.dataset.filterValue;
+          var isActive = this.dataset.filterActive === 'true';
+          var url = new URL(window.location.href);
+          var params = url.searchParams;
+          if (isActive) {
+            var existingValues = params.getAll(param);
+            params.delete(param);
+            existingValues.forEach(function(v) {
+              if (v !== value) { params.append(param, v); }
+            });
+          } else {
+            params.append(param, value);
+          }
+          window.location.href = url.toString();
+        });
+      });
+    })();
+  </script>
+{% endif %}
+
+{% stylesheet %}
+  /* ===========================================
+     VISUAL FILTER TAGS - ABOVE FILTER BAR
+     =========================================== */
+  
+  .visual-filter-tags-outer {
+    display: block;
+    width: 100%;
+    padding: 16px 0 20px;
+    margin-bottom: 16px;
+    clear: both;
+    position: relative;
+    z-index: 1;
+  }
+  
+  .visual-filter-tags-inner {
+    max-width: var(--page-width, 1200px);
+    margin: 0 auto;
+    padding: 0 var(--page-margin, 20px);
+  }
+  
+  /* 50/50 Grid Layout - DESKTOP */
+  .visual-filter-tags-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+    width: 100%;
+  }
+  
+  @media screen and (min-width: 750px) {
+    .visual-filter-tags-grid {
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+  }
+  
+  /* Columns */
+  .visual-filter-col {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .visual-filter-col__heading {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #333333;
+    margin: 0 0 4px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  /* Tags Container - 2px gap */
+  .visual-filter-col__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    align-items: flex-start;
+    align-content: flex-start;
+  }
+  
+  /* ===========================================
+     TAG BUTTONS - RECTANGULAR SHAPE
+     =========================================== */
+  
+  .vf-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 5px 10px;
+    border-radius: 3px;
+    border: 1px solid transparent;
+    font-family: var(--font-paragraph--family, inherit);
+    font-size: 0.8125rem;
+    font-weight: 400;
+    color: #333333;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    white-space: nowrap;
+    line-height: 1.3;
+  }
+  
+  .vf-tag:focus {
+    outline: 2px solid #333333;
+    outline-offset: 1px;
+  }
+  
+  .vf-tag:focus:not(:focus-visible) {
+    outline: none;
+  }
+  
+  .vf-tag__text {
+    font-weight: 500;
+  }
+  
+  .vf-tag__num {
+    font-size: 0.6875rem;
+    opacity: 0.6;
+  }
+  
+  .vf-tag__x {
+    margin-left: 2px;
+    font-size: 0.875rem;
+    line-height: 1;
+    opacity: 0.7;
+  }
+  
+  /* ===========================================
+     LOCATION TAGS - Light Gray #F5F5F5
+     =========================================== */
+  
+  .vf-tag--location {
+    background-color: #F5F5F5;
+    border-color: #E5E5E5;
+  }
+  
+  .vf-tag--location:hover {
+    background-color: #EAEAEA;
+    border-color: #D5D5D5;
+  }
+  
+  .vf-tag--location:active {
+    background-color: #E0E0E0;
+  }
+  
+  /* Location - ACTIVE */
+  .vf-tag--location.vf-tag--active {
+    background-color: #4A4A4A;
+    color: #FFFFFF;
+    border-color: #4A4A4A;
+  }
+  
+  .vf-tag--location.vf-tag--active:hover {
+    background-color: #333333;
+    border-color: #333333;
+  }
+  
+  .vf-tag--location.vf-tag--active:active {
+    background-color: #2A2A2A;
+  }
+  
+  .vf-tag--location.vf-tag--active .vf-tag__num {
+    opacity: 0.75;
+  }
+  
+  /* ===========================================
+     INTEREST TAGS - Light Green #EEF1EA
+     =========================================== */
+  
+  .vf-tag--interest {
+    background-color: #EEF1EA;
+    border-color: #DCE2D5;
+  }
+  
+  .vf-tag--interest:hover {
+    background-color: #E4E9DE;
+    border-color: #CCD5C2;
+  }
+  
+  .vf-tag--interest:active {
+    background-color: #D8DFD0;
+  }
+  
+  /* Interest - ACTIVE */
+  .vf-tag--interest.vf-tag--active {
+    background-color: #5A7052;
+    color: #FFFFFF;
+    border-color: #5A7052;
+  }
+  
+  .vf-tag--interest.vf-tag--active:hover {
+    background-color: #4A5F44;
+    border-color: #4A5F44;
+  }
+  
+  .vf-tag--interest.vf-tag--active:active {
+    background-color: #3D5038;
+  }
+  
+  .vf-tag--interest.vf-tag--active .vf-tag__num {
+    opacity: 0.75;
+  }
+  
+  /* ===========================================
+     MOBILE RESPONSIVE
+     =========================================== */
+  
+  @media screen and (max-width: 749px) {
+    .visual-filter-tags-outer {
+      padding: 12px 0 16px;
+      margin-bottom: 12px;
+    }
+    
+    .visual-filter-col__heading {
+      font-size: 0.6875rem;
+    }
+    
+    .vf-tag {
+      padding: 4px 8px;
+      font-size: 0.75rem;
+    }
+    
+    .vf-tag__num {
+      font-size: 0.625rem;
+    }
+  }
+{% endstylesheet %}

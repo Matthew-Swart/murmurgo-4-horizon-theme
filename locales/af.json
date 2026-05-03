@@ -1,0 +1,600 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin language editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "accessibility": {
+    "account": "Rekening",
+    "cart": "Mandjie",
+    "cart_count": "Totale items in mandjie",
+    "close_dialog": "Sluit dialoog",
+    "country_region": "Land/Streek",
+    "country_results_count": "{{ count }} resultate",
+    "decrease_quantity": "Verminder hoeveelheid",
+    "discount": "Pas 'n afslagkode toe",
+    "discount_menu": "Afslagkodes",
+    "discount_applied": "Toegepaste afslagkode: {{ code }}",
+    "filters": "Filters",
+    "filter_count": {
+      "one": "{{ count }} filter toegepas",
+      "other": "{{ count }} filters toegepas"
+    },
+    "increase_quantity": "Verhoog hoeveelheid",
+    "inventory_status": "Voorraadstatus",
+    "localization_region_and_language": "Streek- en taalkeuse",
+    "menu": "Kieslys",
+    "nested_product": "{{ product_title }} vir {{ parent_title }}",
+    "new_window": "Maak in 'n nuwe venster oop.",
+    "quantity": "Hoeveelheid",
+    "pause_video": "Pouseer video",
+    "play_model": "Speel 3D-model",
+    "play_video": "Speel video",
+    "loading_product_recommendations": "Laai produk aanbevelings",
+    "rating": "Gradering van hierdie produk is {{ rating }} uit 5",
+    "remove_item": "Verwyder {{ title}}",
+    "reset_search": "Herstel soektog",
+    "scroll_to": "Rollees na {{ title }}",
+    "search_results_count": "{{ count }} soekresultate gevind vir \"{{ query }}\"",
+    "search_results_no_results": "Geen resultate gevind vir \"{{ query }}\"",
+    "skip_to_product_info": "Slaan oor na produkinligting",
+    "skip_to_results_list": "Slaan oor na resultatelys",
+    "skip_to_text": "Slaan oor na inhoud",
+    "slide_status": "Skyfie {{ index }} van {{ length }}",
+    "slideshow_next": "Volgende skyfie",
+    "slideshow_pause": "Pouseer skyfievertoning",
+    "slideshow_play": "Speel skyfievertoning",
+    "slideshow_previous": "Vorige skyfie",
+    "unit_price": "Eenheidsprys",
+    "find_country": "Vind land"
+  },
+  "actions": {
+    "add": "Voeg by",
+    "add_to_cart": "Voeg by mandjie",
+    "added": "Bygevoeg",
+    "apply": "Pas toe",
+    "back": "Terug",
+    "choose": "Kies",
+    "clear": "Maak skoon",
+    "clear_all": "Maak alles skoon",
+    "close": "Sluit",
+    "open": "Maak oop",
+    "continue_shopping": "Gaan voort met inkopies",
+    "enter_password": "Voer wagwoord in",
+    "log_in_html": "Het u 'n rekening? <a href=\"{{ link }}\">Meld aan</a> om vinniger af te reken.",
+    "log_in": "Meld aan",
+    "log_out": "Meld af",
+    "open_image_in_full_screen": "Maak prent in volskerm oop",
+    "remove": "Verwyder",
+    "remove_discount": "Verwyder afslag {{ code }}",
+    "show_all_options": "Wys alle opsies",
+    "see_items": {
+      "one": "Sien {{ count }} item",
+      "other": "Sien {{ count }} items"
+    },
+    "show_filters": "Filter",
+    "show_less": "Wys minder",
+    "show_more": "Wys meer",
+    "sign_in_options": "Ander aanmeldopsies",
+    "view_in_your_space": "Bekyk in u ruimte",
+    "view_all": "Bekyk alles",
+    "more": "Meer",
+    "zoom": "Zoem",
+    "close_dialog": "Sluit dialoog",
+    "reset": "Herstel",
+    "enter_using_password": "Voer in met wagwoord",
+    "sign_up": "Registreer",
+    "submit": "Stuur in",
+    "view_store_information": "Bekyk winkelinligting",
+    "sort": "Sorteer"
+  },
+  "blocks": {
+    "contact_form": {
+      "name": "Naam",
+      "email": "E-pos",
+      "phone": "Foon",
+      "comment": "Opmerking",
+      "post_success": "Dankie dat u ons gekontak het. Ons sal so gou moontlik na u terugkom.",
+      "error_heading": "Pas asseblief die volgende aan:"
+    },
+    "email_signup": {
+      "label": "E-pos",
+      "placeholder": "E-posadres",
+      "success": "Dankie vir u inskrywing!"
+    },
+    "filter": "Filter",
+    "load_video": "Laai video: {{ description }}",
+    "sold_out": "Uitverkoop",
+    "payment_methods": "Betaalmetodes"
+  },
+  "blogs": {
+    "article": {
+      "comments_heading": {
+        "one": "{{ count }} opmerking",
+        "other": "{{ count }} opmerkings"
+      },
+      "comment_author_separator": "•"
+    },
+    "comment_form": {
+      "email": "E-pos",
+      "error": "Opmerking kon nie geplaas word nie, pas asseblief die volgende aan:",
+      "heading": "Laat 'n opmerking",
+      "message": "Boodskap",
+      "moderated": "Neem asseblief kennis, opmerkings moet goedgekeur word voordat dit gepubliseer word.",
+      "name": "Naam",
+      "post": "Plaas opmerking",
+      "success_moderated": "Opmerking geplaas, wag op moderering",
+      "success": "Opmerking geplaas"
+    }
+  },
+  "content": {
+    "discount": "Afslag",
+    "account_title": "Rekening",
+    "terms_and_policies": "Bepalings en beleide",
+    "account_title_personalized": "Hallo {{ first_name }}",
+    "account_orders": "Bestellings",
+    "account_profile": "Profiel",
+    "blog_details_separator": "|",
+    "cart_estimated_total": "Geskatte totaal",
+    "cart_title": "Mandjie",
+    "cart_subtotal": "Subtotaal",
+    "cart_total": "Mandjie totaal",
+    "checkout": "Betaal",
+    "collection_placeholder": "Versamelingstitel",
+    "discount_code": "Afslagkode",
+    "shipping_discount_error": "Versendingafslag word by betaalpunt gewys nadat 'n adres bygevoeg is",
+    "discount_code_error": "Afslagkode kan nie op jou mandjie toegepas word nie",
+    "discounts": "Afslag",
+    "duties_and_taxes_included": "Invoertariewe en belasting ingesluit.",
+    "duties_and_taxes_included_shipping_at_checkout_with_policy_html": "Invoertariewe en belasting ingesluit. Afslag en <a href=\"{{ link }}\">versending</a> word by betaalpunt bereken.",
+    "duties_and_taxes_included_shipping_at_checkout_with_policy_without_discounts_html": "Invoertariewe en belasting ingesluit. Versending word by betaalpunt bereken.",
+    "duties_and_taxes_included_shipping_at_checkout_without_policy": "Invoertariewe en belasting ingesluit. Afslag en versending word by betaalpunt bereken.",
+    "duties_and_taxes_included_shipping_at_checkout_without_policy_without_discounts": "Invoertariewe en belasting ingesluit. Versending word by betaalpunt bereken.",
+    "duties_included": "Invoertariewe ingesluit.",
+    "duties_included_taxes_at_checkout_shipping_at_checkout_with_policy_html": "Invoertariewe ingesluit. Belasting, afslag en <a href=\"{{ link }}\">versending</a> word by betaalpunt bereken.",
+    "duties_included_taxes_at_checkout_shipping_at_checkout_with_policy_without_discounts_html": "Invoertariewe ingesluit. Versending word by betaalpunt bereken.",
+    "duties_included_taxes_at_checkout_shipping_at_checkout_without_policy": "Invoertariewe ingesluit. Belasting, afslag en versending word by betaalpunt bereken.",
+    "duties_included_taxes_at_checkout_shipping_at_checkout_without_policy_without_discounts": "Invoertariewe ingesluit. Versending word by betaalpunt bereken.",
+    "featured_products": "Voorgestelde produkte",
+    "filters": "Filters",
+    "grid_view": {
+      "default_view": "Standaard",
+      "grid_fieldset": "Kolomrooster",
+      "single_item": "Enkel",
+      "zoom_out": "Uitzoem"
+    },
+    "inventory_low_stock_show_count": {
+      "one": "{{ count }} oor",
+      "other": "{{ count }} oor"
+    },
+    "inventory_low_stock": "Min voorraad",
+    "inventory_in_stock": "In voorraad",
+    "inventory_out_of_stock": "Uit voorraad",
+    "item_count": {
+      "one": "{{ count }} artikel",
+      "other": "{{ count }} artikels"
+    },
+    "language": "Taal",
+    "localization_region_and_language": "Streek en taal",
+    "no_products_found": "Geen produkte gevind nie.",
+    "no_results_found": "Geen resultate gevind nie",
+    "page_placeholder_title": "Bladsytitel",
+    "page_placeholder_content": "Kies 'n bladsy om die inhoud daarvan te vertoon.",
+    "pagination": {
+      "nav_label": "Paginering navigasie",
+      "previous": "Vorige",
+      "next": "Volgende",
+      "page": "Bladsy {{ page }}"
+    },
+    "pickup_available_at_html": "Afhaal beskikbaar by <b>{{ location }}</b>",
+    "pickup_available_in": "Afhaal beskikbaar, {{ pickup_time }}",
+    "pickup_not_available": "Afhaal tans nie beskikbaar nie",
+    "pickup_ready_in": "{{ pickup_time }}",
+    "powered_by": "Hierdie winkel word aangedryf deur",
+    "price": "Prys",
+    "price_compare_at": "Vergelyk met prys",
+    "price_from": "Vanaf {{ price }}",
+    "price_regular": "Gewone prys",
+    "price_sale": "Verkoopprys",
+    "price_filter_html": "Die hoogste prys is {{ price }}",
+    "product_image": "Produkbeeld",
+    "product_information": "Produkinligting",
+    "product_total": "Produktotaal",
+    "product_badge_sold_out": "Uitverkoop",
+    "product_badge_sale": "Uitverkoping",
+    "product_card_placeholder": "Produk titel",
+    "placeholder_image": "Plekhouerbeeld",
+    "quantity": "Hoeveelheid",
+    "recently_viewed_products": "Onlangs bekyk",
+    "reviews": "resensies",
+    "read_more": "Lees meer...",
+    "search_input_label": "Soek",
+    "search_input_placeholder": "Soek",
+    "search": "Soek",
+    "search_results": "Soekresultate",
+    "search_results_label": "Soekresultate",
+    "search_results_no_results": "Geen resultate gevind vir \"{{ terms }}\". Probeer 'n ander soektog.",
+    "search_results_no_results_check_spelling": "Geen resultate gevind vir \"{{ terms }}\". Kontroleer die spelling of gebruik 'n ander woord of frase.",
+    "search_results_resource_articles": "Blogplasings",
+    "search_results_resource_collections": "Versamelings",
+    "search_results_resource_pages": "Bladsye",
+    "search_results_resource_products": "Produkte",
+    "search_results_resource_products_count": {
+      "one": "{{ count }} produk",
+      "other": "{{ count }} produkte"
+    },
+    "search_results_resource_queries": "Soekvoorstelle",
+    "search_results_view_all": "Sien alles",
+    "search_results_view_all_button": "Sien alles",
+    "seller_note": "Spesiale instruksies",
+    "shipping_policy": "Versending word by betaalpunt bereken.",
+    "shipping_policy_html": "<a href=\"{{ link }}\">Versending</a> word by betaalpunt bereken.",
+    "store_owner_link_html": "Is jy die winkeleienaar? <a href=\"{{ link }}\">Meld hier aan</a>",
+    "taxes_at_checkout_shipping_at_checkout_with_policy_html": "Belasting, afslag en <a href=\"{{ link }}\">versending</a> word by betaalpunt bereken.",
+    "taxes_at_checkout_shipping_at_checkout_with_policy_without_discounts_html": "Belasting en <a href=\"{{ link }}\">versending</a> word by betaalpunt bereken.",
+    "taxes_at_checkout_shipping_at_checkout_without_policy": "Belasting, afslag en versending word by betaalpunt bereken.",
+    "taxes_at_checkout_shipping_at_checkout_without_policy_without_discounts": "Belasting en versending word by betaalpunt bereken.",
+    "taxes_included": "Belasting ingesluit.",
+    "taxes_included_shipping_at_checkout_with_policy_html": "Belasting ingesluit. Afslag en <a href=\"{{ link }}\">versending</a> word by betaalpunt bereken.",
+    "taxes_included_shipping_at_checkout_with_policy_without_discounts_html": "Belasting ingesluit. Versending word by betaalpunt bereken.",
+    "taxes_included_shipping_at_checkout_without_policy": "Belasting ingesluit. Afslag en versending word by betaalpunt bereken.",
+    "taxes_included_shipping_at_checkout_without_policy_without_discounts": "Belasting ingesluit. Versending word by betaalpunt bereken.",
+    "unavailable": "Nie beskikbaar nie",
+    "use_fewer_filters_html": "Probeer minder filters gebruik, of <a class=\"{{ class }}\" href=\"{{ link }}\">vee alle filters uit</a>.",
+    "view_more_details": "Sien meer besonderhede",
+    "your_cart_is_empty": "Jou mandjie is leeg",
+    "product_count": "Produk telling",
+    "errors": "Foute",
+    "wrong_password": "Verkeerde wagwoord",
+    "recipient_form_send_to": "Stuur aan",
+    "recipient_form_email_label": "Ontvanger se e-pos",
+    "recipient_form_email_label_my_email": "My e-pos",
+    "recipient_form_email_address": "Ontvanger se e-posadres",
+    "recipient_form_name_label": "Ontvanger se naam (opsioneel)",
+    "recipient_form_message": "Boodskap (opsioneel)",
+    "recipient_form_characters_used": "{{ used_chars }}/{{ max_chars }} karakters gebruik",
+    "recipient_form_send_on": "YYYY-MM-DD",
+    "recipient_form_send_on_label": "Stuur op (opsioneel)",
+    "recipient_form_fields_visible": "Ontvanger se vormvelde is nou sigbaar",
+    "recipient_form_fields_hidden": "Ontvanger se vormvelde is nou versteek",
+    "recipient_form_error": "Daar was 'n fout met die vorm indiening",
+    "product_custom_property_character_count": "{{ used_chars }}/{{ max_chars }} karakters gebruik"
+  },
+  "fields": {
+    "separator": "tot"
+  },
+  "gift_cards": {
+    "issued": {
+      "how_to_use_gift_card": "Gebruik die geskenkkaartkode aanlyn of die QR-kode in die winkel",
+      "title": "Hier is jou {{ value }} geskenkkaartsaldo vir {{ shop }}!",
+      "subtext": "Jou geskenkkaart",
+      "shop_link": "Besoek aanlynwinkel",
+      "add_to_apple_wallet": "Voeg by Apple Wallet",
+      "qr_image_alt": "QR-kode — skandeer om geskenkkaart te gebruik",
+      "copy_code": "Kopieer geskenkkaartkode",
+      "expiration_date": "Verval op {{ expires_on }}",
+      "copy_code_success": "Kode suksesvol gekopieer",
+      "expired": "Verval"
+    }
+  },
+  "placeholders": {
+    "password": "Wagwoord",
+    "search": "Soek",
+    "product_title": "Produk titel",
+    "collection_title": "Versameling titel",
+    "blog_posts": "Blogplasings",
+    "blog_post_title": "Titel",
+    "blog_post_author": "Outeur",
+    "blog_post_date": "Datum",
+    "blog_post_description": "'n Uittreksel van jou blogplasing se inhoud"
+  },
+  "products": {
+    "product": {
+      "add_to_cart": "Voeg by mandjie",
+      "adding_to_cart": "Besig om by te voeg...",
+      "added_to_cart": "By mandjie gevoeg",
+      "add_to_cart_error": "Fout met byvoeging by mandjie",
+      "quantity_error_max": "Hierdie item het 'n maksimum van {{ maximum }}",
+      "sold_out": "Uitverkoop",
+      "unavailable": "Nie beskikbaar nie",
+      "quantity": "Hoeveelheid",
+      "quantity_increments": "Inkremente van {{ increment }}",
+      "quantity_minimum": "Minimum van {{ minimum }}",
+      "quantity_maximum": "Maksimum van {{ maximum }}",
+      "in_cart": "in mandjie",
+      "from": "Vanaf",
+      "per_person_sharing": "per persoon wat deel",
+      "single": "enkel",
+      "per_room": "per kamer",
+      "per_night": "per nag"
+    },
+    "general": {
+      "no_video": "Geen video beskikbaar vir hierdie produk nie."
+    }
+  },
+  "general": {
+    "redirecting": "Herlei na eiendom..."
+  },
+  "collections": {
+    "no_products": "Geen eiendomme tans beskikbaar nie."
+  },
+  "travel_search": {
+    "title": "Vind Jou Perfekte Blyplek",
+    "subtitle": "Soek akkommodasie volgens ligging, datums en gaste",
+    "placeholder": "Waarheen gaan jy?",
+    "dates_label": "Reisdatums",
+    "check_in": "Inklok",
+    "check_out": "Uitklok",
+    "guests": "Gaste",
+    "search_button": "Soek Eiendomme",
+    "searching": "Besig om te soek...",
+    "no_results": "Geen eiendomme of liggings gevind nie",
+    "error": "'n Fout het voorgekom. Probeer asseblief weer.",
+    "destinations": "Bestemmings",
+    "properties": "Eiendomme",
+    "select_checkin": "Kies jou inklokdatum",
+    "select_checkout": "Kies jou uitklokdatum",
+    "hover_for_nights": "Beweeg oor datums om aantal nagte te sien",
+    "one_night": "1 nag",
+    "nights_count": "{{ count }} nagte",
+    "guest_options": {
+      "one_adult": "1 Volwassene, 1 Kamer",
+      "two_adults": "2 Volwassenes, 1 Kamer",
+      "three_adults": "3 Volwassenes, 1 Kamer",
+      "four_adults_one": "4 Volwassenes, 1 Kamer",
+      "four_adults_two": "4 Volwassenes, 2 Kamers",
+      "six_adults_two": "6 Volwassenes, 2 Kamers",
+      "six_adults_three": "6 Volwassenes, 3 Kamers"
+    }
+  },
+  "wetu": {
+    "property": {
+      "total_rooms": "Totale Kamers",
+      "perfect_for": "Perfek Vir",
+      "key_details": "Sleutelbesonderhede",
+      "property_facilities": "Eiendomfasiliteite",
+      "available_services": "Beskikbare Dienste",
+      "check_times": "Inklok & Uitklok",
+      "check_in": "Inkloktyd",
+      "check_out": "Uitkloktyd",
+      "languages_spoken": "Tale Gepraat",
+      "contact": "Kontak",
+      "telephone": "Telefoon",
+      "email": "E-pos"
+    },
+    "accommodation": {
+      "room": "Kamer",
+      "occupancy": "Besetting",
+      "guests_count": "{{ count }} gaste",
+      "adults_children": "{{ adults }} volwassenes, {{ children }} kinders",
+      "bed_configuration": "Bedkonfigurasie",
+      "meal_plan": "Etesplan",
+      "key_details": "Kamerbesonderhede",
+      "room_amenities": "Kamergeriewe",
+      "special_features": "Spesiale Kenmerke",
+      "room_features": "Kamerkenmerke",
+      "view": "Uitsig",
+      "has_balcony": "Privaat Balkon",
+      "has_jacuzzi": "Privaat Jacuzzi",
+      "property": "Eiendom",
+      "view_property": "Sien {{ property }} besonderhede"
+    },
+    "rates": {
+      "title": "Tariewe & Pryse",
+      "from": "vanaf",
+      "to": "tot",
+      "view_details": "Sien gedetailleerde tariewe en beskikbaarheid",
+      "view_full_details": "Sien Volledige Besonderhede",
+      "special_offers": "Spesiale Aanbiedinge",
+      "valid_from": "Geldig vanaf",
+      "valid_to": "Geldig tot",
+      "valid_dates": "Geldige datums",
+      "terms_conditions": "Bepalings & Voorwaardes",
+      "per_person_sharing": "Per Persoon Deel",
+      "single_occupancy": "Enkelbesetting",
+      "per_room": "Per Kamer",
+      "pricing": "Pryse",
+      "seasonal_pricing": "Seisoenale Tariewe",
+      "room_rates": "Kamer Tariewe",
+      "included": "Ingesluit",
+      "conditions": "Voorwaardes",
+      "amenities": "Geriewe",
+      "rates": "tariewe",
+      "items": "items"
+    },
+    "pricing": {
+      "title": "Tariewe & spesiale aanbiedinge",
+      "from": "Vanaf",
+      "range_note": "Tariewe wissel van {{ min }} tot {{ max }} per persoon per nag, afhangende van akkommodasietipe en seisoen.",
+      "special_offers": "Spesiale Aanbiedinge",
+      "current_offers": "Huidige spesiale aanbiedinge",
+      "all_accommodation_rates": "Alle akkommodasie-opsies en seisoenale tariewe",
+      "accommodation_options": "Akkommodasie-opsies & seisoenale tariewe",
+      "valid_dates": "Geldig:",
+      "terms_conditions": "Bepalings & voorwaardes",
+      "accommodation_rates": "Akkommodasie Tariewe",
+      "per_unit_night": "per eenheid per nag",
+      "per_person_night": "per persoon per nag",
+      "per_person_sharing": "Per persoon per nag, deel",
+      "view_rates": "Sien seisoenale tariewe",
+      "notice_title": "Belangrike prys inligting",
+      "notice_text": "Alle tariewe is onderhewig aan beskikbaarheid en kan sonder kennisgewing verander. Bykomende bewaringsfooie en oordragte mag van toepassing wees. Kontak ons asseblief vir 'n gedetailleerde kwotasie wat aangepas is vir u spesifieke reisdatums en vereistes.",
+      "seasonal_rates": "Seisoenale tariewe",
+      "rates_intro": "Alle tariewe word chronologies volgens seisoen vertoon. Kies 'n tydperk om gedetailleerde pryse en voorwaardes te sien.",
+      "rate_periods": "Tariefperiodes",
+      "rate_includes": "Tarief sluit in",
+      "available_offers": "Beskikbare spesiale aanbiedinge",
+      "view_details": "Sien besonderhede"
+    },
+    "videos": {
+      "heading": "Verwante video's"
+    },
+    "documents": {
+      "heading": "Dokumente & Hulpbronne",
+      "opens_new_window": "Maak PDF in 'n nuwe venster oop",
+      "other": "Ander Dokumente"
+    }
+  },
+  "sections": {
+    "collection": {
+      "empty": "Geen produkte in hierdie versameling gevind nie.",
+      "view_all": "Sien alles"
+    },
+    "property_highlights": {
+      "name": "Eiendomshoogtepunte",
+      "collection_summary": "Ons versameling bestaan uit vyf sorgvuldig saamgestelde eiendomme, elk strategies geposisioneer om onverbiddelike toegang tot Kenia se mees gevierde wildbestemmings te bied en 'n gekombineerde totaal van 68 elegant gemeubileerde akkommodasie-eenhede te bied.",
+      "masai_mara_detail": "Drie eiendomme binne die Masai Mara-ekosisteem, insluitend ons vlagskip Governors' Camp wat in 1972 gestig is",
+      "naivasha_detail": "Loldia House aan die oewer van die Naivashameer, wat diverse landskappe en aktiwiteite bied",
+      "laikipia_detail": "Governors' Mugie House in die Laikipia-plato, wat eksklusiewe toegang tot noordelike Kenia se wildernis bied",
+      "experience_summary": "Van die legendariese Groot Migrasie tot intieme wildontmoetings, kulturele onderdompeling en bewaringsinisiatiewe, lewer elke eiendom outentieke safari-ervarings wat oor vyf dekades van bedryf verfyn is.",
+      "settings": {
+        "heading": {
+          "label": "Opskrif"
+        },
+        "description": {
+          "label": "Beskrywing"
+        },
+        "button_text": {
+          "label": "Knoppie teks"
+        },
+        "button_url": {
+          "label": "Knoppie URL"
+        }
+      },
+      "presets": {
+        "property_highlights": {
+          "name": "Eiendomshoogtepunte"
+        }
+      }
+    },
+    "property_collection_highlights": {
+      "properties": "Eiendomme",
+      "accommodations": "Akkommodasie",
+      "activities": "Aktiwiteite",
+      "dining": "Eetplekke",
+      "wellness": "Welstand",
+      "room_types": "Kamer tipes",
+      "dining_venues": "Eetplekke",
+      "spa": "Spa",
+      "geography_intro": "Geposisioneer oor kenmerkende streke:",
+      "view_property": "Sien eiendom",
+      "view_all_properties": "Sien alle eiendomme",
+      "no_properties": "Geen eiendomme beskikbaar nie"
+    },
+    "group_highlights": {
+      "unique_properties": "Unieke Eiendomme",
+      "luxury_spaces": "Luukse Tente, Suites & Kothuise",
+      "iconic_destinations": "Ikoniese Bestemmings",
+      "explore": "Verken",
+      "view_collection": "Sien versameling"
+    }
+  },
+  "plekify_homepage": {
+    "hero": {
+      "title": "Shopify vir Reis",
+      "subtitle": "geskep in CAPE TOWN",
+      "tagline": "Transformeer jou reisbesigheid met die Shopify e-handelsplatform en Plekify App."
+    },
+    "intro": {
+      "paragraph_1": "Plekify integreer jou bestaande reissisteme—soos ResRequest of Wetu—met die krag van Shopify, die wêreld se voorste e-handelsplatform.",
+      "paragraph_2": "Plekify outomatiseer die skepping en opdatering van 'n pasgemaakte Shopify-winkel op jou eie domein, ontwerp vir reis, deur gebruik te maak van inligting vanaf jou bestaande besprekingsplatform."
+    },
+    "features": {
+      "own_data": {
+        "title": "Besit Jou Besprekings, Besit Jou Data",
+        "description": "Vang elke direkte bespreking op jou domein vas, insluitend betaling. Behou eksklusiewe toegang tot jou eie gasdata vir persoonlike herbemarking, terwyl jy moeiteloos met jou bestaande PMS-stelsel integreer. Resultaat: Hoër winste van verminderde kommissies en herhaalde besigheid."
+      },
+      "multilanguage": {
+        "title": "Moeitelose Multi-Taal Bereik",
+        "description": "Bereik globale reisigers in tot 20 tale, insluitend Engels, Duits, Frans, Nederlands, Italiaans, Spaans, Portugees en Mandaryns. Shopify se ingeboude gereedskap hanteer vertalings, SEO en gelokaliseerde geldeenhede—perfek vir luukse safari's en boetiek lodges wat op internasionale markte fokus."
+      },
+      "addons": {
+        "title": "Verkoop Meer met Byvoegings en Ekstras",
+        "description": "Bied saamgestelde ervarings buite kamers aan: spa-behandelings, wildritte, vervoer, wynproeë en meer. Gaste voeg ekstras by by die betaalpunt, wat die gemiddelde bestelwaarde met 20-30% verhoog."
+      },
+      "marketing": {
+        "title": "Kragtige Bemarking Ingebou",
+        "description_1": "Heraktiveer en kommunikeer op 'n persoonlike manier met jou vorige klante.",
+        "description_2": "Segmenteer en outomatiseer e-posse met Klaviyo integrasie.",
+        "description_3": "Herwin verlate waens, stuur resensies na verblyf en bestuur lojaliteitsprogramme.",
+        "description_4": "Volg veldtogte oor kanale—jou webwerf, Instagram, Google—vanaf een dashboard."
+      },
+      "financial": {
+        "title": "Finansiële Duidelikheid en Skaalbaarheid",
+        "description_1": "Koppel aan poorte soos Peach Payments vir direkte-na-jou-bank vereffenings.",
+        "description_2": "Koppel maklik aan moderne ERP-platforms soos Acumatica Cloud ERP of Oracle Netsuite.",
+        "description_3": "AirBnB's kan maklik rekeningkunde aan QuickBooks of Xero koppel."
+      },
+      "delight": {
+        "title": "Verlustig in Daaglikse Gebruik",
+        "description": "Intuïtiewe bruikbaarheid vir nie-tegniese gebruikers, intydse analise en 24/7 ondersteuning. Shopify is 'n plesier—vinnig, betroubaar en pragtig ontwerp."
+      }
+    },
+    "founder": {
+      "title": "Gestig deur Reis Innovasie Pionier",
+      "description": "Plekify is geskep deur Matthew Swart wat SafariNow.com in 1999 mede-stigter het, Suid-Afrika se baanbrekersreisbesprekingsplatform. Lees sy reis.",
+      "quote": "Ek het Plekify in 2025 geskep omdat ek glo Shopify is nou die slimste keuse vir reis en toerisme in enige plek—skaalbaar, veilig en gebou vir wins."
+    },
+    "prototypes": {
+      "heading": "Prototipe Werwe",
+      "royal": {
+        "title": "The Royal Portfolio",
+        "description": "Ontdek 'n eksklusiewe versameling van ontwerp-geïnspireerde hotelle, luukse safari lodges en privaat villas wat pasgemaakte ervarings in Suid-Afrika se mees ikoniese bestemmings bied.",
+        "prototype_for": "prototipe vir theroyalportfolio.com",
+        "password": "wagwoord plekify",
+        "button": "Bekyk The Royal Portfolio"
+      },
+      "matetsi": {
+        "title": "Matetsi Victoria Falls",
+        "description": "Bekroonde luukse safari-wegbreek op 15 km private Zambezi-rivierfront naby die Victoria Falls UNESCO-werf",
+        "prototype_for": "prototipe vir matetsivictoriafalls.com",
+        "password": "wagwoord plekify",
+        "button": "Bekyk Matetsi Victoria Falls"
+      },
+      "governors": {
+        "title": "Governors' Camp Collection",
+        "description": "Pionier van die uiteindelike safari-ervaring, aan die oewer van die Mara-rivier sedert 1972, ten volle gedompel in die hart van die beste wildbesigtigingsgebiede.",
+        "prototype_for": "prototipe vir governorscamp.com",
+        "password": "wagwoord plekify",
+        "button": "Bekyk The Governors' Collection"
+      },
+      "fundu": {
+        "title": "Fundu Lagoon",
+        "description": "Kaalvoet luuksheid op Pemba-eiland met ongerepte strande en wêreldklas duik, avonture wag!",
+        "prototype_for": "prototipe vir fundulagoon.com",
+        "password": "wagwoord plekify",
+        "button": "Bekyk Fundu Lagoon"
+      }
+    },
+    "plekify_definition": {
+      "word": "plekify",
+      "pronunciation": "/ˈplɛkɪˌfaɪ/",
+      "part_of_speech": "werkwoord",
+      "forms": "(geplekify, plekifying)",
+      "definition": "Om hoë-end reisbesprekings naatloos met e-handelsfunksionaliteit te integreer; om gefragmenteerde lodge-besprekingstelsels te transformeer in verenigde, op-domein Shopify-ervarings.",
+      "etymology": "Van Afrikaans plek (plek) + -ify (om te maak of te veroorsaak om te word), letterlik \"om plekbaar te maak\" of \"om plek bespreekbaar op Shopify te maak\".",
+      "usage_heading": "Gebruik Voorbeelde:",
+      "usage_1": "\"Ons het ons hele portefeulje van safari lodges verlede kwartaal geplekify.\"",
+      "usage_2": "\"Sedert plekifying het die hotel se webwerfbesprekings buitensporig gegroei\"",
+      "related_forms": "plekifikasie (selfstandige naamwoord), plekifiseerbaar (byvoeglike naamwoord)",
+      "synonyms": "stroomlyn, integreer, optimaliseer (reisbesprekings)",
+      "antonyms": "fragmenteer, ontkoppel, kompliseer"
+    },
+    "chatgpt": {
+      "title": "ChatGPT en KI-gereed.",
+      "description": "Plekify-werwe integreer direk met ChatGPT. Kyk en luister om die besonderhede te kry..."
+    },
+    "contact": {
+      "title": "Begin Vandag",
+      "description": "Pasgemaakte implementerings is beskikbaar deur direkte konsultasie met stigter Matthew Swart.",
+      "email_heading": "E-pos",
+      "email_address": "hello@plekify.com",
+      "whatsapp_heading": "WhatsApp",
+      "whatsapp_number": "+27 60 937 4204"
+    }
+  }
+}

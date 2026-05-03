@@ -1,0 +1,344 @@
+{% comment %}
+  Property Menu Bar Section
+  Displays the dynamic property menu in a horizontal navigation bar
+  Designed to be placed at the bottom of pages in dark mode
+{% endcomment %}
+
+{% liquid
+  assign color_scheme = section.settings.color_scheme | default: 'scheme-5'
+  assign section_width = section.settings.section_width | default: 'page-width'
+%}
+
+<div class="property-menu-bar-wrapper color-{{ color_scheme }}">
+  <div class="property-menu-bar section-{{ section_width }}">
+    <div class="property-menu-bar__inner">
+      <div class="property-menu-bar__branding">
+        {% if settings.logo != blank %}
+          <a class="property-menu-bar__logo-link" href="/" aria-label="{{ shop.name }}">
+            {{ settings.logo | image_url: width: 320 | image_tag: widths: '160, 200, 240, 320', alt: shop.name, class: 'property-menu-bar__logo' }}
+          </a>
+        {% else %}
+          <a class="property-menu-bar__logo-text" href="/">{{ shop.name }}</a>
+        {% endif %}
+      </div>
+      <nav class="property-menu-bar__nav" role="navigation" aria-label="Property navigation">
+        <div class="menu-list">
+          <ul class="menu-list__list" role="list">
+            {% render 'dynamic-property-menu' %}
+          </ul>
+        </div>
+      </nav>
+    </div>
+  </div>
+</div>
+
+{% stylesheet %}
+  .property-menu-bar-wrapper {
+    width: 100%;
+    background-color: rgb(var(--color-background-rgb));
+    color: rgb(var(--color-foreground-rgb));
+  }
+
+  .property-menu-bar {
+    margin: 0 auto;
+    padding: {{ section.settings.padding_top }}px {{ section.settings.padding_horizontal }}px {{ section.settings.padding_bottom }}px;
+  }
+
+  .property-menu-bar.section-page-width {
+    max-width: var(--page-width);
+  }
+
+  .property-menu-bar.section-full-width {
+    max-width: 100%;
+    padding-left: max({{ section.settings.padding_horizontal }}px, calc((100vw - var(--page-width)) / 2));
+    padding-right: max({{ section.settings.padding_horizontal }}px, calc((100vw - var(--page-width)) / 2));
+  }
+
+  .property-menu-bar__inner {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 32px;
+  }
+
+  .property-menu-bar__branding {
+    display: flex;
+    align-items: center;
+  }
+
+  .property-menu-bar__logo {
+    height: 28px;
+    width: auto;
+    display: block;
+  }
+
+  .property-menu-bar__logo-text {
+    font-family: var(--font-heading--family);
+    font-size: 1rem;
+    color: rgb(var(--color-foreground-rgb));
+    text-decoration: none;
+  }
+
+  .property-menu-bar__nav {
+    display: flex;
+    justify-content: {{ section.settings.menu_alignment }};
+    align-items: center;
+    flex: 1;
+  }
+
+  /* Match header menu measurements and typography */
+  .property-menu-bar .menu-list {
+    --menu-horizontal-gap: var(--gap-xl);
+    --menu-vertical-gap: var(--gap-xl);
+    --menu-top-level-font-family: var(--font-body--family);
+    --menu-top-level-font-style: var(--font-body--style);
+    --menu-top-level-font-weight: var(--font-body--weight);
+    --menu-top-level-font-size: var(--menu-font-sm--size);
+    --menu-top-level-font-line-height: var(--menu-font-sm--line-height);
+    --menu-top-level-font-size-desktop: 1rem;
+    --menu-top-level-font-case: none;
+    --menu-top-level-font-color: var(--color-foreground);
+    --menu-top-level-font-color-rgb: var(--color-foreground-rgb);
+  }
+
+  .property-menu-bar .menu-list__list {
+    display: flex;
+    align-items: center;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  /* Keep subtle hover consistent with header */
+  .property-menu-bar .menu-list__link:hover,
+  .property-menu-bar .menu-list__link--active {
+    color: var(--menu-top-level-font-color);
+  }
+
+  /* Mobile responsiveness */
+  @media screen and (max-width: 749px) {
+    .property-menu-bar {
+      padding: {{ section.settings.padding_top_mobile }}px {{ section.settings.padding_horizontal_mobile }}px {{ section.settings.padding_bottom_mobile }}px;
+    }
+
+    .property-menu-bar__inner {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 12px;
+    }
+
+    .property-menu-bar__nav { justify-content: {{ section.settings.menu_alignment_mobile }}; }
+
+    .property-menu-bar .menu-list__list {
+      gap: {{ section.settings.menu_gap_mobile }}px;
+      justify-content: {{ section.settings.menu_alignment_mobile }};
+    }
+
+    .property-menu-bar .menu-list__link {
+      padding: 10px 14px;
+      font-size: {{ section.settings.menu_font_size_mobile }};
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Property Menu Bar",
+  "tag": "section",
+  "class": "property-menu-bar-section",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "section_width",
+      "label": "Section Width",
+      "options": [
+        {
+          "value": "page-width",
+          "label": "Page Width"
+        },
+        {
+          "value": "full-width",
+          "label": "Full Width"
+        }
+      ],
+      "default": "page-width"
+    },
+    {
+      "type": "select",
+      "id": "menu_alignment",
+      "label": "Menu Alignment (Desktop)",
+      "options": [
+        {
+          "value": "flex-start",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "flex-end",
+          "label": "Right"
+        }
+      ],
+      "default": "flex-start"
+    },
+    {
+      "type": "select",
+      "id": "menu_alignment_mobile",
+      "label": "Menu Alignment (Mobile)",
+      "options": [
+        {
+          "value": "flex-start",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "flex-end",
+          "label": "Right"
+        }
+      ],
+      "default": "flex-start"
+    },
+    {
+      "type": "header",
+      "content": "Typography"
+    },
+    {
+      "type": "text",
+      "id": "menu_font_size",
+      "label": "Font Size (Desktop)",
+      "default": "0.875rem"
+    },
+    {
+      "type": "text",
+      "id": "menu_font_size_mobile",
+      "label": "Font Size (Mobile)",
+      "default": "0.875rem"
+    },
+    {
+      "type": "range",
+      "id": "menu_gap",
+      "label": "Menu Item Gap (Desktop)",
+      "min": 0,
+      "max": 48,
+      "step": 4,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "range",
+      "id": "menu_gap_mobile",
+      "label": "Menu Item Gap (Mobile)",
+      "min": 0,
+      "max": 32,
+      "step": 4,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "range",
+      "id": "link_border_radius",
+      "label": "Link Border Radius",
+      "min": 0,
+      "max": 20,
+      "step": 1,
+      "unit": "px",
+      "default": 4
+    },
+    {
+      "type": "header",
+      "content": "Color"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color Scheme",
+      "default": "scheme-5"
+    },
+    {
+      "type": "header",
+      "content": "Padding (Desktop)"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "Top Padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 32
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "Bottom Padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 32
+    },
+    {
+      "type": "range",
+      "id": "padding_horizontal",
+      "label": "Horizontal Padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 20
+    },
+    {
+      "type": "header",
+      "content": "Padding (Mobile)"
+    },
+    {
+      "type": "range",
+      "id": "padding_top_mobile",
+      "label": "Top Padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom_mobile",
+      "label": "Bottom Padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "range",
+      "id": "padding_horizontal_mobile",
+      "label": "Horizontal Padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 16
+    }
+  ],
+  "presets": [
+    {
+      "name": "Property Menu Bar"
+    }
+  ]
+}
+{% endschema %}
+

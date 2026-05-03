@@ -1,0 +1,1563 @@
+{% comment %}
+  ============================================================================
+  WETU ITINERARY TRAVEL BRIEF - 50-50 MAP SPLIT LAYOUT
+  ============================================================================
+  
+  Comprehensive travel overview with interactive map on the left and 
+  tabbed content on the right. Inspired by Livand Travel design.
+  
+  FEATURES:
+  - 50-50 split layout (map left, tabs right)
+  - Sticky map on desktop
+  - Tabbed interface: Overview, Flights, Accommodations, Contacts
+  - Full responsive mobile layout
+  
+  ============================================================================
+{% endcomment %}
+
+{% comment %} Load itinerary data {% endcomment %}
+{% render 'wetu-itinerary-data', product: product %}
+
+{% comment %} Get itinerary data {% endcomment %}
+{% assign itinerary = wetu_itinerary %}
+{% assign total_days = wetu_total_days | default: product.metafields.wetu.itinerary_days.value | default: 0 %}
+{% assign total_nights = wetu_total_nights | default: total_days | minus: 1 %}
+{% assign flight_count = wetu_flight_count | default: 0 %}
+{% assign trip_start_date = itinerary.start_date.value %}
+
+{% comment %} Get summary content {% endcomment %}
+{% assign summary_content = itinerary.summary.value %}
+{% assign summary_metafield = product.metafields.wetu.itinerary_summary.value %}
+
+{% comment %} Count accommodations {% endcomment %}
+{% assign accommodation_count = 0 %}
+{% for leg in wetu_legs %}
+  {% assign leg_type = leg.type.value | default: 'Standard' %}
+  {% assign leg_nights = leg.nights.value | default: 0 %}
+  {% if leg_type != 'Departure' and leg_nights > 0 %}
+    {% assign accommodation_count = accommodation_count | plus: 1 %}
+  {% endif %}
+{% endfor %}
+
+{% comment %} Build flight routes data {% endcomment %}
+{% assign flight_routes = '' %}
+{% for route in wetu_routes %}
+  {% assign route_mode = route.mode.value | downcase %}
+  {% if route_mode contains 'flight' %}
+    {% if flight_routes != '' %}
+      {% assign flight_routes = flight_routes | append: '|||' %}
+    {% endif %}
+    {% assign flight_routes = flight_routes | append: route.sequence.value | append: '::' | append: route.from_name.value | append: '::' | append: route.to_name.value | append: '::' | append: route.departure_time.value | append: '::' | append: route.arrival_time.value | append: '::' | append: route.carrier.value | append: '::' | append: route.flight_number.value | append: '::' | append: route.mode.value %}
+  {% endif %}
+{% endfor %}
+{% assign flight_routes_array = flight_routes | split: '|||' %}
+
+{% comment %} Build markers data for map {% endcomment %}
+{% capture markers_json %}
+[
+  {% assign marker_index = 0 %}
+  {% assign current_day = 1 %}
+  {% for leg in wetu_legs %}
+    {% assign leg_type = leg.type.value | default: "Standard" %}
+    {% assign leg_nights = leg.nights.value | default: 0 %}
+    
+    {% if leg_type == "Departure" %}
+      {% continue %}
+    {% endif %}
+    
+    {% assign content_id = leg.content_entity_id.value | append: '' %}
+    {% assign property = nil %}
+    
+    {% for acc_prod in wetu_accommodation_products %}
+      {% assign prod_pin_id = acc_prod.metafields.wetu.pin_id.value | append: '' %}
+      {% if prod_pin_id == content_id %}
+        {% assign property = acc_prod %}
+        {% break %}
+      {% endif %}
+    {% endfor %}
+    
+    {% assign accommodation_name = leg.accommodation_name.value | default: property.title | default: "Destination" %}
+    
+    {% if property != blank %}
+      {% assign position = property.metafields.wetu.position.value %}
+      
+      {% if position.latitude != blank and position.longitude != blank %}
+        {% if marker_index > 0 %},{% endif %}
+        {
+          "id": "marker-{{ content_id }}",
+          "name": {{ accommodation_name | json }},
+          "lat": {{ position.latitude }},
+          "lng": {{ position.longitude }},
+          "nights": {{ leg_nights }},
+          "day": {{ current_day }},
+          "sequence": {{ marker_index | plus: 1 }}
+        }
+        {% assign marker_index = marker_index | plus: 1 %}
+      {% endif %}
+    {% endif %}
+    
+    {% assign current_day = current_day | plus: leg_nights %}
+  {% endfor %}
+]
+{% endcapture %}
+
+{% comment %} Build routes data for map {% endcomment %}
+{% capture routes_json %}
+[
+  {% assign route_index = 0 %}
+  {% for route in wetu_routes %}
+    {% assign start_product = route.start_product.value %}
+    {% assign end_product = route.end_product.value %}
+    
+    {% assign start_position = start_product.metafields.wetu.position.value %}
+    {% assign end_position = end_product.metafields.wetu.position.value %}
+    
+    {% assign start_lat = route.start_latitude.value | default: start_position.latitude %}
+    {% assign start_lng = route.start_longitude.value | default: start_position.longitude %}
+    {% assign end_lat = route.end_latitude.value | default: end_position.latitude %}
+    {% assign end_lng = route.end_longitude.value | default: end_position.longitude %}
+    
+    {% assign route_mode = route.mode.value | downcase %}
+    {% assign is_flight = false %}
+    {% if route_mode contains 'flight' %}
+      {% assign is_flight = true %}
+    {% endif %}
+    
+    {% if start_lat != blank and end_lat != blank %}
+      {% if route_index > 0 %},{% endif %}
+      {
+        "startLat": {{ start_lat }},
+        "startLng": {{ start_lng }},
+        "endLat": {{ end_lat }},
+        "endLng": {{ end_lng }},
+        "isFlight": {{ is_flight }}
+      }
+      {% assign route_index = route_index | plus: 1 %}
+    {% endif %}
+  {% endfor %}
+]
+{% endcapture %}
+
+{% comment %} Map full view URL {% endcomment %}
+{% assign map_url = product.url | replace: 'wetu-itinerary', 'wetu-itinerary-map' %}
+
+<section 
+  class="travel-brief color-{{ section.settings.color_scheme }}"
+  data-section-id="{{ section.id }}"
+  data-section-type="travel-brief"
+>
+  <div class="travel-brief__container">
+    
+    {% comment %} ===================== LEFT: MAP COLUMN ===================== {% endcomment %}
+    <div class="travel-brief__map-column color-{{ section.settings.map_color_scheme }}">
+      <div class="travel-brief__map-wrapper">
+        <div id="travel-brief-map-{{ section.id }}" class="travel-brief__map"></div>
+        
+        {% comment %} Loading state {% endcomment %}
+        <div class="travel-brief__map-loading">
+          <div class="travel-brief__map-spinner"></div>
+        </div>
+        
+        {% comment %} View Full Map Button {% endcomment %}
+        <a href="{{ map_url }}" class="travel-brief__full-map-btn">
+          <span>View Full Map</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+            <polyline points="15 3 21 3 21 9"/>
+            <line x1="10" y1="14" x2="21" y2="3"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+    
+    {% comment %} ===================== RIGHT: TABS COLUMN ===================== {% endcomment %}
+    <div class="travel-brief__content-column">
+      <div class="travel-brief__content-inner">
+        
+
+        
+        {% comment %} Tab Navigation {% endcomment %}
+        <nav class="travel-brief__tabs" role="tablist" aria-label="Journey details">
+          <button 
+            class="travel-brief__tab is-active" 
+            role="tab" 
+            aria-selected="true" 
+            aria-controls="panel-overview-{{ section.id }}"
+            id="tab-overview-{{ section.id }}"
+            data-tab="overview"
+          >
+            Overview
+          </button>
+          
+          {% if section.settings.show_flights_tab and flight_count > 0 %}
+            <button 
+              class="travel-brief__tab" 
+              role="tab" 
+              aria-selected="false" 
+              aria-controls="panel-flights-{{ section.id }}"
+              id="tab-flights-{{ section.id }}"
+              data-tab="flights"
+            >
+              Flights
+            </button>
+          {% endif %}
+          
+          {% if section.settings.show_accommodations_tab and accommodation_count > 0 %}
+            <button 
+              class="travel-brief__tab" 
+              role="tab" 
+              aria-selected="false" 
+              aria-controls="panel-accommodations-{{ section.id }}"
+              id="tab-accommodations-{{ section.id }}"
+              data-tab="accommodations"
+            >
+              Accommodations
+            </button>
+          {% endif %}
+          
+          {% if section.settings.show_contacts_tab %}
+            <button 
+              class="travel-brief__tab" 
+              role="tab" 
+              aria-selected="false" 
+              aria-controls="panel-contacts-{{ section.id }}"
+              id="tab-contacts-{{ section.id }}"
+              data-tab="contacts"
+            >
+              Contacts
+            </button>
+          {% endif %}
+        </nav>
+        
+        {% comment %} Tab Panels {% endcomment %}
+        <div class="travel-brief__panels">
+          
+          {% comment %} ========== OVERVIEW PANEL ========== {% endcomment %}
+          <div 
+            class="travel-brief__panel is-active" 
+            role="tabpanel" 
+            id="panel-overview-{{ section.id }}"
+            aria-labelledby="tab-overview-{{ section.id }}"
+            data-panel="overview"
+          >
+            {% comment %} Key Dates / Itinerary Summary {% endcomment %}
+            {% if wetu_legs.size > 0 %}
+              <div class="travel-brief__key-dates">
+                <h3 class="travel-brief__section-title">Key Dates</h3>
+                <ol class="travel-brief__dates-list">
+                  {% assign running_day = 1 %}
+                  {% for leg in wetu_legs %}
+                    {% assign leg_type = leg.type.value | default: 'Standard' %}
+                    {% assign leg_nights = leg.nights.value | default: 0 %}
+                    
+                    {% if leg_type != 'Departure' and leg_nights > 0 %}
+                      {% assign acc_name = leg.accommodation_name.value %}
+                      {% assign day_end = running_day | plus: leg_nights | minus: 1 %}
+                      
+                      {% comment %} Calculate actual dates if start date available {% endcomment %}
+                      {% assign check_in_date = nil %}
+                      {% assign check_out_date = nil %}
+                      {% if trip_start_date != blank %}
+                        {% assign day_offset = running_day | minus: 1 | times: 86400 %}
+                        {% assign check_in_timestamp = trip_start_date | date: "%s" | plus: day_offset %}
+                        {% assign check_in_date = check_in_timestamp | date: "%b %d" %}
+                        
+                        {% assign checkout_offset = running_day | plus: leg_nights | minus: 1 | times: 86400 %}
+                        {% assign check_out_timestamp = trip_start_date | date: "%s" | plus: checkout_offset %}
+                        {% assign check_out_date = check_out_timestamp | date: "%b %d" %}
+                      {% endif %}
+                      
+                      <li class="travel-brief__date-item">
+                        <span class="travel-brief__date-number">{{ forloop.index }}</span>
+                        <div class="travel-brief__date-content">
+                          <span class="travel-brief__date-name">{{ acc_name }}</span>
+                          <span class="travel-brief__date-range">
+                            {% if check_in_date != blank %}
+                              {{ check_in_date }}{% if check_out_date != blank and check_out_date != check_in_date %} → {{ check_out_date }}{% endif %}
+                            {% else %}
+                              Day {{ running_day }}{% if day_end != running_day %} - {{ day_end }}{% endif %}
+                            {% endif %}
+                            <span class="travel-brief__date-nights">({{ leg_nights }} {% if leg_nights == 1 %}night{% else %}nights{% endif %})</span>
+                          </span>
+                        </div>
+                      </li>
+                      
+                      {% assign running_day = running_day | plus: leg_nights %}
+                    {% endif %}
+                  {% endfor %}
+                </ol>
+              </div>
+            {% endif %}
+            
+            {% comment %} Introduction Text {% endcomment %}
+            {% if summary_content != blank or summary_metafield != blank or product.description != blank %}
+              <div class="travel-brief__introduction">
+                <h3 class="travel-brief__section-title">About This Journey</h3>
+                <div class="travel-brief__intro-text rte">
+                  {% if summary_content != blank %}
+                    {% render 'wetu-rich-text', content: summary_content %}
+                  {% elsif summary_metafield != blank %}
+                    {% render 'wetu-rich-text', content: summary_metafield %}
+                  {% elsif product.description != blank %}
+                    {{ product.description }}
+                  {% endif %}
+                </div>
+              </div>
+            {% endif %}
+          </div>
+          
+          {% comment %} ========== FLIGHTS PANEL ========== {% endcomment %}
+          {% if section.settings.show_flights_tab and flight_count > 0 %}
+            <div 
+              class="travel-brief__panel" 
+              role="tabpanel" 
+              id="panel-flights-{{ section.id }}"
+              aria-labelledby="tab-flights-{{ section.id }}"
+              data-panel="flights"
+              hidden
+            >
+              <h3 class="travel-brief__section-title">Flight Details</h3>
+              
+              <div class="travel-brief__flights-list">
+                {% for route in wetu_routes %}
+                  {% assign route_mode = route.mode.value | downcase %}
+                  {% if route_mode contains 'flight' %}
+                    {% assign from_name = route.from_name.value | default: route.start_name.value | default: route.start_location.value %}
+                    {% assign to_name = route.to_name.value | default: route.end_name.value | default: route.end_location.value %}
+                    {% assign departure_time = route.departure_time.value %}
+                    {% assign arrival_time = route.arrival_time.value %}
+                    {% assign carrier = route.carrier.value %}
+                    {% assign flight_number = route.flight_number.value %}
+                    {% assign flight_mode = route.mode.value %}
+                    
+                    <div class="travel-brief__flight-card">
+                      <div class="travel-brief__flight-icon">
+                        {% if flight_mode contains 'Charter' %}
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
+                          </svg>
+                        {% else %}
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
+                          </svg>
+                        {% endif %}
+                      </div>
+                      
+                      <div class="travel-brief__flight-details">
+                        <div class="travel-brief__flight-route">
+                          <span class="travel-brief__flight-from">{{ from_name | default: 'Departure' }}</span>
+                          <span class="travel-brief__flight-arrow">→</span>
+                          <span class="travel-brief__flight-to">{{ to_name | default: 'Arrival' }}</span>
+                        </div>
+                        
+                        <div class="travel-brief__flight-meta">
+                          {% if departure_time != blank or arrival_time != blank %}
+                            <span class="travel-brief__flight-times">
+                              {{ departure_time | default: '--:--' }} - {{ arrival_time | default: '--:--' }}
+                            </span>
+                          {% endif %}
+                          
+                          {% if carrier != blank or flight_number != blank %}
+                            <span class="travel-brief__flight-number">
+                              {{ carrier }}{% if carrier != blank and flight_number != blank %} {% endif %}{{ flight_number }}
+                            </span>
+                          {% endif %}
+                          
+                          <span class="travel-brief__flight-type">{{ flight_mode }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  {% endif %}
+                {% endfor %}
+              </div>
+            </div>
+          {% endif %}
+          
+          {% comment %} ========== ACCOMMODATIONS PANEL ========== {% endcomment %}
+          {% if section.settings.show_accommodations_tab and accommodation_count > 0 %}
+            <div 
+              class="travel-brief__panel" 
+              role="tabpanel" 
+              id="panel-accommodations-{{ section.id }}"
+              aria-labelledby="tab-accommodations-{{ section.id }}"
+              data-panel="accommodations"
+              hidden
+            >
+              <h3 class="travel-brief__section-title">Accommodation Details</h3>
+              
+              {% comment %} Desktop Table {% endcomment %}
+              <div class="travel-brief__table-wrapper">
+                <table class="travel-brief__table">
+                  <thead>
+                    <tr>
+                      <th class="travel-brief__th">Property</th>
+                      <th class="travel-brief__th">Dates</th>
+                      <th class="travel-brief__th">Nights</th>
+                      <th class="travel-brief__th">Room Type</th>
+                      <th class="travel-brief__th">Basis</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% assign running_day = 1 %}
+                    {% for leg in wetu_legs %}
+                      {% assign leg_type = leg.type.value | default: 'Standard' %}
+                      {% assign leg_nights = leg.nights.value | default: 0 %}
+                      
+                      {% if leg_type != 'Departure' and leg_nights > 0 %}
+                        {% assign acc_name = leg.accommodation_name.value %}
+                        {% assign room_type = leg.room_type.value | default: leg.room_configuration.value %}
+                        {% assign meal_basis = leg.basis.value | default: leg.meal_basis.value %}
+                        
+                        {% comment %} Calculate dates {% endcomment %}
+                        {% assign check_in_date = nil %}
+                        {% assign check_out_date = nil %}
+                        {% if trip_start_date != blank %}
+                          {% assign day_offset = running_day | minus: 1 | times: 86400 %}
+                          {% assign check_in_timestamp = trip_start_date | date: "%s" | plus: day_offset %}
+                          {% assign check_in_date = check_in_timestamp | date: "%b %d" %}
+                          
+                          {% assign checkout_offset = running_day | plus: leg_nights | minus: 1 | times: 86400 %}
+                          {% assign check_out_timestamp = trip_start_date | date: "%s" | plus: checkout_offset %}
+                          {% assign check_out_date = check_out_timestamp | date: "%b %d" %}
+                        {% endif %}
+                        
+                        <tr class="travel-brief__tr">
+                          <td class="travel-brief__td travel-brief__td--name">{{ acc_name }}</td>
+                          <td class="travel-brief__td travel-brief__td--dates">
+                            {% if check_in_date != blank %}
+                              {{ check_in_date }} → {{ check_out_date }}
+                            {% else %}
+                              Day {{ running_day }} - {{ running_day | plus: leg_nights }}
+                            {% endif %}
+                          </td>
+                          <td class="travel-brief__td travel-brief__td--nights">{{ leg_nights }}</td>
+                          <td class="travel-brief__td travel-brief__td--room">{{ room_type | default: '—' }}</td>
+                          <td class="travel-brief__td travel-brief__td--basis">
+                            {% if meal_basis != blank %}
+                              <span class="travel-brief__basis-badge">{{ meal_basis }}</span>
+                            {% else %}
+                              —
+                            {% endif %}
+                          </td>
+                        </tr>
+                        
+                        {% assign running_day = running_day | plus: leg_nights %}
+                      {% endif %}
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+              
+              {% comment %} Mobile Cards {% endcomment %}
+              <div class="travel-brief__acc-cards">
+                {% assign running_day = 1 %}
+                {% for leg in wetu_legs %}
+                  {% assign leg_type = leg.type.value | default: 'Standard' %}
+                  {% assign leg_nights = leg.nights.value | default: 0 %}
+                  
+                  {% if leg_type != 'Departure' and leg_nights > 0 %}
+                    {% assign acc_name = leg.accommodation_name.value %}
+                    {% assign room_type = leg.room_type.value | default: leg.room_configuration.value %}
+                    {% assign meal_basis = leg.basis.value | default: leg.meal_basis.value %}
+                    
+                    {% assign check_in_date = nil %}
+                    {% assign check_out_date = nil %}
+                    {% if trip_start_date != blank %}
+                      {% assign day_offset = running_day | minus: 1 | times: 86400 %}
+                      {% assign check_in_timestamp = trip_start_date | date: "%s" | plus: day_offset %}
+                      {% assign check_in_date = check_in_timestamp | date: "%b %d" %}
+                      
+                      {% assign checkout_offset = running_day | plus: leg_nights | minus: 1 | times: 86400 %}
+                      {% assign check_out_timestamp = trip_start_date | date: "%s" | plus: checkout_offset %}
+                      {% assign check_out_date = check_out_timestamp | date: "%b %d" %}
+                    {% endif %}
+                    
+                    <div class="travel-brief__acc-card">
+                      <div class="travel-brief__acc-card-header">
+                        <span class="travel-brief__acc-card-name">{{ acc_name }}</span>
+                        <span class="travel-brief__acc-card-nights">{{ leg_nights }} {% if leg_nights == 1 %}night{% else %}nights{% endif %}</span>
+                      </div>
+                      <div class="travel-brief__acc-card-details">
+                        <div class="travel-brief__acc-card-row">
+                          <span class="travel-brief__acc-card-label">Dates</span>
+                          <span class="travel-brief__acc-card-value">
+                            {% if check_in_date != blank %}
+                              {{ check_in_date }} → {{ check_out_date }}
+                            {% else %}
+                              Day {{ running_day }} - {{ running_day | plus: leg_nights }}
+                            {% endif %}
+                          </span>
+                        </div>
+                        {% if room_type != blank %}
+                          <div class="travel-brief__acc-card-row">
+                            <span class="travel-brief__acc-card-label">Room</span>
+                            <span class="travel-brief__acc-card-value">{{ room_type }}</span>
+                          </div>
+                        {% endif %}
+                        {% if meal_basis != blank %}
+                          <div class="travel-brief__acc-card-row">
+                            <span class="travel-brief__acc-card-label">Meals</span>
+                            <span class="travel-brief__acc-card-value">
+                              <span class="travel-brief__basis-badge">{{ meal_basis }}</span>
+                            </span>
+                          </div>
+                        {% endif %}
+                      </div>
+                    </div>
+                    
+                    {% assign running_day = running_day | plus: leg_nights %}
+                  {% endif %}
+                {% endfor %}
+              </div>
+              
+              {% comment %} Meal Basis Legend {% endcomment %}
+              <div class="travel-brief__legend">
+                <span class="travel-brief__legend-title">Meal Plan Key:</span>
+                <span class="travel-brief__legend-item"><strong>AI</strong> All Inclusive</span>
+                <span class="travel-brief__legend-item"><strong>FB</strong> Full Board</span>
+                <span class="travel-brief__legend-item"><strong>FB+</strong> Full Board Plus</span>
+                <span class="travel-brief__legend-item"><strong>HB</strong> Half Board</span>
+                <span class="travel-brief__legend-item"><strong>BB</strong> Bed & Breakfast</span>
+                <span class="travel-brief__legend-item"><strong>RO</strong> Room Only</span>
+              </div>
+            </div>
+          {% endif %}
+          
+          {% comment %} ========== CONTACTS PANEL ========== {% endcomment %}
+          {% if section.settings.show_contacts_tab %}
+            <div 
+              class="travel-brief__panel" 
+              role="tabpanel" 
+              id="panel-contacts-{{ section.id }}"
+              aria-labelledby="tab-contacts-{{ section.id }}"
+              data-panel="contacts"
+              hidden
+            >
+              <h3 class="travel-brief__section-title">Contact Information</h3>
+              
+              {% assign operator_name = itinerary.operator_name.value | default: shop.name %}
+              {% assign operator_email = itinerary.operator_email.value | default: shop.email %}
+              {% assign operator_phone = itinerary.operator_phone.value %}
+              {% assign booking_ref = itinerary.booking_reference.value | default: product.metafields.wetu.itinerary_identifier.value %}
+              {% assign emergency_contact = itinerary.emergency_contact.value %}
+              
+              <div class="travel-brief__contacts-grid">
+                {% if operator_name != blank %}
+                  <div class="travel-brief__contact-card">
+                    <div class="travel-brief__contact-icon">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                      </svg>
+                    </div>
+                    <div class="travel-brief__contact-content">
+                      <span class="travel-brief__contact-label">Tour Operator</span>
+                      <span class="travel-brief__contact-value">{{ operator_name }}</span>
+                    </div>
+                  </div>
+                {% endif %}
+                
+                {% if operator_email != blank %}
+                  <div class="travel-brief__contact-card">
+                    <div class="travel-brief__contact-icon">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                        <polyline points="22,6 12,13 2,6"/>
+                      </svg>
+                    </div>
+                    <div class="travel-brief__contact-content">
+                      <span class="travel-brief__contact-label">Email</span>
+                      <a href="mailto:{{ operator_email }}" class="travel-brief__contact-value travel-brief__contact-link">{{ operator_email }}</a>
+                    </div>
+                  </div>
+                {% endif %}
+                
+                {% if operator_phone != blank %}
+                  <div class="travel-brief__contact-card">
+                    <div class="travel-brief__contact-icon">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                      </svg>
+                    </div>
+                    <div class="travel-brief__contact-content">
+                      <span class="travel-brief__contact-label">Phone</span>
+                      <a href="tel:{{ operator_phone | remove: ' ' }}" class="travel-brief__contact-value travel-brief__contact-link">{{ operator_phone }}</a>
+                    </div>
+                  </div>
+                {% endif %}
+                
+                {% if booking_ref != blank %}
+                  <div class="travel-brief__contact-card">
+                    <div class="travel-brief__contact-icon">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                      </svg>
+                    </div>
+                    <div class="travel-brief__contact-content">
+                      <span class="travel-brief__contact-label">Booking Reference</span>
+                      <span class="travel-brief__contact-value">{{ booking_ref }}</span>
+                    </div>
+                  </div>
+                {% endif %}
+                
+                {% if emergency_contact != blank %}
+                  <div class="travel-brief__contact-card travel-brief__contact-card--emergency">
+                    <div class="travel-brief__contact-icon">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="8" x2="12" y2="12"/>
+                        <line x1="12" y1="16" x2="12.01" y2="16"/>
+                      </svg>
+                    </div>
+                    <div class="travel-brief__contact-content">
+                      <span class="travel-brief__contact-label">Emergency Contact</span>
+                      <span class="travel-brief__contact-value">{{ emergency_contact }}</span>
+                    </div>
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+          {% endif %}
+          
+        </div>
+      </div>
+    </div>
+    
+  </div>
+</section>
+
+<style>
+  /* =============================================
+     TRAVEL BRIEF - 50-50 MAP SPLIT LAYOUT
+     Mobile-first responsive CSS
+     ============================================= */
+  
+  .travel-brief {
+    --tb-gap: 0;
+    --tb-content-padding: 32px 24px;
+    --tb-heading-size: 28px;
+    --tb-tab-height: 48px;
+    background: var(--wetu-bg, var(--color-background, #fff));
+    color: var(--wetu-text, var(--color-foreground, #1a1a1a));
+  }
+  
+  .travel-brief__container {
+    display: grid;
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+  
+  /* ========== MAP COLUMN ========== */
+  .travel-brief__map-column {
+    position: relative;
+    aspect-ratio: 4 / 3;
+    background: #1a1a2e;
+  }
+  
+  .travel-brief__map-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+  
+  .travel-brief__map {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  
+  .travel-brief__map-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    z-index: 5;
+    transition: opacity 0.4s ease, visibility 0.4s ease;
+  }
+  
+  .travel-brief__map-loading.is-hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+  
+  .travel-brief__map-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid rgba(255, 255, 255, 0.2);
+    border-top-color: #10b981;
+    border-radius: 50%;
+    animation: tb-spin 1s linear infinite;
+  }
+  
+  @keyframes tb-spin {
+    to { transform: rotate(360deg); }
+  }
+  
+  /* View Full Map Button */
+  .travel-brief__full-map-btn {
+    position: absolute;
+    bottom: 16px;
+    right: 16px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: transform 0.15s ease, background 0.15s ease;
+    z-index: 10;
+  }
+  
+  .travel-brief__full-map-btn:hover {
+    background: rgba(0, 0, 0, 0.75);
+    transform: scale(1.02);
+  }
+  
+  .travel-brief__full-map-btn svg {
+    flex-shrink: 0;
+  }
+  
+  /* ========== CONTENT COLUMN ========== */
+  .travel-brief__content-column {
+    background: var(--wetu-bg, var(--color-background, #fff));
+  }
+  
+  .travel-brief__content-inner {
+    padding: var(--tb-content-padding);
+    max-width: 640px;
+    margin: 0 auto;
+  }
+  
+  /* Header */
+  .travel-brief__header {
+    margin-bottom: 24px;
+  }
+  
+  .travel-brief__heading {
+    font-size: var(--tb-heading-size);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin: 0;
+    color: var(--wetu-text, var(--color-foreground));
+  }
+  
+  /* ========== TABS ========== */
+  .travel-brief__tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--wetu-border, rgba(0,0,0,0.1));
+    margin-bottom: 24px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  
+  .travel-brief__tabs::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .travel-brief__tab {
+    position: relative;
+    padding: 12px 16px;
+    background: none;
+    border: none;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--wetu-text-secondary, rgba(0,0,0,0.6));
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color 0.15s ease;
+  }
+  
+  .travel-brief__tab::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--wetu-accent, var(--color-primary, #2563eb));
+    transform: scaleX(0);
+    transition: transform 0.15s ease;
+  }
+  
+  .travel-brief__tab:hover {
+    color: var(--wetu-text, var(--color-foreground));
+  }
+  
+  .travel-brief__tab.is-active {
+    color: var(--wetu-text, var(--color-foreground));
+    font-weight: 600;
+  }
+  
+  .travel-brief__tab.is-active::after {
+    transform: scaleX(1);
+  }
+  
+  /* ========== PANELS ========== */
+  .travel-brief__panels {
+    position: relative;
+  }
+  
+  .travel-brief__panel {
+    animation: tb-fadeIn 0.15s ease;
+  }
+  
+  .travel-brief__panel[hidden] {
+    display: none;
+  }
+  
+  @keyframes tb-fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  .travel-brief__section-title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--wetu-text-muted, rgba(0,0,0,0.5));
+    margin: 0 0 16px 0;
+  }
+  
+  /* ========== STATS ========== */
+  .travel-brief__stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  
+  .travel-brief__stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 16px;
+    background: var(--wetu-bg-secondary, rgba(0,0,0,0.03));
+    border-radius: 12px;
+  }
+  
+  .travel-brief__stat-icon {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--wetu-accent, var(--color-primary, #2563eb));
+    margin-bottom: 8px;
+  }
+  
+  .travel-brief__stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    color: var(--wetu-text, var(--color-foreground));
+  }
+  
+  .travel-brief__stat-label {
+    font-size: 12px;
+    color: var(--wetu-text-muted, rgba(0,0,0,0.5));
+    margin-top: 4px;
+  }
+  
+  /* ========== KEY DATES ========== */
+  .travel-brief__key-dates {
+    margin-bottom: 32px;
+  }
+  
+  .travel-brief__dates-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .travel-brief__date-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .travel-brief__date-number {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--wetu-accent, var(--color-primary, #2563eb));
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 50%;
+  }
+  
+  .travel-brief__date-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-top: 2px;
+  }
+  
+  .travel-brief__date-name {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--wetu-text, var(--color-foreground));
+  }
+  
+  .travel-brief__date-range {
+    font-size: 13px;
+    color: var(--wetu-text-secondary, rgba(0,0,0,0.6));
+  }
+  
+  .travel-brief__date-nights {
+    color: var(--wetu-text-muted, rgba(0,0,0,0.45));
+    margin-left: 4px;
+  }
+  
+  /* ========== INTRODUCTION ========== */
+  .travel-brief__introduction {
+    margin-bottom: 32px;
+  }
+  
+  .travel-brief__intro-text {
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--wetu-text-secondary, rgba(0,0,0,0.75));
+  }
+  
+  .travel-brief__intro-text p:first-child {
+    margin-top: 0;
+  }
+  
+  .travel-brief__intro-text p:last-child {
+    margin-bottom: 0;
+  }
+  
+  /* ========== FLIGHTS ========== */
+  .travel-brief__flights-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .travel-brief__flight-card {
+    display: flex;
+    gap: 12px;
+    padding: 16px;
+    background: var(--wetu-bg-secondary, rgba(0,0,0,0.03));
+    border-radius: 12px;
+  }
+  
+  .travel-brief__flight-icon {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--wetu-accent, var(--color-primary, #2563eb));
+    color: #fff;
+    border-radius: 8px;
+  }
+  
+  .travel-brief__flight-details {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .travel-brief__flight-route {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--wetu-text, var(--color-foreground));
+    margin-bottom: 4px;
+  }
+  
+  .travel-brief__flight-arrow {
+    color: var(--wetu-text-muted, rgba(0,0,0,0.4));
+  }
+  
+  .travel-brief__flight-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    font-size: 13px;
+    color: var(--wetu-text-secondary, rgba(0,0,0,0.6));
+  }
+  
+  .travel-brief__flight-type {
+    padding: 2px 8px;
+    background: var(--wetu-bg-tertiary, rgba(0,0,0,0.06));
+    border-radius: 4px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  
+  /* ========== ACCOMMODATIONS TABLE ========== */
+  .travel-brief__table-wrapper {
+    display: none;
+    overflow-x: auto;
+    margin-bottom: 16px;
+  }
+  
+  .travel-brief__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  
+  .travel-brief__th {
+    text-align: left;
+    padding: 10px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--wetu-text-muted, rgba(0,0,0,0.5));
+    border-bottom: 1px solid var(--wetu-border, rgba(0,0,0,0.1));
+    white-space: nowrap;
+  }
+  
+  .travel-brief__td {
+    padding: 12px;
+    border-bottom: 1px solid var(--wetu-border, rgba(0,0,0,0.06));
+    vertical-align: top;
+  }
+  
+  .travel-brief__tr:hover .travel-brief__td {
+    background: var(--wetu-bg-secondary, rgba(0,0,0,0.02));
+  }
+  
+  .travel-brief__td--name {
+    font-weight: 500;
+    color: var(--wetu-text, var(--color-foreground));
+  }
+  
+  .travel-brief__td--dates,
+  .travel-brief__td--nights,
+  .travel-brief__td--room {
+    color: var(--wetu-text-secondary, rgba(0,0,0,0.7));
+    white-space: nowrap;
+  }
+  
+  .travel-brief__basis-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    background: var(--wetu-accent, var(--color-primary, #2563eb));
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 4px;
+    text-transform: uppercase;
+  }
+  
+  /* Accommodation Cards (Mobile) */
+  .travel-brief__acc-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  
+  .travel-brief__acc-card {
+    padding: 16px;
+    background: var(--wetu-bg-secondary, rgba(0,0,0,0.03));
+    border-radius: 12px;
+  }
+  
+  .travel-brief__acc-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  
+  .travel-brief__acc-card-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--wetu-text, var(--color-foreground));
+  }
+  
+  .travel-brief__acc-card-nights {
+    flex-shrink: 0;
+    padding: 4px 10px;
+    background: var(--wetu-accent, var(--color-primary, #2563eb));
+    color: #fff;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 100px;
+    white-space: nowrap;
+  }
+  
+  .travel-brief__acc-card-details {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  
+  .travel-brief__acc-card-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 13px;
+  }
+  
+  .travel-brief__acc-card-label {
+    color: var(--wetu-text-muted, rgba(0,0,0,0.5));
+  }
+  
+  .travel-brief__acc-card-value {
+    color: var(--wetu-text-secondary, rgba(0,0,0,0.75));
+    text-align: right;
+  }
+  
+  /* Legend */
+  .travel-brief__legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--wetu-border, rgba(0,0,0,0.08));
+    font-size: 11px;
+    color: var(--wetu-text-muted, rgba(0,0,0,0.5));
+  }
+  
+  .travel-brief__legend-title {
+    font-weight: 600;
+    color: var(--wetu-text-secondary, rgba(0,0,0,0.6));
+  }
+  
+  .travel-brief__legend-item strong {
+    color: var(--wetu-text, var(--color-foreground));
+    margin-right: 2px;
+  }
+  
+  /* ========== CONTACTS ========== */
+  .travel-brief__contacts-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .travel-brief__contact-card {
+    display: flex;
+    gap: 12px;
+    padding: 16px;
+    background: var(--wetu-bg-secondary, rgba(0,0,0,0.03));
+    border-radius: 12px;
+  }
+  
+  .travel-brief__contact-card--emergency {
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+  }
+  
+  .travel-brief__contact-card--emergency .travel-brief__contact-icon {
+    color: #ef4444;
+  }
+  
+  .travel-brief__contact-icon {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--wetu-accent, var(--color-primary, #2563eb));
+  }
+  
+  .travel-brief__contact-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  
+  .travel-brief__contact-label {
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--wetu-text-muted, rgba(0,0,0,0.5));
+  }
+  
+  .travel-brief__contact-value {
+    font-size: 15px;
+    color: var(--wetu-text, var(--color-foreground));
+    word-break: break-word;
+  }
+  
+  .travel-brief__contact-link {
+    color: var(--wetu-accent, var(--color-primary, #2563eb));
+    text-decoration: none;
+  }
+  
+  .travel-brief__contact-link:hover {
+    text-decoration: underline;
+  }
+  
+  /* ========== DESKTOP STYLES ========== */
+  @media screen and (min-width: 1024px) {
+    .travel-brief {
+      --tb-content-padding: 48px 48px;
+      --tb-heading-size: 36px;
+    }
+    
+    .travel-brief__container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      min-height: 80vh;
+    }
+    
+    .travel-brief__map-column {
+      aspect-ratio: auto;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+    }
+    
+    .travel-brief__content-column {
+      min-height: 100%;
+    }
+    
+    .travel-brief__content-inner {
+      padding: var(--tb-content-padding);
+      max-width: 600px;
+    }
+    
+    /* Stats 4-column on desktop */
+    .travel-brief__stats {
+      grid-template-columns: repeat(4, 1fr);
+    }
+    
+    /* Show table, hide cards on desktop */
+    .travel-brief__table-wrapper {
+      display: block;
+    }
+    
+    .travel-brief__acc-cards {
+      display: none;
+    }
+    
+    /* Contacts grid */
+    .travel-brief__contacts-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  
+  @media screen and (min-width: 1280px) {
+    .travel-brief {
+      --tb-content-padding: 64px 64px;
+      --tb-heading-size: 40px;
+    }
+    
+    .travel-brief__content-inner {
+      max-width: 680px;
+    }
+  }
+</style>
+
+{% comment %} Mapbox CSS {% endcomment %}
+<link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css">
+
+<script>
+(function() {
+  const sectionId = '{{ section.id }}';
+  const mapContainerId = 'travel-brief-map-' + sectionId;
+  const mapStyle = '{{ section.settings.mapbox_style | default: "mapbox://styles/mapbox/outdoors-v12" }}';
+  
+  const markersData = {{ markers_json | strip_newlines }};
+  const routesData = {{ routes_json | strip_newlines }};
+  
+  {% comment %} Tab switching functionality {% endcomment %}
+  function initTabs() {
+    const section = document.querySelector('[data-section-id="{{ section.id }}"]');
+    if (!section) return;
+    
+    const tabs = section.querySelectorAll('.travel-brief__tab');
+    const panels = section.querySelectorAll('.travel-brief__panel');
+    
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        const targetPanel = tab.dataset.tab;
+        
+        tabs.forEach(t => {
+          t.classList.remove('is-active');
+          t.setAttribute('aria-selected', 'false');
+        });
+        
+        panels.forEach(p => {
+          p.classList.remove('is-active');
+          p.hidden = true;
+        });
+        
+        tab.classList.add('is-active');
+        tab.setAttribute('aria-selected', 'true');
+        
+        const activePanel = section.querySelector(`[data-panel="${targetPanel}"]`);
+        if (activePanel) {
+          activePanel.classList.add('is-active');
+          activePanel.hidden = false;
+        }
+      });
+      
+      tab.addEventListener('keydown', (e) => {
+        const tabsArray = Array.from(tabs);
+        const currentIndex = tabsArray.indexOf(tab);
+        
+        if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+          e.preventDefault();
+          let nextIndex;
+          
+          if (e.key === 'ArrowRight') {
+            nextIndex = currentIndex < tabsArray.length - 1 ? currentIndex + 1 : 0;
+          } else {
+            nextIndex = currentIndex > 0 ? currentIndex - 1 : tabsArray.length - 1;
+          }
+          
+          tabsArray[nextIndex].click();
+          tabsArray[nextIndex].focus();
+        }
+      });
+    });
+  }
+  
+  {% comment %} Initialize map {% endcomment %}
+  function initMap() {
+    if (typeof mapboxgl === 'undefined') {
+      setTimeout(initMap, 100);
+      return;
+    }
+    
+    const mapContainer = document.getElementById(mapContainerId);
+    if (!mapContainer) return;
+    
+    const loadingEl = mapContainer.parentElement.querySelector('.travel-brief__map-loading');
+    
+    mapboxgl.accessToken = '{{ settings.mapbox_access_token | default: "{{ MAPBOX_ACCESS_TOKEN }}" }}';
+    
+    if (markersData.length === 0) {
+      if (loadingEl) loadingEl.classList.add('is-hidden');
+      return;
+    }
+    
+    const bounds = new mapboxgl.LngLatBounds();
+    markersData.forEach(m => bounds.extend([m.lng, m.lat]));
+    
+    const map = new mapboxgl.Map({
+      container: mapContainerId,
+      style: mapStyle,
+      bounds: bounds,
+      fitBoundsOptions: { padding: 60 },
+      interactive: true,
+      attributionControl: false
+    });
+    
+    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-right');
+    
+    map.on('load', () => {
+      if (loadingEl) loadingEl.classList.add('is-hidden');
+      
+      if (routesData.length > 0) {
+        routesData.forEach((route, index) => {
+          const coordinates = [
+            [route.startLng, route.startLat],
+            [route.endLng, route.endLat]
+          ];
+          
+          map.addSource('route-' + index, {
+            type: 'geojson',
+            data: {
+              type: 'Feature',
+              geometry: {
+                type: 'LineString',
+                coordinates: coordinates
+              }
+            }
+          });
+          
+          map.addLayer({
+            id: 'route-line-' + index,
+            type: 'line',
+            source: 'route-' + index,
+            layout: {
+              'line-join': 'round',
+              'line-cap': 'round'
+            },
+            paint: {
+              'line-color': route.isFlight ? '#8b5cf6' : '#10b981',
+              'line-width': 2.5,
+              'line-opacity': 0.8,
+              'line-dasharray': route.isFlight ? [2, 2] : [1, 0]
+            }
+          });
+        });
+      }
+      
+      markersData.forEach((marker, index) => {
+        const el = document.createElement('div');
+        el.className = 'travel-brief-marker';
+        el.innerHTML = `<span>${marker.sequence}</span>`;
+        el.style.cssText = `
+          width: 28px;
+          height: 28px;
+          background: #2563eb;
+          border: 2px solid #fff;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #fff;
+          font-size: 12px;
+          font-weight: 600;
+          cursor: pointer;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+          transition: transform 0.15s ease;
+        `;
+        
+        el.addEventListener('mouseenter', () => {
+          el.style.transform = 'scale(1.15)';
+        });
+        el.addEventListener('mouseleave', () => {
+          el.style.transform = 'scale(1)';
+        });
+        
+        const popup = new mapboxgl.Popup({
+          offset: 20,
+          closeButton: false,
+          closeOnClick: false
+        }).setHTML(`
+          <div style="padding: 8px 12px; font-size: 13px;">
+            <strong>${marker.name}</strong>
+            <div style="color: #666; font-size: 12px; margin-top: 2px;">
+              ${marker.nights} ${marker.nights === 1 ? 'night' : 'nights'}
+            </div>
+          </div>
+        `);
+        
+        const markerInstance = new mapboxgl.Marker(el)
+          .setLngLat([marker.lng, marker.lat])
+          .setPopup(popup)
+          .addTo(map);
+        
+        el.addEventListener('mouseenter', () => popup.addTo(map));
+        el.addEventListener('mouseleave', () => popup.remove());
+      });
+    });
+  }
+  
+  {% comment %} Load Mapbox and initialize {% endcomment %}
+  function loadMapbox() {
+    if (typeof mapboxgl !== 'undefined') {
+      initMap();
+      return;
+    }
+    
+    const script = document.createElement('script');
+    script.src = 'https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js';
+    script.onload = initMap;
+    document.head.appendChild(script);
+  }
+  
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      initTabs();
+      loadMapbox();
+    });
+  } else {
+    initTabs();
+    loadMapbox();
+  }
+})();
+</script>
+
+{% schema %}
+{
+  "name": "Itinerary Travel Brief",
+  "tag": "section",
+  "class": "section-wetu-itinerary-travel-brief",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "color_scheme",
+      "id": "map_color_scheme",
+      "label": "Map overlay color scheme",
+      "default": "scheme-5"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Your Journey"
+    },
+    {
+      "type": "header",
+      "content": "Tab Settings"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_flights_tab",
+      "label": "Show Flights tab",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_accommodations_tab",
+      "label": "Show Accommodations tab",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_contacts_tab",
+      "label": "Show Contacts tab",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "Map Settings"
+    },
+    {
+      "type": "text",
+      "id": "mapbox_style",
+      "label": "Mapbox style URL",
+      "default": "mapbox://styles/mapbox/outdoors-v12",
+      "info": "Options: outdoors-v12, streets-v12, light-v11, dark-v11, satellite-v9"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Itinerary Travel Brief"
+    }
+  ]
+}
+{% endschema %}

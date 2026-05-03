@@ -1,0 +1,925 @@
+{% comment %}
+  ============================================================================
+  WETU INTERACTIVE MAP SECTION
+  ============================================================================
+  
+  Displays an interactive Mapbox GL JS map showing:
+  - All accommodation locations (overnight stays)
+  - Driving routes as actual road paths
+  - Flight routes as curved arcs
+  - Transfer points and waypoints
+  
+  TEMPLATE: product.wetu-itinerary3.json
+  
+  ============================================================================
+  DATA SOURCES
+  ============================================================================
+  
+  ACCOMMODATION MARKERS:
+  From wetu_itinerary_leg → content_entity_id → property product
+  Property metafield: wetu.position (JSON)
+  {
+    "latitude": -33.9076,
+    "longitude": 18.4173,
+    "driving_latitude": -33.9080,
+    "driving_longitude": 18.4170,
+    "country": "South Africa",
+    "region": "Western Cape",
+    "destination": "Cape Town"
+  }
+  
+  ROUTE DATA:
+  From wetu_itinerary_route metaobjects:
+  - mode: Transfer, ScheduledFlight, Selfdrive, CharterFlight, Train, Boat
+  - start_content_entity_id, end_content_entity_id: Link to PIN products
+  - points: GPS coordinates for drawing routes
+  - start_location, end_location: Place names
+  
+  ============================================================================
+{% endcomment %}
+
+{% comment %} Load itinerary data {% endcomment %}
+{% render 'wetu-itinerary-data', product: product %}
+
+{% assign itinerary = product.metafields.wetu.itinerary_metaobject.value %}
+{% assign legs_array = itinerary.legs.value %}
+{% assign routes_array = itinerary.routes.value %}
+
+{% comment %} Load component products directly from metafields (product_reference lists) {% endcomment %}
+{% assign accommodation_products = product.metafields.wetu_itinerary.accommodations.value %}
+{% assign all_component_products = product.metafields.wetu_itinerary.component_products.value %}
+
+{% comment %} Build markers data from legs {% endcomment %}
+{% capture markers_json %}
+[
+  {% assign marker_index = 0 %}
+  {% assign current_day = 1 %}
+  {% for leg in legs_array %}
+    {% assign leg_type = leg.type.value | default: "Standard" %}
+    {% assign leg_nights = leg.nights.value | default: 0 %}
+    
+    {% if leg_type == "Departure" %}
+      {% continue %}
+    {% endif %}
+    
+    {% comment %} Find product by matching PIN ID in accommodation_products {% endcomment %}
+    {% assign content_id = leg.content_entity_id.value | append: '' %}
+    {% assign property = nil %}
+    {% for acc_prod in accommodation_products %}
+      {% assign prod_pin_id = acc_prod.metafields.wetu.pin_id.value | append: '' %}
+      {% if prod_pin_id == content_id %}
+        {% assign property = acc_prod %}
+        {% break %}
+      {% endif %}
+    {% endfor %}
+    {% assign accommodation_name = leg.accommodation_name.value | default: property.title | default: "Destination" %}
+    
+    {% if property != blank %}
+      {% assign position = property.metafields.wetu.position.value %}
+      {% if position.latitude != blank and position.longitude != blank %}
+        {% if marker_index > 0 %},{% endif %}
+        {
+          "id": "marker-{{ content_id }}",
+          "name": {{ accommodation_name | json }},
+          "lat": {{ position.latitude }},
+          "lng": {{ position.longitude }},
+          "drivingLat": {{ position.driving_latitude | default: position.latitude }},
+          "drivingLng": {{ position.driving_longitude | default: position.longitude }},
+          "nights": {{ leg_nights }},
+          "day": {{ current_day }},
+          "dayEnd": {{ current_day | plus: leg_nights | minus: 1 }},
+          "sequence": {{ leg.sequence.value | default: forloop.index0 }},
+          "type": "accommodation",
+          "country": {{ position.country | default: "" | json }},
+          "destination": {{ position.destination | default: "" | json }},
+          "image": {{ property.featured_image | image_url: width: 400 | json }},
+          "url": {{ property.url | json }},
+          "contentId": {{ content_id | json }}
+        }
+        {% assign marker_index = marker_index | plus: 1 %}
+      {% endif %}
+    {% endif %}
+    
+    {% assign current_day = current_day | plus: leg_nights %}
+  {% endfor %}
+]
+{% endcapture %}
+
+{% comment %} Build routes data {% endcomment %}
+{% capture routes_json %}
+[
+  {% assign route_index = 0 %}
+  {% for route in routes_array %}
+    {% assign route_mode = route.mode.value %}
+    {% assign route_type = route.type.value %}
+    {% assign start_location = route.start_location.value %}
+    {% assign end_location = route.end_location.value %}
+    {% assign points = route.points.value %}
+    {% assign duration = route.duration.value %}
+    {% assign distance = route.distance.value %}
+    
+    {% comment %} Get start/end coordinates from linked products {% endcomment %}
+    {% assign start_id = route.start_content_entity_id.value | append: '' %}
+    {% assign end_id = route.end_content_entity_id.value | append: '' %}
+    
+    {% comment %} Find products by matching PIN IDs in component_products {% endcomment %}
+    {% assign start_product = nil %}
+    {% assign end_product = nil %}
+    {% for comp_prod in all_component_products %}
+      {% assign prod_pin_id = comp_prod.metafields.wetu.pin_id.value | append: '' %}
+      {% if prod_pin_id == start_id %}
+        {% assign start_product = comp_prod %}
+      {% endif %}
+      {% if prod_pin_id == end_id %}
+        {% assign end_product = comp_prod %}
+      {% endif %}
+    {% endfor %}
+    
+    {% assign start_position = start_product.metafields.wetu.position.value %}
+    {% assign end_position = end_product.metafields.wetu.position.value %}
+    
+    {% comment %} Only include if we have coordinates {% endcomment %}
+    {% if start_position.latitude != blank and end_position.latitude != blank %}
+      {% if route_index > 0 %},{% endif %}
+      {
+        "id": "route-{{ forloop.index0 }}",
+        "mode": {{ route_mode | json }},
+        "type": {{ route_type | json }},
+        "label": {{ route.label.value | default: route_mode | json }},
+        "startLocation": {{ start_location | json }},
+        "endLocation": {{ end_location | json }},
+        "startLat": {{ start_position.driving_latitude | default: start_position.latitude }},
+        "startLng": {{ start_position.driving_longitude | default: start_position.longitude }},
+        "endLat": {{ end_position.driving_latitude | default: end_position.latitude }},
+        "endLng": {{ end_position.driving_longitude | default: end_position.longitude }},
+        "points": {{ points | default: "" | json }},
+        "duration": {{ duration | json }},
+        "distance": {{ distance | default: 0 }},
+        "sequence": {{ route.sequence.value | default: forloop.index0 }},
+        "agency": {{ route.agency.value | default: "" | json }},
+        "vehicle": {{ route.vehicle.value | default: "" | json }}
+      }
+      {% assign route_index = route_index | plus: 1 %}
+    {% endif %}
+  {% endfor %}
+]
+{% endcapture %}
+
+{% comment %} Clean up JSON whitespace {% endcomment %}
+{% assign markers_data = markers_json | strip_newlines | replace: '  ', '' %}
+{% assign routes_data = routes_json | strip_newlines | replace: '  ', '' %}
+
+<section 
+  id="itinerary-map-section"
+  class="wetu-interactive-map color-{{ section.settings.color_scheme }}"
+  style="
+    --map-height: {{ section.settings.map_height }}vh;
+    --section-padding-top: {{ section.settings.padding_top }}px;
+    --section-padding-bottom: {{ section.settings.padding_bottom }}px;
+  "
+>
+  {% if section.settings.show_header %}
+    <div class="wetu-interactive-map__header page-width">
+      <div class="wetu-interactive-map__header-content">
+        {% if section.settings.heading != blank %}
+          <h2 class="wetu-interactive-map__title h3">{{ section.settings.heading }}</h2>
+        {% endif %}
+        {% if section.settings.subheading != blank %}
+          <p class="wetu-interactive-map__subtitle">{{ section.settings.subheading }}</p>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="wetu-interactive-map__container">
+    <div 
+      id="wetu-itinerary-map"
+      class="wetu-interactive-map__canvas"
+      data-markers='{{ markers_data }}'
+      data-routes='{{ routes_data }}'
+      data-style="{{ section.settings.map_style }}"
+      data-animate="{{ section.settings.animate_route }}"
+      data-mapbox-token="{% if settings.mapbox_access_token != blank %}{{ settings.mapbox_access_token }}{% else %}{{ MAPBOX_ACCESS_TOKEN }}{% endif %}"
+      aria-label="Interactive itinerary map"
+      role="application"
+    >
+      {% comment %} Map loading placeholder {% endcomment %}
+      <div class="wetu-interactive-map__loading">
+        <div class="loading-spinner"></div>
+        <span>Loading map...</span>
+      </div>
+    </div>
+    
+    {% comment %} Map Controls {% endcomment %}
+    <div class="wetu-interactive-map__controls">
+      {% comment %} Link to dedicated fullscreen map page {% endcomment %}
+      <a 
+        href="{{ product.url }}?view=wetu-itinerary-map" 
+        class="wetu-map-control wetu-map-control--fullpage" 
+        aria-label="Open full journey map"
+        title="Open full journey map"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4z"/>
+          <path d="M8 2v16M16 6v16"/>
+        </svg>
+      </a>
+      
+      {% if section.settings.show_fullscreen_button %}
+        <button 
+          type="button" 
+          class="wetu-map-control wetu-map-control--fullscreen" 
+          aria-label="Toggle fullscreen map"
+          data-map-fullscreen
+        >
+          <svg class="icon-expand" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+          </svg>
+          <svg class="icon-compress" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;">
+            <path d="M4 14h6v6m10-10h-6V4m0 16h6v-6M4 4h6v6"/>
+          </svg>
+        </button>
+      {% endif %}
+      
+      <button 
+        type="button" 
+        class="wetu-map-control wetu-map-control--fit" 
+        aria-label="Fit map to show all locations"
+        data-map-fit
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+        </svg>
+      </button>
+    </div>
+    
+    {% comment %} Legend {% endcomment %}
+    {% if section.settings.show_legend %}
+      <div class="wetu-interactive-map__legend">
+        <div class="legend-item">
+          <span class="legend-marker legend-marker--accommodation"></span>
+          <span class="legend-label">Accommodation</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-route legend-route--driving"></span>
+          <span class="legend-label">Driving Route</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-route legend-route--flight"></span>
+          <span class="legend-label">Flight</span>
+        </div>
+      </div>
+    {% endif %}
+    
+    {% comment %} Destinations List Sidebar {% endcomment %}
+    {% if section.settings.show_sidebar %}
+      <div class="wetu-interactive-map__sidebar">
+        <div class="sidebar-header">
+          <h3 class="sidebar-title">Destinations</h3>
+          <button type="button" class="sidebar-toggle" aria-label="Toggle sidebar" data-sidebar-toggle>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M15 18l-6-6 6-6"/>
+            </svg>
+          </button>
+        </div>
+        <div class="sidebar-content">
+          <ul class="destinations-list" role="list">
+            {% assign current_day = 1 %}
+            {% for leg in legs_array %}
+              {% assign leg_type = leg.type.value | default: "Standard" %}
+              {% assign leg_nights = leg.nights.value | default: 0 %}
+              
+              {% if leg_type == "Departure" %}
+                {% continue %}
+              {% endif %}
+              
+              {% assign content_id = leg.content_entity_id.value %}
+              {% assign property_handle = 'wetu-' | append: content_id %}
+              {% assign property = all_products[property_handle] %}
+              {% assign accommodation_name = leg.accommodation_name.value | default: property.title %}
+              
+              <li class="destination-item" data-marker-id="marker-{{ content_id }}">
+                <button type="button" class="destination-button" data-focus-marker="marker-{{ content_id }}">
+                  <span class="destination-day">
+                    {% if leg_nights > 1 %}
+                      {{ current_day }}-{{ current_day | plus: leg_nights | minus: 1 }}
+                    {% else %}
+                      {{ current_day }}
+                    {% endif %}
+                  </span>
+                  <span class="destination-info">
+                    <span class="destination-name">{{ accommodation_name }}</span>
+                    <span class="destination-nights">{{ leg_nights }} {{ leg_nights | pluralize: 'night', 'nights' }}</span>
+                  </span>
+                </button>
+              </li>
+              
+              {% assign current_day = current_day | plus: leg_nights %}
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</section>
+
+{% comment %} Mapbox GL JS CSS {% endcomment %}
+<link href='https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css' rel='stylesheet' />
+
+{% stylesheet %}
+  .wetu-interactive-map {
+    padding-top: var(--section-padding-top);
+    padding-bottom: var(--section-padding-bottom);
+    background: var(--color-background);
+  }
+
+  /* Header */
+  .wetu-interactive-map__header {
+    margin-bottom: 24px;
+  }
+
+  .wetu-interactive-map__header-content {
+    text-align: center;
+  }
+
+  .wetu-interactive-map__title {
+    margin: 0 0 8px;
+    color: var(--color-foreground);
+  }
+
+  .wetu-interactive-map__subtitle {
+    margin: 0;
+    font-size: 1rem;
+    color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+  }
+
+  /* Container */
+  .wetu-interactive-map__container {
+    position: relative;
+    height: var(--map-height);
+    min-height: 400px;
+    max-height: 90vh;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  }
+
+  /* Map Canvas */
+  .wetu-interactive-map__canvas {
+    width: 100%;
+    height: 100%;
+    background: color-mix(in srgb, var(--color-foreground) 8%, transparent);
+  }
+
+  /* Loading State */
+  .wetu-interactive-map__loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    background: color-mix(in srgb, var(--color-foreground) 5%, transparent);
+    color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+    font-size: 0.9rem;
+  }
+
+  .wetu-interactive-map__canvas.map-loaded .wetu-interactive-map__loading {
+    display: none;
+  }
+
+  .loading-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid color-mix(in srgb, var(--color-foreground) 20%, transparent);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* Controls */
+  .wetu-interactive-map__controls {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 10;
+  }
+
+  .wetu-map-control {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-background);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    color: var(--color-foreground);
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+  }
+
+  .wetu-map-control:hover {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: var(--color-background);
+  }
+
+  /* Fullscreen State */
+  .wetu-interactive-map--fullscreen {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    padding: 0;
+    border-radius: 0;
+  }
+
+  .wetu-interactive-map--fullscreen .wetu-interactive-map__container {
+    height: 100vh;
+    max-height: none;
+    border-radius: 0;
+  }
+
+  .wetu-interactive-map--fullscreen .wetu-interactive-map__header {
+    display: none;
+  }
+
+  .wetu-interactive-map--fullscreen .wetu-map-control--fullscreen .icon-expand {
+    display: none;
+  }
+
+  .wetu-interactive-map--fullscreen .wetu-map-control--fullscreen .icon-compress {
+    display: block;
+  }
+
+  /* Legend */
+  .wetu-interactive-map__legend {
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding: 12px 16px;
+    background: var(--color-background);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    z-index: 10;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .legend-marker {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+  }
+
+  .legend-marker--accommodation {
+    background: var(--color-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 30%, transparent);
+  }
+
+  .legend-route {
+    width: 24px;
+    height: 3px;
+    border-radius: 2px;
+  }
+
+  .legend-route--driving {
+    background: #3b82f6;
+  }
+
+  .legend-route--flight {
+    background: repeating-linear-gradient(
+      90deg,
+      #8b5cf6 0px,
+      #8b5cf6 6px,
+      transparent 6px,
+      transparent 10px
+    );
+  }
+
+  .legend-label {
+    font-size: 0.8rem;
+    color: color-mix(in srgb, var(--color-foreground) 70%, transparent);
+  }
+
+  /* Sidebar */
+  .wetu-interactive-map__sidebar {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    bottom: 60px;
+    width: 280px;
+    max-width: calc(100% - 32px);
+    background: var(--color-background);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: transform 0.3s ease, width 0.3s ease;
+  }
+
+  .wetu-interactive-map__sidebar.collapsed {
+    width: 48px;
+  }
+
+  .sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--color-border);
+    background: color-mix(in srgb, var(--color-foreground) 3%, transparent);
+  }
+
+  .sidebar-title {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--color-foreground);
+  }
+
+  .wetu-interactive-map__sidebar.collapsed .sidebar-title {
+    display: none;
+  }
+
+  .sidebar-toggle {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--color-foreground);
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+  }
+
+  .sidebar-toggle:hover {
+    background: color-mix(in srgb, var(--color-foreground) 10%, transparent);
+  }
+
+  .wetu-interactive-map__sidebar.collapsed .sidebar-toggle svg {
+    transform: rotate(180deg);
+  }
+
+  .sidebar-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+  }
+
+  .wetu-interactive-map__sidebar.collapsed .sidebar-content {
+    display: none;
+  }
+
+  .destinations-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .destination-item {
+    border-radius: 8px;
+    transition: background 0.2s ease;
+  }
+
+  .destination-item:hover,
+  .destination-item.active {
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  }
+
+  .destination-button {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 10px 12px;
+    background: transparent;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    color: inherit;
+  }
+
+  .destination-day {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-primary);
+    color: var(--color-background);
+    font-size: 0.75rem;
+    font-weight: 700;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .destination-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .destination-name {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--color-foreground);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .destination-nights {
+    font-size: 0.75rem;
+    color: color-mix(in srgb, var(--color-foreground) 50%, transparent);
+  }
+
+  /* Mobile adjustments */
+  @media screen and (max-width: 749px) {
+    .wetu-interactive-map__container {
+      border-radius: 0;
+      margin: 0 -16px;
+      width: calc(100% + 32px);
+    }
+
+    .wetu-interactive-map__sidebar {
+      top: auto;
+      bottom: 16px;
+      left: 16px;
+      right: 16px;
+      width: auto;
+      max-height: 200px;
+    }
+
+    .wetu-interactive-map__sidebar.collapsed {
+      width: auto;
+      max-height: 48px;
+    }
+
+    .wetu-interactive-map__legend {
+      bottom: auto;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 8px 12px;
+      gap: 12px;
+    }
+
+    .legend-label {
+      font-size: 0.7rem;
+    }
+  }
+
+  /* Mapbox Popup Styles */
+  .mapboxgl-popup-content {
+    padding: 0;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    min-width: 220px;
+  }
+
+  .wetu-map-popup {
+    font-family: var(--font-body-family, inherit);
+  }
+
+  .wetu-map-popup__image {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+    display: block;
+  }
+
+  .wetu-map-popup__content {
+    padding: 12px 16px;
+  }
+
+  .wetu-map-popup__title {
+    margin: 0 0 4px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1a1a1a;
+  }
+
+  .wetu-map-popup__meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: #666;
+    margin-bottom: 8px;
+  }
+
+  .wetu-map-popup__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 12px;
+    background: var(--color-primary, #2563eb);
+    color: white;
+    text-decoration: none;
+    font-size: 0.8rem;
+    font-weight: 500;
+    border-radius: 6px;
+    transition: background 0.2s ease;
+  }
+
+  .wetu-map-popup__link:hover {
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 85%, black);
+  }
+
+  .mapboxgl-popup-close-button {
+    font-size: 20px;
+    padding: 4px 8px;
+    color: white;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 0 12px 0 8px;
+  }
+
+  .mapboxgl-popup-close-button:hover {
+    background: rgba(0, 0, 0, 0.5);
+  }
+
+  /* Custom Marker Styles */
+  .wetu-map-marker {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-primary, #2563eb);
+    color: white;
+    font-size: 14px;
+    font-weight: 700;
+    border-radius: 50%;
+    border: 3px solid white;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .wetu-map-marker:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  }
+
+  .wetu-map-marker.active {
+    background: #ef4444;
+    transform: scale(1.15);
+  }
+{% endstylesheet %}
+
+{% comment %} Load Mapbox GL JS and initialize map {% endcomment %}
+<script src='https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js'></script>
+<script src="{{ 'wetu-map.js' | asset_url }}" defer></script>
+
+{% schema %}
+{
+  "name": "Interactive Map",
+  "tag": "section",
+  "class": "section-wetu-interactive-map",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "header",
+      "content": "Header"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_header",
+      "label": "Show header",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Your Journey Map"
+    },
+    {
+      "type": "text",
+      "id": "subheading",
+      "label": "Subheading",
+      "default": "Explore all destinations and routes on your itinerary"
+    },
+    {
+      "type": "header",
+      "content": "Map Settings"
+    },
+    {
+      "type": "range",
+      "id": "map_height",
+      "label": "Map height",
+      "min": 40,
+      "max": 100,
+      "step": 5,
+      "unit": "vh",
+      "default": 60
+    },
+    {
+      "type": "select",
+      "id": "map_style",
+      "label": "Map style",
+      "options": [
+        { "value": "streets-v12", "label": "Streets" },
+        { "value": "outdoors-v12", "label": "Outdoors" },
+        { "value": "light-v11", "label": "Light" },
+        { "value": "dark-v11", "label": "Dark" },
+        { "value": "satellite-streets-v12", "label": "Satellite" }
+      ],
+      "default": "outdoors-v12"
+    },
+    {
+      "type": "checkbox",
+      "id": "animate_route",
+      "label": "Animate route on load",
+      "default": false,
+      "info": "Draw routes progressively when map loads"
+    },
+    {
+      "type": "header",
+      "content": "Controls"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_fullscreen_button",
+      "label": "Show fullscreen button",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_legend",
+      "label": "Show legend",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_sidebar",
+      "label": "Show destinations sidebar",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Spacing"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "Top padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 60
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "Bottom padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 60
+    }
+  ],
+  "presets": [
+    {
+      "name": "Interactive Map"
+    }
+  ]
+}
+{% endschema %}
+

@@ -1,0 +1,600 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin language editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "accessibility": {
+    "account": "帳戶",
+    "cart": "購物車",
+    "cart_count": "購物車內商品總數",
+    "close_dialog": "關閉對話框",
+    "country_region": "國家/地區",
+    "country_results_count": "{{ count }} 個結果",
+    "decrease_quantity": "減少數量",
+    "discount": "套用折扣碼",
+    "discount_menu": "折扣碼",
+    "discount_applied": "已套用折扣碼：{{ code }}",
+    "filters": "篩選條件",
+    "filter_count": {
+      "one": "已套用 {{ count }} 個篩選條件",
+      "other": "已套用 {{ count }} 個篩選條件"
+    },
+    "increase_quantity": "增加數量",
+    "inventory_status": "庫存狀態",
+    "localization_region_and_language": "地區與語言選擇器",
+    "menu": "選單",
+    "nested_product": "{{ parent_title }} 的 {{ product_title }}",
+    "new_window": "在新視窗中開啟。",
+    "quantity": "數量",
+    "pause_video": "暫停影片",
+    "play_model": "播放 3D 模型",
+    "play_video": "播放影片",
+    "loading_product_recommendations": "正在載入商品推薦",
+    "rating": "此商品的評分為 5 分中的 {{ rating }} 分",
+    "remove_item": "移除 {{ title}}",
+    "reset_search": "重設搜尋",
+    "scroll_to": "捲動至 {{ title }}",
+    "search_results_count": "為「{{ query }}」找到 {{ count }} 個搜尋結果",
+    "search_results_no_results": "為「{{ query }}」找不到任何結果",
+    "skip_to_product_info": "跳至商品資訊",
+    "skip_to_results_list": "跳至結果列表",
+    "skip_to_text": "跳至內容",
+    "slide_status": "第 {{ index }} 張，共 {{ length }} 張",
+    "slideshow_next": "下一張投影片",
+    "slideshow_pause": "暫停投影片播放",
+    "slideshow_play": "播放投影片",
+    "slideshow_previous": "上一張投影片",
+    "unit_price": "單價",
+    "find_country": "尋找國家/地區"
+  },
+  "actions": {
+    "add": "新增",
+    "add_to_cart": "加入購物車",
+    "added": "已新增",
+    "apply": "套用",
+    "back": "返回",
+    "choose": "選擇",
+    "clear": "清除",
+    "clear_all": "全部清除",
+    "close": "關閉",
+    "open": "開啟",
+    "continue_shopping": "繼續購物",
+    "enter_password": "輸入密碼",
+    "log_in_html": "已有帳戶？<a href=\"{{ link }}\">登入</a>以更快結帳。",
+    "log_in": "登入",
+    "log_out": "登出",
+    "open_image_in_full_screen": "全螢幕開啟圖片",
+    "remove": "移除",
+    "remove_discount": "移除折扣 {{ code }}",
+    "show_all_options": "顯示所有選項",
+    "see_items": {
+      "one": "查看 {{ count }} 個商品",
+      "other": "查看 {{ count }} 個商品"
+    },
+    "show_filters": "篩選",
+    "show_less": "顯示較少",
+    "show_more": "顯示更多",
+    "sign_in_options": "其他登入選項",
+    "view_in_your_space": "在您的空間中查看",
+    "view_all": "查看全部",
+    "more": "更多",
+    "zoom": "縮放",
+    "close_dialog": "關閉對話框",
+    "reset": "重設",
+    "enter_using_password": "使用密碼進入",
+    "sign_up": "註冊",
+    "submit": "提交",
+    "view_store_information": "查看商店資訊",
+    "sort": "排序"
+  },
+  "blocks": {
+    "contact_form": {
+      "name": "姓名",
+      "email": "電子郵件",
+      "phone": "電話",
+      "comment": "留言",
+      "post_success": "感謝您的聯絡。我們會盡快回覆您。",
+      "error_heading": "請調整以下內容："
+    },
+    "email_signup": {
+      "label": "電子郵件",
+      "placeholder": "電子郵件地址",
+      "success": "感謝您的訂閱！"
+    },
+    "filter": "篩選",
+    "load_video": "載入影片：{{ description }}",
+    "sold_out": "售罄",
+    "payment_methods": "付款方式"
+  },
+  "blogs": {
+    "article": {
+      "comments_heading": {
+        "one": "{{ count }} 則留言",
+        "other": "{{ count }} 則留言"
+      },
+      "comment_author_separator": "•"
+    },
+    "comment_form": {
+      "email": "電子郵件",
+      "error": "留言發佈失敗，請處理以下問題：",
+      "heading": "發表留言",
+      "message": "訊息",
+      "moderated": "請注意，留言需經審核後才會發佈。",
+      "name": "姓名",
+      "post": "發表留言",
+      "success_moderated": "留言已發佈，等待審核",
+      "success": "留言已發佈"
+    }
+  },
+  "content": {
+    "discount": "折扣",
+    "account_title": "帳戶",
+    "terms_and_policies": "條款與政策",
+    "account_title_personalized": "您好，{{ first_name }}",
+    "account_orders": "訂單",
+    "account_profile": "個人檔案",
+    "blog_details_separator": "|",
+    "cart_estimated_total": "預計總計",
+    "cart_title": "購物車",
+    "cart_subtotal": "小計",
+    "cart_total": "購物車總計",
+    "checkout": "結帳",
+    "collection_placeholder": "商品系列標題",
+    "discount_code": "折扣碼",
+    "shipping_discount_error": "運費折扣將在新增地址後於結帳頁面顯示",
+    "discount_code_error": "折扣碼無法套用至您的購物車",
+    "discounts": "折扣",
+    "duties_and_taxes_included": "已含關稅和稅金。",
+    "duties_and_taxes_included_shipping_at_checkout_with_policy_html": "已含關稅和稅金。折扣和<a href=\"{{ link }}\">運費</a>將於結帳時計算。",
+    "duties_and_taxes_included_shipping_at_checkout_with_policy_without_discounts_html": "已含關稅和稅金。運費將於結帳時計算。",
+    "duties_and_taxes_included_shipping_at_checkout_without_policy": "已含關稅和稅金。折扣和運費將於結帳時計算。",
+    "duties_and_taxes_included_shipping_at_checkout_without_policy_without_discounts": "已含關稅和稅金。運費將於結帳時計算。",
+    "duties_included": "已含關稅。",
+    "duties_included_taxes_at_checkout_shipping_at_checkout_with_policy_html": "已含關稅。稅金、折扣和<a href=\"{{ link }}\">運費</a>將於結帳時計算。",
+    "duties_included_taxes_at_checkout_shipping_at_checkout_with_policy_without_discounts_html": "已含關稅。運費將於結帳時計算。",
+    "duties_included_taxes_at_checkout_shipping_at_checkout_without_policy": "已含關稅。稅金、折扣和運費將於結帳時計算。",
+    "duties_included_taxes_at_checkout_shipping_at_checkout_without_policy_without_discounts": "已含關稅。運費將於結帳時計算。",
+    "featured_products": "精選商品",
+    "filters": "篩選條件",
+    "grid_view": {
+      "default_view": "預設",
+      "grid_fieldset": "欄位格線",
+      "single_item": "單一",
+      "zoom_out": "縮小"
+    },
+    "inventory_low_stock_show_count": {
+      "one": "剩餘 {{ count }} 件",
+      "other": "剩餘 {{ count }} 件"
+    },
+    "inventory_low_stock": "庫存不足",
+    "inventory_in_stock": "有現貨",
+    "inventory_out_of_stock": "缺貨",
+    "item_count": {
+      "one": "{{ count }} 件商品",
+      "other": "{{ count }} 件商品"
+    },
+    "language": "語言",
+    "localization_region_and_language": "地區與語言",
+    "no_products_found": "找不到任何商品。",
+    "no_results_found": "找不到任何結果",
+    "page_placeholder_title": "頁面標題",
+    "page_placeholder_content": "選取頁面以顯示其內容。",
+    "pagination": {
+      "nav_label": "分頁導覽",
+      "previous": "上一頁",
+      "next": "下一頁",
+      "page": "第 {{ page }} 頁"
+    },
+    "pickup_available_at_html": "可於 <b>{{ location }}</b> 取貨",
+    "pickup_available_in": "可取貨，{{ pickup_time }}",
+    "pickup_not_available": "目前無法取貨",
+    "pickup_ready_in": "{{ pickup_time }}",
+    "powered_by": "本商店由",
+    "price": "價格",
+    "price_compare_at": "原價",
+    "price_from": "從 {{ price }}",
+    "price_regular": "一般價格",
+    "price_sale": "特價",
+    "price_filter_html": "最高價格為 {{ price }}",
+    "product_image": "商品圖片",
+    "product_information": "商品資訊",
+    "product_total": "商品總計",
+    "product_badge_sold_out": "售罄",
+    "product_badge_sale": "促銷",
+    "product_card_placeholder": "商品名稱",
+    "placeholder_image": "預留圖片",
+    "quantity": "數量",
+    "recently_viewed_products": "最近瀏覽",
+    "reviews": "評論",
+    "read_more": "閱讀更多...",
+    "search_input_label": "搜尋",
+    "search_input_placeholder": "搜尋",
+    "search": "搜尋",
+    "search_results": "搜尋結果",
+    "search_results_label": "搜尋結果",
+    "search_results_no_results": "找不到「{{ terms }}」的結果。請嘗試其他搜尋。",
+    "search_results_no_results_check_spelling": "找不到「{{ terms }}」的結果。請檢查拼字或使用不同的字詞或詞組。",
+    "search_results_resource_articles": "部落格文章",
+    "search_results_resource_collections": "商品系列",
+    "search_results_resource_pages": "頁面",
+    "search_results_resource_products": "商品",
+    "search_results_resource_products_count": {
+      "one": "{{ count }} 項商品",
+      "other": "{{ count }} 項商品"
+    },
+    "search_results_resource_queries": "搜尋建議",
+    "search_results_view_all": "查看全部",
+    "search_results_view_all_button": "查看全部",
+    "seller_note": "特殊指示",
+    "shipping_policy": "運費將於結帳時計算。",
+    "shipping_policy_html": "<a href=\"{{ link }}\">運費</a>將於結帳時計算。",
+    "store_owner_link_html": "您是商店擁有者嗎？<a href=\"{{ link }}\">請在此登入</a>",
+    "taxes_at_checkout_shipping_at_checkout_with_policy_html": "稅金、折扣和<a href=\"{{ link }}\">運費</a>將於結帳時計算。",
+    "taxes_at_checkout_shipping_at_checkout_with_policy_without_discounts_html": "稅金和<a href=\"{{ link }}\">運費</a>將於結帳時計算。",
+    "taxes_at_checkout_shipping_at_checkout_without_policy": "稅金、折扣和運費將於結帳時計算。",
+    "taxes_at_checkout_shipping_at_checkout_without_policy_without_discounts": "稅金和運費將於結帳時計算。",
+    "taxes_included": "含稅。",
+    "taxes_included_shipping_at_checkout_with_policy_html": "含稅。折扣和<a href=\"{{ link }}\">運費</a>將於結帳時計算。",
+    "taxes_included_shipping_at_checkout_with_policy_without_discounts_html": "含稅。運費將於結帳時計算。",
+    "taxes_included_shipping_at_checkout_without_policy": "含稅。折扣及運費將於結帳時計算。",
+    "taxes_included_shipping_at_checkout_without_policy_without_discounts": "含稅。運費將於結帳時計算。",
+    "unavailable": "無法使用",
+    "use_fewer_filters_html": "嘗試使用較少篩選條件，或<a class=\"{{ class }}\" href=\"{{ link }}\">清除所有篩選條件</a>。",
+    "view_more_details": "檢視更多詳情",
+    "your_cart_is_empty": "您的購物車是空的",
+    "product_count": "商品數量",
+    "errors": "錯誤",
+    "wrong_password": "密碼錯誤",
+    "recipient_form_send_to": "寄送至",
+    "recipient_form_email_label": "收件人電子郵件",
+    "recipient_form_email_label_my_email": "我的電子郵件",
+    "recipient_form_email_address": "收件人電子郵件地址",
+    "recipient_form_name_label": "收件人姓名 (選填)",
+    "recipient_form_message": "訊息 (選填)",
+    "recipient_form_characters_used": "已使用 {{ used_chars }}/{{ max_chars }} 個字元",
+    "recipient_form_send_on": "YYYY-MM-DD",
+    "recipient_form_send_on_label": "寄送日期 (選填)",
+    "recipient_form_fields_visible": "收件人表單欄位現已顯示",
+    "recipient_form_fields_hidden": "收件人表單欄位現已隱藏",
+    "recipient_form_error": "表單提交時發生錯誤",
+    "product_custom_property_character_count": "已使用 {{ used_chars }}/{{ max_chars }} 個字元"
+  },
+  "fields": {
+    "separator": "至"
+  },
+  "gift_cards": {
+    "issued": {
+      "how_to_use_gift_card": "線上使用禮品卡代碼或店內使用 QR 碼",
+      "title": "這是您在 {{ shop }} 的 {{ value }} 禮品卡餘額！",
+      "subtext": "您的禮品卡",
+      "shop_link": "造訪線上商店",
+      "add_to_apple_wallet": "新增至 Apple Wallet",
+      "qr_image_alt": "QR 碼 — 掃描以兌換禮品卡",
+      "copy_code": "複製禮品卡代碼",
+      "expiration_date": "於 {{ expires_on }} 到期",
+      "copy_code_success": "代碼已成功複製",
+      "expired": "已過期"
+    }
+  },
+  "placeholders": {
+    "password": "密碼",
+    "search": "搜尋",
+    "product_title": "商品名稱",
+    "collection_title": "系列名稱",
+    "blog_posts": "部落格文章",
+    "blog_post_title": "標題",
+    "blog_post_author": "作者",
+    "blog_post_date": "日期",
+    "blog_post_description": "您的部落格文章內容摘要"
+  },
+  "products": {
+    "product": {
+      "add_to_cart": "加入購物車",
+      "adding_to_cart": "正在加入...",
+      "added_to_cart": "已加入購物車",
+      "add_to_cart_error": "加入購物車時發生錯誤",
+      "quantity_error_max": "此商品最多為 {{ maximum }}",
+      "sold_out": "售罄",
+      "unavailable": "無法使用",
+      "quantity": "數量",
+      "quantity_increments": "增量為 {{ increment }}",
+      "quantity_minimum": "最少 {{ minimum }}",
+      "quantity_maximum": "最多 {{ maximum }}",
+      "in_cart": "在購物車中",
+      "from": "起",
+      "per_person_sharing": "每人共用",
+      "single": "單人",
+      "per_room": "每房",
+      "per_night": "每晚"
+    },
+    "general": {
+      "no_video": "此產品無影片。"
+    }
+  },
+  "general": {
+    "redirecting": "正在重新導向至物業..."
+  },
+  "collections": {
+    "no_products": "目前沒有可用的物業。"
+  },
+  "travel_search": {
+    "title": "尋找您的完美住宿",
+    "subtitle": "依地點、日期和人數搜尋住宿",
+    "placeholder": "您要去哪裡？",
+    "dates_label": "旅行日期",
+    "check_in": "入住",
+    "check_out": "退房",
+    "guests": "人數",
+    "search_button": "搜尋物業",
+    "searching": "正在搜尋...",
+    "no_results": "未找到任何物業或地點",
+    "error": "發生錯誤。請再試一次。",
+    "destinations": "目的地",
+    "properties": "物業",
+    "select_checkin": "選擇您的入住日期",
+    "select_checkout": "選擇您的退房日期",
+    "hover_for_nights": "將滑鼠懸停在日期上以查看晚數",
+    "one_night": "1 晚",
+    "nights_count": "{{ count }} 晚",
+    "guest_options": {
+      "one_adult": "1 位成人，1 間房",
+      "two_adults": "2 位成人，1 間房",
+      "three_adults": "3 位成人，1 間房",
+      "four_adults_one": "4 位成人，1 間房",
+      "four_adults_two": "4 位成人，2 間房",
+      "six_adults_two": "6 位成人，2 間房",
+      "six_adults_three": "6 位成人，3 間房"
+    }
+  },
+  "wetu": {
+    "property": {
+      "total_rooms": "總房間數",
+      "perfect_for": "適合",
+      "key_details": "主要詳情",
+      "property_facilities": "物業設施",
+      "available_services": "可用服務",
+      "check_times": "入住與退房",
+      "check_in": "入住時間",
+      "check_out": "退房時間",
+      "languages_spoken": "語言",
+      "contact": "聯絡方式",
+      "telephone": "電話",
+      "email": "電子郵件"
+    },
+    "accommodation": {
+      "room": "房間",
+      "occupancy": "入住人數",
+      "guests_count": "{{ count }} 位住客",
+      "adults_children": "{{ adults }} 位成人，{{ children }} 位兒童",
+      "bed_configuration": "床位配置",
+      "meal_plan": "餐飲方案",
+      "key_details": "客房詳情",
+      "room_amenities": "客房設施",
+      "special_features": "特色功能",
+      "room_features": "客房特色",
+      "view": "景觀",
+      "has_balcony": "私人陽台",
+      "has_jacuzzi": "私人按摩浴缸",
+      "property": "物業",
+      "view_property": "查看 {{ property }} 詳情"
+    },
+    "rates": {
+      "title": "價格與定價",
+      "from": "起",
+      "to": "至",
+      "view_details": "查看詳細價格與供應情況",
+      "view_full_details": "查看完整詳情",
+      "special_offers": "特別優惠",
+      "valid_from": "有效期從",
+      "valid_to": "有效期至",
+      "valid_dates": "有效日期",
+      "terms_conditions": "條款與細則",
+      "per_person_sharing": "每人共享價",
+      "single_occupancy": "單人入住",
+      "per_room": "每房",
+      "pricing": "定價",
+      "seasonal_pricing": "季節性價格",
+      "room_rates": "客房價格",
+      "included": "包含",
+      "conditions": "條件",
+      "amenities": "設施",
+      "rates": "價格",
+      "items": "項目"
+    },
+    "pricing": {
+      "title": "價格與特別優惠",
+      "from": "從",
+      "range_note": "價格範圍從每人每晚 {{ min }} 到 {{ max }}，具體取決於住宿類型和季節。",
+      "special_offers": "特別優惠",
+      "current_offers": "目前特別優惠",
+      "all_accommodation_rates": "所有住宿選項和季節性價格",
+      "accommodation_options": "住宿選項與季節性價格",
+      "valid_dates": "有效期：",
+      "terms_conditions": "條款與細則",
+      "accommodation_rates": "住宿價格",
+      "per_unit_night": "每單位每晚",
+      "per_person_night": "每人每晚",
+      "per_person_sharing": "每人每晚，共享",
+      "view_rates": "查看季節性價格",
+      "notice_title": "重要定價資訊",
+      "notice_text": "所有價格均視供應情況而定，並可能隨時更改，恕不另行通知。可能需要額外的保育費和交通費。請聯繫我們，獲取根據您的具體旅行日期和要求量身定制的詳細報價。",
+      "seasonal_rates": "季節性價格",
+      "rates_intro": "所有價格均按季節依時間順序顯示。選擇一個時段以查看詳細價格和條件。",
+      "rate_periods": "價格時段",
+      "rate_includes": "價格包含",
+      "available_offers": "可用特別優惠",
+      "view_details": "查看詳情"
+    },
+    "videos": {
+      "heading": "相關影片"
+    },
+    "documents": {
+      "heading": "文件與資源",
+      "opens_new_window": "在新視窗中開啟 PDF",
+      "other": "其他文件"
+    }
+  },
+  "sections": {
+    "collection": {
+      "empty": "此系列中沒有找到商品。",
+      "view_all": "查看全部"
+    },
+    "property_highlights": {
+      "name": "物業亮點",
+      "collection_summary": "我們的系列包含五個精心策劃的物業，每個都策略性地坐落於肯亞最著名的野生動物目的地，提供無與倫比的通道，並總共提供 68 間佈置優雅的住宿。",
+      "masai_mara_detail": "馬賽馬拉生態系統內的三個物業，包括我們於 1972 年成立的旗艦 Governors' Camp",
+      "naivasha_detail": "位於奈瓦夏湖畔的 Loldia House，提供多樣的景觀和活動",
+      "laikipia_detail": "位於萊基皮亞高原的 Governors' Mugie House，提供通往肯亞北部荒野的獨家通道",
+      "experience_summary": "從傳奇的大遷徙到親密的野生動物邂逅、文化沉浸和保育倡議，每個物業都提供經過五十年營運精煉的真實狩獵體驗。",
+      "settings": {
+        "heading": {
+          "label": "標題"
+        },
+        "description": {
+          "label": "描述"
+        },
+        "button_text": {
+          "label": "按鈕文字"
+        },
+        "button_url": {
+          "label": "按鈕網址"
+        }
+      },
+      "presets": {
+        "property_highlights": {
+          "name": "物業亮點"
+        }
+      }
+    },
+    "property_collection_highlights": {
+      "properties": "物業",
+      "accommodations": "住宿",
+      "activities": "活動",
+      "dining": "用餐場所",
+      "wellness": "養生",
+      "room_types": "房型",
+      "dining_venues": "用餐",
+      "spa": "水療",
+      "geography_intro": "位於不同地區：",
+      "view_property": "查看物業",
+      "view_all_properties": "查看所有物業",
+      "no_properties": "無可用物業"
+    },
+    "group_highlights": {
+      "unique_properties": "獨特物業",
+      "luxury_spaces": "豪華帳篷、套房與小屋",
+      "iconic_destinations": "標誌性目的地",
+      "explore": "探索",
+      "view_collection": "查看系列"
+    }
+  },
+  "plekify_homepage": {
+    "hero": {
+      "title": "Shopify 旅遊平台",
+      "subtitle": "在 CAPE TOWN 創建",
+      "tagline": "使用 Shopify 電子商務平台和 Plekify 應用程式，轉型您的旅遊業務。"
+    },
+    "intro": {
+      "paragraph_1": "Plekify 將您現有的旅遊系統（如 ResRequest 或 Wetu）與世界領先的電子商務平台 Shopify 的強大功能整合。",
+      "paragraph_2": "Plekify 使用您現有預訂平台的信息，自動創建和更新您自己網域上的自定義 Shopify 商店，專為旅遊而設計。"
+    },
+    "features": {
+      "own_data": {
+        "title": "擁有您的預訂，擁有您的數據",
+        "description": "在您的網域上獲取每一筆直接預訂，包括付款。保留對您自己客戶數據的獨家訪問權，以便進行個性化的再營銷，同時與您現有的 PMS 系統輕鬆整合。結果：通過減少佣金和回頭客來提高利潤。"
+      },
+      "multilanguage": {
+        "title": "輕鬆實現多語言覆蓋",
+        "description": "以多達 20 種語言覆蓋全球旅客，包括英語、德語、法語、荷蘭語、意大利語、西班牙語、葡萄牙語和普通話。Shopify 的內置工具可處理翻譯、SEO 和本地化貨幣——非常適合針對國際市場的高端狩獵旅行和精品酒店。"
+      },
+      "addons": {
+        "title": "通過附加組件和額外服務銷售更多",
+        "description": "提供超越客房的精選體驗：水療護理、狩獵遊覽、接送服務、品酒等。客人可以在結帳時添加額外服務，使平均訂單價值提高 20-30%。"
+      },
+      "marketing": {
+        "title": "內置強大的營銷功能",
+        "description_1": "以個性化的方式重新激活並與您之前的客戶溝通。",
+        "description_2": "通過 Klaviyo 整合來細分和自動化電子郵件。",
+        "description_3": "恢復被遺棄的購物車，發送住宿後評論，並運行忠誠度計劃。",
+        "description_4": "從一個儀表板跟踪跨渠道的活動——您的網站、Instagram、Google。"
+      },
+      "financial": {
+        "title": "財務清晰度和可擴展性",
+        "description_1": "連接到 Peach Payments 等網關，以實現直接到您銀行的結算。",
+        "description_2": "輕鬆連接到現代 ERP 平台，例如 Acumatica Cloud ERP 或 Oracle Netsuite。",
+        "description_3": "AirBnB 可以輕鬆地將會計連接到 QuickBooks 或 Xero。"
+      },
+      "delight": {
+        "title": "享受日常使用",
+        "description": "為非技術用戶提供直觀的可用性、實時分析和 24/7 全天候支持。Shopify 是一種樂趣——快速、可靠且設計精美。"
+      }
+    },
+    "founder": {
+      "title": "由旅遊創新先驅創立",
+      "description": "Plekify 由 Matthew Swart 創建，他於 1999 年共同創立了 SafariNow.com，南非首屈一指的旅遊預訂平台。閱讀他的旅程。",
+      "quote": "我於 2025 年創建了 Plekify，因為我相信 Shopify 現在是任何地點的旅遊業最明智的選擇——可擴展、安全且專為盈利而設計。"
+    },
+    "prototypes": {
+      "heading": "原型網站",
+      "royal": {
+        "title": "The Royal Portfolio",
+        "description": "探索一系列獨特的設計靈感酒店、豪華狩獵小屋和私人別墅，在南非最具代表性的目的地提供定制體驗。",
+        "prototype_for": "theroyalportfolio.com 的原型",
+        "password": "密碼 plekify",
+        "button": "查看 The Royal Portfolio"
+      },
+      "matetsi": {
+        "title": "Matetsi Victoria Falls",
+        "description": "屢獲殊榮的豪華狩獵度假勝地，位於維多利亞瀑布聯合國教科文組織遺址附近 15 公里的私人贊比西河沿岸",
+        "prototype_for": "matetsivictoriafalls.com 的原型",
+        "password": "密碼 plekify",
+        "button": "查看 Matetsi Victoria Falls"
+      },
+      "governors": {
+        "title": "Governors' Camp Collection",
+        "description": "自 1972 年以來，在馬拉河沿岸的終極狩獵體驗的先驅，完全沉浸在主要觀賞野生動物區域的中心。",
+        "prototype_for": "governorscamp.com 的原型",
+        "password": "密碼 plekify",
+        "button": "查看 The Governors' Collection"
+      },
+      "fundu": {
+        "title": "Fundu Lagoon",
+        "description": "在奔巴島上享受赤腳奢華，擁有原始海灘和世界一流的潛水體驗，冒險等著您！",
+        "prototype_for": "fundulagoon.com 的原型",
+        "password": "密碼 plekify",
+        "button": "查看 Fundu Lagoon"
+      }
+    },
+    "plekify_definition": {
+      "word": "ple·ki·fy",
+      "pronunciation": "/ˈplɛkɪˌfaɪ/",
+      "part_of_speech": "動詞",
+      "forms": "（plekified，plekifying）",
+      "definition": "將高端旅遊預訂與電子商務功能無縫整合；將分散的旅館預訂系統轉變為統一的、網域上的 Shopify 體驗。",
+      "etymology": "來自南非語 plek（地點）+ -ify（使或導致成為），字面意思是「使可放置」或「使地點可在 Shopify 上預訂」。",
+      "usage_heading": "使用範例：",
+      "usage_1": "「我們在上個季度 plekified 了我們所有的狩獵小屋。」",
+      "usage_2": "「自從 plekifying 以來，酒店網站的預訂量大幅增長」",
+      "related_forms": "plekification（名詞），plekifiable（形容詞）",
+      "synonyms": "簡化、整合、優化（旅遊預訂）",
+      "antonyms": "分散、斷開連接、複雜化"
+    },
+    "chatgpt": {
+      "title": "ChatGPT 和 AI 就緒。",
+      "description": "Plekify 網站直接與 ChatGPT 整合。觀看並聆聽以獲取詳細信息..."
+    },
+    "contact": {
+      "title": "立即開始",
+      "description": "通過與創始人 Matthew Swart 的直接諮詢，可以獲得定制的實施方案。",
+      "email_heading": "電子郵件",
+      "email_address": "hello@plekify.com",
+      "whatsapp_heading": "WhatsApp",
+      "whatsapp_number": "+27 60 937 4204"
+    }
+  }
+}

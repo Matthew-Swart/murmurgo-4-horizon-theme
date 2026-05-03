@@ -1,0 +1,146 @@
+{% doc %}
+  Renders a minimal transfer card for itinerary routes.
+
+  @param {object} route - The itinerary route metaobject.
+  @param {object} wetu_pin_ids_array - Array of Wetu PIN IDs.
+  @param {object} wetu_handles_array - Array of Shopify product handles.
+  @param {string} [preview_url] - Optional preview target URL for inspector loading.
+
+  @example
+  {% render 'wetu-chronological-transfer-card', route: route, wetu_pin_ids_array: wetu_pin_ids_array, wetu_handles_array: wetu_handles_array %}
+{% enddoc %}
+
+{%- liquid
+  assign mode = route.mode.value | default: 'Transfer'
+  assign distance = route.distance.value | default: 0 | plus: 0
+  assign duration = route.duration.value
+  assign label = route.label.value
+  assign agency = route.agency.value
+  assign reference_codes = route.reference_codes.value
+
+  assign start_pin_id = route.start_content_entity_id.value
+  assign end_pin_id = route.end_content_entity_id.value
+  assign start_name = route.start_location.value | default: label
+  assign end_name = route.end_location.value
+
+  if distance > 0
+    assign distance_km = distance | divided_by: 1000.0 | round: 1
+  else
+    assign distance_km = 0
+  endif
+
+  assign start_product = nil
+  if start_pin_id != blank
+    for check_pin in wetu_pin_ids_array
+      if check_pin == start_pin_id
+        assign start_handle = wetu_handles_array[forloop.index0]
+        assign start_product = all_products[start_handle]
+        if start_name == blank
+          assign start_name = start_product.title
+        endif
+        break
+      endif
+    endfor
+  endif
+
+  assign end_product = nil
+  if end_pin_id != blank
+    for check_pin in wetu_pin_ids_array
+      if check_pin == end_pin_id
+        assign end_handle = wetu_handles_array[forloop.index0]
+        assign end_product = all_products[end_handle]
+        if end_name == blank
+          assign end_name = end_product.title
+        endif
+        break
+      endif
+    endfor
+  endif
+
+  assign is_flight = false
+  if mode contains 'Flight'
+    assign is_flight = true
+  endif
+
+  assign start_lat = ''
+  assign start_lng = ''
+  assign end_lat = ''
+  assign end_lng = ''
+
+  if start_product
+    assign start_position = start_product.metafields.wetu.position.value
+    if start_position
+      assign start_lat = start_position.latitude
+      assign start_lng = start_position.longitude
+    endif
+  endif
+
+  if end_product
+    assign end_position = end_product.metafields.wetu.position.value
+    if end_position
+      assign end_lat = end_position.latitude
+      assign end_lng = end_position.longitude
+    endif
+  endif
+
+  assign google_maps_url = ''
+  if start_lat != blank or end_lat != blank
+    assign google_maps_url = 'https://www.google.com/maps/dir/?api=1'
+    if start_lat != blank
+      assign google_maps_url = google_maps_url | append: '&origin=' | append: start_lat | append: ',' | append: start_lng
+    endif
+    if end_lat != blank
+      assign google_maps_url = google_maps_url | append: '&destination=' | append: end_lat | append: ',' | append: end_lng
+    endif
+    if is_flight
+      assign google_maps_url = google_maps_url | append: '&travelmode=transit'
+    else
+      assign google_maps_url = google_maps_url | append: '&travelmode=driving'
+    endif
+  endif
+-%}
+
+<section class="itin-chrono__transfer"{% if preview_url != blank %} data-preview-url="{{ preview_url }}"{% endif %}>
+  <div class="itin-chrono__transfer-header">
+    <span class="itin-chrono__transfer-mode">{{ mode }}</span>
+    {% if reference_codes != blank %}
+      <span class="itin-chrono__transfer-ref">{{ reference_codes }}</span>
+    {% endif %}
+  </div>
+
+  <div class="itin-chrono__transfer-body">
+    <div class="itin-chrono__transfer-route">
+      <div class="itin-chrono__transfer-point">
+        <div class="itin-chrono__transfer-label">{{ 'sections.itinerary_chronological.transfer_depart' | t }}</div>
+        <div class="itin-chrono__transfer-name">{{ start_name }}</div>
+      </div>
+      <div class="itin-chrono__transfer-divider"></div>
+      <div class="itin-chrono__transfer-point">
+        <div class="itin-chrono__transfer-label">{{ 'sections.itinerary_chronological.transfer_arrive' | t }}</div>
+        <div class="itin-chrono__transfer-name">{{ end_name }}</div>
+      </div>
+    </div>
+
+    <div class="itin-chrono__transfer-meta">
+      {% if duration != blank %}
+        <span>{{ duration }}</span>
+      {% endif %}
+      {% if distance_km > 0 %}
+        <span>{{ distance_km }} km</span>
+      {% endif %}
+      {% if agency != blank %}
+        <span>{{ agency }}</span>
+      {% endif %}
+    </div>
+
+    <div class="itin-chrono__transfer-links">
+      {% if google_maps_url != blank %}
+        <a href="{{ google_maps_url }}" target="_blank" rel="noopener">{{ 'sections.itinerary_chronological.transfer_directions' | t }}</a>
+      {% endif %}
+      {% if is_flight %}
+        <a href="https://www.flightradar24.com" target="_blank" rel="noopener">{{ 'sections.itinerary_chronological.transfer_flight_radar' | t }}</a>
+      {% endif %}
+      <span class="itin-chrono__transfer-map">{{ 'sections.itinerary_chronological.transfer_route_map' | t }}</span>
+    </div>
+  </div>
+</section>

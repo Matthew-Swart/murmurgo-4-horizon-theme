@@ -1,0 +1,1357 @@
+{% comment %}
+  ============================================================================
+  WETU ITINERARY NEW DAYS
+  ============================================================================
+  
+  Day-by-day chronological story with:
+  - Day headers with dates
+  - Destination heroes (first visit)
+  - Accommodation cards
+  - Transfer/flight cards
+  - Driving directions
+  - Videos section
+  
+  ============================================================================
+{% endcomment %}
+
+{% include 'wetu-itinerary-data' %}
+{% render 'wetu-day-by-day-data', product: product %}
+
+{%- liquid
+  assign total_days = wetu_total_days | plus: 0
+  if total_days < 1
+    assign total_days = wetu_total_nights | plus: 1
+  endif
+  assign start_date = wetu_itinerary.start_date.value
+  
+  # Track first visits
+  assign seen_destinations = '|'
+  assign seen_accommodations = '|'
+-%}
+
+<div class="itin-new-days color-{{ section.settings.color_scheme }}" id="itinerary-days">
+  
+  {% for day_num in (1..total_days) %}
+    {%- liquid
+      # Find leg for this day
+      assign current_leg = nil
+      assign leg_start = 0
+      assign leg_end = 0
+      assign leg_total_nights = 0
+      assign day_within_leg = 0
+      assign running_day = 1
+      
+      for leg in wetu_legs
+        assign leg_type = leg.type.value | default: 'Standard'
+        assign leg_nights = leg.nights.value | default: 0 | plus: 0
+        
+        assign this_leg_start = running_day
+        if leg_nights > 0
+          assign this_leg_end = running_day | plus: leg_nights | minus: 1
+        else
+          assign this_leg_end = running_day
+        endif
+        
+        if day_num >= this_leg_start and day_num <= this_leg_end
+          assign current_leg = leg
+          assign leg_start = this_leg_start
+          assign leg_end = this_leg_end
+          assign leg_total_nights = leg_nights
+          assign day_within_leg = day_num | minus: this_leg_start | plus: 1
+          break
+        endif
+        
+        assign running_day = running_day | plus: leg_nights
+      endfor
+    -%}
+    
+    {% unless current_leg %}{% continue %}{% endunless %}
+    
+    {%- liquid
+      # Extract leg data
+      assign leg_type = current_leg.type.value | default: 'Standard'
+      assign acc_pin_id = current_leg.content_entity_id.value
+      assign acc_name = current_leg.accommodation_name.value
+      assign dest_pin_id = current_leg.destination_content_entity_id.value
+      
+      assign is_arrival_day = false
+      assign is_departure_day = false
+      if day_within_leg == 1
+        assign is_arrival_day = true
+      endif
+      if leg_type == 'Departure' or day_num == total_days
+        assign is_departure_day = true
+      endif
+      
+      # Calculate date
+      assign day_offset = day_num | minus: 1
+      if start_date != blank
+        assign day_date = start_date | date: '%s' | plus: day_offset | times: 86400
+        assign day_date_display = day_date | date: '%A, %B %e, %Y'
+      else
+        assign day_date_display = ''
+      endif
+      
+      # Find accommodation product
+      assign acc_product = nil
+      if acc_pin_id != blank
+        assign search_pin = acc_pin_id | append: ''
+        for check_pin in wetu_pin_ids_array
+          assign current_pin = check_pin | append: ''
+          if current_pin == search_pin
+            assign acc_handle = wetu_handles_array[forloop.index0]
+            assign acc_product = all_products[acc_handle]
+            break
+          endif
+        endfor
+      endif
+      
+      # Find destination product
+      assign dest_product = nil
+      assign dest_name = ''
+      if dest_pin_id != blank
+        assign search_dest = dest_pin_id | append: ''
+        for check_pin in wetu_pin_ids_array
+          assign current_pin = check_pin | append: ''
+          if current_pin == search_dest
+            assign dest_handle = wetu_handles_array[forloop.index0]
+            assign dest_product = all_products[dest_handle]
+            assign dest_name = dest_product.title
+            break
+          endif
+        endfor
+      endif
+      
+      # First visit flags
+      assign dest_is_first_visit = false
+      assign acc_is_first_visit = false
+      
+      if dest_pin_id != blank
+        assign dest_check = '|' | append: dest_pin_id | append: '|'
+        unless seen_destinations contains dest_check
+          assign dest_is_first_visit = true
+          assign seen_destinations = seen_destinations | append: dest_pin_id | append: '|'
+        endunless
+      endif
+      
+      if acc_pin_id != blank
+        assign acc_check = '|' | append: acc_pin_id | append: '|'
+        unless seen_accommodations contains acc_check
+          assign acc_is_first_visit = true
+          assign seen_accommodations = seen_accommodations | append: acc_pin_id | append: '|'
+        endunless
+      endif
+      
+      # Find routes for this day
+      assign day_routes = ''
+      for route in wetu_routes
+        assign route_start = route.start_day.value | default: 0 | plus: 0
+        assign route_end = route.end_day.value | default: route_start | plus: 0
+        if route_start == day_num or route_end == day_num
+          if day_routes != ''
+            assign day_routes = day_routes | append: ','
+          endif
+          assign day_routes = day_routes | append: forloop.index0
+        endif
+      endfor
+      assign routes_array = day_routes | split: ','
+    -%}
+    
+    <article 
+      class="itin-new-day" 
+      id="day-{{ day_num }}" 
+      data-day-section="{{ day_num }}"
+    >
+      {% comment %} Day Header {% endcomment %}
+      <header class="itin-new-day__header">
+        <span class="itin-new-day__number">Day {{ day_num }}</span>
+        {% if day_date_display != blank %}
+          <span class="itin-new-day__date">{{ day_date_display }}</span>
+        {% endif %}
+      </header>
+      
+      <div class="itin-new-day__content">
+        
+        {% comment %} Transfers at start of day (for travel days) {% endcomment %}
+        {% if routes_array.size > 0 and is_arrival_day %}
+          {% for route_index in routes_array %}
+            {% assign route = wetu_routes[route_index] %}
+            {% render 'wetu-new-transfer-card', route: route, wetu_legs: wetu_legs, wetu_pin_ids_array: wetu_pin_ids_array, wetu_handles_array: wetu_handles_array, show_directions: section.settings.show_driving_directions %}
+          {% endfor %}
+        {% endif %}
+        
+        {% comment %} Destination Hero (First Visit) {% endcomment %}
+        {% if section.settings.show_destination_heroes and dest_is_first_visit and dest_product != nil %}
+          <div class="itin-new-dest">
+            <div class="itin-new-dest__hero">
+              {% if dest_product.featured_image %}
+                <img 
+                  src="{{ dest_product.featured_image | image_url: width: 1200 }}"
+                  srcset="{{ dest_product.featured_image | image_url: width: 600 }} 600w,
+                          {{ dest_product.featured_image | image_url: width: 1200 }} 1200w"
+                  sizes="(max-width: 768px) 100vw, 1200px"
+                  alt="{{ dest_name }}"
+                  class="itin-new-dest__hero-img"
+                  loading="lazy"
+                >
+              {% endif %}
+              <div class="itin-new-dest__hero-overlay">
+                <span class="itin-new-dest__days">Day {{ leg_start }}-{{ leg_end }}</span>
+                <h2 class="itin-new-dest__title">{{ dest_name }}</h2>
+              </div>
+            </div>
+            
+            {% if dest_product.images.size > 0 %}
+              {% render 'wetu-magazine-gallery',
+                images: dest_product.images,
+                title: dest_name,
+                layout: 'trio',
+                limit: 3,
+                gallery_id: dest_pin_id
+              %}
+            {% endif %}
+            
+            <p class="itin-new-dest__intro">Discover the wonders of {{ dest_name }}.</p>
+          </div>
+        {% endif %}
+        
+        {% comment %} Accommodation Card {% endcomment %}
+        {% if acc_product != nil %}
+          {% if acc_is_first_visit %}
+            {% comment %} Full Accommodation Card {% endcomment %}
+            <div class="itin-new-accom">
+              <div class="itin-new-accom__hero">
+                {% if acc_product.featured_image %}
+                  <img 
+                    src="{{ acc_product.featured_image | image_url: width: 1200 }}"
+                    srcset="{{ acc_product.featured_image | image_url: width: 600 }} 600w,
+                            {{ acc_product.featured_image | image_url: width: 1200 }} 1200w"
+                    sizes="(max-width: 768px) 100vw, 1200px"
+                    alt="{{ acc_name }}"
+                    class="itin-new-accom__hero-img"
+                    loading="lazy"
+                  >
+                {% endif %}
+                <div class="itin-new-accom__hero-overlay">
+                  <span class="itin-new-accom__badge">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                      <polyline points="9 22 9 12 15 12 15 22"/>
+                    </svg>
+                    Your Accommodation
+                  </span>
+                  <div class="itin-new-accom__title-row">
+                    <h2 class="itin-new-accom__title">
+                      <a href="{{ acc_product.url }}">{{ acc_name }}</a>
+                    </h2>
+                    {% assign stars = acc_product.metafields.wetu.stars.value | default: 0 %}
+                    {% if stars > 0 %}
+                      <div class="itin-new-accom__stars" aria-label="{{ stars }} star rating">
+                        {% for i in (1..5) %}
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="{% if i <= stars %}currentColor{% else %}none{% endif %}" stroke="currentColor" stroke-width="2">
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                          </svg>
+                        {% endfor %}
+                      </div>
+                    {% endif %}
+                  </div>
+                  <span class="itin-new-accom__nights">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                    </svg>
+                    {{ leg_total_nights }} Night{% if leg_total_nights != 1 %}s{% endif %}
+                  </span>
+                </div>
+              </div>
+              
+              {% if acc_product.images.size > 0 %}
+                {% render 'wetu-magazine-gallery',
+                  images: acc_product.images,
+                  title: acc_name,
+                  layout: 'hero-grid',
+                  limit: 5,
+                  gallery_id: acc_pin_id
+                %}
+              {% endif %}
+              
+              <div class="itin-new-accom__details">
+                <div class="itin-new-accom__desc">
+                  {{ acc_product.description | strip_html | truncate: 400 }}
+                </div>
+                <a href="{{ acc_product.url }}" class="itin-new-accom__link">
+                  View Full Details
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                    <polyline points="12 5 19 12 12 19"/>
+                  </svg>
+                </a>
+              </div>
+              
+              {% comment %} Videos {% endcomment %}
+              {% if section.settings.show_videos %}
+                {% assign videos = acc_product.metafields.wetu.videos.value %}
+                {% if videos.size > 0 %}
+                  <div class="itin-new-accom__videos">
+                    <h3 class="itin-new-accom__videos-title">Videos</h3>
+                    <div class="itin-new-accom__videos-grid">
+                      {% for video in videos limit: 4 %}
+                        {% assign video_url = video.url.value | default: video.embed_url.value %}
+                        {% assign video_title = video.title.value | default: acc_name %}
+                        {% if video_url != blank %}
+                          <a href="{{ video_url }}" target="_blank" rel="noopener" class="itin-new-accom__video-card">
+                            <div class="itin-new-accom__video-thumb">
+                              {% assign youtube_id = video_url | split: 'youtu.be/' | last | split: '?' | first %}
+                              {% if youtube_id == video_url %}
+                                {% assign youtube_id = video_url | split: 'v=' | last | split: '&' | first %}
+                              {% endif %}
+                              <img src="https://img.youtube.com/vi/{{ youtube_id }}/mqdefault.jpg" alt="{{ video_title }}" loading="lazy">
+                              <svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor" class="itin-new-accom__play-icon">
+                                <polygon points="5 3 19 12 5 21 5 3"/>
+                              </svg>
+                            </div>
+                            <span class="itin-new-accom__video-name">{{ video_title }}</span>
+                          </a>
+                        {% endif %}
+                      {% endfor %}
+                    </div>
+                  </div>
+                {% endif %}
+              {% endif %}
+              
+              {% comment %} ============================================
+                 PERIOD NOTES, ACTIVITIES & INCLUSIONS
+                 ============================================ {% endcomment %}
+              
+              {%- liquid
+                assign day_period = nil
+                assign periods = current_leg.periods.value
+                if periods and periods.size > 0
+                  assign period_index = day_within_leg | minus: 1
+                  if period_index < periods.size
+                    assign day_period = periods[period_index]
+                  elsif periods.size == 1
+                    assign day_period = periods[0]
+                  endif
+                endif
+              -%}
+              
+              {% comment %} Day Narrative from Period Notes {% endcomment %}
+              {% if section.settings.show_period_notes and day_period and day_period.notes.value != blank %}
+                <article class="itin-new-day__narrative">
+                  <div class="itin-new-day__narrative-content">
+                    {{ day_period.notes.value }}
+                  </div>
+                </article>
+              {% endif %}
+              
+              {% comment %} Daily Activities {% endcomment %}
+              {% assign day_activities = day_period.activities.value %}
+              {% if section.settings.show_activities and day_activities and day_activities.size > 0 %}
+                <div class="itin-new-day__activities">
+                  <h4 class="itin-new-day__activities-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                    Today's Experiences
+                  </h4>
+                  <div class="itin-new-day__activities-list">
+                    {% for activity in day_activities %}
+                      <div class="itin-new-day__activity-item{% if activity.is_highlight.value %} itin-new-day__activity-item--highlight{% endif %}">
+                        {% assign activity_time = activity.start_time.value %}
+                        {% if activity_time != blank and activity_time != 'None' and activity_time != 'NotProvided' %}
+                          <span class="itin-new-day__activity-time">{{ activity_time }}</span>
+                        {% endif %}
+                        <span class="itin-new-day__activity-name">{{ activity.name.value }}</span>
+                        {% if activity.is_highlight.value %}
+                          <span class="itin-new-day__activity-badge">Highlight</span>
+                        {% endif %}
+                      </div>
+                    {% endfor %}
+                  </div>
+                </div>
+              {% endif %}
+              
+              {% comment %} Daily Inclusions (Collapsible) {% endcomment %}
+              {% if section.settings.show_daily_inclusions and day_period and day_period.included.value != blank %}
+                <details class="itin-new-day__inclusions">
+                  <summary>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    Included Today
+                    <svg class="itin-new-day__inclusions-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                  </summary>
+                  <div class="itin-new-day__inclusions-content">
+                    {{ day_period.included.value }}
+                  </div>
+                </details>
+              {% endif %}
+              
+              {% comment %} Meal Basis Info {% endcomment %}
+              {% assign room_basis = day_period.room_basis.value %}
+              {% assign drinks_basis = day_period.drinks_basis.value %}
+              {% if room_basis != blank or drinks_basis != blank %}
+                <div class="itin-new-day__meal-basis">
+                  {% if room_basis != blank %}
+                    <span class="itin-new-day__meal-badge">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
+                        <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+                        <line x1="6" y1="1" x2="6" y2="4"/>
+                        <line x1="10" y1="1" x2="10" y2="4"/>
+                        <line x1="14" y1="1" x2="14" y2="4"/>
+                      </svg>
+                      {{ room_basis }}
+                    </span>
+                  {% endif %}
+                  {% if drinks_basis != blank %}
+                    <span class="itin-new-day__meal-badge">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M8 22h8"/>
+                        <path d="M12 11v11"/>
+                        <path d="m19 3-7 8-7-8"/>
+                      </svg>
+                      {{ drinks_basis }}
+                    </span>
+                  {% endif %}
+                </div>
+              {% endif %}
+              
+            </div>
+          {% else %}
+            {% comment %} Subsequent Day - Subtle mention {% endcomment %}
+            <a href="{{ acc_product.url }}" class="itin-new-stay">
+              {% if acc_product.featured_image %}
+                <img 
+                  src="{{ acc_product.featured_image | image_url: width: 100 }}"
+                  alt="{{ acc_name }}"
+                  class="itin-new-stay__thumb"
+                  loading="lazy"
+                >
+              {% endif %}
+              <div class="itin-new-stay__info">
+                <span class="itin-new-stay__label">
+                  {% if is_departure_day %}Wake up at{% else %}Overnight at{% endif %}
+                </span>
+                <span class="itin-new-stay__name">{{ acc_name }}</span>
+              </div>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </a>
+            
+            {% comment %} ============================================
+               SUBSEQUENT DAY: PERIOD NOTES & ACTIVITIES
+               ============================================ {% endcomment %}
+            
+            {%- liquid
+              assign day_period = nil
+              assign periods = current_leg.periods.value
+              if periods and periods.size > 0
+                assign period_index = day_within_leg | minus: 1
+                if period_index < periods.size
+                  assign day_period = periods[period_index]
+                elsif periods.size == 1
+                  assign day_period = periods[0]
+                endif
+              endif
+            -%}
+            
+            {% comment %} Day Narrative {% endcomment %}
+            {% if section.settings.show_period_notes and day_period and day_period.notes.value != blank %}
+              <article class="itin-new-day__narrative itin-new-day__narrative--subsequent">
+                <div class="itin-new-day__narrative-content">
+                  {{ day_period.notes.value }}
+                </div>
+              </article>
+            {% endif %}
+            
+            {% comment %} Daily Activities {% endcomment %}
+            {% assign day_activities = day_period.activities.value %}
+            {% if section.settings.show_activities and day_activities and day_activities.size > 0 %}
+              <div class="itin-new-day__activities">
+                <h4 class="itin-new-day__activities-title">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                  </svg>
+                  Today's Experiences
+                </h4>
+                <div class="itin-new-day__activities-list">
+                  {% for activity in day_activities %}
+                    <div class="itin-new-day__activity-item{% if activity.is_highlight.value %} itin-new-day__activity-item--highlight{% endif %}">
+                      {% assign activity_time = activity.start_time.value %}
+                      {% if activity_time != blank and activity_time != 'None' and activity_time != 'NotProvided' %}
+                        <span class="itin-new-day__activity-time">{{ activity_time }}</span>
+                      {% endif %}
+                      <span class="itin-new-day__activity-name">{{ activity.name.value }}</span>
+                      {% if activity.is_highlight.value %}
+                        <span class="itin-new-day__activity-badge">Highlight</span>
+                      {% endif %}
+                    </div>
+                  {% endfor %}
+                </div>
+              </div>
+            {% endif %}
+            
+            {% comment %} Daily Inclusions {% endcomment %}
+            {% if section.settings.show_daily_inclusions and day_period and day_period.included.value != blank %}
+              <details class="itin-new-day__inclusions">
+                <summary>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                  Included Today
+                  <svg class="itin-new-day__inclusions-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </summary>
+                <div class="itin-new-day__inclusions-content">
+                  {{ day_period.included.value }}
+                </div>
+              </details>
+            {% endif %}
+            
+          {% endif %}
+        {% endif %}
+        
+        {% comment %} Transfers at end of day (for departure) {% endcomment %}
+        {% if routes_array.size > 0 and is_departure_day and is_arrival_day == false %}
+          {% for route_index in routes_array %}
+            {% assign route = wetu_routes[route_index] %}
+            {% render 'wetu-new-transfer-card', route: route, wetu_legs: wetu_legs, wetu_pin_ids_array: wetu_pin_ids_array, wetu_handles_array: wetu_handles_array, show_directions: section.settings.show_driving_directions %}
+          {% endfor %}
+        {% endif %}
+        
+      </div>
+    </article>
+  {% endfor %}
+  
+</div>
+
+<style>
+/* ============================================
+   DAY-BY-DAY STYLES
+   ============================================ */
+
+.itin-new-days {
+  padding: 0;
+}
+
+.itin-new-day {
+  border-bottom: 1px solid rgba(var(--color-foreground), 0.1);
+}
+
+.itin-new-day:last-child {
+  border-bottom: none;
+}
+
+/* Day Header */
+.itin-new-day__header {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  padding: 24px var(--page-width-padding, 20px);
+  background: rgba(var(--color-foreground), 0.03);
+}
+
+.itin-new-day__number {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-primary, #d4a574);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.itin-new-day__date {
+  font-size: 0.875rem;
+  color: rgba(var(--color-foreground), 0.6);
+}
+
+.itin-new-day__content {
+  padding: 24px var(--page-width-padding, 20px) 40px;
+  max-width: var(--page-width, 1200px);
+  margin: 0 auto;
+}
+
+/* Destination Hero */
+.itin-new-dest {
+  margin-bottom: 32px;
+}
+
+.itin-new-dest__hero {
+  position: relative;
+  aspect-ratio: 21/9;
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.itin-new-dest__hero-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.itin-new-dest__hero-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 24px;
+  /* Lighter gradient - rely on text shadows for readability */
+  background: linear-gradient(to top, rgba(0,0,0,0.3) 0%, transparent 40%);
+}
+
+.itin-new-dest__days {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 12px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.itin-new-dest__title {
+  font-size: clamp(1.5rem, 4vw, 2.5rem);
+  font-weight: 600;
+  color: #fff;
+  margin: 0;
+  text-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.5),
+    0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.itin-new-dest__gallery {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scrollbar-width: none;
+}
+
+.itin-new-dest__gallery::-webkit-scrollbar { display: none; }
+
+.itin-new-dest__thumb {
+  flex-shrink: 0;
+  width: 100px;
+  height: 70px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.itin-new-dest__thumb:hover {
+  transform: scale(1.05);
+}
+
+.itin-new-dest__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.itin-new-dest__intro {
+  font-size: 0.9375rem;
+  color: rgba(var(--color-foreground), 0.7);
+  margin: 16px 0 0;
+}
+
+/* Accommodation Card */
+.itin-new-accom {
+  background: rgba(var(--color-foreground), 0.03);
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.itin-new-accom__hero {
+  position: relative;
+  aspect-ratio: 16/9;
+}
+
+.itin-new-accom__hero-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.itin-new-accom__hero-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 24px;
+  /* Lighter gradient - rely on text shadows for readability */
+  background: linear-gradient(to top, rgba(0,0,0,0.3) 0%, transparent 40%);
+}
+
+.itin-new-accom__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  padding: 8px 14px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  margin-bottom: 12px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.itin-new-accom__title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.itin-new-accom__title {
+  font-size: clamp(1.25rem, 3vw, 1.75rem);
+  font-weight: 600;
+  color: #fff;
+  margin: 0;
+  text-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.5),
+    0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.itin-new-accom__title a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.itin-new-accom__title a:hover {
+  text-decoration: underline;
+}
+
+.itin-new-accom__stars {
+  display: flex;
+  gap: 2px;
+  color: var(--color-primary, #d4a574);
+}
+
+.itin-new-accom__nights {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+  color: rgba(255,255,255,0.9);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.itin-new-accom__gallery {
+  display: flex;
+  gap: 8px;
+  padding: 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.itin-new-accom__gallery::-webkit-scrollbar { display: none; }
+
+.itin-new-accom__thumb {
+  flex-shrink: 0;
+  width: 100px;
+  height: 70px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.itin-new-accom__thumb:hover {
+  transform: scale(1.05);
+}
+
+.itin-new-accom__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.itin-new-accom__details {
+  padding: 0 24px 24px;
+}
+
+.itin-new-accom__desc {
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: rgba(var(--color-foreground), 0.8);
+  margin-bottom: 16px;
+}
+
+.itin-new-accom__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-primary, #d4a574);
+  text-decoration: none;
+}
+
+.itin-new-accom__link:hover {
+  text-decoration: underline;
+}
+
+/* Videos */
+.itin-new-accom__videos {
+  padding: 0 24px 24px;
+  border-top: 1px solid rgba(var(--color-foreground), 0.1);
+  padding-top: 24px;
+}
+
+.itin-new-accom__videos-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 16px;
+}
+
+.itin-new-accom__videos-grid {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.itin-new-accom__videos-grid::-webkit-scrollbar { display: none; }
+
+.itin-new-accom__video-card {
+  flex-shrink: 0;
+  width: 200px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.itin-new-accom__video-thumb {
+  position: relative;
+  aspect-ratio: 16/9;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.itin-new-accom__video-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.itin-new-accom__video-card:hover .itin-new-accom__video-thumb img {
+  transform: scale(1.05);
+}
+
+.itin-new-accom__play-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  opacity: 0.9;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+
+.itin-new-accom__video-name {
+  font-size: 0.8125rem;
+  color: rgba(var(--color-foreground), 0.8);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ============================================
+   PERIOD NOTES, ACTIVITIES & INCLUSIONS
+   ============================================ */
+
+/* Narrative Section */
+.itin-new-day__narrative {
+  padding: 32px 24px;
+  border-top: 1px solid rgba(var(--color-foreground), 0.08);
+}
+
+.itin-new-day__narrative-content {
+  max-width: 720px;
+  margin: 0 auto;
+  font-size: 1.0625rem;
+  line-height: 1.8;
+  color: rgba(var(--color-foreground), 0.85);
+}
+
+.itin-new-day__narrative-content p {
+  margin-bottom: 1.5em;
+}
+
+.itin-new-day__narrative-content p:last-child {
+  margin-bottom: 0;
+}
+
+.itin-new-day__narrative-content h1,
+.itin-new-day__narrative-content h2,
+.itin-new-day__narrative-content h3,
+.itin-new-day__narrative-content h4 {
+  margin: 1.5em 0 0.75em;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.itin-new-day__narrative-content ul,
+.itin-new-day__narrative-content ol {
+  margin: 1em 0;
+  padding-left: 1.5em;
+}
+
+.itin-new-day__narrative-content li {
+  margin-bottom: 0.5em;
+}
+
+/* Subsequent day narrative (after accommodation card) */
+.itin-new-day__narrative--subsequent {
+  margin-top: 24px;
+  border-top: none;
+  border-radius: 12px;
+  background: rgba(var(--color-foreground), 0.02);
+}
+
+/* Activities Timeline */
+.itin-new-day__activities {
+  padding: 24px;
+  background: rgba(var(--color-foreground), 0.02);
+  border-top: 1px solid rgba(var(--color-foreground), 0.08);
+}
+
+.itin-new-day__activities-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  margin: 0 0 16px;
+  color: rgba(var(--color-foreground), 0.7);
+}
+
+.itin-new-day__activities-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.itin-new-day__activity-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: rgba(var(--color-background), 0.8);
+  border-radius: 8px;
+  border-left: 3px solid transparent;
+}
+
+.itin-new-day__activity-item--highlight {
+  border-left-color: var(--color-primary, #d4a574);
+  background: rgba(212, 165, 116, 0.08);
+}
+
+.itin-new-day__activity-time {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-primary, #d4a574);
+  min-width: 60px;
+  flex-shrink: 0;
+}
+
+.itin-new-day__activity-name {
+  flex: 1;
+  font-weight: 500;
+}
+
+.itin-new-day__activity-badge {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 4px 8px;
+  background: var(--color-primary, #d4a574);
+  color: #fff;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+/* Inclusions (Collapsible) */
+.itin-new-day__inclusions {
+  margin: 0 24px 16px;
+  border: 1px solid rgba(var(--color-foreground), 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.itin-new-day__inclusions summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  font-weight: 500;
+  cursor: pointer;
+  background: rgba(var(--color-foreground), 0.02);
+  list-style: none;
+}
+
+.itin-new-day__inclusions summary::-webkit-details-marker {
+  display: none;
+}
+
+.itin-new-day__inclusions-chevron {
+  margin-left: auto;
+  transition: transform 0.2s ease;
+}
+
+.itin-new-day__inclusions[open] .itin-new-day__inclusions-chevron {
+  transform: rotate(180deg);
+}
+
+.itin-new-day__inclusions[open] summary {
+  border-bottom: 1px solid rgba(var(--color-foreground), 0.1);
+}
+
+.itin-new-day__inclusions-content {
+  padding: 16px;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+}
+
+.itin-new-day__inclusions-content ul {
+  margin: 0;
+  padding-left: 1.25em;
+}
+
+.itin-new-day__inclusions-content li {
+  margin-bottom: 0.5em;
+}
+
+.itin-new-day__inclusions-content li:last-child {
+  margin-bottom: 0;
+}
+
+/* Meal Basis Badges */
+.itin-new-day__meal-basis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 24px 16px;
+}
+
+.itin-new-day__meal-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  background: rgba(var(--color-foreground), 0.05);
+  border-radius: 20px;
+  color: rgba(var(--color-foreground), 0.7);
+}
+
+.itin-new-day__meal-badge svg {
+  opacity: 0.6;
+}
+
+/* Subsequent Day Stay */
+.itin-new-stay {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: rgba(var(--color-foreground), 0.03);
+  border-radius: 12px;
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.2s ease;
+}
+
+.itin-new-stay:hover {
+  background: rgba(var(--color-foreground), 0.06);
+}
+
+.itin-new-stay__thumb {
+  width: 60px;
+  height: 60px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.itin-new-stay__info {
+  flex: 1;
+}
+
+.itin-new-stay__label {
+  display: block;
+  font-size: 0.75rem;
+  color: rgba(var(--color-foreground), 0.5);
+  margin-bottom: 4px;
+}
+
+.itin-new-stay__name {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* Lightbox */
+.itin-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.95);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.itin-lightbox.is-visible {
+  opacity: 1;
+}
+
+.itin-lightbox img {
+  max-width: 90%;
+  max-height: 90vh;
+  object-fit: contain;
+  transform: scale(0.95);
+  transition: transform 0.3s ease;
+}
+
+.itin-lightbox.is-visible img {
+  transform: scale(1);
+}
+
+.itin-lightbox__close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.1);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+}
+
+/* Mobile */
+@media (max-width: 767px) {
+  .itin-new-dest__hero {
+    aspect-ratio: 16/9;
+  }
+  
+  .itin-new-accom__video-card {
+    width: 160px;
+  }
+  
+  /* Period Notes Mobile */
+  .itin-new-day__narrative {
+    padding: 24px 16px;
+  }
+  
+  .itin-new-day__narrative-content {
+    font-size: 1rem;
+    line-height: 1.7;
+  }
+  
+  /* Activities Mobile */
+  .itin-new-day__activities {
+    padding: 16px;
+  }
+  
+  .itin-new-day__activity-item {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+  
+  .itin-new-day__activity-time {
+    min-width: auto;
+    order: -1;
+    width: 100%;
+    margin-bottom: 2px;
+  }
+  
+  .itin-new-day__activity-name {
+    flex: none;
+    width: 100%;
+  }
+  
+  .itin-new-day__activity-badge {
+    margin-top: 4px;
+  }
+  
+  /* Inclusions Mobile */
+  .itin-new-day__inclusions {
+    margin: 0 16px 12px;
+  }
+  
+  .itin-new-day__inclusions summary {
+    padding: 10px 12px;
+    font-size: 0.9375rem;
+  }
+  
+  .itin-new-day__inclusions-content {
+    padding: 12px;
+    font-size: 0.875rem;
+  }
+  
+  /* Meal Basis Mobile */
+  .itin-new-day__meal-basis {
+    padding: 0 16px 12px;
+    gap: 6px;
+  }
+  
+  .itin-new-day__meal-badge {
+    padding: 4px 10px;
+    font-size: 0.75rem;
+  }
+}
+</style>
+
+<script>
+(function() {
+  'use strict';
+  
+  window.openLightbox = function(src, alt) {
+    if (!src) return;
+    
+    var modal = document.createElement('div');
+    modal.className = 'itin-lightbox';
+    modal.innerHTML = '<img src="' + src + '" alt="' + (alt || '') + '"><button class="itin-lightbox__close">×</button>';
+    
+    var close = function() {
+      modal.classList.remove('is-visible');
+      setTimeout(function() {
+        if (modal.parentNode) modal.parentNode.removeChild(modal);
+      }, 300);
+    };
+    
+    modal.addEventListener('click', close);
+    modal.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') close();
+    });
+    
+    document.body.appendChild(modal);
+    modal.focus();
+    
+    requestAnimationFrame(function() {
+      modal.classList.add('is-visible');
+    });
+  };
+})();
+</script>
+
+{% render 'wetu-fullscreen-gallery' %}
+
+{% schema %}
+{
+  "name": "Itinerary New Days",
+  "tag": "section",
+  "class": "section-itin-new-days",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-5"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_destination_heroes",
+      "label": "Show destination heroes",
+      "default": true,
+      "info": "Full destination intro on first visit"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_transfers",
+      "label": "Show transfer cards",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_driving_directions",
+      "label": "Show driving directions",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_videos",
+      "label": "Show videos",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_alternative_accommodations",
+      "label": "Show alternative accommodations",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Day Narratives & Activities"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_period_notes",
+      "label": "Show day narratives",
+      "default": true,
+      "info": "Rich storytelling content for each day from WETU period notes"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_activities",
+      "label": "Show daily activities",
+      "default": true,
+      "info": "Activities scheduled for each day with times and highlights"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_daily_inclusions",
+      "label": "Show daily inclusions",
+      "default": true,
+      "info": "Collapsible list of what's included each day"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Itinerary New Days"
+    }
+  ]
+}
+{% endschema %}

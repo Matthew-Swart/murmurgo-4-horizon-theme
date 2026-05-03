@@ -1,0 +1,49 @@
+{% liquid
+  assign block_settings = block.settings
+  assign color_scheme_classes = ''
+  assign color_scheme_setting_id = 'color_scheme_' | append: section.settings.menu_row
+  assign current_color_scheme = block_settings.color_scheme
+  assign parent_color_scheme = section.settings[color_scheme_setting_id]
+
+  if parent_color_scheme.id != current_color_scheme.id
+    assign color_scheme_classes = ' color-' | append: current_color_scheme
+  endif
+
+  # Check if header and menu colors match
+  if parent_color_scheme.settings.background.rgb == current_color_scheme.settings.background.rgb
+    assign color_scheme_classes = color_scheme_classes | append: ' color-scheme-matches-parent'
+  endif
+  
+  # Hide the header menu for non-Travel 2022 stores since they use property-nav-bar
+  # This prevents the duplicated overlay menu on hero sections
+  assign is_travel_2022 = false
+  if shop.permanent_domain contains 'travel-2022'
+    assign is_travel_2022 = true
+  endif
+  
+  assign is_home_page = false
+  if request.path == '/' or template.name == 'index'
+    assign is_home_page = true
+  endif
+  
+  # Only show header menu on Travel 2022 OR on home page for other stores
+  assign show_header_menu = false
+  if is_travel_2022
+    assign show_header_menu = true
+  elsif is_home_page
+    assign show_header_menu = true
+  endif
+%}
+
+{% if show_header_menu %}
+<nav header-menu-dynamic>
+  <div
+    class="menu-list"
+    style="{% render 'menu-font-styles', settings: block_settings %}"
+  >
+    <ul class="menu-list__list list-unstyled" role="list">
+      {% render 'dynamic-property-menu' %}
+    </ul>
+  </div>
+</nav>
+{% endif %}

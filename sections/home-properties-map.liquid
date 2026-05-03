@@ -1,0 +1,328 @@
+{% comment %}
+  Homepage Properties Map
+  - 50/50 layout: square map on left, centered logo on right with 1px gaps
+  - Data source: products (type 'wetu-property') from a selected collection
+  - Falls back to collection handle 'all-properties' if setting is empty
+  - Coordinates read from product.metafields.travel.location (metaobject) or product.metafields.wetu.location
+  - Uses reusable snippet 'wetu-property-map' (Mapbox GL) with responsive popups/overlap handling
+{% endcomment %}
+
+{% liquid
+  assign properties_collection = section.settings.collection
+  if properties_collection == blank
+    assign properties_collection = collections['all-properties']
+  endif
+
+  assign limit_num = section.settings.limit | default: 50
+  assign only_wetu = section.settings.only_wetu_property
+%}
+
+{% if properties_collection != blank and properties_collection.products_count > 0 %}
+  {%- assign first_item = true -%}
+  {%- capture properties_json -%}[{%- endcapture -%}
+
+  {%- for item in properties_collection.products limit: limit_num -%}
+    {%- if only_wetu and item.type != 'wetu-property' -%}
+      {%- continue -%}
+    {%- endif -%}
+
+    {%- assign latitude = nil -%}
+    {%- assign longitude = nil -%}
+    {%- assign destination = nil -%}
+    {%- assign country = nil -%}
+
+    {%- assign loc = item.metafields.travel.location.value -%}
+    {%- if loc and loc.latitude and loc.longitude -%}
+      {%- assign latitude = loc.latitude.value | times: 1.0 -%}
+      {%- assign longitude = loc.longitude.value | times: 1.0 -%}
+      {%- assign destination = loc.destination.value | default: item.title -%}
+      {%- assign country = loc.country.value | default: '' -%}
+    {%- else -%}
+      {%- comment -%} Fallback: wetu.location metaobject reference {%- endcomment -%}
+      {%- assign wloc_ref = item.metafields.wetu.location.value -%}
+      {%- if wloc_ref and wloc_ref.latitude and wloc_ref.longitude -%}
+        {%- assign latitude = wloc_ref.latitude.value | times: 1.0 -%}
+        {%- assign longitude = wloc_ref.longitude.value | times: 1.0 -%}
+        {%- assign destination = wloc_ref.destination.value | default: item.title -%}
+        {%- assign country = wloc_ref.country.value | default: '' -%}
+      {%- else -%}
+        {%- comment -%} Last resort: wetu.location as a JSON-like object or string, or position string "lat,lng" {%- endcomment -%}
+        {%- assign wloc_raw = item.metafields.wetu.location -%}
+        {%- if wloc_raw and wloc_raw != blank -%}
+          {%- assign lat_guess = wloc_raw.latitude | default: nil -%}
+          {%- assign lng_guess = wloc_raw.longitude | default: nil -%}
+          {%- if lat_guess and lng_guess -%}
+            {%- assign latitude = lat_guess | times: 1.0 -%}
+            {%- assign longitude = lng_guess | times: 1.0 -%}
+            {%- assign destination = wloc_raw.destination | default: item.title -%}
+            {%- assign country = wloc_raw.country | default: '' -%}
+          {%- else -%}
+            {%- assign concise = item.metafields.wetu.location_concise -%}
+            {%- if concise and concise contains ',' -%}
+              {%- assign parts = concise | split: ',' -%}
+              {%- assign lat_p = parts[0] | strip | times: 1.0 -%}
+              {%- assign lng_p = parts[1] | strip | times: 1.0 -%}
+              {%- assign latitude = lat_p -%}
+              {%- assign longitude = lng_p -%}
+              {%- assign destination = item.title -%}
+              {%- assign country = '' -%}
+            {%- endif -%}
+          {%- endif -%}
+        {%- endif -%}
+      {%- endif -%}
+    {%- endif -%}
+
+    {%- if latitude and longitude -%}
+      {%- assign image_url = '' -%}
+      {%- if item.featured_image -%}
+        {%- assign image_url = item.featured_image | image_url: width: 800 -%}
+      {%- endif -%}
+
+      {%- unless first_item -%}
+        {%- capture properties_json -%}{{ properties_json }},{%- endcapture -%}
+      {%- endunless -%}
+      {%- assign first_item = false -%}
+
+      {%- capture properties_json -%}
+        {{ properties_json }}{
+          "id": {{ item.id }},
+          "name": {{ item.title | json }},
+          "handle": {{ item.handle | json }},
+          "url": {{ item.url | json }},
+          "image": {{ image_url | json }},
+          "latitude": {{ latitude }},
+          "longitude": {{ longitude }},
+          "destination": {{ destination | default: item.title | json }},
+          "country": {{ country | default: '' | json }}
+        }
+      {%- endcapture -%}
+    {%- endif -%}
+  {%- endfor -%}
+
+  {%- capture properties_json -%}{{ properties_json }}]{%- endcapture -%}
+  {%- assign properties = properties_json | parse_json -%}
+
+  {%- if properties and properties.size > 0 -%}
+    {%- assign overlay_logo = settings.logo -%}
+    {%- assign overlay_logo_url = '' -%}
+    {%- if overlay_logo -%}
+      {%- assign overlay_logo_url = overlay_logo | image_url: width: 400 -%}
+    {%- endif -%}
+    
+    <div class="map-logo-container">
+      <div class="map-section">
+        {%- render 'wetu-property-map',
+          properties: properties,
+          map_style: section.settings.map_style,
+          aspect_ratio: '16:9',
+          scope: 'all',
+          show_popups: true,
+          show_logo_overlay: false,
+          force_mobile_popups: true
+        -%}
+      </div>
+      <div class="logo-section">
+        {%- if overlay_logo -%}
+          <img src="{{ overlay_logo_url }}" alt="{{ shop.name }}" class="map-side-logo">
+        {%- else -%}
+          <span class="map-side-logo-text">{{ shop.name }}</span>
+        {%- endif -%}
+      </div>
+    </div>
+    
+    <style>
+    /* Desktop layout: 50% width map on left, logo centered on right 50% with 1px gap */
+    @media (min-width: 750px) {
+      #shopify-section-{{ section.id }} .map-logo-container {
+        display: flex;
+        flex-direction: row;
+        align-items: stretch;
+        width: 100%;
+        gap: 1px;
+        margin-top: 1px;
+        position: relative;
+        z-index: 1;
+      }
+      
+      #shopify-section-{{ section.id }} .map-section {
+        width: calc(50% - 0.5px); /* 50% minus half the gap */
+        flex-shrink: 0;
+        position: relative;
+        z-index: 1;
+      }
+      
+      #shopify-section-{{ section.id }} .map-section .wetu-property-map-wrapper {
+        padding-bottom: 100% !important; /* Square aspect ratio (1:1) */
+      }
+      
+      #shopify-section-{{ section.id }} .logo-section {
+        width: calc(50% - 0.5px); /* 50% minus half the gap */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #ffffff;
+        position: relative;
+        z-index: 10;
+      }
+      
+      #shopify-section-{{ section.id }} .map-side-logo {
+        max-width: 70%;
+        max-height: 180px;
+        width: auto;
+        height: auto;
+        object-fit: contain;
+        display: block;
+        position: relative;
+        z-index: 11;
+      }
+      
+      #shopify-section-{{ section.id }} .map-side-logo-text {
+        font-size: 32px;
+        font-weight: 600;
+        color: #111;
+        position: relative;
+        z-index: 11;
+      }
+    }
+    
+    /* Mobile: Full-width map, logo below */
+    @media (max-width: 749px) {
+      #shopify-section-{{ section.id }} .map-logo-container {
+        display: flex;
+        flex-direction: column;
+      }
+      
+      #shopify-section-{{ section.id }} .map-section {
+        width: 100%;
+      }
+      
+      #shopify-section-{{ section.id }} .logo-section {
+        display: none; /* Hide logo on mobile */
+      }
+    }
+    
+    /* Prevent map content from causing horizontal scroll */
+    #shopify-section-{{ section.id }} {
+      width: 100%;
+      max-width: 100vw;
+      overflow: hidden;
+      box-sizing: border-box;
+      /* Ensure stable height from initial render to prevent layout shift */
+      contain: layout;
+    }
+    #shopify-section-{{ section.id }} .wetu-property-map-wrapper {
+      max-width: 100%;
+      width: 100%;
+      overflow: hidden;
+      box-sizing: border-box;
+      /* Critical: prevent height changes during map initialization */
+      min-height: 0;
+      will-change: auto;
+    }
+    #shopify-section-{{ section.id }} .wetu-property-map {
+      max-width: 100%;
+      /* Prevent canvas rendering from triggering layout */
+      contain: paint;
+    }
+    /* Ensure Mapbox canvas and container respect boundaries but can render */
+    #shopify-section-{{ section.id }} .mapboxgl-map {
+      width: 100% !important;
+      height: 100% !important;
+    }
+    #shopify-section-{{ section.id }} .mapboxgl-canvas-container {
+      width: 100% !important;
+      height: 100% !important;
+    }
+    #shopify-section-{{ section.id }} .mapboxgl-canvas {
+      max-width: 100% !important;
+    }
+    /* Prevent popups from extending beyond viewport and causing layout shifts */
+    #shopify-section-{{ section.id }} .mapboxgl-popup {
+      max-width: calc(100vw - 40px) !important;
+      /* Prevent popup rendering from affecting parent layout */
+      contain: layout style;
+    }
+    </style>
+  {%- else -%}
+    {%- if section.settings.show_error_message -%}
+      <div style="padding: 40px 20px; text-align: center; background: #f7f7f7; border: 1px solid #ddd;">
+        <p style="color: #666; margin: 0; font-size: 14px;">
+          <strong>No mapped properties found in the selected collection.</strong>
+        </p>
+        <p style="color: #999; margin: 10px 0 0 0; font-size: 12px;">
+          Add products of type <em>wetu-property</em> with location metafields, or choose a different collection.
+        </p>
+      </div>
+    {%- endif -%}
+  {%- endif -%}
+{% elsif section.settings.show_error_message %}
+  <div style="padding: 40px 20px; text-align: center; background: #f7f7f7; border: 1px solid #ddd;">
+    <p style="color: #666; margin: 0; font-size: 14px;">
+      <strong>No collection found. Select a collection or create 'all-properties'.</strong>
+    </p>
+  </div>
+{% endif %}
+
+{% schema %}
+{
+  "name": "Homepage Properties Map",
+  "tag": "section",
+  "class": "home-properties-map-section",
+  "disabled_on": {
+    "groups": ["header", "footer"]
+  },
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "Full-width 32:9 map showing properties from a collection. Uses product metafields for coordinates."
+    },
+    {
+      "type": "collection",
+      "id": "collection",
+      "label": "Properties collection",
+      "info": "Select the collection containing all ‘wetu-property’ products. If empty, will try 'all-properties'."
+    },
+    {
+      "type": "range",
+      "id": "limit",
+      "label": "Max products",
+      "min": 1,
+      "max": 100,
+      "step": 1,
+      "default": 50
+    },
+    {
+      "type": "checkbox",
+      "id": "only_wetu_property",
+      "label": "Only include products of type 'wetu-property'",
+      "default": false
+    },
+    {
+      "type": "select",
+      "id": "map_style",
+      "label": "Map style",
+      "options": [
+        { "value": "satellite-streets-v12", "label": "Satellite with Streets" },
+        { "value": "streets-v12", "label": "Streets" },
+        { "value": "outdoors-v12", "label": "Outdoors" },
+        { "value": "light-v11", "label": "Light" },
+        { "value": "dark-v11", "label": "Dark" }
+      ],
+      "default": "satellite-streets-v12"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_error_message",
+      "label": "Show message when no properties found",
+      "default": false
+    }
+  ],
+  "presets": [
+    {
+      "name": "Homepage Properties Map",
+      "category": "Map"
+    }
+  ]
+}
+{% endschema %}
+

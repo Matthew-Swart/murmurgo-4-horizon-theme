@@ -1,0 +1,28 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "itinerary-main": {
+      "type": "wetu-itinerary-fresh",
+      "settings": {
+        "color_scheme": "scheme-5",
+        "alt_color_scheme": "scheme-1",
+        "show_client_name": true,
+        "show_reference_number": true,
+        "show_perfect_for": true,
+        "show_enriched_products": true,
+        "show_google_maps_links": true
+      }
+    }
+  },
+  "order": [
+    "itinerary-main"
+  ]
+}

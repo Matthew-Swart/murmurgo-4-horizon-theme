@@ -1,0 +1,85 @@
+{% doc %}
+  WETU Document Title Normalizer
+
+  Cleans filename-like document titles into plain-English readable titles.
+
+  @param {string} raw_title - Raw title string to normalize
+{% enddoc %}
+
+{% liquid
+  assign source_title = raw_title | default: title | default: 'Document'
+  assign cleaned_title = source_title | replace: '.pdf', ''
+  assign cleaned_title = cleaned_title | replace: '.PDF', ''
+  assign cleaned_title = cleaned_title | replace: '_', ' '
+  assign cleaned_title = cleaned_title | replace: '-', ' '
+  assign cleaned_title = cleaned_title | downcase
+  assign cleaned_title = cleaned_title | replace: 'factsheet', 'fact sheet'
+  assign cleaned_title = cleaned_title | replace: 'factsheet', 'fact sheet'
+  assign cleaned_title = cleaned_title | replace: 'safarilodge', 'safari lodge'
+  assign cleaned_title = cleaned_title | replace: 'lodge', ' lodge'
+  assign cleaned_title = cleaned_title | replace: '  ', ' '
+  assign cleaned_title = cleaned_title | strip
+
+  assign title_parts = cleaned_title | split: ' '
+  assign final_title = ''
+  assign skip_leading_numbers = true
+
+  for part in title_parts
+    assign part_stripped = part | strip
+    assign part_size = part_stripped | size
+
+    if skip_leading_numbers and part_size > 0
+      assign is_numeric = true
+      assign chars = part_stripped | split: ''
+      for char in chars
+        unless char == '0' or char == '1' or char == '2' or char == '3' or char == '4' or char == '5' or char == '6' or char == '7' or char == '8' or char == '9'
+          assign is_numeric = false
+          break
+        endunless
+      endfor
+
+      if is_numeric
+        continue
+      else
+        assign skip_leading_numbers = false
+      endif
+    endif
+
+    if part_size > 0 and skip_leading_numbers == false
+      if final_title == ''
+        assign final_title = part_stripped
+      else
+        assign final_title = final_title | append: ' ' | append: part_stripped
+      endif
+    endif
+  endfor
+
+  if final_title == blank
+    assign final_title = cleaned_title
+  endif
+
+  assign title_words = final_title | downcase | split: ' '
+  assign capitalized_parts = ''
+
+  for word in title_words
+    assign word_size = word | size
+    if word_size > 0
+      assign first_char = word | slice: 0 | upcase
+      assign rest_chars = word | slice: 1, word_size
+      assign cap_word = first_char | append: rest_chars
+
+      if capitalized_parts == ''
+        assign capitalized_parts = cap_word
+      else
+        assign capitalized_parts = capitalized_parts | append: ' ' | append: cap_word
+      endif
+    endif
+  endfor
+
+  assign normalized_title = capitalized_parts
+  if normalized_title == blank
+    assign normalized_title = source_title | strip
+  endif
+
+  echo normalized_title
+%}

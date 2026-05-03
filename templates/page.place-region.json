@@ -1,0 +1,31 @@
+{
+  "sections": {
+    "place-hero": {
+      "type": "place-hero",
+      "settings": {}
+    },
+    "place-summary-and-claim": {
+      "type": "place-summary-and-claim",
+      "settings": {}
+    },
+    "polygon-map": {
+      "type": "polygon-map",
+      "settings": {}
+    },
+    "contained-places-list": {
+      "type": "contained-places-list",
+      "settings": {}
+    },
+    "place-jsonld": {
+      "type": "place-jsonld",
+      "settings": {}
+    }
+  },
+  "order": [
+    "place-hero",
+    "place-summary-and-claim",
+    "polygon-map",
+    "contained-places-list",
+    "place-jsonld"
+  ]
+}

@@ -1,0 +1,146 @@
+{%- liquid
+  assign itinerary_json_raw = product.metafields.wetu.itinerary_json.value | default: product.metafields.wetu.itinerary_json
+  assign itinerary_source_json_raw = product.metafields.wetu.itinerary_source_json.value | default: product.metafields.wetu.itinerary_source_json
+  assign itinerary_identifier_raw = product.metafields.wetu.itinerary_identifier.value | default: product.metafields.wetu.itinerary_identifier
+
+  assign canonical_json_url = product.metafields.wetu.itinerary_source_json_cdn_url.value | default: product.metafields.wetu.itinerary_source_json_cdn_url
+  if canonical_json_url == blank and itinerary_source_json_raw != blank and itinerary_source_json_raw.storage == 'shopify_file'
+    assign canonical_json_url = itinerary_source_json_raw.cdn_url
+  endif
+
+  assign fallback_json_url = product.metafields.wetu.itinerary_json_cdn_url.value | default: product.metafields.wetu.itinerary_json_cdn_url
+  if fallback_json_url == blank and itinerary_json_raw != blank and itinerary_json_raw.storage == 'shopify_file'
+    assign fallback_json_url = itinerary_json_raw.cdn_url
+  endif
+
+  assign has_data = false
+  if canonical_json_url != blank or fallback_json_url != blank
+    assign has_data = true
+  endif
+-%}
+
+<section
+  class="itin-ops color-{{ section.settings.color_scheme }}"
+  data-section-id="{{ section.id }}"
+  data-canonical-json-url="{{ canonical_json_url | escape }}"
+  data-fallback-json-url="{{ fallback_json_url | escape }}"
+  data-itinerary-identifier="{{ itinerary_identifier_raw | escape }}"
+  data-product-handle="{{ product.handle | escape }}"
+  data-product-id="{{ product.id }}"
+  data-mapbox-token="{{ section.settings.mapbox_public_token | strip | escape }}"
+  data-has-data="{{ has_data }}"
+>
+  <div class="itin-ops__shell">
+    <div class="itin-ops__chrome" data-ops-chrome>
+      <p class="itin-ops__chrome-label">Operator run-sheet</p>
+      <div class="itin-ops__chrome-actions">
+        <button type="button" class="itin-ops__button" data-ops-print>Print</button>
+        <button type="button" class="itin-ops__button itin-ops__button--secondary" data-ops-reload>Reload data</button>
+      </div>
+    </div>
+
+    <header class="itin-ops__header" data-ops-header>
+      <p class="itin-ops__section-label">Itinerary header</p>
+      <h1 class="itin-ops__title">{{ product.title }}</h1>
+      <p class="itin-ops__header-meta" data-ops-header-meta>Loading operator summary...</p>
+
+      <dl class="itin-ops__header-grid">
+        <div class="itin-ops__header-item">
+          <dt>Reference number</dt>
+          <dd class="itin-ops__mono" data-ops-reference-number>--</dd>
+        </div>
+        <div class="itin-ops__header-item">
+          <dt>Journey type</dt>
+          <dd data-ops-journey-type>--</dd>
+        </div>
+        <div class="itin-ops__header-item">
+          <dt>Consultant name</dt>
+          <dd data-ops-consultant-name>--</dd>
+        </div>
+        <div class="itin-ops__header-item">
+          <dt>Consultant phone</dt>
+          <dd data-ops-consultant-phone>--</dd>
+        </div>
+        <div class="itin-ops__header-item">
+          <dt>Consultant email</dt>
+          <dd data-ops-consultant-email>--</dd>
+        </div>
+        <div class="itin-ops__header-item">
+          <dt>Date range</dt>
+          <dd data-ops-date-range>--</dd>
+        </div>
+        <div class="itin-ops__header-item">
+          <dt>Total days</dt>
+          <dd data-ops-total-days>--</dd>
+        </div>
+      </dl>
+    </header>
+
+    <p class="itin-ops__status" data-ops-status role="status" aria-live="polite">Loading itinerary data...</p>
+
+    <section class="itin-ops__panel">
+      <p class="itin-ops__section-label">Guest registry</p>
+      <div data-ops-guest-registry>
+        <p class="itin-ops__placeholder">Loading guest registry...</p>
+      </div>
+    </section>
+
+    <section class="itin-ops__panel">
+      <p class="itin-ops__section-label">Day-by-day operations timeline</p>
+      <div data-ops-timeline>
+        <p class="itin-ops__placeholder">Loading timeline...</p>
+      </div>
+    </section>
+
+    <section class="itin-ops__panel">
+      <p class="itin-ops__section-label">Consultant notes</p>
+      <div data-ops-consultant-notes>
+        <p class="itin-ops__placeholder">Loading consultant notes...</p>
+      </div>
+    </section>
+
+    <section class="itin-ops__panel">
+      <p class="itin-ops__section-label">Pricing breakdown</p>
+      <div data-ops-pricing>
+        <p class="itin-ops__placeholder">Loading pricing...</p>
+      </div>
+    </section>
+
+    <section class="itin-ops__panel">
+      <p class="itin-ops__section-label">Journey DNA</p>
+      <div data-ops-journey-dna>
+        <p class="itin-ops__placeholder">Loading journey metadata...</p>
+      </div>
+    </section>
+  </div>
+</section>
+
+{% render 'wetu-itinerary-operations-styles', section: section %}
+{% render 'wetu-itinerary-operations-script', section: section %}
+
+{% schema %}
+{
+  "name": "WETU itinerary operations",
+  "tag": "section",
+  "class": "section-itin-ops",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-5"
+    },
+    {
+      "type": "text",
+      "id": "mapbox_public_token",
+      "label": "Mapbox public token (optional)",
+      "default": "{{ MAPBOX_ACCESS_TOKEN }}"
+    }
+  ],
+  "presets": [
+    {
+      "name": "WETU itinerary operations"
+    }
+  ]
+}
+{% endschema %}

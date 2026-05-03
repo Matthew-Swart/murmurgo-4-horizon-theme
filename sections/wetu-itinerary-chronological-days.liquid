@@ -1,0 +1,4740 @@
+{%- liquid
+  assign itinerary_json_raw = product.metafields.wetu.itinerary_json.value | default: product.metafields.wetu.itinerary_json
+  assign itinerary_source_json_raw = product.metafields.wetu.itinerary_source_json.value | default: product.metafields.wetu.itinerary_source_json
+
+  assign itinerary_json = itinerary_json_raw
+  assign itinerary_source_json = itinerary_source_json_raw
+
+  assign itinerary_json_cdn_url = product.metafields.wetu.itinerary_json_cdn_url.value | default: product.metafields.wetu.itinerary_json_cdn_url
+  if itinerary_json_cdn_url == blank and itinerary_json and itinerary_json.storage == 'shopify_file'
+    assign itinerary_json_cdn_url = itinerary_json.cdn_url
+  endif
+
+  assign itinerary_source_json_cdn_url = product.metafields.wetu.itinerary_source_json_cdn_url.value | default: product.metafields.wetu.itinerary_source_json_cdn_url
+  if itinerary_source_json_cdn_url == blank and itinerary_source_json and itinerary_source_json.storage == 'shopify_file'
+    assign itinerary_source_json_cdn_url = itinerary_source_json.cdn_url
+  endif
+
+  assign wetu_itinerary = blank
+  assign chronology_source = 'missing'
+  if itinerary_source_json != blank and itinerary_source_json.storage != 'shopify_file'
+    assign wetu_itinerary = itinerary_source_json
+    assign chronology_source = 'itinerary_source_json_inline'
+  elsif itinerary_source_json_cdn_url != blank
+    assign chronology_source = 'itinerary_source_json_cdn'
+  endif
+
+  assign wetu_total_days = wetu_itinerary.days.value | default: wetu_itinerary.days | default: 0
+  assign start_date = wetu_itinerary.start_date.value | default: wetu_itinerary.start_date
+
+  assign wetu_legs = wetu_itinerary.legs.value | default: wetu_itinerary.legs
+  assign wetu_routes = wetu_itinerary.routes.value | default: wetu_itinerary.routes
+  if chronology_source == 'itinerary_source_json_inline'
+    assign wetu_legs = wetu_legs | sort: 'sequence'
+    assign wetu_routes = wetu_routes | sort: 'sequence'
+  else
+    assign wetu_legs = ''
+    assign wetu_routes = ''
+  endif
+
+  assign wetu_total_nights = 0
+  for leg in wetu_legs
+    assign leg_nights = leg.nights.value | default: leg.nights | default: 0
+    assign wetu_total_nights = wetu_total_nights | plus: leg_nights
+  endfor
+
+  assign total_days = wetu_total_days | plus: 0
+  if total_days < 1
+    assign total_days = wetu_total_nights | plus: 1
+  endif
+  unless chronology_source == 'itinerary_source_json_inline'
+    assign total_days = 0
+  endunless
+
+  assign itinerary_type = product.metafields.wetu.itinerary_type.value | default: wetu_itinerary.type.value | default: wetu_itinerary.type | default: ''
+  assign itinerary_type_normalized = itinerary_type | downcase
+  assign is_day_tour_timeline = false
+  if itinerary_type_normalized contains 'daytour' or itinerary_type_normalized contains 'day tour'
+    assign is_day_tour_timeline = true
+  endif
+  if is_day_tour_timeline and total_days > 1
+    assign total_days = 1
+  endif
+
+  assign component_products = product.metafields.wetu_itinerary.component_products.value
+  assign pin_ids_list = ''
+  assign handles_list = ''
+  if component_products.size > 0
+    for comp_product in component_products
+      if comp_product.handle
+        assign prod_obj = comp_product
+      else
+        assign prod_obj = all_products[comp_product]
+      endif
+      assign prod_pin = prod_obj.metafields.wetu.pin_id.value | default: prod_obj.metafields.wetu.content_entity_id.value
+      assign prod_handle = prod_obj.handle
+      if prod_pin != blank and prod_handle != blank
+        if pin_ids_list == ''
+          assign pin_ids_list = prod_pin
+          assign handles_list = prod_handle
+        else
+          assign pin_ids_list = pin_ids_list | append: ',' | append: prod_pin
+          assign handles_list = handles_list | append: ',' | append: prod_handle
+        endif
+      endif
+    endfor
+  endif
+
+  assign wetu_pin_ids_array = pin_ids_list | split: ','
+  assign wetu_handles_array = handles_list | split: ','
+
+  capture wetu_pin_to_product_map
+    echo '{'
+    for pin_id in wetu_pin_ids_array
+      if pin_id != blank
+        unless forloop.first
+          echo ','
+        endunless
+        echo '"'
+        echo pin_id
+        echo '":"'
+        echo wetu_handles_array[forloop.index0] | default: ''
+        echo '"'
+      endif
+    endfor
+    echo '}'
+  endcapture
+
+  assign link_manifest_raw = product.metafields.wetu_itinerary.link_manifest.value | default: product.metafields.wetu_itinerary.link_manifest | default: '{}'
+
+  assign seen_destinations = '|'
+  assign seen_accommodations = '|'
+
+  assign hero_video = product.metafields.wetu.hero_video.value | default: product.metafields.wetu.hero_video
+
+  assign inspector_variant = product.selected_or_first_available_variant
+  assign inspector_variant_id = inspector_variant.id
+  assign inspector_price = inspector_variant.price | default: 0
+  assign inspector_default_guests = 2
+  assign inspector_min_guests = 1
+  assign inspector_max_guests = 12
+  assign inspector_total_price = inspector_price | times: inspector_default_guests
+
+  capture inspector_guests_template
+    echo 'wetu.accommodation.guests_count' | t: count: '__COUNT__' | default: '__COUNT__ guests'
+  endcapture
+  assign inspector_guests_template = inspector_guests_template | strip | escape
+
+  assign inspector_confirm_base_url = '#'
+  if inspector_variant_id != blank
+    assign inspector_confirm_base_url = '/cart/add?id=' | append: inspector_variant_id
+  endif
+  assign inspector_confirm_url = inspector_confirm_base_url
+  if inspector_variant_id != blank
+    assign inspector_confirm_url = inspector_confirm_url | append: '&quantity=' | append: inspector_default_guests
+  endif
+
+  assign inspector_itinerary = wetu_itinerary
+  if inspector_itinerary == blank
+    assign inspector_itinerary = product.metafields.wetu.itinerary_metaobject.value
+  endif
+
+  assign inspector_legs = wetu_legs
+  if inspector_legs == blank and inspector_itinerary != blank
+    assign inspector_legs = inspector_itinerary.legs.value | default: inspector_itinerary.legs
+    assign inspector_legs = inspector_legs | sort: 'sequence.value'
+  endif
+
+  assign itinerary_reference = product.metafields.wetu.reference.value | default: product.metafields.wetu.reference
+  if itinerary_reference == blank
+    assign itinerary_reference = inspector_itinerary.reference.value | default: inspector_itinerary.reference
+  endif
+  if itinerary_reference == blank
+    assign itinerary_reference = inspector_itinerary.reference_number.value | default: inspector_itinerary.reference_number
+  endif
+  if itinerary_reference == blank
+    assign itinerary_reference = product.metafields.wetu.itinerary_identifier.value | default: product.metafields.wetu.itinerary_identifier
+  endif
+
+  assign inspector_start_date = start_date
+  if inspector_start_date == blank
+    assign inspector_start_date = inspector_itinerary.start_date.value | default: inspector_itinerary.start_date
+  endif
+
+  assign inspector_start_year = inspector_start_date | date: '%Y'
+  if inspector_start_date == blank
+    assign inspector_start_year = 'now' | date: '%Y'
+  endif
+
+  assign travellers_adult = inspector_itinerary.travellers_adult.value | default: inspector_itinerary.travellers_adult | default: 0 | plus: 0
+  assign travellers_children = inspector_itinerary.travellers_children.value | default: inspector_itinerary.travellers_children | default: 0 | plus: 0
+  capture inspector_guest_subtitle
+    assign has_guest_details = false
+    if travellers_adult > 0
+      echo travellers_adult
+      echo ' '
+      echo 'wetu.itinerary.adults' | t | default: 'adults'
+      assign has_guest_details = true
+    endif
+    if travellers_children > 0
+      if has_guest_details
+        echo ' · '
+      endif
+      echo travellers_children
+      echo ' '
+      echo 'wetu.itinerary.children' | t | default: 'children'
+      assign has_guest_details = true
+    endif
+  endcapture
+  assign inspector_guest_subtitle = inspector_guest_subtitle | strip
+  if inspector_guest_subtitle == blank
+    assign inspector_guest_subtitle = 'wetu.accommodation.guests_count' | t: count: inspector_default_guests | default: '2 guests'
+  endif
+
+  assign inspector_contacts = inspector_itinerary.contacts.value | default: inspector_itinerary.contacts
+  assign inspector_primary_contact = blank
+  if inspector_contacts != blank and inspector_contacts.size > 0
+    assign inspector_primary_contact = inspector_contacts | first
+  endif
+
+  assign inspector_operator_name = inspector_primary_contact.company.value | default: inspector_primary_contact.company | default: inspector_primary_contact.company_name.value | default: inspector_primary_contact.company_name | default: product.vendor
+  assign inspector_consultant_name = inspector_primary_contact.contact_person.value | default: inspector_primary_contact.contact_person | default: inspector_primary_contact.name.value | default: inspector_primary_contact.name | default: inspector_operator_name
+  assign inspector_consultant_role = inspector_primary_contact.role.value | default: inspector_primary_contact.role
+  if inspector_consultant_role == blank
+    assign inspector_consultant_role = 'wetu.itinerary.primary_contact' | t | default: 'Travel consultant'
+  endif
+  assign inspector_contact_phone = inspector_primary_contact.telephone.value | default: inspector_primary_contact.telephone | default: inspector_primary_contact.phone.value | default: inspector_primary_contact.phone | default: inspector_primary_contact.alternative_telephone.value | default: inspector_primary_contact.alternative_telephone
+  assign inspector_contact_email = inspector_primary_contact.email.value | default: inspector_primary_contact.email
+
+  capture inspector_contact_role_line
+    if inspector_consultant_role != blank
+      echo inspector_consultant_role
+    endif
+    if inspector_operator_name != blank
+      if inspector_consultant_role != blank
+        echo ' · '
+      endif
+      echo inspector_operator_name
+    endif
+  endcapture
+  assign inspector_contact_role_line = inspector_contact_role_line | strip
+  if inspector_contact_role_line == blank
+    assign inspector_contact_role_line = 'wetu.itinerary.contact_us' | t | default: 'Contact'
+  endif
+
+  assign inspector_contact_initials = ''
+  assign inspector_contact_name_parts = inspector_consultant_name | split: ' '
+  for name_part in inspector_contact_name_parts
+    if name_part == blank
+      continue
+    endif
+    assign name_initial = name_part | slice: 0
+    assign inspector_contact_initials = inspector_contact_initials | append: name_initial
+    if inspector_contact_initials.size >= 2
+      break
+    endif
+  endfor
+  if inspector_contact_initials == '' and inspector_operator_name != blank
+    assign inspector_contact_initials = inspector_operator_name | slice: 0, 2
+  endif
+  assign inspector_contact_initials = inspector_contact_initials | upcase
+
+  assign inspector_inclusion_limit = 12
+  assign inspector_inclusion_count = 0
+  assign inspector_inclusion_rows = ''
+  assign inspector_inclusion_seen = '|'
+
+  for leg in inspector_legs
+    if inspector_inclusion_count >= inspector_inclusion_limit
+      break
+    endif
+
+    assign inspector_leg_type = leg.type.value | default: leg.type | default: ''
+    assign inspector_leg_name = leg.accommodation_name.value | default: leg.accommodation_name | default: leg.destination_name.value | default: leg.destination_name | default: ''
+    if inspector_leg_name == blank
+      assign inspector_leg_name = leg.name.value | default: leg.name | default: leg.label.value | default: leg.label | default: ''
+    endif
+    if inspector_leg_name == blank
+      assign inspector_leg_pin = leg.content_entity_id.value | default: leg.content_entity_id
+      if inspector_leg_pin != blank
+        assign inspector_pin_search = inspector_leg_pin | append: ''
+        for check_pin in wetu_pin_ids_array
+          assign inspector_current_pin = check_pin | append: ''
+          if inspector_current_pin == inspector_pin_search
+            assign inspector_leg_handle = wetu_handles_array[forloop.index0]
+            assign inspector_leg_product = all_products[inspector_leg_handle]
+            assign inspector_leg_name = inspector_leg_product.title | default: ''
+            break
+          endif
+        endfor
+      endif
+    endif
+    assign inspector_leg_name_normalized = inspector_leg_name | strip | downcase
+    if inspector_leg_name_normalized == 'unknown' or inspector_leg_name_normalized == 'unknown location' or inspector_leg_name_normalized == 'not provided'
+      assign inspector_leg_name = ''
+    endif
+    assign inspector_leg_nights = leg.nights.value | default: leg.nights | default: 0 | plus: 0
+    if inspector_leg_name == blank or inspector_leg_type == 'Departure'
+      continue
+    endif
+
+    capture inspector_leg_label
+      echo inspector_leg_name
+      if inspector_leg_nights > 0
+        echo ' ('
+
+        capture inspector_leg_nights_text
+          if inspector_leg_nights == 1
+            echo 'sections.itinerary_chronological.nights' | t: count: inspector_leg_nights, suffix: ''
+          else
+            echo 'sections.itinerary_chronological.nights' | t: count: inspector_leg_nights, suffix: 's'
+          endif
+        endcapture
+        assign inspector_leg_nights_text = inspector_leg_nights_text | strip
+
+        if inspector_leg_nights_text == blank or inspector_leg_nights_text contains 'Translation missing:'
+          if inspector_leg_nights == 1
+            echo '1 night'
+          else
+            echo inspector_leg_nights
+            echo ' nights'
+          endif
+        else
+          echo inspector_leg_nights_text
+        endif
+
+        echo ')'
+      endif
+    endcapture
+    assign inspector_leg_label = inspector_leg_label | strip
+
+    assign inspector_leg_key = inspector_leg_label | handleize
+    if inspector_leg_key == blank
+      assign inspector_leg_key = 'stay-' | append: forloop.index0
+    endif
+    assign inspector_leg_token = '|' | append: inspector_leg_key | append: '|'
+    if inspector_inclusion_seen contains inspector_leg_token
+      continue
+    endif
+
+    if inspector_inclusion_rows == ''
+      assign inspector_inclusion_rows = inspector_leg_label
+    else
+      assign inspector_inclusion_rows = inspector_inclusion_rows | append: '||WETU_INCLUSION||' | append: inspector_leg_label
+    endif
+    assign inspector_inclusion_seen = inspector_inclusion_seen | append: inspector_leg_key | append: '|'
+    assign inspector_inclusion_count = inspector_inclusion_count | plus: 1
+  endfor
+
+  for leg in inspector_legs
+    if inspector_inclusion_count >= inspector_inclusion_limit
+      break
+    endif
+
+    assign inspector_periods = leg.periods.value | default: leg.periods
+    if inspector_periods == blank or inspector_periods.size == 0
+      continue
+    endif
+
+    for period in inspector_periods
+      if inspector_inclusion_count >= inspector_inclusion_limit
+        break
+      endif
+
+      assign inspector_period_activities = period.activities.value | default: period.activities
+      if inspector_period_activities == blank or inspector_period_activities.size == 0
+        continue
+      endif
+
+      for activity in inspector_period_activities
+        if inspector_inclusion_count >= inspector_inclusion_limit
+          break
+        endif
+
+        assign activity_name = activity.name.value | default: activity.name | default: ''
+        if activity_name == blank
+          continue
+        endif
+
+        assign inspector_activity_key = activity_name | handleize
+        if inspector_activity_key == blank
+          assign inspector_activity_key = 'activity-' | append: forloop.index0
+        endif
+        assign inspector_activity_token = '|' | append: inspector_activity_key | append: '|'
+        if inspector_inclusion_seen contains inspector_activity_token
+          continue
+        endif
+
+        if inspector_inclusion_rows == ''
+          assign inspector_inclusion_rows = activity_name
+        else
+          assign inspector_inclusion_rows = inspector_inclusion_rows | append: '||WETU_INCLUSION||' | append: activity_name
+        endif
+        assign inspector_inclusion_seen = inspector_inclusion_seen | append: inspector_activity_key | append: '|'
+        assign inspector_inclusion_count = inspector_inclusion_count | plus: 1
+      endfor
+    endfor
+  endfor
+
+  assign inspector_inclusion_items = inspector_inclusion_rows | split: '||WETU_INCLUSION||'
+-%}
+
+<div
+  class="itin-chrono color-{{ section.settings.color_scheme }}"
+  id="itinerary-days"
+  data-pin-map="{{ wetu_pin_to_product_map | escape }}"
+  data-link-manifest="{{ link_manifest_raw | escape }}"
+  data-itinerary-json-cdn-url="{{ itinerary_json_cdn_url | escape }}"
+  data-itinerary-source-json-cdn-url="{{ itinerary_source_json_cdn_url | escape }}"
+  data-chronology-source="{{ chronology_source }}"
+>
+  <div class="itin-chrono__hero">
+    {% if hero_video != blank %}
+      {%- liquid
+        assign is_youtube = false
+        assign is_vimeo = false
+        if hero_video contains 'youtube.com' or hero_video contains 'youtu.be'
+          assign is_youtube = true
+        elsif hero_video contains 'vimeo.com'
+          assign is_vimeo = true
+        endif
+      -%}
+      {% if is_youtube %}
+        {%- liquid
+          assign yt_id = ''
+          if hero_video contains 'youtu.be/'
+            assign yt_parts = hero_video | split: 'youtu.be/'
+            assign yt_id = yt_parts[1] | split: '?' | first | split: '&' | first
+          elsif hero_video contains 'v='
+            assign yt_parts = hero_video | split: 'v='
+            assign yt_id = yt_parts[1] | split: '&' | first
+          elsif hero_video contains '/embed/'
+            assign yt_parts = hero_video | split: '/embed/'
+            assign yt_id = yt_parts[1] | split: '?' | first | split: '&' | first
+          endif
+        -%}
+        {% if yt_id != blank %}
+          <iframe
+            src="https://www.youtube.com/embed/{{ yt_id }}?autoplay=1&mute=1&loop=1&playlist={{ yt_id }}&controls=0&showinfo=0&rel=0&iv_load_policy=3&modestbranding=1&playsinline=1"
+            allow="autoplay; encrypted-media"
+            allowfullscreen
+            loading="lazy"
+            title="{{ product.title | escape }}"
+          ></iframe>
+        {% endif %}
+      {% elsif is_vimeo %}
+        {%- liquid
+          assign vimeo_parts = hero_video | split: 'vimeo.com/'
+          assign vimeo_id = vimeo_parts[1] | split: '?' | first | split: '/' | first
+        -%}
+        {% if vimeo_id != blank %}
+          <iframe
+            src="https://player.vimeo.com/video/{{ vimeo_id }}?background=1&autoplay=1&loop=1&muted=1"
+            allow="autoplay"
+            allowfullscreen
+            loading="lazy"
+            title="{{ product.title | escape }}"
+          ></iframe>
+        {% endif %}
+      {% else %}
+        <video autoplay muted loop playsinline>
+          <source src="{{ hero_video }}" type="video/mp4">
+        </video>
+      {% endif %}
+    {% elsif product.featured_image %}
+      {{ product.featured_image | image_url: width: 2400 | image_tag:
+        loading: 'eager',
+        alt: product.title,
+        sizes: '100vw',
+        widths: '1200,1800,2400',
+        class: 'itin-chrono__hero-img'
+      }}
+    {% endif %}
+    <div class="itin-chrono__hero-overlay"></div>
+    <div class="itin-chrono__hero-text">
+      <div class="itin-chrono__hero-eyebrow">
+        {{ product.vendor | default: 'Private Journey' }}
+        {%- if start_date != blank %} · {{ start_date | date: '%Y' }}{% endif -%}
+      </div>
+      <h1 class="itin-chrono__hero-title">{{ product.title }}</h1>
+      <div class="itin-chrono__hero-subtitle">{{ total_days }} {{ 'sections.itinerary_chronological.day_label_plural' | t | default: 'Days' }} · {{ wetu_total_nights }} {{ 'sections.itinerary_chronological.nights_label_plural' | t | default: 'Nights' }}</div>
+    </div>
+  </div>
+
+  <div class="itin-chrono__layout">
+    <aside class="itin-chrono__rail" aria-label="Itinerary timeline">
+      <div class="itin-chrono__rail-inner">
+        <div class="itin-chrono__rail-label">Itinerary</div>
+        <nav class="itin-chrono__rail-nav" role="navigation" aria-label="Day navigation">
+          {%- liquid
+            assign rail_running_day = 1
+            assign prev_leg_index = -1
+          -%}
+          {% for day_num in (1..total_days) %}
+            {%- liquid
+              assign day_offset = day_num | minus: 1
+              if start_date != blank
+                assign day_seconds = day_offset | times: 86400
+                assign start_seconds = start_date | date: '%s'
+                assign day_date = start_seconds | plus: day_seconds
+                assign day_weekday = day_date | date: '%a'
+                assign day_short = day_date | date: '%b %d'
+              else
+                assign day_weekday = ''
+                assign day_short = ''
+              endif
+
+              assign rail_current_leg = nil
+              assign rail_leg_index = -1
+              assign rail_dest_name = ''
+              assign test_running = 1
+              for leg in wetu_legs
+                assign leg_nights = leg.nights.value | default: leg.nights | default: 0 | plus: 0
+                assign leg_start = test_running
+                if leg_nights > 0
+                  assign leg_end = test_running | plus: leg_nights | minus: 1
+                else
+                  assign leg_end = test_running
+                endif
+                if day_num >= leg_start and day_num <= leg_end
+                  assign rail_current_leg = leg
+                  assign rail_leg_index = forloop.index0
+                  assign rail_dest_name = leg.destination_name.value | default: leg.destination_name | default: leg.accommodation_name.value | default: leg.accommodation_name | default: ''
+                  break
+                endif
+                assign test_running = test_running | plus: leg_nights
+              endfor
+            -%}
+
+            {% if rail_leg_index != prev_leg_index and rail_current_leg %}
+              {% if prev_leg_index >= 0 %}
+                  </div>
+                </div>
+              {% endif %}
+              <div class="itin-chrono__leg-group">
+                <button class="itin-chrono__leg-header" type="button" aria-expanded="true" data-leg-toggle="leg-{{ rail_leg_index }}">
+                  <span class="itin-chrono__leg-title">{{ rail_dest_name }}</span>
+                  <span class="itin-chrono__leg-line" aria-hidden="true"></span>
+                </button>
+                <div class="itin-chrono__leg-days" id="leg-{{ rail_leg_index }}">
+              {%- assign prev_leg_index = rail_leg_index -%}
+            {% endif %}
+
+            <a href="#day-{{ day_num }}" class="itin-chrono__rail-link" data-rail-day="{{ day_num }}">
+              <span class="itin-chrono__rail-day">{{ 'sections.itinerary_chronological.day_label' | t: day: day_num }}{% if day_weekday != blank %} · {{ day_weekday }} {{ day_short }}{% endif %}</span>
+              <span class="itin-chrono__rail-dest">{{ rail_dest_name }}</span>
+            </a>
+          {% endfor %}
+
+          {% if prev_leg_index >= 0 %}
+              </div>
+            </div>
+          {% endif %}
+        </nav>
+      </div>
+    </aside>
+
+    <div class="itin-chrono__content">
+      {% for day_num in (1..total_days) %}
+        {%- liquid
+          assign current_leg = nil
+          assign leg_total_nights = 0
+          assign day_within_leg = 0
+          assign running_day = 1
+
+          for leg in wetu_legs
+            assign leg_type = leg.type.value | default: leg.type | default: 'Standard'
+            assign leg_nights = leg.nights.value | default: leg.nights | default: 0 | plus: 0
+
+            assign this_leg_start = running_day
+            if leg_nights > 0
+              assign this_leg_end = running_day | plus: leg_nights | minus: 1
+            else
+              assign this_leg_end = running_day
+            endif
+
+            if day_num >= this_leg_start and day_num <= this_leg_end
+              assign current_leg = leg
+              assign leg_total_nights = leg_nights
+              assign day_within_leg = day_num | minus: this_leg_start | plus: 1
+              break
+            endif
+
+            assign running_day = running_day | plus: leg_nights
+          endfor
+        -%}
+
+        {% unless current_leg %}{% continue %}{% endunless %}
+
+        {%- liquid
+          assign leg_type = current_leg.type.value | default: current_leg.type | default: 'Standard'
+          assign acc_pin_id = current_leg.content_entity_id.value | default: current_leg.content_entity_id
+          assign acc_name = current_leg.accommodation_name.value | default: current_leg.accommodation_name
+          assign dest_pin_id = current_leg.destination_content_entity_id.value | default: current_leg.destination_content_entity_id
+
+          assign is_arrival_day = false
+          assign is_departure_day = false
+          if day_within_leg == 1
+            assign is_arrival_day = true
+          endif
+          if leg_type == 'Departure' or day_num == total_days
+            assign is_departure_day = true
+          endif
+
+          assign day_offset = day_num | minus: 1
+          if start_date != blank
+            assign day_seconds = day_offset | times: 86400
+            assign start_seconds = start_date | date: '%s'
+            assign day_date = start_seconds | plus: day_seconds
+            assign day_date_display = day_date | date: '%A, %B %e, %Y'
+          else
+            assign day_date_display = ''
+          endif
+
+          assign acc_product = nil
+          if acc_pin_id != blank
+            assign search_pin = acc_pin_id | append: ''
+            for check_pin in wetu_pin_ids_array
+              assign current_pin = check_pin | append: ''
+              if current_pin == search_pin
+                assign acc_handle = wetu_handles_array[forloop.index0]
+                assign acc_product = all_products[acc_handle]
+                break
+              endif
+            endfor
+          endif
+
+          assign dest_product = nil
+          assign dest_name = ''
+          if dest_pin_id != blank
+            assign search_dest = dest_pin_id | append: ''
+            for check_pin in wetu_pin_ids_array
+              assign current_pin = check_pin | append: ''
+              if current_pin == search_dest
+                assign dest_handle = wetu_handles_array[forloop.index0]
+                assign dest_product = all_products[dest_handle]
+                assign dest_name = dest_product.title
+                break
+              endif
+            endfor
+          endif
+
+          if dest_name == ''
+            assign leg_destination_name = current_leg.destination_name.value | default: current_leg.destination_name | default: ''
+            if leg_destination_name != ''
+              assign dest_name = leg_destination_name
+            elsif acc_product
+              assign acc_position = acc_product.metafields.wetu.position.value
+              if acc_position
+                assign dest_name = acc_position.area | default: acc_position.destination | default: acc_position.region | default: acc_position.country | default: ''
+              endif
+            endif
+          endif
+
+          if dest_pin_id != blank
+            assign dest_check = '|' | append: dest_pin_id | append: '|'
+            unless seen_destinations contains dest_check
+              assign seen_destinations = seen_destinations | append: dest_pin_id | append: '|'
+            endunless
+          endif
+
+          if acc_pin_id != blank
+            assign acc_check = '|' | append: acc_pin_id | append: '|'
+            unless seen_accommodations contains acc_check
+              assign seen_accommodations = seen_accommodations | append: acc_pin_id | append: '|'
+            endunless
+          endif
+
+          assign day_routes = ''
+          for route in wetu_routes
+            assign include_route = true
+            if is_day_tour_timeline
+              assign route_type = route.type.value | default: route.type | default: ''
+              assign route_type_normalized = route_type | downcase
+              if route_type_normalized != '' and route_type_normalized != 'daytour' and route_type_normalized != 'day tour'
+                assign include_route = false
+              endif
+            endif
+            assign route_start = route.start_day.value | default: route.start_day | default: 0 | plus: 0
+            assign route_end = route.end_day.value | default: route.end_day | default: route_start | plus: 0
+            if include_route and route_start == day_num or include_route and route_end == day_num
+              assign day_routes = day_routes | append: forloop.index0 | append: '|'
+            endif
+          endfor
+          assign routes_array = day_routes | split: '|'
+          assign route_count = 0
+          for route_index in routes_array
+            if route_index != blank
+              assign route_count = route_count | plus: 1
+            endif
+          endfor
+
+          assign day_period = nil
+          assign periods = current_leg.periods.value | default: current_leg.periods
+          if periods and periods.size > 0
+            assign period_index = day_within_leg | minus: 1
+            if period_index < periods.size
+              assign day_period = periods[period_index]
+            elsif periods.size == 1
+              assign day_period = periods[0]
+            endif
+          endif
+
+          assign day_narrative = ''
+          assign day_notes = ''
+          assign day_consultant = ''
+          assign has_plekify_blocks = false
+          assign has_plekify_markers = false
+          assign check_in_time = current_leg.check_in_time.value | default: current_leg.check_in_time | default: ''
+          assign check_out_time = current_leg.check_out_time.value | default: current_leg.check_out_time | default: ''
+          assign day_activities = nil
+          assign day_commentary_items = nil
+          assign day_included = ''
+          if day_period
+            assign day_narrative = day_period.day_narrative.value | default: day_period.day_narrative | default: ''
+            if day_narrative == ''
+              assign day_narrative = day_period.consultant_notes.value | default: day_period.consultant_notes | default: ''
+            endif
+            assign day_notes = day_period.notes.value | default: day_period.notes | default: ''
+            assign day_consultant = day_period.consultant_notes.value | default: day_period.consultant_notes | default: ''
+            assign day_activities_raw = day_period.activities.value | default: day_period.activities
+            assign day_activities = day_activities_raw
+            assign day_commentary_items_raw = day_period.commentary_items.value | default: day_period.commentary_items
+            assign day_commentary_items = day_commentary_items_raw
+            assign day_included = day_period.included.value | default: day_period.included | default: ''
+          endif
+
+          if day_consultant contains 'data-plekify-block="narrative"' or day_consultant contains 'data-plekify-block="timeline"' or day_consultant contains 'data-plekify-list="timeline"'
+            assign has_plekify_blocks = true
+          endif
+
+          if day_consultant contains '[[BLOCK:' or day_consultant contains '[[COMMENTARY]]' or day_consultant contains '[[/BLOCK]]'
+            assign has_plekify_markers = true
+          endif
+
+          if day_narrative == '' and day_consultant != '' and has_plekify_blocks == false and has_plekify_markers == false
+            assign day_narrative = day_consultant
+            assign day_consultant = ''
+          endif
+
+          assign insert_blocks = nil
+          if day_period and day_period.insert_blocks
+            assign insert_blocks_raw = day_period.insert_blocks.value | default: day_period.insert_blocks
+            if insert_blocks_raw != blank
+              assign insert_blocks = insert_blocks_raw
+            endif
+          endif
+
+          assign timeline_rows = ''
+          assign timeline_delimiter = '||WETU_EVT||'
+          assign timeline_entry_count = 0
+          assign activity_order_rows = ''
+          assign activity_order_delimiter = '||WETU_ACTIVITY||'
+          assign commentary_rows = ''
+          assign commentary_delimiter = '||WETU_COMMENTARY||'
+
+          if has_plekify_blocks == false and has_plekify_markers == false
+            if is_arrival_day and check_in_time != blank and check_in_time != 'None' and check_in_time != 'NotProvided'
+              assign check_in_parts = check_in_time | split: ':'
+              assign check_in_hour = check_in_parts[0] | plus: 0
+              assign check_in_minute = check_in_parts[1] | plus: 0
+              assign check_in_minutes = check_in_hour | times: 60 | plus: check_in_minute
+              capture check_in_sort_key
+                if check_in_minutes < 10
+                  echo '000'
+                elsif check_in_minutes < 100
+                  echo '00'
+                elsif check_in_minutes < 1000
+                  echo '0'
+                endif
+                echo check_in_minutes
+              endcapture
+              capture check_in_row
+                echo check_in_sort_key | strip
+                echo '-10'
+                echo '~~check_in~~'
+                echo check_in_time
+              endcapture
+              if timeline_rows == ''
+                assign timeline_rows = check_in_row
+              else
+                assign timeline_rows = timeline_rows | append: timeline_delimiter | append: check_in_row
+              endif
+              assign timeline_entry_count = timeline_entry_count | plus: 1
+            endif
+
+            for route_index in routes_array
+              if route_index != blank
+                assign route = wetu_routes[route_index]
+                assign route_time = route.start_time.value | default: route.start_time | default: ''
+                assign route_sort_key = '9999'
+                if route_time != blank and route_time != 'None' and route_time != 'NotProvided' and route_time contains ':'
+                  assign route_time_parts = route_time | split: ':'
+                  assign route_hour = route_time_parts[0] | plus: 0
+                  assign route_minute = route_time_parts[1] | plus: 0
+                  assign route_minutes = route_hour | times: 60 | plus: route_minute
+                  capture route_sort_key
+                    if route_minutes < 10
+                      echo '000'
+                    elsif route_minutes < 100
+                      echo '00'
+                    elsif route_minutes < 1000
+                      echo '0'
+                    endif
+                    echo route_minutes
+                  endcapture
+                endif
+                capture route_row
+                  echo route_sort_key | strip
+                  echo '-20'
+                  echo '~~route~~'
+                  echo route_index
+                endcapture
+                if timeline_rows == ''
+                  assign timeline_rows = route_row
+                else
+                  assign timeline_rows = timeline_rows | append: timeline_delimiter | append: route_row
+                endif
+                assign timeline_entry_count = timeline_entry_count | plus: 1
+              endif
+            endfor
+
+            if day_activities and day_activities.size > 0
+              for activity in day_activities
+                assign activity_time = activity.start_time.value | default: activity.start_time | default: ''
+                if activity_time == blank or activity_time == 'None' or activity_time == 'NotProvided'
+                  assign activity_time = activity.end_time.value | default: activity.end_time | default: ''
+                endif
+                assign activity_sort_key = '9999'
+                if activity_time != blank and activity_time != 'None' and activity_time != 'NotProvided' and activity_time contains ':'
+                  assign activity_time_parts = activity_time | split: ':'
+                  assign activity_hour = activity_time_parts[0] | plus: 0
+                  assign activity_minute = activity_time_parts[1] | plus: 0
+                  assign activity_minutes = activity_hour | times: 60 | plus: activity_minute
+                  capture activity_sort_key
+                    if activity_minutes < 10
+                      echo '000'
+                    elsif activity_minutes < 100
+                      echo '00'
+                    elsif activity_minutes < 1000
+                      echo '0'
+                    endif
+                    echo activity_minutes
+                  endcapture
+                endif
+                capture activity_row
+                  echo activity_sort_key | strip
+                  echo '-30'
+                  echo '~~activity~~'
+                  echo forloop.index0
+                endcapture
+                if timeline_rows == ''
+                  assign timeline_rows = activity_row
+                else
+                  assign timeline_rows = timeline_rows | append: timeline_delimiter | append: activity_row
+                endif
+
+                capture activity_order_row
+                  echo activity_sort_key | strip
+                  echo '~~'
+                  echo forloop.index0
+                endcapture
+                if activity_order_rows == ''
+                  assign activity_order_rows = activity_order_row
+                else
+                  assign activity_order_rows = activity_order_rows | append: activity_order_delimiter | append: activity_order_row
+                endif
+
+                assign timeline_entry_count = timeline_entry_count | plus: 1
+              endfor
+            endif
+
+            if day_commentary_items and day_commentary_items.size > 0
+              for commentary_item in day_commentary_items
+                assign commentary_time = commentary_item.time.value | default: commentary_item.time | default: ''
+                assign commentary_sort_key = '9999'
+                if commentary_time != blank and commentary_time != 'None' and commentary_time != 'NotProvided' and commentary_time contains ':'
+                  assign commentary_time_parts = commentary_time | split: ':'
+                  assign commentary_hour = commentary_time_parts[0] | plus: 0
+                  assign commentary_minute = commentary_time_parts[1] | plus: 0
+                  assign commentary_minutes = commentary_hour | times: 60 | plus: commentary_minute
+                  capture commentary_sort_key
+                    if commentary_minutes < 10
+                      echo '000'
+                    elsif commentary_minutes < 100
+                      echo '00'
+                    elsif commentary_minutes < 1000
+                      echo '0'
+                    endif
+                    echo commentary_minutes
+                  endcapture
+                endif
+                capture commentary_row
+                  echo commentary_sort_key | strip
+                  echo '~~'
+                  echo forloop.index0
+                endcapture
+                if commentary_rows == ''
+                  assign commentary_rows = commentary_row
+                else
+                  assign commentary_rows = commentary_rows | append: commentary_delimiter | append: commentary_row
+                endif
+              endfor
+            endif
+
+            if is_departure_day and check_out_time != blank and check_out_time != 'None' and check_out_time != 'NotProvided'
+              assign check_out_parts = check_out_time | split: ':'
+              assign check_out_hour = check_out_parts[0] | plus: 0
+              assign check_out_minute = check_out_parts[1] | plus: 0
+              assign check_out_minutes = check_out_hour | times: 60 | plus: check_out_minute
+              capture check_out_sort_key
+                if check_out_minutes < 10
+                  echo '000'
+                elsif check_out_minutes < 100
+                  echo '00'
+                elsif check_out_minutes < 1000
+                  echo '0'
+                endif
+                echo check_out_minutes
+              endcapture
+              capture check_out_row
+                echo check_out_sort_key | strip
+                echo '-40'
+                echo '~~check_out~~'
+                echo check_out_time
+              endcapture
+              if timeline_rows == ''
+                assign timeline_rows = check_out_row
+              else
+                assign timeline_rows = timeline_rows | append: timeline_delimiter | append: check_out_row
+              endif
+              assign timeline_entry_count = timeline_entry_count | plus: 1
+            endif
+          endif
+
+          assign timeline_rows_array = timeline_rows | split: timeline_delimiter | sort
+          assign activity_order_array = activity_order_rows | split: activity_order_delimiter | sort
+          assign commentary_rows_array = commentary_rows | split: commentary_delimiter | sort
+
+          assign day_summary = ''
+          if current_leg.day_summary
+            assign day_summary = current_leg.day_summary.value | default: current_leg.day_summary | default: ''
+          endif
+
+          assign night_suffix = ''
+          if leg_total_nights != 1
+            assign night_suffix = 's'
+          endif
+        -%}
+
+        <article class="itin-chrono__day" id="day-{{ day_num }}" data-day-section="{{ day_num }}">
+          <header class="itin-chrono__day-header">
+            <div class="itin-chrono__day-ghost" aria-hidden="true">{{ day_num }}</div>
+            {% if day_date_display != blank %}
+              <span class="itin-chrono__day-meta">{{ 'sections.itinerary_chronological.day_label' | t: day: day_num }} · {{ day_date_display }}</span>
+            {% endif %}
+            <h2 class="itin-chrono__day-title">
+              {% if dest_name != blank %}{{ dest_name }}{% else %}{{ 'sections.itinerary_chronological.day_label' | t: day: day_num }}{% endif %}
+            </h2>
+            {% if acc_name != blank and acc_name != dest_name %}
+              <div class="itin-chrono__day-subtitle">{{ acc_name }}{% if leg_total_nights > 0 %} · {{ leg_total_nights }} night{{ night_suffix }}{% endif %}</div>
+            {% endif %}
+            <div class="itin-chrono__day-rule" aria-hidden="true"></div>
+          </header>
+
+          {% if day_summary != blank and is_arrival_day %}
+            <div class="itin-chrono__summary" data-pin-links>
+              {% render 'wetu-pin-link', content: day_summary, pin_ids: wetu_pin_ids_array, handles: wetu_handles_array %}
+            </div>
+          {% endif %}
+
+          {% if has_plekify_blocks == false and has_plekify_markers == false %}
+              {% if timeline_entry_count > 0 %}
+                <section class="itin-chrono__timeline" data-pin-links>
+                  {% if route_count > 0 %}
+                      <p class="itin-chrono__transition-note">Inter-leg transition · {{ route_count }} segment{% if route_count != 1 %}s{% endif %}</p>
+                    {% endif %}
+                    <ul class="itin-chrono__timeline-list" role="list">
+                    {% for timeline_row in timeline_rows_array %}
+                      {% if timeline_row == blank %}{% continue %}{% endif %}
+                      {%- liquid
+                        assign row_parts = timeline_row | split: '~~'
+                        assign row_type = row_parts[1]
+                        assign row_value = row_parts[2]
+                      -%}
+                      {% if row_type == 'check_in' %}
+                        <li class="itin-chrono__timeline-item itin-chrono__timeline-item--context">
+                          <span class="itin-chrono__timeline-time">{{ row_value }}</span>
+                          <span class="itin-chrono__timeline-text">Check-in{% if acc_name != blank %}: {{ acc_name }}{% endif %}</span>
+                        </li>
+                      {% elsif row_type == 'check_out' %}
+                        <li class="itin-chrono__timeline-item itin-chrono__timeline-item--context">
+                          <span class="itin-chrono__timeline-time">{{ row_value }}</span>
+                          <span class="itin-chrono__timeline-text">Check-out{% if acc_name != blank %}: {{ acc_name }}{% endif %}</span>
+                        </li>
+                      {% elsif row_type == 'route' %}
+                        {%- liquid
+                          assign route_index = row_value | plus: 0
+                          assign route = wetu_routes[route_index]
+                          assign route_start_pin = route.start_content_entity_id.value | default: route.start_content_entity_id
+                          assign route_end_pin = route.end_content_entity_id.value | default: route.end_content_entity_id
+                          assign route_start_name = route.start_location.value | default: route.start_location
+                          assign route_end_name = route.end_location.value | default: route.end_location
+                          assign route_start_link = ''
+                          assign route_end_link = ''
+                          assign route_start_handle = ''
+                            assign route_end_handle = ''
+                            if route_start_pin != blank
+                              assign route_start_pin_key = route_start_pin | append: ''
+                              for check_pin in wetu_pin_ids_array
+                                assign check_pin_key = check_pin | append: ''
+                                if check_pin_key == route_start_pin_key
+                                  assign route_start_handle = wetu_handles_array[forloop.index0]
+                                  assign route_start_product = all_products[route_start_handle]
+                                  assign route_start_name = route_start_product.title | default: route_start_name
+                                  break
+                            endif
+                            endfor
+                              if route_start_name == ''
+                                assign route_start_name = 'Location PIN ' | append: route_start_pin
+                            endif
+                              if route_start_handle != ''
+                                assign route_start_link = '{{PIN:' | append: route_start_pin | append: '|' | append: route_start_name | append: '}}'
+                              endif
+                            endif
+                            if route_end_pin != blank
+                              assign route_end_pin_key = route_end_pin | append: ''
+                            for check_pin in wetu_pin_ids_array
+                                assign check_pin_key = check_pin | append: ''
+                              if check_pin_key == route_end_pin_key
+                                  assign route_end_handle = wetu_handles_array[forloop.index0]
+                                  assign route_end_product = all_products[route_end_handle]
+                                  assign route_end_name = route_end_product.title | default: route_end_name
+                                  break
+                                endif
+                              endfor
+                              if route_end_name == ''
+                                assign route_end_name = 'Location PIN ' | append: route_end_pin
+                            endif
+                              if route_end_handle != ''
+                                assign route_end_link = '{{PIN:' | append: route_end_pin | append: '|' | append: route_end_name | append: '}}'
+                            endif
+                            endif
+                            assign route_time = route.start_time.value | default: route.start_time | default: ''
+                            assign route_mode = route.mode.value | default: route.mode | default: 'Transfer'
+                          assign route_type_label = route.label.value | default: route.label | default: ''
+                            assign route_mode_display = route_mode
+                            case route_mode
+                              when 'ScheduledFlight'
+                                assign route_mode_display = 'Scheduled flight'
+                              when 'CharterFlight'
+                                assign route_mode_display = 'Charter flight'
+                              when 'Transfer'
+                                if route_type_label == 'Private'
+                                  assign route_mode_display = 'Private transfer'
+                                else
+                                  assign route_mode_display = 'Transfer'
+                                endif
+                              when 'Rail', 'Train'
+                                assign route_mode_display = 'Rail transfer'
+                              when 'Selfdrive'
+                                assign route_mode_display = 'Self-drive'
+                              when 'Boat'
+                                assign route_mode_display = 'Boat transfer'
+                            endcase
+                          -%}
+                          <li class="itin-chrono__timeline-item">
+                            {% if route_time != blank and route_time != 'None' and route_time != 'NotProvided' %}
+                              <span class="itin-chrono__timeline-time">{{ route_time }}</span>
+                            {% endif %}
+                            <span class="itin-chrono__timeline-text">
+                              <span class="itin-chrono__timeline-chip">{{ route_mode_display }}</span>
+                              <span class="itin-chrono__timeline-route">
+                                {% if route_start_link != blank %}
+                                  {% render 'wetu-pin-link', content: route_start_link, pin_ids: wetu_pin_ids_array, handles: wetu_handles_array %}
+                                {% elsif route_start_name != blank %}
+                                  {{ route_start_name }}
+                                {% else %}
+                                  Origin pending
+                                {% endif %}
+                                {% if route_start_name != blank or route_start_link != blank or route_end_name != blank or route_end_link != blank %} → {% endif %}
+                                {% if route_end_link != blank %}
+                                  {% render 'wetu-pin-link', content: route_end_link, pin_ids: wetu_pin_ids_array, handles: wetu_handles_array %}
+                                {% elsif route_end_name != blank %}
+                                  {{ route_end_name }}
+                                {% else %}
+                                  Destination pending
+                                {% endif %}
+                              </span>
+                            </span>
+                          </li>
+                      {% elsif row_type == 'activity' %}
+                        {%- liquid
+                          assign activity_index = row_value | plus: 0
+                          assign activity = day_activities[activity_index]
+                          assign activity_pin = activity.content_entity_id.value | default: activity.content_entity_id
+                          assign activity_name = activity.name.value | default: activity.name
+                          assign activity_link = activity_name
+                          if activity_pin != blank
+                            if activity_name == blank
+                              assign activity_name = 'Location PIN ' | append: activity_pin
+                            endif
+                            assign activity_link = '{{PIN:' | append: activity_pin | append: '|' | append: activity_name | append: '}}'
+                          endif
+                        -%}
+                        <li class="itin-chrono__timeline-item">
+                          {% assign activity_time = activity.start_time.value | default: activity.start_time %}
+                          {% if activity_time != blank and activity_time != 'None' and activity_time != 'NotProvided' %}
+                            <span class="itin-chrono__timeline-time">{{ activity_time }}</span>
+                          {% endif %}
+                          <span class="itin-chrono__timeline-text">{% render 'wetu-pin-link', content: activity_link, pin_ids: wetu_pin_ids_array, handles: wetu_handles_array %}</span>
+                        </li>
+                      {% endif %}
+                    {% endfor %}
+                  </ul>
+                </section>
+              {% endif %}
+          {% endif %}
+
+          {% if day_commentary_items and day_commentary_items.size > 0 and has_plekify_blocks == false and has_plekify_markers == false %}
+            <section class="itin-chrono__commentary-stream" data-pin-links>
+              <h3 class="itin-chrono__section-title">Snoop live wire</h3>
+              <ul class="itin-chrono__commentary-list" role="list">
+                {% for commentary_row in commentary_rows_array %}
+                  {% if commentary_row == blank %}{% continue %}{% endif %}
+                  {%- liquid
+                    assign commentary_parts = commentary_row | split: '~~'
+                    assign commentary_index = commentary_parts[1] | plus: 0
+                    assign commentary_item = day_commentary_items[commentary_index]
+                    assign commentary_time = commentary_item.time.value | default: commentary_item.time | default: ''
+                    assign commentary_content = commentary_item.content.value | default: commentary_item.content | default: ''
+                  -%}
+                  {% if commentary_content == blank %}{% continue %}{% endif %}
+                  <li class="itin-chrono__commentary-item">
+                    {% if commentary_time != blank and commentary_time != 'None' and commentary_time != 'NotProvided' %}
+                      <span class="itin-chrono__commentary-time">{{ commentary_time }}</span>
+                    {% endif %}
+                    <div class="itin-chrono__commentary-body">
+                      {% render 'wetu-pin-link', content: commentary_content, pin_ids: wetu_pin_ids_array, handles: wetu_handles_array %}
+                    </div>
+                  </li>
+                {% endfor %}
+              </ul>
+            </section>
+          {% endif %}
+
+          {% if has_plekify_markers == true %}
+            {%- liquid
+              assign block_tokens = day_consultant | split: '[[BLOCK:'
+              assign rendered_blocks = ''
+              if block_tokens.size > 1
+                for block_part in block_tokens
+                  if forloop.first
+                    continue
+                  endif
+                  assign block_segments = block_part | split: ']]'
+                  assign block_label = block_segments[0] | strip
+                  assign block_body = block_part | split: ']]' | last | split: '[[/BLOCK]]' | first
+                  assign block_type = block_label | split: ':' | first | downcase
+                  assign block_day = ''
+                  if block_label contains ':DAY:'
+                    assign block_day = block_label | split: ':DAY:' | last
+                  endif
+                  assign block_body = block_body | replace: '[[COMMENTARY]]', '<div class="itin-chrono__commentary">' | append: '</div>'
+                  if block_type == 'narrative'
+                    assign rendered_blocks = rendered_blocks | append: '<div class="itin-chrono__narrative" data-day="' | append: block_day | append: '">' | append: block_body | append: '</div>'
+                  elsif block_type == 'timeline'
+                    assign rendered_blocks = rendered_blocks | append: '<div class="itin-chrono__timeline" data-day="' | append: block_day | append: '">' | append: block_body | append: '</div>'
+                  elsif block_type == 'consultant'
+                    assign rendered_blocks = rendered_blocks | append: '<div class="itin-chrono__consultant" data-day="' | append: block_day | append: '">' | append: block_body | append: '</div>'
+                  else
+                    assign rendered_blocks = rendered_blocks | append: '<div class="itin-chrono__block" data-day="' | append: block_day | append: '">' | append: block_body | append: '</div>'
+                  endif
+                endfor
+              endif
+            -%}
+            <section class="itin-chrono__rich" data-pin-links>
+              {{ rendered_blocks }}
+            </section>
+          {% endif %}
+
+          {% if day_notes != blank and has_plekify_blocks == false and has_plekify_markers == false %}
+            <div class="itin-chrono__morning-verse" data-pin-links>
+              <div class="itin-chrono__morning-verse-label">Setting the Tone</div>
+              <div class="itin-chrono__morning-verse-text">
+                {% render 'wetu-pin-link', content: day_notes, pin_ids: wetu_pin_ids_array, handles: wetu_handles_array %}
+              </div>
+            </div>
+          {% endif %}
+
+          {% if day_narrative != blank and has_plekify_blocks == false %}
+            <div class="itin-chrono__narrative" data-pin-links>
+              {% render 'wetu-pin-link', content: day_narrative, pin_ids: wetu_pin_ids_array, handles: wetu_handles_array %}
+            </div>
+          {% endif %}
+
+          {% if has_plekify_blocks and day_consultant != blank %}
+            <div class="itin-chrono__embedded" data-pin-links>
+              {% render 'wetu-pin-link', content: day_consultant, pin_ids: wetu_pin_ids_array, handles: wetu_handles_array %}
+            </div>
+          {% endif %}
+
+          {% if insert_blocks and insert_blocks.size > 0 %}
+            <div class="itin-chrono__inserts">
+              {% for block in insert_blocks %}
+                {%- liquid
+                  assign block_type = block.type.value | default: block.type | downcase
+                  assign block_title = block.title.value | default: block.title
+                  assign block_content = block.content.value | default: block.content
+                  assign block_links = nil
+                  if block.links
+                    assign block_links = block.links.value
+                  endif
+                -%}
+                {% if block_type == 'narrative' %}
+                  <section class="itin-chrono__insert">
+                    {% if block_title != blank %}
+                      <h3 class="itin-chrono__insert-title">{{ block_title }}</h3>
+                    {% endif %}
+                    <div class="itin-chrono__insert-content" data-pin-links>
+                      {% render 'wetu-pin-link', content: block_content, pin_ids: wetu_pin_ids_array, handles: wetu_handles_array %}
+                    </div>
+                  </section>
+                {% elsif block_type == 'link_list' and block_links and block_links.size > 0 %}
+                  <details class="itin-chrono__insert itin-chrono__insert--links">
+                    <summary class="itin-chrono__insert-title">{{ block_title | default: 'Related links' }}</summary>
+                      <ul class="itin-chrono__link-list" role="list">
+                        {% assign seen_link_keys = '|' %}
+                        {% for link_item in block_links %}
+                          {%- liquid
+                            assign link_label = link_item.label.value | default: link_item.label
+                          assign link_pin = link_item.pin_id.value | default: link_item.pin_id
+                          assign link_pin_key = link_pin | append: ''
+                          assign link_key = link_pin_key
+                          if link_key == ''
+                            assign link_key = link_label | strip | downcase
+                            endif
+                            assign link_token = '|' | append: link_key | append: '|'
+                            if seen_link_keys contains link_token
+                              continue
+                            endif
+                          assign seen_link_keys = seen_link_keys | append: link_key | append: '|'
+
+                          assign link_handle = ''
+                            if link_pin != blank
+                              for check_pin in wetu_pin_ids_array
+                                assign check_pin_key = check_pin | append: ''
+                                if check_pin_key == link_pin_key
+                                  assign link_handle = wetu_handles_array[forloop.index0]
+                                break
+                              endif
+                            endfor
+                          endif
+
+                            if link_label == blank and link_handle != ''
+                            assign link_label = all_products[link_handle].title
+                            endif
+
+                            assign link_url = ''
+                            if link_handle != ''
+                            assign link_url = all_products[link_handle].url
+                          elsif link_pin != blank
+                              assign link_url = '/pages/wetu-property-' | append: link_pin
+                            endif
+                          -%}
+                          {% if link_label != blank and link_url != blank %}
+                          <li class="itin-chrono__link-item">
+                              <a href="{{ link_url }}">{{ link_label }}</a>
+                            </li>
+                          {% endif %}
+                        {% endfor %}
+                      </ul>
+                    </details>
+                  {% endif %}
+                {% endfor %}
+              </div>
+            {% endif %}
+
+            {% if route_count > 0 and is_arrival_day %}
+              {% for route_index in routes_array %}
+                {% if route_index == blank %}{% continue %}{% endif %}
+                {%- liquid
+                  assign route = wetu_routes[route_index]
+                  assign route_start_pin = route.start_content_entity_id.value | default: route.start_content_entity_id
+                  assign route_end_pin = route.end_content_entity_id.value | default: route.end_content_entity_id
+                  assign route_preview_handle = ''
+
+                  if route_end_pin != blank
+                    assign route_end_pin_key = route_end_pin | append: ''
+                    for check_pin in wetu_pin_ids_array
+                      assign check_pin_key = check_pin | append: ''
+                      if check_pin_key == route_end_pin_key
+                        assign route_preview_handle = wetu_handles_array[forloop.index0]
+                        break
+                      endif
+                    endfor
+                  endif
+
+                  if route_preview_handle == '' and route_start_pin != blank
+                    assign route_start_pin_key = route_start_pin | append: ''
+                    for check_pin in wetu_pin_ids_array
+                      assign check_pin_key = check_pin | append: ''
+                      if check_pin_key == route_start_pin_key
+                        assign route_preview_handle = wetu_handles_array[forloop.index0]
+                        break
+                      endif
+                    endfor
+                  endif
+
+                  assign route_preview_url = ''
+                  if route_preview_handle != ''
+                    assign route_preview_url = '/products/' | append: route_preview_handle
+                  endif
+                -%}
+                {% render 'wetu-chronological-transfer-card', route: route, wetu_pin_ids_array: wetu_pin_ids_array, wetu_handles_array: wetu_handles_array, preview_url: route_preview_url %}
+              {% endfor %}
+          {% endif %}
+
+          {% if acc_product != nil %}
+            <section class="itin-chrono__accom">
+              {%- liquid
+                assign acc_title = acc_name | default: acc_product.title
+                assign acc_body = acc_product.description | strip_html | strip | truncate: 200
+              -%}
+              <div class="itin-chrono__card" data-preview-url="/products/{{ acc_product.handle }}">
+                <div class="itin-chrono__card-time">Your Stay · {{ leg_total_nights }} night{{ night_suffix }}</div>
+                <div class="itin-chrono__card-title">{{ acc_title }}</div>
+                {% if acc_body != blank %}
+                  <div class="itin-chrono__card-body">{{ acc_body }}</div>
+                {% endif %}
+                <div class="itin-chrono__card-footer">
+                  <span class="itin-chrono__card-tag">{{ leg_total_nights }} nights</span>
+                  {% if dest_name != blank %}<span class="itin-chrono__card-tag">{{ dest_name }}</span>{% endif %}
+                </div>
+                <div class="itin-chrono__card-hint"><span>→</span> View property details</div>
+              </div>
+            </section>
+          {% endif %}
+
+          {% comment %} day_notes rendered as morning verse above {% endcomment %}
+
+          {% if day_consultant != blank and has_plekify_blocks == false %}
+            <details class="itin-chrono__notes" data-pin-links open>
+              <summary>{{ 'sections.itinerary_chronological.consultant_notes' | t }}</summary>
+              <div class="itin-chrono__notes-body">
+                {% render 'wetu-pin-link', content: day_consultant, pin_ids: wetu_pin_ids_array, handles: wetu_handles_array %}
+              </div>
+            </details>
+          {% endif %}
+
+          {% if day_activities and day_activities.size > 0 %}
+            <section class="itin-chrono__activities">
+              <h3 class="itin-chrono__section-title">{{ 'sections.itinerary_chronological.todays_experiences' | t }}</h3>
+              {%- liquid
+                assign activity_indices = ''
+              -%}
+              {% if activity_order_rows != '' %}
+                {% for activity_row in activity_order_array %}
+                  {% if activity_row == blank %}{% continue %}{% endif %}
+                  {%- liquid
+                    assign activity_row_parts = activity_row | split: '~~'
+                    assign ordered_activity_index = activity_row_parts[1] | default: ''
+                  -%}
+                  {% if ordered_activity_index == blank %}{% continue %}{% endif %}
+                  {% if activity_indices == '' %}
+                    {% assign activity_indices = ordered_activity_index %}
+                  {% else %}
+                    {% assign activity_indices = activity_indices | append: '|' | append: ordered_activity_index %}
+                  {% endif %}
+                {% endfor %}
+              {% else %}
+                {% for activity in day_activities %}
+                  {% if activity_indices == '' %}
+                    {% assign activity_indices = forloop.index0 %}
+                  {% else %}
+                    {% assign activity_indices = activity_indices | append: '|' | append: forloop.index0 %}
+                  {% endif %}
+                {% endfor %}
+              {% endif %}
+              {% assign activity_indices_array = activity_indices | split: '|' %}
+              <ul class="itin-chrono__activity-list" role="list">
+                {% for activity_index in activity_indices_array %}
+                  {% if activity_index == blank %}{% continue %}{% endif %}
+                  {%- liquid
+                    assign activity_index_number = activity_index | plus: 0
+                    assign activity = day_activities[activity_index_number]
+
+                    assign activity_time = activity.start_time.value | default: activity.start_time | default: ''
+                    if activity_time == blank or activity_time == 'None' or activity_time == 'NotProvided'
+                      assign activity_time = activity.end_time.value | default: activity.end_time | default: ''
+                    endif
+
+                    assign activity_name = activity.name.value | default: activity.name | default: ''
+                    assign activity_type = activity.type.value | default: activity.type | default: 'Experience'
+                    assign activity_description_raw = activity.description.value | default: activity.description | default: ''
+
+                    assign activity_pin = activity.content_entity_id.value | default: activity.content_entity_id
+                    assign activity_pin_key = activity_pin | append: ''
+                    assign activity_handle = ''
+                    if activity_pin != blank
+                      for check_pin in wetu_pin_ids_array
+                        assign check_pin_key = check_pin | append: ''
+                        if check_pin_key == activity_pin_key
+                          assign activity_handle = wetu_handles_array[forloop.index0]
+                          break
+                        endif
+                      endfor
+                    endif
+
+                    assign activity_product = nil
+                    if activity_handle != ''
+                      assign activity_product = all_products[activity_handle]
+                    endif
+
+                    if activity_name == '' and activity_product
+                      assign activity_name = activity_product.title
+                    endif
+
+                    if activity_name == ''
+                      assign activity_name = activity_type
+                    endif
+
+                    if activity_description_raw == '' and activity_product
+                      assign activity_description_raw = activity_product.description
+                    endif
+
+                    assign activity_description_text = activity_description_raw | strip_html | strip | truncate: 220
+
+                    assign activity_time_label = activity_type
+                    if activity_time != blank and activity_time != 'None' and activity_time != 'NotProvided'
+                      assign activity_time_label = activity_time | append: ' · ' | append: activity_type
+                    endif
+                  -%}
+                  {% if activity_handle != '' %}
+                    <li>
+                      <div class="itin-chrono__card" data-preview-url="/products/{{ activity_handle }}">
+                        <div class="itin-chrono__card-time">{{ activity_time_label }}</div>
+                        <div class="itin-chrono__card-title">{{ activity_name }}</div>
+                        {% if activity_description_text != blank %}
+                          <div class="itin-chrono__card-body">{{ activity_description_text }}</div>
+                        {% endif %}
+                        <div class="itin-chrono__card-footer">
+                          <span class="itin-chrono__card-tag">{{ activity_type }}</span>
+                          {% if dest_name != blank %}<span class="itin-chrono__card-tag">{{ dest_name }}</span>{% endif %}
+                        </div>
+                        <div class="itin-chrono__card-hint"><span>→</span> View activity details</div>
+                      </div>
+                    </li>
+                  {% else %}
+                    <li class="itin-chrono__activity">
+                      <div class="itin-chrono__activity-main">
+                        {% if activity_time != blank and activity_time != 'None' and activity_time != 'NotProvided' %}
+                          <span class="itin-chrono__activity-time">{{ activity_time }}</span>
+                        {% endif %}
+                        <span class="itin-chrono__activity-name">{{ activity_name }}</span>
+                      </div>
+                      {% if activity_description_raw != blank %}
+                        <div class="itin-chrono__activity-desc" data-pin-links>
+                          {% render 'wetu-pin-link', content: activity_description_raw, pin_ids: wetu_pin_ids_array, handles: wetu_handles_array %}
+                        </div>
+                      {% endif %}
+                    </li>
+                  {% endif %}
+                {% endfor %}
+              </ul>
+            </section>
+          {% endif %}
+
+          {% if day_included != blank %}
+            <details class="itin-chrono__notes" data-pin-links>
+              <summary>{{ 'sections.itinerary_chronological.included_today' | t }}</summary>
+              <div class="itin-chrono__notes-body">
+                {% render 'wetu-pin-link', content: day_included, pin_ids: wetu_pin_ids_array, handles: wetu_handles_array %}
+              </div>
+            </details>
+          {% endif %}
+
+          {% if route_count > 0 and is_departure_day and is_arrival_day == false %}
+            {% for route_index in routes_array %}
+              {% if route_index == blank %}{% continue %}{% endif %}
+              {%- liquid
+                assign route = wetu_routes[route_index]
+                assign route_start_pin = route.start_content_entity_id.value | default: route.start_content_entity_id
+                assign route_end_pin = route.end_content_entity_id.value | default: route.end_content_entity_id
+                assign route_preview_handle = ''
+
+                if route_end_pin != blank
+                  assign route_end_pin_key = route_end_pin | append: ''
+                  for check_pin in wetu_pin_ids_array
+                    assign check_pin_key = check_pin | append: ''
+                    if check_pin_key == route_end_pin_key
+                      assign route_preview_handle = wetu_handles_array[forloop.index0]
+                      break
+                    endif
+                  endfor
+                endif
+
+                if route_preview_handle == '' and route_start_pin != blank
+                  assign route_start_pin_key = route_start_pin | append: ''
+                  for check_pin in wetu_pin_ids_array
+                    assign check_pin_key = check_pin | append: ''
+                    if check_pin_key == route_start_pin_key
+                      assign route_preview_handle = wetu_handles_array[forloop.index0]
+                      break
+                    endif
+                  endfor
+                endif
+
+                assign route_preview_url = ''
+                if route_preview_handle != ''
+                  assign route_preview_url = '/products/' | append: route_preview_handle
+                endif
+              -%}
+              {% render 'wetu-chronological-transfer-card', route: route, wetu_pin_ids_array: wetu_pin_ids_array, wetu_handles_array: wetu_handles_array, preview_url: route_preview_url %}
+            {% endfor %}
+          {% endif %}
+        </article>
+      {% endfor %}
+    </div>
+
+    <aside class="itin-chrono__preview" data-chrono-preview aria-label="Linked page preview">
+      <div class="itin-chrono__preview-inner">
+        <section class="itin-chrono__preview-panel" data-preview-state="empty" data-preview-open="false">
+          <div class="itin-chrono__preview-body" data-preview-body>
+            <h3 class="itin-chrono__preview-hidden" data-preview-title>No page selected</h3>
+            <p class="itin-chrono__preview-hidden" data-preview-url>Select an itinerary link to open it here.</p>
+            <a
+              class="itin-chrono__preview-hidden"
+              data-preview-open
+              href="#"
+              target="_blank"
+              rel="noopener"
+              aria-label="Open linked page in a new tab"
+              aria-disabled="true"
+              tabindex="-1"
+            >
+              Open full page
+            </a>
+            <button
+              type="button"
+              class="itin-chrono__preview-hidden"
+              data-preview-clear
+              aria-label="Clear linked page preview"
+              disabled
+            >
+              Clear preview
+            </button>
+            <div class="itin-chrono__preview-empty" data-preview-view="empty">
+              <div
+                class="itin-chrono__transact"
+                data-inspector-default
+                data-inspector-price-cents="{{ inspector_price | plus: 0 }}"
+                data-inspector-min-guests="{{ inspector_min_guests }}"
+                data-inspector-max-guests="{{ inspector_max_guests }}"
+                data-inspector-guests-template="{{ inspector_guests_template }}"
+              >
+                <div class="itin-chrono__transact-price-block">
+                  <p class="itin-chrono__transact-ref-line">
+                    {{ product.vendor | default: 'Private journey' }} · {{ inspector_start_year }} · REF {{ itinerary_reference | default: product.id }}
+                  </p>
+                  <p class="itin-chrono__transact-price-label">
+                    {{ 'wetu.rates.per_person_sharing' | t | default: 'Per person sharing' }}
+                  </p>
+                  <div class="itin-chrono__transact-price-row">
+                    <span class="itin-chrono__transact-price-value">{{ inspector_price | money }}</span>
+                    <span class="itin-chrono__transact-price-unit">per person</span>
+                  </div>
+                  <p class="itin-chrono__transact-price-total" data-inspector-price-total>
+                    <span data-inspector-price-total-amount>{{ inspector_total_price | money }}</span>
+                    total for
+                    <span data-inspector-price-total-guests>{{ 'wetu.accommodation.guests_count' | t: count: inspector_default_guests | default: '2 guests' }}</span>
+                  </p>
+
+                  <div class="itin-chrono__transact-guest-row" data-inspector-guest-counter>
+                    <div>
+                      <p class="itin-chrono__transact-guest-label">
+                        {{ 'travel_search.guests' | t | default: 'Guests' }}
+                      </p>
+                      <p class="itin-chrono__transact-guest-sub">{{ inspector_guest_subtitle }}</p>
+                    </div>
+                    <div class="itin-chrono__transact-guest-counter">
+                      <button
+                        type="button"
+                        class="itin-chrono__transact-guest-btn"
+                        aria-label="Decrease guests"
+                        data-inspector-guest-decrease
+                      >
+                        -
+                      </button>
+                      <span class="itin-chrono__transact-guest-count" data-inspector-guest-count aria-live="polite" aria-atomic="true">{{ inspector_default_guests }}</span>
+                      <button
+                        type="button"
+                        class="itin-chrono__transact-guest-btn"
+                        aria-label="Increase guests"
+                        data-inspector-guest-increase
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="itin-chrono__transact-cta-wrap">
+                    <a
+                      class="itin-chrono__transact-cta itin-chrono__transact-cta--primary{% unless inspector_variant.available %} is-disabled{% endunless %}"
+                      href="{% if inspector_variant.available %}{{ inspector_confirm_url }}{% else %}#{% endif %}"
+                      data-inspector-confirm-link
+                      data-inspector-confirm-base-url="{{ inspector_confirm_base_url }}"
+                      {% unless inspector_variant.available %}aria-disabled="true" tabindex="-1"{% endunless %}
+                    >
+                      Confirm journey
+                    </a>
+                    <a class="itin-chrono__transact-cta itin-chrono__transact-cta--secondary" href="#itinerary-enquiry-form" data-inspector-customisation-link>
+                      Request customisation
+                    </a>
+                  </div>
+                </div>
+
+                <div class="itin-chrono__transact-inclusions">
+                  <p class="itin-chrono__transact-inclusions-label">
+                    {{ 'wetu.itinerary.price_includes' | t | default: "What's included" }}
+                  </p>
+                  <ul class="itin-chrono__transact-inclusions-grid" role="list">
+                    {% if inspector_inclusion_count > 0 %}
+                      {% for inclusion_item in inspector_inclusion_items limit: inspector_inclusion_limit %}
+                        {% if inclusion_item == blank %}{% continue %}{% endif %}
+                        <li class="itin-chrono__transact-inclusion-item">
+                          <span class="itin-chrono__transact-inclusion-dot" aria-hidden="true"></span>
+                          <span>{{ inclusion_item }}</span>
+                        </li>
+                      {% endfor %}
+                    {% else %}
+                      <li class="itin-chrono__transact-inclusion-item itin-chrono__transact-inclusion-item--full">
+                        <span class="itin-chrono__transact-inclusion-dot" aria-hidden="true"></span>
+                        <span>{{ 'sections.itinerary_chronological.included_today' | t | default: 'Inclusions available in your itinerary details' }}</span>
+                      </li>
+                    {% endif %}
+                  </ul>
+                </div>
+
+                <div class="itin-chrono__transact-contact">
+                  <div class="itin-chrono__transact-contact-avatar" aria-hidden="true">{{ inspector_contact_initials }}</div>
+                  <div class="itin-chrono__transact-contact-main">
+                    <p class="itin-chrono__transact-contact-name">{{ inspector_consultant_name }}</p>
+                    <p class="itin-chrono__transact-contact-role">{{ inspector_contact_role_line }}</p>
+                    <div class="itin-chrono__transact-contact-links">
+                      {% if inspector_contact_phone != blank %}
+                        <a class="itin-chrono__transact-contact-link" href="tel:{{ inspector_contact_phone | remove: ' ' }}">{{ inspector_contact_phone }}</a>
+                      {% endif %}
+                      {% if inspector_contact_email != blank %}
+                        <a class="itin-chrono__transact-contact-link" href="mailto:{{ inspector_contact_email }}">{{ inspector_contact_email }}</a>
+                      {% endif %}
+                      {% if inspector_contact_phone == blank and inspector_contact_email == blank %}
+                        <span class="itin-chrono__transact-contact-link itin-chrono__transact-contact-link--muted">
+                          {{ 'wetu.itinerary.contact_us' | t | default: 'Contact available on request' }}
+                        </span>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="itin-chrono__preview-loading" data-preview-view="loading" hidden>
+              <div class="itin-chrono__preview-skeleton" aria-hidden="true"></div>
+              <div class="itin-chrono__preview-skeleton itin-chrono__preview-skeleton--line" aria-hidden="true"></div>
+              <div class="itin-chrono__preview-skeleton itin-chrono__preview-skeleton--line" aria-hidden="true"></div>
+            </div>
+            <div class="itin-chrono__preview-product" data-preview-view="product" hidden>
+              <div class="itin-chrono__preview-product-card" data-preview-product-card></div>
+            </div>
+            <div class="itin-chrono__preview-error" data-preview-view="error" hidden>
+              <a
+                class="itin-chrono__preview-error-open itin-chrono__preview-hidden"
+                data-preview-error-open
+                href="#"
+                target="_blank"
+                rel="noopener"
+                aria-label="Open linked page in a new tab instead"
+              >
+                Open full page
+              </a>
+            </div>
+          </div>
+        </section>
+      </div>
+    </aside>
+  </div>
+
+  <div class="itin-chrono__mobile-picker" id="itin-mobile-picker" aria-label="Day navigation"></div>
+
+  <div class="itin-chrono__bottom-sheet-overlay" data-bottom-sheet-overlay>
+    <div class="itin-chrono__bottom-sheet" data-bottom-sheet>
+      <span class="itin-chrono__bottom-sheet-handle" aria-hidden="true"></span>
+      <div class="itin-chrono__bottom-sheet-content" data-bottom-sheet-content></div>
+    </div>
+  </div>
+</div>
+
+{% stylesheet %}
+.itin-chrono {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  --itin-chrono-highlight: rgba(255, 255, 255, 0.96);
+  --itin-chrono-bg-deep: #2e2e2e;
+  --itin-chrono-bg-mid: #363636;
+  --itin-chrono-bg-card: #3d3d3d;
+  --itin-chrono-bg-card-lift: #444444;
+  --itin-chrono-bg-divider: #505050;
+  --itin-chrono-surface: rgba(var(--color-foreground-rgb), 0.03);
+  --itin-chrono-surface-strong: rgba(var(--color-foreground-rgb), 0.07);
+  --itin-chrono-sticky-offset: calc(var(--header-height, 60px) + 24px);
+  --itin-chrono-workspace-gap-top: 2px;
+  --itin-chrono-inspector-width: 500px;
+  --itin-chrono-sidebar-width: 185px;
+  scroll-margin-top: calc(var(--itin-chrono-sticky-offset) + 12px);
+}
+
+.itin-chrono__hero {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2.40 / 1;
+  overflow: hidden;
+  background: #111;
+}
+
+.itin-chrono__hero--fullwidth {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2.40 / 1;
+  overflow: hidden;
+  background: var(--itin-chrono-bg-deep, #2e2e2e);
+  flex-shrink: 0;
+}
+
+.itin-chrono__hero--fullwidth iframe {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 250%;
+  transform: translate(-50%, -50%);
+  border: none;
+  pointer-events: none;
+}
+
+.itin-chrono__hero--fullwidth .itin-chrono__hero-overlay {
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.08) 0%,
+    rgba(0, 0, 0, 0.02) 40%,
+    rgba(0, 0, 0, 0.5) 78%,
+    var(--itin-chrono-bg-deep, #2e2e2e) 100%
+  );
+}
+
+.itin-chrono__hero iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 250%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border: none;
+  pointer-events: none;
+}
+
+.itin-chrono__hero video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.itin-chrono__hero-img,
+.itin-chrono__hero > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.itin-chrono__hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.08) 0%,
+    rgba(0, 0, 0, 0.02) 40%,
+    rgba(0, 0, 0, 0.5) 78%,
+    rgba(var(--color-background-rgb, 46, 46, 46), 1) 100%
+  );
+}
+
+.itin-chrono__hero-text {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  padding: clamp(24px, 4vw, 48px);
+}
+
+.itin-chrono__hero-eyebrow {
+  font-size: 0.62rem;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.itin-chrono__hero-title {
+  font-size: clamp(2rem, 5vw, 3.8rem);
+  font-weight: 300;
+  color: #fff;
+  line-height: 1.0;
+  letter-spacing: 0.01em;
+  margin: 0 0 10px;
+}
+
+.itin-chrono__hero-subtitle {
+  font-size: 0.68rem;
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.itin-chrono__layout {
+  display: grid;
+  grid-template-columns: var(--itin-chrono-sidebar-width) minmax(0, 1fr);
+  width: min(100%, max(var(--page-width, 1400px), 1640px));
+  margin: 0 auto;
+  padding: var(--itin-chrono-workspace-gap-top) clamp(20px, 4vw, 56px) 120px;
+}
+
+.itin-chrono__rail {
+  position: relative;
+  background: var(--itin-chrono-bg-deep, #2e2e2e);
+  border-inline-end: 1px solid rgba(var(--color-foreground-rgb), 0.14);
+}
+
+.itin-chrono__rail-inner {
+  position: sticky;
+  top: var(--itin-chrono-sticky-offset);
+  max-height: calc(100vh - var(--itin-chrono-sticky-offset) - 24px);
+  overflow-y: auto;
+  padding: 24px 0 40px;
+  scrollbar-width: none;
+}
+
+.itin-chrono__rail-inner::-webkit-scrollbar {
+  display: none;
+}
+
+.itin-chrono__rail-label {
+  font-size: 0.6rem;
+  font-weight: 400;
+  color: rgba(var(--color-foreground-rgb), 0.42);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 0 16px 14px;
+}
+
+.itin-chrono__leg-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.itin-chrono__leg-header {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 8px 16px 5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  color: inherit;
+  text-align: start;
+}
+
+.itin-chrono__leg-title {
+  font-size: 0.58rem;
+  font-weight: 400;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(var(--color-foreground-rgb), 0.42);
+  white-space: nowrap;
+}
+
+.itin-chrono__leg-line {
+  flex: 1;
+  height: 1px;
+  background: rgba(var(--color-foreground-rgb), 0.14);
+}
+
+.itin-chrono__leg-days {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  max-height: 600px;
+}
+
+.itin-chrono__leg-days.is-collapsed {
+  max-height: 0;
+}
+
+.itin-chrono__rail-link {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 16px 6px 22px;
+  text-decoration: none;
+  color: rgba(var(--color-foreground-rgb), 0.72);
+  cursor: pointer;
+  transition: color 0.22s, background 0.22s;
+}
+
+.itin-chrono__rail-link::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 0;
+  background: var(--color-foreground);
+  transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s;
+  opacity: 0;
+  border-radius: 0 1px 1px 0;
+}
+
+.itin-chrono__rail-link.is-active::before {
+  height: 22px;
+  opacity: 1;
+}
+
+.itin-chrono__rail-link.is-active {
+  background: rgba(var(--color-foreground-rgb), 0.06);
+}
+
+.itin-chrono__rail-link:hover:not(.is-active) .itin-chrono__rail-dest {
+  color: rgba(var(--color-foreground-rgb), 0.55);
+}
+
+.itin-chrono__rail-link:focus-visible {
+  outline: 2px solid rgba(var(--color-foreground-rgb), 0.85);
+  outline-offset: 3px;
+}
+
+.itin-chrono__rail-link.is-active,
+.itin-chrono__rail-link[aria-current="true"] {
+  color: var(--itin-chrono-highlight);
+}
+
+.itin-chrono__rail-day {
+  font-size: 0.6rem;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(var(--color-foreground-rgb), 0.42);
+}
+
+.itin-chrono__rail-link.is-active .itin-chrono__rail-day {
+  color: rgba(var(--color-foreground-rgb), 0.65);
+}
+
+.itin-chrono__rail-dest {
+  font-size: 0.92rem;
+  font-weight: 400;
+  color: rgba(var(--color-foreground-rgb), 0.72);
+  line-height: 1.2;
+}
+
+.itin-chrono__rail-link.is-active .itin-chrono__rail-dest {
+  color: var(--itin-chrono-highlight);
+}
+
+.itin-chrono__content {
+  display: grid;
+  gap: 94px;
+  min-width: 0;
+  padding-top: 0;
+  background: var(--itin-chrono-bg-mid, #363636);
+  scrollbar-width: thin;
+  scrollbar-color: var(--itin-chrono-bg-divider, #505050) transparent;
+}
+
+.itin-chrono__content::-webkit-scrollbar {
+  width: 4px;
+}
+
+.itin-chrono__content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.itin-chrono__content::-webkit-scrollbar-thumb {
+  background: var(--itin-chrono-bg-divider, #505050);
+  border-radius: 2px;
+}
+
+.itin-chrono__preview {
+  display: none;
+  min-width: 0;
+}
+
+.itin-chrono__preview-inner {
+  position: sticky;
+  top: 2px;
+  height: calc(100vh - 2px);
+}
+
+.itin-chrono__preview-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border: 1px solid rgba(var(--color-foreground-rgb), 0.12);
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--itin-chrono-bg-deep, #2e2e2e);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.24);
+}
+
+.itin-chrono__preview-hidden {
+  display: none !important;
+}
+
+.itin-chrono__preview-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  border-bottom: 1px solid rgba(var(--color-foreground-rgb), 0.12);
+  padding: 14px 16px;
+  background: rgba(var(--color-foreground-rgb), 0.04);
+}
+
+.itin-chrono__preview-meta {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.itin-chrono__preview-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  color: rgba(var(--color-foreground-rgb), 0.62);
+}
+
+.itin-chrono__preview-title {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.3;
+  color: rgba(var(--color-foreground-rgb), 0.95);
+}
+
+.itin-chrono__preview-url {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: rgba(var(--color-foreground-rgb), 0.65);
+  overflow-wrap: anywhere;
+}
+
+.itin-chrono__preview-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.itin-chrono__preview-open,
+.itin-chrono__preview-clear,
+.itin-chrono__preview-error-open {
+  appearance: none;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--color-foreground-rgb), 0.2);
+  background: rgba(var(--color-foreground-rgb), 0.06);
+  color: inherit;
+  text-decoration: none;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 8px 10px;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.itin-chrono__preview-open:hover,
+.itin-chrono__preview-clear:hover,
+.itin-chrono__preview-error-open:hover {
+  border-color: rgba(var(--color-foreground-rgb), 0.45);
+  background: rgba(var(--color-foreground-rgb), 0.13);
+}
+
+.itin-chrono__preview-open[aria-disabled="true"],
+.itin-chrono__preview-clear[disabled] {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.itin-chrono__preview-open:focus-visible,
+.itin-chrono__preview-clear:focus-visible,
+.itin-chrono__preview-error-open:focus-visible {
+  outline: 2px solid rgba(var(--color-foreground-rgb), 0.78);
+  outline-offset: 2px;
+}
+
+.itin-chrono__preview-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background: var(--itin-chrono-bg-deep, #2e2e2e);
+}
+
+.itin-chrono__preview-body > [hidden] {
+  display: none !important;
+}
+
+.itin-chrono__preview-loading,
+.itin-chrono__preview-error {
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: 12px;
+  height: 100%;
+  padding: 20px;
+  color: rgba(var(--color-foreground-rgb), 0.7);
+}
+
+.itin-chrono__preview-empty {
+  display: block;
+  height: 100%;
+  padding: 0;
+  overflow-y: auto;
+}
+
+.itin-chrono__preview-loading {
+  width: 100%;
+}
+
+.itin-chrono__preview-skeleton {
+  width: 100%;
+  height: 52%;
+  border-radius: 14px;
+  background: linear-gradient(
+    90deg,
+    rgba(var(--color-foreground-rgb), 0.05),
+    rgba(var(--color-foreground-rgb), 0.15),
+    rgba(var(--color-foreground-rgb), 0.05)
+  );
+  background-size: 200% 100%;
+  animation: itin-chrono-preview-loading 1.4s linear infinite;
+}
+
+.itin-chrono__preview-skeleton--line {
+  width: min(260px, 80%);
+  height: 14px;
+  border-radius: 999px;
+}
+
+.itin-chrono__preview-product {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0;
+}
+
+.itin-chrono__preview-product-card {
+  min-height: 0;
+}
+
+.itin-chrono__preview-product-card .shopify-section {
+  position: relative;
+}
+
+.itin-chrono__transact {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  color: var(--itin-chrono-highlight, rgba(255, 255, 255, 0.96));
+}
+
+.itin-chrono__transact-price-block {
+  padding: 30px 28px 24px;
+  border-bottom: 1px solid rgba(var(--color-foreground-rgb), 0.16);
+}
+
+.itin-chrono__transact-ref-line {
+  margin: 0 0 20px;
+  font-size: 0.56rem;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(var(--color-foreground-rgb), 0.58);
+}
+
+.itin-chrono__transact-price-label {
+  margin: 0 0 6px;
+  font-size: 0.58rem;
+  font-weight: 400;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(var(--color-foreground-rgb), 0.58);
+}
+
+.itin-chrono__transact-price-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 5px;
+}
+
+.itin-chrono__transact-price-value {
+  font-family: var(--font-heading--family, Georgia, 'Times New Roman', serif);
+  font-size: clamp(2.15rem, 5vw, 2.8rem);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.015em;
+}
+
+.itin-chrono__transact-price-unit {
+  font-size: 0.72rem;
+  color: rgba(var(--color-foreground-rgb), 0.62);
+  letter-spacing: 0.07em;
+}
+
+.itin-chrono__transact-price-total {
+  margin: 0 0 20px;
+  font-family: var(--font-heading--family, Georgia, 'Times New Roman', serif);
+  font-size: 0.92rem;
+  font-weight: 400;
+  color: rgba(var(--color-foreground-rgb), 0.74);
+}
+
+.itin-chrono__transact-guest-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border: 1px solid rgba(var(--color-foreground-rgb), 0.18);
+  border-radius: 2px;
+  background: rgba(var(--color-foreground-rgb), 0.05);
+}
+
+.itin-chrono__transact-guest-label {
+  margin: 0 0 4px;
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: rgba(var(--color-foreground-rgb), 0.76);
+  letter-spacing: 0.04em;
+}
+
+.itin-chrono__transact-guest-sub {
+  margin: 0;
+  font-size: 0.66rem;
+  font-style: italic;
+  color: rgba(var(--color-foreground-rgb), 0.58);
+}
+
+.itin-chrono__transact-guest-counter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.itin-chrono__transact-guest-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 28px;
+  block-size: 28px;
+  border: 1px solid rgba(var(--color-foreground-rgb), 0.22);
+  border-radius: 999px;
+  background: rgba(var(--color-foreground-rgb), 0.08);
+  color: inherit;
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.itin-chrono__transact-guest-btn:hover {
+  border-color: rgba(var(--color-foreground-rgb), 0.42);
+  background: rgba(var(--color-foreground-rgb), 0.16);
+}
+
+.itin-chrono__transact-guest-btn:focus-visible {
+  outline: 2px solid rgba(var(--color-foreground-rgb), 0.8);
+  outline-offset: 2px;
+}
+
+.itin-chrono__transact-guest-count {
+  min-inline-size: 20px;
+  text-align: center;
+  font-family: var(--font-heading--family, Georgia, 'Times New Roman', serif);
+  font-size: 1.55rem;
+  line-height: 1;
+}
+
+.itin-chrono__transact-cta-wrap {
+  display: grid;
+  gap: 10px;
+}
+
+.itin-chrono__transact-cta {
+  display: block;
+  width: 100%;
+  padding: 13px;
+  border-radius: 2px;
+  border: 1px solid rgba(var(--color-foreground-rgb), 0.28);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  text-align: center;
+  text-decoration: none;
+  transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+
+.itin-chrono__transact-cta--primary {
+  border-color: rgba(var(--color-background-rgb), 0.15);
+  color: rgba(var(--color-background-rgb), 1);
+  background: rgba(var(--color-foreground-rgb), 0.94);
+}
+
+.itin-chrono__transact-cta--primary:hover {
+  background: rgba(var(--color-foreground-rgb), 1);
+}
+
+.itin-chrono__transact-cta--secondary {
+  color: rgba(var(--color-foreground-rgb), 0.72);
+  background: transparent;
+}
+
+.itin-chrono__transact-cta--secondary:hover {
+  border-color: rgba(var(--color-foreground-rgb), 0.44);
+  color: rgba(var(--color-foreground-rgb), 0.9);
+}
+
+.itin-chrono__transact-cta:focus-visible {
+  outline: 2px solid rgba(var(--color-foreground-rgb), 0.8);
+  outline-offset: 2px;
+}
+
+.itin-chrono__transact-cta.is-disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.itin-chrono__transact-inclusions {
+  padding: 24px 28px;
+  border-bottom: 1px solid rgba(var(--color-foreground-rgb), 0.16);
+}
+
+.itin-chrono__transact-inclusions-label {
+  margin: 0 0 14px;
+  font-size: 0.56rem;
+  font-weight: 400;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+  color: rgba(var(--color-foreground-rgb), 0.58);
+}
+
+.itin-chrono__transact-inclusions-grid {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px 16px;
+}
+
+.itin-chrono__transact-inclusion-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.72rem;
+  font-weight: 300;
+  color: rgba(var(--color-foreground-rgb), 0.8);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.itin-chrono__transact-inclusion-item--full {
+  grid-column: 1 / -1;
+}
+
+.itin-chrono__transact-inclusion-dot {
+  inline-size: 3px;
+  block-size: 3px;
+  border-radius: 50%;
+  background: rgba(var(--color-foreground-rgb), 0.42);
+  margin-top: 7px;
+  flex-shrink: 0;
+}
+
+.itin-chrono__transact-contact {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 28px;
+}
+
+.itin-chrono__transact-contact-avatar {
+  inline-size: 44px;
+  block-size: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(var(--color-foreground-rgb), 0.18);
+  background: rgba(var(--color-foreground-rgb), 0.1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.64rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: rgba(var(--color-foreground-rgb), 0.74);
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.itin-chrono__transact-contact-main {
+  min-width: 0;
+}
+
+.itin-chrono__transact-contact-name {
+  margin: 0 0 2px;
+  font-family: var(--font-heading--family, Georgia, 'Times New Roman', serif);
+  font-size: 0.95rem;
+  font-weight: 400;
+  color: rgba(var(--color-foreground-rgb), 0.96);
+}
+
+.itin-chrono__transact-contact-role {
+  margin: 0 0 7px;
+  font-size: 0.63rem;
+  font-weight: 300;
+  letter-spacing: 0.04em;
+  color: rgba(var(--color-foreground-rgb), 0.6);
+}
+
+.itin-chrono__transact-contact-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.itin-chrono__transact-contact-link {
+  font-size: 0.64rem;
+  font-weight: 300;
+  letter-spacing: 0.04em;
+  color: rgba(var(--color-foreground-rgb), 0.72);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.itin-chrono__transact-contact-link:hover {
+  color: rgba(var(--color-foreground-rgb), 0.92);
+}
+
+.itin-chrono__transact-contact-link--muted {
+  color: rgba(var(--color-foreground-rgb), 0.58);
+}
+
+.itin-chrono__content a.is-preview-active {
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+  color: rgba(var(--color-foreground-rgb), 0.96);
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.55);
+}
+
+.itin-chrono__content a.is-preview-active:focus-visible {
+  outline: 2px solid rgba(var(--color-foreground-rgb), 0.8);
+  outline-offset: 3px;
+}
+
+@keyframes itin-chrono-preview-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.itin-chrono__day {
+  border-bottom: 1px solid rgba(var(--color-foreground-rgb), 0.1);
+  padding-bottom: 94px;
+  scroll-margin-top: calc(var(--itin-chrono-sticky-offset) + 14px);
+}
+
+.itin-chrono__day:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.itin-chrono__day-header {
+  position: relative;
+  margin-bottom: 20px;
+}
+
+.itin-chrono__day-ghost {
+  position: absolute;
+  top: -22px;
+  left: -10px;
+  font-size: 7rem;
+  font-weight: 600;
+  color: var(--color-foreground);
+  opacity: 0.022;
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+  letter-spacing: -0.04em;
+}
+
+.itin-chrono__day-meta {
+  font-size: 0.62rem;
+  font-weight: 400;
+  color: rgba(var(--color-foreground-rgb), 0.42);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+  position: relative;
+}
+
+.itin-chrono__day-title {
+  font-size: clamp(1.6rem, 2.2vw, 1.9rem);
+  font-weight: 400;
+  color: var(--color-foreground);
+  line-height: 1.12;
+  letter-spacing: 0.01em;
+  position: relative;
+  margin: 0 0 4px;
+}
+
+.itin-chrono__day-subtitle {
+  font-size: 0.74rem;
+  font-weight: 300;
+  color: rgba(var(--color-foreground-rgb), 0.72);
+  letter-spacing: 0.06em;
+  position: relative;
+}
+
+.itin-chrono__day-rule {
+  width: 28px;
+  height: 1px;
+  background: rgba(var(--color-foreground-rgb), 0.3);
+  margin: 14px 0 0;
+}
+
+.itin-chrono__morning-verse {
+  background: rgba(var(--color-foreground-rgb), 0.035);
+  border-left: 2px solid rgba(var(--color-foreground-rgb), 0.22);
+  padding: 14px 18px 14px 20px;
+  margin-bottom: 20px;
+  border-radius: 0 2px 2px 0;
+}
+
+.itin-chrono__morning-verse-label {
+  font-size: 0.54rem;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(var(--color-foreground-rgb), 0.42);
+  margin-bottom: 6px;
+}
+
+.itin-chrono__morning-verse-text {
+  font-family: var(--font-heading-family);
+  font-size: 1.0rem;
+  font-weight: 400;
+  font-style: italic;
+  color: rgba(var(--color-foreground-rgb), 0.72);
+  line-height: 1.72;
+}
+
+.itin-chrono__card {
+  position: relative;
+  background: var(--itin-chrono-bg-card, #3d3d3d);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-left: 2px solid transparent;
+  border-radius: 3px;
+  padding: 18px 20px 16px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, border-left-color 0.2s ease;
+}
+
+.itin-chrono__card:hover {
+  background: var(--itin-chrono-bg-card-lift, #444444);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.itin-chrono__card.is-active {
+  border-left: 2px solid rgba(255, 255, 255, 0.7);
+  border-color: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.itin-chrono__card-time {
+  font-size: 0.5rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(var(--color-foreground-rgb), 0.42);
+  margin-bottom: 6px;
+}
+
+.itin-chrono__card-title {
+  font-family: var(--font-heading-family);
+  font-size: 1.15rem;
+  font-weight: 400;
+  color: rgba(var(--color-foreground-rgb), 0.95);
+  line-height: 1.3;
+  margin: 0 0 8px;
+}
+
+.itin-chrono__card-body {
+  font-family: var(--font-body-family);
+  font-size: 0.86rem;
+  font-weight: 300;
+  color: rgba(var(--color-foreground-rgb), 0.72);
+  line-height: 1.82;
+  margin-bottom: 10px;
+}
+
+.itin-chrono__card-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+  margin-bottom: 6px;
+}
+
+.itin-chrono__card-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.56rem;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(var(--color-foreground-rgb), 0.42);
+  padding: 3px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+.itin-chrono__card-hint {
+  font-size: 0.58rem;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.28);
+  margin-top: 6px;
+  transition: color 0.2s ease;
+}
+
+.itin-chrono__card-hint:empty::before {
+  content: '→ View details';
+}
+
+.itin-chrono__card:hover .itin-chrono__card-hint,
+.itin-chrono__card.is-active .itin-chrono__card-hint {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.itin-chrono__morning-verse-text p {
+  margin: 0 0 0.8em;
+}
+
+.itin-chrono__morning-verse-text p:last-child {
+  margin-bottom: 0;
+}
+
+.itin-chrono__summary,
+.itin-chrono__narrative {
+  max-width: 68ch;
+  margin-bottom: 34px;
+  font-size: clamp(1.05rem, 0.5vw + 0.95rem, 1.26rem);
+  line-height: 1.85;
+  letter-spacing: 0.01em;
+  color: rgba(var(--color-foreground-rgb), 0.93);
+}
+
+.itin-chrono__summary p,
+.itin-chrono__narrative p {
+  margin: 0 0 1.1em;
+}
+
+.itin-chrono__summary p:last-child,
+.itin-chrono__narrative p:last-child {
+  margin-bottom: 0;
+}
+
+.itin-chrono__summary strong,
+.itin-chrono__narrative strong {
+  font-size: 0.82em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(var(--color-foreground-rgb), 0.78);
+}
+
+.itin-chrono__narrative .itin-chrono__snoop-title {
+  margin-bottom: 0.7em;
+  font-size: clamp(1.2rem, 0.6vw + 1rem, 1.35rem);
+  font-weight: 680;
+}
+
+.itin-chrono__narrative .itin-chrono__snoop-card {
+  border: 1px solid rgba(var(--color-foreground-rgb), 0.08);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin: 0 0 14px;
+  background: rgba(var(--color-foreground-rgb), 0.025);
+}
+
+.itin-chrono__narrative .itin-chrono__snoop-card strong {
+  display: inline-block;
+  margin-right: 8px;
+  color: rgba(var(--color-foreground-rgb), 0.95);
+}
+
+.itin-chrono__narrative .itin-chrono__snoop-card--pulse {
+  border-left: 3px solid rgba(var(--color-foreground-rgb), 0.4);
+}
+
+.itin-chrono__narrative .itin-chrono__snoop-card--intel {
+  border-left: 3px solid rgba(var(--color-foreground-rgb), 0.24);
+}
+
+.itin-chrono__narrative .itin-chrono__snoop-card--closeout {
+  border-left: 3px solid rgba(var(--color-foreground-rgb), 0.3);
+  background: rgba(var(--color-foreground-rgb), 0.04);
+}
+
+.itin-chrono__snoop-runsheet {
+  border: 1px solid rgba(var(--color-foreground-rgb), 0.08);
+  border-radius: 12px;
+  margin: 0 0 16px;
+  background: rgba(var(--color-foreground-rgb), 0.02);
+}
+
+.itin-chrono__snoop-runsheet summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 12px 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.itin-chrono__snoop-runsheet summary::-webkit-details-marker {
+  display: none;
+}
+
+.itin-chrono__snoop-runsheet ul {
+  margin: 0;
+  padding: 0 16px 14px 28px;
+  display: grid;
+  gap: 10px;
+  font-size: 0.95rem;
+}
+
+.itin-chrono__embedded {
+  display: grid;
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.itin-chrono__embedded [data-plekify-block="narrative"] {
+  font-size: 1.05rem;
+  line-height: 1.8;
+}
+
+.itin-chrono__embedded [data-plekify-block="timeline"] {
+  border: 1px solid rgba(var(--color-foreground-rgb), 0.08);
+  border-radius: 12px;
+  padding: 16px 18px;
+  background: rgba(var(--color-foreground-rgb), 0.02);
+}
+
+.itin-chrono__embedded [data-plekify-list="timeline"] {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.itin-chrono__embedded [data-plekify-item] {
+  display: grid;
+  grid-template-columns: minmax(70px, 90px) minmax(0, 1fr);
+  gap: 12px;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.itin-chrono__embedded [data-plekify-time] {
+  font-weight: 600;
+  color: rgba(var(--color-foreground-rgb), 0.7);
+}
+
+.itin-chrono__timeline {
+  margin-bottom: 30px;
+}
+
+.itin-chrono__transition-note {
+  margin: 0 0 14px;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(var(--color-foreground-rgb), 0.62);
+}
+
+.itin-chrono__timeline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.itin-chrono__timeline-item {
+  display: grid;
+  grid-template-columns: minmax(84px, 104px) minmax(0, 1fr);
+  gap: 14px;
+  font-size: 1rem;
+  line-height: 1.68;
+}
+
+.itin-chrono__timeline-item--context {
+  border-left: 2px solid rgba(var(--color-foreground-rgb), 0.15);
+  padding-left: 10px;
+}
+
+.itin-chrono__timeline-time {
+  font-family: "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(var(--color-foreground-rgb), 0.72);
+}
+
+.itin-chrono__timeline-text {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.itin-chrono__timeline-chip {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(var(--color-foreground-rgb), 0.14);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  line-height: 1.45;
+  color: rgba(var(--color-foreground-rgb), 0.7);
+}
+
+.itin-chrono__timeline-route {
+  line-height: 1.65;
+}
+
+.itin-chrono__commentary-stream {
+  margin: 0 0 30px;
+  padding: 18px;
+  border: 1px solid rgba(var(--color-foreground-rgb), 0.08);
+  border-radius: 12px;
+  background: rgba(var(--color-foreground-rgb), 0.02);
+}
+
+.itin-chrono__commentary-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.itin-chrono__commentary-item {
+  display: grid;
+  grid-template-columns: minmax(80px, 100px) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.itin-chrono__commentary-time {
+  font-family: "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(var(--color-foreground-rgb), 0.68);
+}
+
+.itin-chrono__commentary-body {
+  font-size: 0.93rem;
+  line-height: 1.68;
+  color: rgba(var(--color-foreground-rgb), 0.86);
+}
+
+.itin-chrono__commentary-body p {
+  margin: 0 0 0.7em;
+}
+
+.itin-chrono__commentary-body p:last-child {
+  margin-bottom: 0;
+}
+
+.itin-chrono__commentary-body strong {
+  font-size: 0.78em;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(var(--color-foreground-rgb), 0.7);
+}
+
+.itin-chrono__inserts {
+  display: grid;
+  gap: 20px;
+  margin-bottom: 32px;
+}
+
+.itin-chrono__insert {
+  border: 1px solid rgba(var(--color-foreground-rgb), 0.08);
+  padding: 20px;
+  border-radius: 12px;
+  background: rgba(var(--color-foreground-rgb), 0.03);
+}
+
+.itin-chrono__insert-title {
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.itin-chrono__insert--links {
+  padding: 0;
+}
+
+.itin-chrono__insert--links .itin-chrono__insert-title {
+  margin: 0;
+  padding: 14px 18px;
+  list-style: none;
+  cursor: pointer;
+}
+
+.itin-chrono__insert--links .itin-chrono__insert-title::-webkit-details-marker {
+  display: none;
+}
+
+.itin-chrono__insert--links .itin-chrono__link-list {
+  padding: 0 18px 16px;
+}
+
+.itin-chrono__link-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.itin-chrono__link-item a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.itin-chrono__accom {
+  margin: 24px 0 32px;
+}
+
+.itin-chrono__accom-card {
+  display: grid;
+  gap: 20px;
+  border: 1px solid rgba(var(--color-foreground-rgb), 0.08);
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgba(var(--color-foreground-rgb), 0.03);
+}
+
+.itin-chrono__accom-card img {
+  width: 100%;
+  height: 320px;
+  object-fit: cover;
+  display: block;
+}
+
+.itin-chrono__accom-body {
+  padding: 24px;
+}
+
+.itin-chrono__accom-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(var(--color-foreground-rgb), 0.6);
+}
+
+.itin-chrono__accom-title {
+  margin: 8px 0 6px;
+  font-size: 1.6rem;
+}
+
+.itin-chrono__accom-title a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.itin-chrono__accom-meta {
+  font-size: 0.85rem;
+  color: rgba(var(--color-foreground-rgb), 0.7);
+  margin-bottom: 12px;
+}
+
+.itin-chrono__accom-desc {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
+.itin-chrono__notes {
+  border: 1px solid rgba(var(--color-foreground-rgb), 0.08);
+  border-radius: 12px;
+  margin-bottom: 16px;
+  background: var(--itin-chrono-surface);
+}
+
+.itin-chrono__notes summary {
+  padding: 14px 18px 13px;
+  cursor: pointer;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  font-size: 0.72rem;
+  line-height: 1.25;
+  list-style: none;
+  color: rgba(var(--color-foreground-rgb), 0.68);
+}
+
+.itin-chrono__notes summary::-webkit-details-marker {
+  display: none;
+}
+
+.itin-chrono__notes-body {
+  padding: 0 18px 18px;
+  font-size: 0.97rem;
+  line-height: 1.8;
+  color: rgba(var(--color-foreground-rgb), 0.88);
+}
+
+.itin-chrono__notes-body p {
+  margin: 0 0 1em;
+}
+
+.itin-chrono__notes-body p:last-child {
+  margin-bottom: 0;
+}
+
+.itin-chrono__activities {
+  margin: 32px 0;
+}
+
+.itin-chrono__section-title {
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 16px;
+}
+
+.itin-chrono__activity-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 16px;
+}
+
+.itin-chrono__activity {
+  padding: 16px;
+  border: 1px solid rgba(var(--color-foreground-rgb), 0.08);
+  border-radius: 12px;
+  background: rgba(var(--color-foreground-rgb), 0.02);
+}
+
+.itin-chrono__activity-main {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-weight: 600;
+}
+
+.itin-chrono__activity-time {
+  font-size: 0.85rem;
+  color: rgba(var(--color-foreground-rgb), 0.7);
+}
+
+.itin-chrono__activity-name {
+  font-size: 1rem;
+}
+
+.itin-chrono__activity-desc {
+  margin-top: 10px;
+  font-size: 0.94rem;
+  color: rgba(var(--color-foreground-rgb), 0.8);
+  line-height: 1.7;
+}
+
+.itin-chrono__day.is-active .itin-chrono__day-number,
+.itin-chrono__day.is-active .itin-chrono__day-destination {
+  text-shadow:
+    0 0 8px rgba(255, 255, 255, 0.9),
+    0 0 18px rgba(255, 255, 255, 0.45);
+}
+
+.itin-chrono__transfer {
+  margin: 24px 0;
+  padding: 20px;
+  border: 1px solid rgba(var(--color-foreground-rgb), 0.08);
+  border-radius: 12px;
+  background: rgba(var(--color-foreground-rgb), 0.02);
+}
+
+.itin-chrono__transfer-header {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(var(--color-foreground-rgb), 0.6);
+  margin-bottom: 16px;
+}
+
+.itin-chrono__transfer-ref {
+  font-family: "Courier New", Courier, monospace;
+}
+
+.itin-chrono__transfer-route {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.itin-chrono__transfer-divider {
+  height: 1px;
+  background: rgba(var(--color-foreground-rgb), 0.3);
+  width: 100%;
+}
+
+.itin-chrono__transfer-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(var(--color-foreground-rgb), 0.6);
+}
+
+.itin-chrono__transfer-name {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.itin-chrono__transfer-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 0.85rem;
+  color: rgba(var(--color-foreground-rgb), 0.7);
+  margin-bottom: 16px;
+}
+
+.itin-chrono__transfer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 0.85rem;
+}
+
+.itin-chrono__transfer-links a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.itin-chrono__transfer-map {
+  color: rgba(var(--color-foreground-rgb), 0.5);
+}
+
+@media (min-width: 900px) {
+  .itin-chrono__layout {
+    grid-template-columns: var(--itin-chrono-sidebar-width) minmax(0, 1fr) var(--itin-chrono-inspector-width);
+    width: 100%;
+    max-width: 2100px;
+    padding-left: clamp(14px, 2vw, 34px);
+    padding-right: 0;
+    align-items: start;
+  }
+
+  .itin-chrono__content {
+    max-height: calc(100vh - var(--itin-chrono-workspace-gap-top));
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: clamp(10px, 1.2vw, 20px);
+  }
+
+  .itin-chrono__preview {
+    display: block;
+  }
+
+  .itin-chrono__preview-inner {
+    top: 2px;
+    height: calc(100vh - 2px);
+  }
+
+  .itin-chrono__preview-panel {
+    border-radius: 16px 0 0 16px;
+    border-right: none;
+  }
+
+  .itin-chrono__mobile-picker {
+    display: none;
+  }
+
+  .itin-chrono__bottom-sheet-overlay {
+    display: none !important;
+  }
+}
+
+@media (max-width: 899px) {
+  .itin-chrono__hero {
+    aspect-ratio: 2.40 / 1;
+  }
+
+  .itin-chrono__hero-title {
+    font-size: 1.9rem;
+  }
+
+  .itin-chrono__hero-text {
+    padding: 18px 24px 22px;
+  }
+
+  .itin-chrono__preview-inner {
+    position: relative;
+    top: auto;
+    height: auto;
+  }
+
+  .itin-chrono__layout {
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .itin-chrono__rail {
+    display: none;
+  }
+
+  .itin-chrono__mobile-picker {
+    display: flex;
+    overflow-x: auto;
+    gap: 0;
+    background: var(--color-background);
+    border-bottom: 1px solid rgba(var(--color-foreground-rgb), 0.14);
+    padding: 0 16px;
+    scrollbar-width: none;
+    position: sticky;
+    top: var(--header-height, 0px);
+    z-index: 50;
+    height: 56px;
+    align-items: center;
+  }
+
+  .itin-chrono__mobile-picker::-webkit-scrollbar {
+    display: none;
+  }
+
+  .itin-chrono__mobile-tab {
+    padding: 10px 14px;
+    white-space: nowrap;
+    cursor: pointer;
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(var(--color-foreground-rgb), 0.42);
+    border-bottom: 2px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+    flex-shrink: 0;
+  }
+
+  .itin-chrono__mobile-tab.is-active {
+    color: var(--color-foreground);
+    border-bottom-color: var(--color-foreground);
+  }
+
+  .itin-chrono__bottom-sheet-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 1000;
+    backdrop-filter: blur(2px);
+  }
+
+  .itin-chrono__bottom-sheet-overlay.is-open {
+    display: block;
+  }
+
+  .itin-chrono__bottom-sheet {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--color-background);
+    border-top: 1px solid rgba(var(--color-foreground-rgb), 0.14);
+    border-radius: 12px 12px 0 0;
+    max-height: 85vh;
+    overflow-y: auto;
+    transform: translateY(100%);
+    transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+    z-index: 1001;
+  }
+
+  .itin-chrono__bottom-sheet-overlay.is-open .itin-chrono__bottom-sheet {
+    transform: translateY(0);
+  }
+
+  .itin-chrono__bottom-sheet-handle {
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(var(--color-foreground-rgb), 0.14);
+    margin: 12px auto 0;
+    display: block;
+  }
+}
+
+@media (max-width: 600px) {
+  .itin-chrono__layout {
+    padding: var(--itin-chrono-workspace-gap-top) 16px 80px;
+  }
+
+  .itin-chrono__content {
+    gap: 70px;
+  }
+
+  .itin-chrono__day {
+    padding-bottom: 70px;
+  }
+
+  .itin-chrono__accom-card img {
+    height: 220px;
+  }
+
+  .itin-chrono__transfer-route {
+    grid-template-columns: 1fr;
+  }
+
+  .itin-chrono__transfer-divider {
+    display: none;
+  }
+
+  .itin-chrono__commentary-item {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}
+{% endstylesheet %}
+
+{% javascript %}
+  document.addEventListener('DOMContentLoaded', () => {
+    const root = document.querySelector('.itin-chrono');
+    if (!root) return;
+
+    let pinMap = {};
+    let linkManifest = {};
+    try {
+      pinMap = JSON.parse(root.dataset.pinMap || '{}');
+    } catch (e) {
+      pinMap = {};
+    }
+    try {
+      linkManifest = JSON.parse(root.dataset.linkManifest || '{}');
+    } catch (e) {
+      linkManifest = {};
+    }
+
+    const pinRegex = new RegExp('{' + '{PIN:(\\d+)\\|([^}]+)}' + '}', 'g');
+    const escapeHtml = (value) => String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
+    const replacePinTokens = (content) => String(content || '').replace(pinRegex, (match, id, text) => {
+      const status = linkManifest[id];
+      if (status && status !== 'found') {
+        return escapeHtml(text);
+      }
+      const handle = pinMap[id];
+      if (!handle) {
+        return escapeHtml(text);
+      }
+      return `<a href="/products/${handle}">${escapeHtml(text)}</a>`;
+    });
+
+    const applyPinLinks = (scope = document) => {
+      const elements = scope.querySelectorAll('[data-pin-links]');
+      elements.forEach((el) => {
+        if (!el.innerHTML.includes('{' + '{PIN:')) return;
+        el.innerHTML = replacePinTokens(el.innerHTML);
+      });
+    };
+
+    const humanizeRouteMode = (modeRaw, labelRaw) => {
+      const mode = String(modeRaw || 'Transfer');
+      const label = String(labelRaw || '');
+      switch (mode) {
+        case 'ScheduledFlight':
+          return 'Scheduled flight';
+        case 'CharterFlight':
+          return 'Charter flight';
+        case 'Transfer':
+          return label === 'Private' ? 'Private transfer' : 'Transfer';
+        case 'Rail':
+        case 'Train':
+          return 'Rail transfer';
+        case 'Selfdrive':
+          return 'Self-drive';
+        case 'Boat':
+          return 'Boat transfer';
+        default:
+          return mode;
+      }
+    };
+
+    const humanizeHandle = (handle) => String(handle || '')
+      .split('-')
+      .filter(Boolean)
+      .map((word) => {
+        const upperTokenList = new Set(['cpt', 'dur', 'jnb', 'or']);
+        if (upperTokenList.has(word.toLowerCase())) return word.toUpperCase();
+        return word.charAt(0).toUpperCase() + word.slice(1);
+      })
+      .join(' ');
+
+    const normalizeRouteLocationLabels = (scope = document) => {
+      const anchors = scope.querySelectorAll('.itin-chrono__timeline-route a');
+      anchors.forEach((anchor) => {
+        const currentText = anchor.textContent.replace(/\s+/g, ' ').trim();
+        if (!/^Location PIN \d+$/i.test(currentText)) return;
+
+        const href = anchor.getAttribute('href') || '';
+        const match = href.match(/\/products\/([^/?#]+)/i);
+        if (!match) return;
+
+        const pretty = humanizeHandle(match[1]);
+        if (pretty) {
+          anchor.textContent = pretty;
+        }
+      });
+    };
+
+    const formatSnoopNarrative = (scope = document) => {
+      const blocks = scope.querySelectorAll('.itin-chrono__narrative');
+      blocks.forEach((block) => {
+        if (block.dataset.snoopEnhanced === 'true') return;
+
+        const paragraphs = [...block.querySelectorAll(':scope > p')];
+        paragraphs.forEach((paragraph) => {
+          const heading = paragraph.querySelector(':scope > strong');
+          if (!heading) return;
+
+          const headingText = heading.textContent.replace(/\s+/g, ' ').trim();
+          if (!headingText) return;
+
+          if (/^Day\s+\d+\s*--/i.test(headingText)) {
+            paragraph.classList.add('itin-chrono__snoop-title');
+            return;
+          }
+
+          if (/^Pulse\b/i.test(headingText)) {
+            paragraph.classList.add('itin-chrono__snoop-card', 'itin-chrono__snoop-card--pulse');
+            heading.textContent = 'Pulse';
+            return;
+          }
+
+          if (/^Street Intel\b/i.test(headingText)) {
+            paragraph.classList.add('itin-chrono__snoop-card', 'itin-chrono__snoop-card--intel');
+            heading.textContent = 'Street Intel';
+            return;
+          }
+
+          if (/^Closeout\b/i.test(headingText)) {
+            paragraph.classList.add('itin-chrono__snoop-card', 'itin-chrono__snoop-card--closeout');
+            heading.textContent = 'Closeout';
+            return;
+          }
+
+          if (/^Run Sheet\b/i.test(headingText)) {
+            const maybeList = paragraph.nextElementSibling;
+            if (maybeList && maybeList.tagName === 'UL') {
+              const details = document.createElement('details');
+              details.className = 'itin-chrono__snoop-runsheet';
+
+              const summary = document.createElement('summary');
+              summary.textContent = 'Run Sheet';
+              details.appendChild(summary);
+              details.appendChild(maybeList);
+
+              paragraph.replaceWith(details);
+            }
+          }
+        });
+
+        block.dataset.snoopEnhanced = 'true';
+      });
+    };
+
+    const injectNarrativeCues = (scope = document) => {
+      const dayCards = scope.querySelectorAll('.itin-chrono__day');
+      dayCards.forEach((dayCard) => {
+        if (dayCard.dataset.snoopCuesInjected === 'true') return;
+        if (dayCard.querySelector('.itin-chrono__commentary-stream')) {
+          dayCard.dataset.snoopCuesInjected = 'true';
+          return;
+        }
+
+        const runsheetItems = Array.from(dayCard.querySelectorAll('.itin-chrono__narrative .itin-chrono__snoop-runsheet ul li'));
+        if (runsheetItems.length === 0) return;
+
+        const cueRows = runsheetItems.map((item) => {
+          const clone = item.cloneNode(true);
+          const firstStrong = clone.querySelector('strong');
+          let time = '';
+          if (firstStrong) {
+            const timeMatch = (firstStrong.textContent || '').match(/\d{1,2}:\d{2}/);
+            if (timeMatch) {
+              time = timeMatch[0];
+            }
+            firstStrong.remove();
+          }
+
+          const bodyHtml = clone.innerHTML.replace(/^\s*[—-]\s*/, '').trim();
+          if (!bodyHtml) return null;
+          return {
+            time,
+            minutes: toMinutes(time),
+            bodyHtml,
+          };
+        }).filter(Boolean).sort((a, b) => a.minutes - b.minutes);
+
+        if (cueRows.length === 0) return;
+
+        const commentarySection = document.createElement('section');
+        commentarySection.className = 'itin-chrono__commentary-stream';
+        commentarySection.setAttribute('data-pin-links', '');
+        commentarySection.innerHTML = `
+          <h3 class="itin-chrono__section-title">Snoop live wire</h3>
+          <ul class="itin-chrono__commentary-list" role="list">
+            ${cueRows.map((row) => `
+              <li class="itin-chrono__commentary-item">
+                ${row.time ? `<span class="itin-chrono__commentary-time">${escapeHtml(row.time)}</span>` : '<span class="itin-chrono__commentary-time"></span>'}
+                <div class="itin-chrono__commentary-body">${row.bodyHtml}</div>
+              </li>
+            `).join('')}
+          </ul>
+        `;
+
+        const timelineSection = dayCard.querySelector('.itin-chrono__timeline');
+        if (timelineSection && timelineSection.parentNode) {
+          timelineSection.insertAdjacentElement('afterend', commentarySection);
+        } else {
+          const narrativeSection = dayCard.querySelector('.itin-chrono__narrative');
+          if (narrativeSection && narrativeSection.parentNode) {
+            narrativeSection.insertAdjacentElement('beforebegin', commentarySection);
+          }
+        }
+
+        dayCard.dataset.snoopCuesInjected = 'true';
+      });
+    };
+
+    const suppressRunSheetWhenLiveWirePresent = (scope = document) => {
+      const dayCards = scope.querySelectorAll('.itin-chrono__day');
+      dayCards.forEach((dayCard) => {
+        if (!dayCard.querySelector('.itin-chrono__commentary-stream')) return;
+        dayCard.querySelectorAll('.itin-chrono__narrative .itin-chrono__snoop-runsheet').forEach((runsheet) => {
+          runsheet.remove();
+        });
+      });
+    };
+
+    const decodeEntities = (() => {
+      const textarea = document.createElement('textarea');
+      return (value) => {
+        textarea.innerHTML = String(value || '');
+        return textarea.value;
+      };
+    })();
+
+    const containsHtml = (value) => /<\/?[a-z][\s\S]*>/i.test(String(value || ''));
+
+    const fieldValue = (obj, key) => {
+      if (!obj || typeof obj !== 'object') return null;
+      const value = obj[key];
+      if (value && typeof value === 'object' && Object.prototype.hasOwnProperty.call(value, 'value')) {
+        return value.value;
+      }
+      return value ?? null;
+    };
+
+    const extractRichText = (input) => {
+      if (!input) return '';
+      if (typeof input === 'object') {
+        if (Array.isArray(input.children)) {
+          return input.children.map((child) => extractRichText(child)).join(' ');
+        }
+        if (typeof input.value === 'string') {
+          return input.value;
+        }
+        return '';
+      }
+
+      const raw = String(input).trim();
+      if (!raw) return '';
+      if (raw.startsWith('{') || raw.startsWith('[')) {
+        try {
+          const parsed = JSON.parse(raw);
+          return extractRichText(parsed);
+        } catch (error) {
+          return raw;
+        }
+      }
+      return raw;
+    };
+
+    const prettyText = (value) => {
+      const text = extractRichText(value).trim();
+      if (!text) return '';
+      const decoded = decodeEntities(text).trim();
+      if (!decoded) return '';
+
+      if (containsHtml(decoded)) {
+        return replacePinTokens(decoded);
+      }
+
+      const paragraphHtml = escapeHtml(decoded)
+        .replace(/\n\n+/g, '</p><p>')
+        .replace(/\n/g, '<br>');
+      return `<p>${replacePinTokens(paragraphHtml)}</p>`;
+    };
+
+    const normalizeList = (raw) => {
+      if (Array.isArray(raw)) return raw;
+      if (typeof raw === 'string') {
+        try {
+          const parsed = JSON.parse(raw);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch (error) {
+          return [];
+        }
+      }
+      return [];
+    };
+
+    const normalizeActivities = (period) => normalizeList(fieldValue(period, 'activities') || []);
+    const normalizeCommentaryItems = (period) => normalizeList(fieldValue(period, 'commentary_items') || []);
+    const normalizeInsertBlocks = (period) => normalizeList(fieldValue(period, 'insert_blocks') || []);
+    const previewDesktopMediaQuery = window.matchMedia('(min-width: 900px)');
+    const previewQueryParam = 'chronoPreview';
+    const previewEligiblePathPrefixes = ['/products/', '/pages/', '/collections/'];
+
+    const toMinutes = (value) => {
+      if (!value || typeof value !== 'string' || !value.includes(':')) return 9_999;
+      const [hours, minutes] = value.split(':');
+      const parsedHours = Number.parseInt(hours, 10);
+      const parsedMinutes = Number.parseInt(minutes, 10);
+      if (Number.isNaN(parsedHours) || Number.isNaN(parsedMinutes)) return 9_999;
+      return parsedHours * 60 + parsedMinutes;
+    };
+
+    const isPreviewEligiblePath = (pathname) => {
+      const normalizedPathname = String(pathname || '').toLowerCase();
+      return previewEligiblePathPrefixes.some((prefix) => normalizedPathname.startsWith(prefix));
+    };
+
+    const normalizePreviewUrl = (value) => {
+      if (!value) return null;
+
+      try {
+        const candidateUrl = new URL(value, window.location.origin);
+        if (candidateUrl.origin !== window.location.origin) return null;
+        if (!isPreviewEligiblePath(candidateUrl.pathname)) return null;
+
+        candidateUrl.hash = '';
+        return candidateUrl.toString();
+      } catch (error) {
+        return null;
+      }
+    };
+
+    const formatPreviewUrl = (value) => {
+      const normalized = normalizePreviewUrl(value);
+      if (!normalized) return '';
+
+      const parsed = new URL(normalized);
+      return `${parsed.pathname}${parsed.search}`;
+    };
+
+    const previewUrlFromAnchor = (anchor) => {
+      if (!anchor) return null;
+
+      const rawHref = String(anchor.getAttribute('href') || '').trim();
+      if (!rawHref) return null;
+
+      const lowerHref = rawHref.toLowerCase();
+      if (
+        rawHref.startsWith('#')
+        || lowerHref.startsWith('mailto:')
+        || lowerHref.startsWith('tel:')
+        || lowerHref.startsWith('javascript:')
+      ) {
+        return null;
+      }
+
+      return normalizePreviewUrl(rawHref);
+    };
+
+    const resolveLegForDay = (legs, day) => {
+      let runningDay = 1;
+      for (const leg of legs) {
+        const nights = Number(fieldValue(leg, 'nights') || 0);
+        const start = runningDay;
+        const end = nights > 0 ? runningDay + nights - 1 : runningDay;
+        if (day >= start && day <= end) {
+          return { leg, dayWithinLeg: day - start + 1 };
+        }
+        runningDay += nights;
+      }
+      return null;
+    };
+
+    const buildDayDate = (startDateRaw, day) => {
+      if (!startDateRaw) return '';
+      const date = new Date(startDateRaw);
+      if (Number.isNaN(date.getTime())) return '';
+      date.setDate(date.getDate() + (day - 1));
+      return date.toLocaleDateString(undefined, {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+      });
+    };
+
+    const pinLink = (pin, label) => {
+      const safeLabel = escapeHtml(label || `Location PIN ${pin}`);
+      if (!pin) return safeLabel;
+      const normalizedPin = String(pin);
+      const status = linkManifest[normalizedPin];
+      const handle = pinMap[normalizedPin];
+      if (!handle || (status && status !== 'found')) {
+        return safeLabel;
+      }
+      return `<a href="/products/${handle}">${safeLabel}</a>`;
+    };
+
+    const renderInsertBlocks = (blocks) => {
+      if (!Array.isArray(blocks) || blocks.length === 0) return '';
+
+      const blockHtml = blocks.map((block) => {
+        const type = String(fieldValue(block, 'type') || '').toLowerCase();
+        const title = fieldValue(block, 'title') || '';
+        const content = prettyText(fieldValue(block, 'content'));
+
+        if (type === 'link_list') {
+          const links = normalizeList(fieldValue(block, 'links') || []);
+          const seen = new Set();
+            const linkRows = links.map((linkItem) => {
+            const label = fieldValue(linkItem, 'label') || '';
+            const pin = fieldValue(linkItem, 'pin_id');
+            const dedupeKey = String(pin || label || '').trim().toLowerCase();
+              if (!dedupeKey || seen.has(dedupeKey)) return '';
+              seen.add(dedupeKey);
+              if (!label) return '';
+              return `<li class="itin-chrono__link-item">${pin ? pinLink(pin, label) : escapeHtml(label)}</li>`;
+            }).filter(Boolean).join('');
+
+            if (!linkRows) return '';
+            return `<details class="itin-chrono__insert itin-chrono__insert--links"><summary class="itin-chrono__insert-title">${escapeHtml(title || 'Related links')}</summary><ul class="itin-chrono__link-list" role="list">${linkRows}</ul></details>`;
+          }
+
+        if (!content) return '';
+        return `<section class="itin-chrono__insert">${title ? `<h3 class="itin-chrono__insert-title">${escapeHtml(title)}</h3>` : ''}<div class="itin-chrono__insert-content" data-pin-links>${content}</div></section>`;
+      }).filter(Boolean).join('');
+
+      if (!blockHtml) return '';
+      return `<div class="itin-chrono__inserts">${blockHtml}</div>`;
+    };
+
+    const renderCommentaryStream = (items) => {
+      if (!Array.isArray(items) || items.length === 0) return '';
+
+      const commentaryRows = items.map((item) => {
+        const time = String(fieldValue(item, 'time') || '');
+        const contentHtml = prettyText(fieldValue(item, 'content'));
+        if (!contentHtml) return null;
+        return {
+          time,
+          minutes: toMinutes(time),
+          html: contentHtml,
+        };
+      }).filter(Boolean).sort((a, b) => a.minutes - b.minutes);
+
+      if (commentaryRows.length === 0) return '';
+
+      const rowHtml = commentaryRows.map((row) => `
+        <li class="itin-chrono__commentary-item">
+          ${row.time && row.time !== 'None' && row.time !== 'NotProvided' ? `<span class="itin-chrono__commentary-time">${escapeHtml(row.time)}</span>` : '<span class="itin-chrono__commentary-time"></span>'}
+          <div class="itin-chrono__commentary-body" data-pin-links>${row.html}</div>
+        </li>
+      `).join('');
+
+      return `<section class="itin-chrono__commentary-stream" data-pin-links><h3 class="itin-chrono__section-title">Snoop live wire</h3><ul class="itin-chrono__commentary-list" role="list">${rowHtml}</ul></section>`;
+    };
+
+    const railList = root.querySelector('.itin-chrono__rail-nav') || root.querySelector('.itin-chrono__rail-list');
+    const contentRoot = root.querySelector('.itin-chrono__content');
+    const previewRoot = root.querySelector('[data-chrono-preview]');
+    const previewPanel = previewRoot ? previewRoot.querySelector('.itin-chrono__preview-panel') : null;
+    const previewProductCard = previewRoot ? previewRoot.querySelector('[data-preview-product-card]') : null;
+    const previewTitle = previewRoot ? previewRoot.querySelector('[data-preview-title]') : null;
+    const previewUrlText = previewRoot ? previewRoot.querySelector('[data-preview-url]') : null;
+    const previewOpen = previewRoot ? previewRoot.querySelector('[data-preview-open]') : null;
+    const previewErrorOpen = previewRoot ? previewRoot.querySelector('[data-preview-error-open]') : null;
+    const previewClear = previewRoot ? previewRoot.querySelector('[data-preview-clear]') : null;
+    const previewViews = previewRoot ? {
+      empty: previewRoot.querySelector('[data-preview-view="empty"]'),
+      loading: previewRoot.querySelector('[data-preview-view="loading"]'),
+      product: previewRoot.querySelector('[data-preview-view="product"]'),
+      error: previewRoot.querySelector('[data-preview-view="error"]'),
+    } : null;
+
+    let activeDayObserver = null;
+    let activeDayId = null;
+    let activePreviewUrl = '';
+    let pendingPreviewUrl = '';
+    let previewLoadTimeout = null;
+    let previewRequestToken = 0;
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const smoothBehavior = prefersReducedMotion ? 'auto' : 'smooth';
+    const themeCurrency = window.Shopify && window.Shopify.currency ? window.Shopify.currency.active : '';
+
+    const clampValue = (value, min, max) => Math.min(Math.max(value, min), max);
+
+    const formatMoney = (cents) => {
+      if (window.Shopify && typeof window.Shopify.formatMoney === 'function') {
+        return window.Shopify.formatMoney(Math.round(cents));
+      }
+
+      const amount = Number(cents) / 100;
+      try {
+        return new Intl.NumberFormat(document.documentElement.lang || undefined, {
+          style: 'currency',
+          currency: themeCurrency || 'USD',
+        }).format(amount);
+      } catch (error) {
+        return amount.toFixed(2);
+      }
+    };
+
+    const getStickyOffset = () => {
+      const offset = Number.parseFloat(getComputedStyle(root).getPropertyValue('--itin-chrono-sticky-offset'));
+      if (Number.isFinite(offset) && offset > 0) {
+        return offset;
+      }
+      return 84;
+    };
+
+    const syncStickyOffset = () => {
+      const rootStyles = getComputedStyle(document.documentElement);
+      const cssHeaderHeight = Number.parseFloat(rootStyles.getPropertyValue('--header-height'));
+      let measuredHeaderHeight = Number.isFinite(cssHeaderHeight) && cssHeaderHeight > 0 ? cssHeaderHeight : 0;
+
+      const headerElement = document.querySelector('sticky-header, #shopify-section-header, .shopify-section-group-header-group');
+      if (headerElement) {
+        measuredHeaderHeight = Math.max(measuredHeaderHeight, headerElement.getBoundingClientRect().height || 0);
+      }
+
+      root.style.setProperty('--itin-chrono-sticky-offset', `${Math.round(measuredHeaderHeight + 24)}px`);
+    };
+
+    const scrollViewportTo = (top, behavior = smoothBehavior) => {
+      window.scrollTo({
+        top: Math.max(0, top),
+        left: 0,
+        behavior,
+      });
+    };
+
+    const focusWorkspace = (behavior = smoothBehavior) => {
+      const workspaceTop = window.scrollY + root.getBoundingClientRect().top - getStickyOffset() - 6;
+      scrollViewportTo(workspaceTop, behavior);
+    };
+
+    const initInspectorGuestCounters = () => {
+      const guestCounterRows = root.querySelectorAll('[data-inspector-guest-counter]');
+      if (guestCounterRows.length === 0) return;
+
+      for (const counterRow of guestCounterRows) {
+        const panel = counterRow.closest('[data-inspector-default]');
+        if (!panel) continue;
+
+        const decreaseButton = counterRow.querySelector('[data-inspector-guest-decrease]');
+        const increaseButton = counterRow.querySelector('[data-inspector-guest-increase]');
+        const countEl = counterRow.querySelector('[data-inspector-guest-count]');
+        const totalAmountEl = panel.querySelector('[data-inspector-price-total-amount]');
+        const totalGuestsEl = panel.querySelector('[data-inspector-price-total-guests]');
+        const confirmLink = panel.querySelector('[data-inspector-confirm-link]');
+        if (!decreaseButton || !increaseButton || !countEl || !totalAmountEl || !totalGuestsEl) continue;
+
+        const parsedPerGuestCents = Number.parseInt(panel.dataset.inspectorPriceCents || '0', 10);
+        const perGuestCents = Number.isNaN(parsedPerGuestCents) ? 0 : parsedPerGuestCents;
+        const parsedMinGuests = Number.parseInt(panel.dataset.inspectorMinGuests || '1', 10);
+        const parsedMaxGuests = Number.parseInt(panel.dataset.inspectorMaxGuests || '12', 10);
+        const minGuests = Number.isNaN(parsedMinGuests) ? 1 : parsedMinGuests;
+        const maxGuests = Number.isNaN(parsedMaxGuests) || parsedMaxGuests < minGuests
+          ? minGuests
+          : parsedMaxGuests;
+        const guestsTemplate = decodeEntities(panel.dataset.inspectorGuestsTemplate || '__COUNT__ guests');
+
+        const currentCount = Number.parseInt(countEl.textContent.replace(/\D+/g, ''), 10);
+        let guests = clampValue(Number.isNaN(currentCount) ? minGuests : currentCount, minGuests, maxGuests);
+
+        const updateConfirmUrl = () => {
+          if (!confirmLink) return;
+          if (confirmLink.getAttribute('aria-disabled') === 'true') return;
+
+          const baseUrl = confirmLink.dataset.inspectorConfirmBaseUrl || '';
+          if (!baseUrl || baseUrl === '#') return;
+
+          try {
+            const parsedUrl = new URL(baseUrl, window.location.origin);
+            parsedUrl.searchParams.set('quantity', String(guests));
+            confirmLink.href = `${parsedUrl.pathname}${parsedUrl.search}`;
+          } catch (error) {
+            // Keep fallback href when URL parsing fails.
+          }
+        };
+
+        const updateGuestText = () => {
+          const template = guestsTemplate.includes('__COUNT__')
+            ? guestsTemplate
+            : '{{ count }} guests';
+          return template
+            .replace('__COUNT__', String(guests))
+            .replace(/\{\{\s*count\s*\}\}/gi, String(guests));
+        };
+
+        const renderCounter = () => {
+          countEl.textContent = String(guests);
+          totalAmountEl.textContent = formatMoney(perGuestCents * guests);
+          totalGuestsEl.textContent = updateGuestText();
+
+          decreaseButton.disabled = guests <= minGuests;
+          increaseButton.disabled = guests >= maxGuests;
+          updateConfirmUrl();
+        };
+
+        decreaseButton.addEventListener('click', () => {
+          guests = clampValue(guests - 1, minGuests, maxGuests);
+          renderCounter();
+        });
+
+        increaseButton.addEventListener('click', () => {
+          guests = clampValue(guests + 1, minGuests, maxGuests);
+          renderCounter();
+        });
+
+        renderCounter();
+      }
+    };
+
+    const initInspectorCustomisationLinks = () => {
+      const customisationLinks = root.querySelectorAll('[data-inspector-customisation-link]');
+      if (customisationLinks.length === 0) return;
+
+      for (const link of customisationLinks) {
+        link.addEventListener('click', (event) => {
+          const href = String(link.getAttribute('href') || '').trim();
+          if (!href.startsWith('#')) return;
+
+          const target = document.querySelector(href);
+          if (!target) return;
+
+          event.preventDefault();
+          const scrollTarget = window.scrollY + target.getBoundingClientRect().top - getStickyOffset() - 12;
+          scrollViewportTo(scrollTarget, smoothBehavior);
+
+          const hadTabindex = target.hasAttribute('tabindex');
+          if (!hadTabindex) {
+            target.setAttribute('tabindex', '-1');
+          }
+          target.focus({ preventScroll: true });
+          if (!hadTabindex) {
+            target.addEventListener('blur', () => {
+              target.removeAttribute('tabindex');
+            }, { once: true });
+          }
+        });
+      }
+    };
+
+    const clearPreviewLoadTimeout = () => {
+      if (!previewLoadTimeout) return;
+      window.clearTimeout(previewLoadTimeout);
+      previewLoadTimeout = null;
+    };
+
+    const previewEnabled = () => Boolean(previewRoot && previewDesktopMediaQuery.matches);
+
+    const setPreviewPanelOpen = (isOpen) => {
+      if (!previewPanel) return;
+      previewPanel.dataset.previewOpen = isOpen ? 'true' : 'false';
+    };
+
+    const previewTitleFromUrl = (url, titleHint = '') => {
+      if (titleHint) return titleHint;
+      const normalizedUrl = normalizePreviewUrl(url);
+      if (!normalizedUrl) return 'Linked page';
+      const parsedUrl = new URL(normalizedUrl);
+      const pathSegments = parsedUrl.pathname.split('/').filter(Boolean);
+      const handle = pathSegments[pathSegments.length - 1] || '';
+      if (!handle) return 'Linked page';
+      return humanizeHandle(handle);
+    };
+
+    const clearProductCard = () => {
+      if (!previewProductCard) return;
+      previewProductCard.innerHTML = '';
+    };
+
+    const renderPageContent = (html) => {
+      if (!previewProductCard) return '';
+      var doc = new DOMParser().parseFromString(html, 'text/html');
+      var mainEl = doc.querySelector('#MainContent') || doc.querySelector('main') || doc.querySelector('[role="main"]');
+      if (mainEl) {
+        previewProductCard.innerHTML = mainEl.innerHTML;
+      }
+      var titleEl = doc.querySelector('title');
+      var pageTitle = titleEl ? titleEl.textContent.split('\u2013')[0].split('|')[0].trim() : '';
+      return pageTitle;
+    };
+
+    const updatePreviewActions = (url) => {
+      const normalizedUrl = normalizePreviewUrl(url);
+
+      [previewOpen, previewErrorOpen].forEach((linkEl) => {
+        if (!linkEl) return;
+
+        if (!normalizedUrl) {
+          linkEl.removeAttribute('href');
+          linkEl.setAttribute('aria-disabled', 'true');
+          if (linkEl === previewOpen) {
+            linkEl.tabIndex = -1;
+          }
+          return;
+        }
+
+        linkEl.href = normalizedUrl;
+        linkEl.removeAttribute('aria-disabled');
+        if (linkEl === previewOpen) {
+          linkEl.removeAttribute('tabindex');
+        }
+      });
+
+      if (previewClear) {
+        previewClear.disabled = !normalizedUrl;
+      }
+    };
+
+    const updatePreviewHeading = (titleText, urlText) => {
+      if (previewTitle) {
+        previewTitle.textContent = titleText || 'No page selected';
+      }
+      if (previewUrlText) {
+        previewUrlText.textContent = urlText || 'Select an itinerary link to open it here.';
+      }
+    };
+
+    const setPreviewView = (state) => {
+      if (!previewPanel || !previewViews) return;
+
+      previewPanel.dataset.previewState = state;
+      Object.entries(previewViews).forEach(([viewState, viewElement]) => {
+        if (!viewElement) return;
+        viewElement.hidden = viewState !== state;
+      });
+    };
+
+    const storePreviewSelection = (url) => {
+      const currentUrl = new URL(window.location.href);
+      if (url) {
+        currentUrl.searchParams.set(previewQueryParam, formatPreviewUrl(url));
+      } else {
+        currentUrl.searchParams.delete(previewQueryParam);
+      }
+
+      const nextUrl = `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`;
+      window.history.replaceState(window.history.state, '', nextUrl);
+    };
+
+    const readPreviewSelection = () => {
+      const currentUrl = new URL(window.location.href);
+      const previewValue = currentUrl.searchParams.get(previewQueryParam);
+      if (!previewValue) return null;
+      return normalizePreviewUrl(previewValue);
+    };
+
+    const syncActivePreviewLinks = () => {
+      if (!contentRoot) return;
+
+      const anchors = contentRoot.querySelectorAll('a');
+      anchors.forEach((anchor) => {
+        const isActive = previewEnabled()
+          && activePreviewUrl
+          && previewUrlFromAnchor(anchor) === activePreviewUrl;
+        anchor.classList.toggle('is-preview-active', Boolean(isActive));
+      });
+    };
+
+    const showPreviewErrorState = () => {
+      clearPreviewLoadTimeout();
+      pendingPreviewUrl = '';
+      setPreviewPanelOpen(true);
+      setPreviewView('error');
+      clearProductCard();
+      updatePreviewHeading('Preview unavailable', formatPreviewUrl(activePreviewUrl));
+      updatePreviewActions(activePreviewUrl);
+      syncActivePreviewLinks();
+    };
+
+    const loadPreviewUrl = (url, options = {}) => {
+      if (!previewEnabled()) return false;
+
+      const normalizedUrl = normalizePreviewUrl(url);
+      if (!normalizedUrl) return false;
+
+      const {
+        titleHint = '',
+        skipHistory = false,
+      } = options;
+      const requestToken = previewRequestToken + 1;
+      previewRequestToken = requestToken;
+
+      activePreviewUrl = normalizedUrl;
+      pendingPreviewUrl = normalizedUrl;
+      setPreviewPanelOpen(true);
+      clearProductCard();
+      setPreviewView('loading');
+      updatePreviewHeading(previewTitleFromUrl(normalizedUrl, titleHint), formatPreviewUrl(normalizedUrl));
+      updatePreviewActions(normalizedUrl);
+      syncActivePreviewLinks();
+
+      clearPreviewLoadTimeout();
+      previewLoadTimeout = window.setTimeout(() => {
+        if (pendingPreviewUrl === normalizedUrl && previewRequestToken === requestToken) {
+          showPreviewErrorState();
+        }
+      }, 12000);
+
+      if (!skipHistory) {
+        storePreviewSelection(normalizedUrl);
+      }
+
+      fetch(normalizedUrl)
+        .then(function (res) {
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.text();
+        })
+        .then(function (html) {
+          if (previewRequestToken !== requestToken) return;
+          clearPreviewLoadTimeout();
+          pendingPreviewUrl = '';
+          var pageTitle = renderPageContent(html);
+          if (previewProductCard && previewProductCard.innerHTML) {
+            setPreviewView('product');
+            updatePreviewHeading(pageTitle || previewTitleFromUrl(normalizedUrl), formatPreviewUrl(normalizedUrl));
+            updatePreviewActions(normalizedUrl);
+            syncActivePreviewLinks();
+          } else {
+            showPreviewErrorState();
+          }
+        })
+        .catch(function () {
+          if (previewRequestToken !== requestToken) return;
+          showPreviewErrorState();
+        });
+
+      return true;
+    };
+
+    const clearPreview = (options = {}) => {
+      const { skipHistory = false } = options;
+
+      activePreviewUrl = '';
+      pendingPreviewUrl = '';
+      previewRequestToken += 1;
+      clearPreviewLoadTimeout();
+      setPreviewPanelOpen(previewEnabled());
+      clearProductCard();
+
+      setPreviewView('empty');
+      updatePreviewHeading('', '');
+      updatePreviewActions('');
+      syncActivePreviewLinks();
+
+      if (!skipHistory) {
+        storePreviewSelection('');
+      }
+    };
+
+    const restorePreviewSelection = () => {
+      if (!previewEnabled()) {
+        setPreviewPanelOpen(false);
+        clearPreviewLoadTimeout();
+        clearProductCard();
+        syncActivePreviewLinks();
+        return;
+      }
+
+      setPreviewPanelOpen(true);
+      const persistedUrl = readPreviewSelection();
+      if (!persistedUrl) {
+        if (!activePreviewUrl) {
+          clearPreview({ skipHistory: true });
+          return;
+        }
+
+        syncActivePreviewLinks();
+        return;
+      }
+
+      if (persistedUrl === activePreviewUrl && previewPanel && previewPanel.dataset.previewState === 'product') {
+        syncActivePreviewLinks();
+        return;
+      }
+
+      loadPreviewUrl(persistedUrl, { skipHistory: true });
+    };
+
+    const scrollToDay = (dayId, options = {}) => {
+      const {
+        behavior = smoothBehavior,
+        updateHash = true,
+        scrollRail = true,
+      } = options;
+
+      const dayCard = root.querySelector(`#day-${dayId}`);
+      if (!dayCard) return;
+
+      setActiveDay(dayId, { scrollRail });
+      const dayRect = dayCard.getBoundingClientRect();
+      const contentTop = contentRoot ? contentRoot.getBoundingClientRect().top : 0;
+      const stickyTop = getStickyOffset() + 2;
+      const alignmentTop = contentTop > stickyTop ? contentTop : stickyTop;
+      const dayTop = window.scrollY + dayRect.top - alignmentTop;
+      scrollViewportTo(dayTop, behavior);
+
+      if (updateHash) {
+        const nextUrl = new URL(window.location.href);
+        nextUrl.hash = `day-${dayId}`;
+        window.history.replaceState(window.history.state, '', `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+      }
+    };
+
+    const setActiveDay = (dayId, options = {}) => {
+      if (!dayId || dayId === activeDayId) return;
+
+      const { scrollRail = true } = options;
+      const dayCards = root.querySelectorAll('.itin-chrono__day[data-day-section]');
+      const railLinks = root.querySelectorAll('.itin-chrono__rail-link');
+
+      dayCards.forEach((card) => {
+        const isActive = card.dataset.daySection === dayId;
+        card.classList.toggle('is-active', isActive);
+      });
+
+      let activeLink = null;
+      railLinks.forEach((link) => {
+        const railDay = link.dataset.railDay || '';
+        const href = link.getAttribute('href') || '';
+        const isActive = railDay === dayId || href === `#day-${dayId}`;
+        link.classList.toggle('is-active', isActive);
+        if (isActive) {
+          link.setAttribute('aria-current', 'page');
+          activeLink = link;
+        } else {
+          link.removeAttribute('aria-current');
+        }
+      });
+
+      if (activeLink && scrollRail) {
+        activeLink.scrollIntoView({
+          block: 'nearest',
+          inline: 'nearest',
+          behavior: smoothBehavior,
+        });
+      }
+
+      const mobileTabs = root.querySelectorAll('.itin-chrono__mobile-tab');
+      mobileTabs.forEach((tab) => {
+        tab.classList.toggle('is-active', tab.dataset.target === dayId);
+      });
+
+      activeDayId = dayId;
+    };
+
+    const initializeRailSync = () => {
+      if (!railList || !contentRoot) return;
+
+      if (activeDayObserver) {
+        activeDayObserver.disconnect();
+      }
+
+      const dayCards = Array.from(root.querySelectorAll('.itin-chrono__day[data-day-section]'));
+      if (!dayCards.length) return;
+
+      const visibilityByDay = new Map();
+      activeDayObserver = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          const dayId = entry.target.dataset.daySection;
+          if (!dayId) return;
+
+          if (entry.isIntersecting) {
+            visibilityByDay.set(dayId, entry.intersectionRatio);
+          } else {
+            visibilityByDay.delete(dayId);
+          }
+        });
+
+        if (visibilityByDay.size === 0) return;
+
+        let strongestDay = null;
+        let strongestRatio = 0;
+        visibilityByDay.forEach((ratio, dayId) => {
+          if (ratio > strongestRatio) {
+            strongestRatio = ratio;
+            strongestDay = dayId;
+          }
+        });
+
+        if (strongestDay) {
+          setActiveDay(strongestDay);
+        }
+      }, {
+        threshold: [0.15, 0.3, 0.45, 0.6, 0.75],
+        rootMargin: `${-(getStickyOffset() + 20)}px 0px -55% 0px`,
+      });
+
+      dayCards.forEach((dayCard) => activeDayObserver.observe(dayCard));
+
+      const hashMatch = window.location.hash.match(/#day-(\d+)/);
+      if (hashMatch) {
+        setActiveDay(hashMatch[1], { scrollRail: false });
+      } else {
+        const firstDay = dayCards[0].dataset.daySection;
+        if (firstDay) {
+          setActiveDay(firstDay, { scrollRail: false });
+        }
+      }
+    };
+
+    if (previewOpen) {
+      previewOpen.addEventListener('click', (event) => {
+        if (previewOpen.getAttribute('aria-disabled') === 'true') {
+          event.preventDefault();
+        }
+      });
+    }
+
+    if (previewClear) {
+      previewClear.addEventListener('click', () => {
+        clearPreview();
+      });
+    }
+
+    root.addEventListener('click', (event) => {
+      const railLink = event.target.closest('.itin-chrono__rail-link');
+      if (!railLink) return;
+
+      if (
+        event.defaultPrevented
+        || event.button !== 0
+        || event.metaKey
+        || event.ctrlKey
+        || event.shiftKey
+        || event.altKey
+      ) {
+        return;
+      }
+
+      const dayMatch = (railLink.getAttribute('href') || '').match(/#day-(\d+)/);
+      if (!dayMatch) return;
+
+      event.preventDefault();
+      scrollToDay(dayMatch[1], {
+        behavior: smoothBehavior,
+        updateHash: true,
+        scrollRail: false,
+      });
+    });
+
+    if (contentRoot) {
+      contentRoot.addEventListener('click', (event) => {
+        const targetLink = event.target.closest('a');
+        if (!targetLink || !contentRoot.contains(targetLink)) return;
+        if (!previewEnabled()) return;
+
+        if (
+          event.defaultPrevented
+          || event.button !== 0
+          || event.metaKey
+          || event.ctrlKey
+          || event.shiftKey
+          || event.altKey
+          || targetLink.hasAttribute('download')
+        ) {
+          return;
+        }
+
+        const targetAttr = String(targetLink.getAttribute('target') || '').toLowerCase();
+        if (targetAttr && targetAttr !== '_blank' && targetAttr !== '_self') {
+          return;
+        }
+
+        const previewUrl = previewUrlFromAnchor(targetLink);
+        if (!previewUrl) return;
+
+        event.preventDefault();
+        focusWorkspace();
+        const linkTitle = targetLink.textContent.replace(/\s+/g, ' ').trim();
+        loadPreviewUrl(previewUrl, { titleHint: linkTitle });
+      });
+    }
+
+    window.addEventListener('hashchange', () => {
+      const hashMatch = window.location.hash.match(/#day-(\d+)/);
+      if (!hashMatch) return;
+
+      window.requestAnimationFrame(() => {
+        scrollToDay(hashMatch[1], {
+          behavior: 'auto',
+          updateHash: false,
+          scrollRail: true,
+        });
+      });
+    });
+
+    const handlePreviewViewportChange = () => {
+      if (!previewEnabled()) {
+        setPreviewPanelOpen(false);
+        syncActivePreviewLinks();
+        return;
+      }
+
+      restorePreviewSelection();
+    };
+
+    if (typeof previewDesktopMediaQuery.addEventListener === 'function') {
+      previewDesktopMediaQuery.addEventListener('change', handlePreviewViewportChange);
+    } else if (typeof previewDesktopMediaQuery.addListener === 'function') {
+      previewDesktopMediaQuery.addListener(handlePreviewViewportChange);
+    }
+
+    window.addEventListener('resize', () => {
+      syncStickyOffset();
+      initializeRailSync();
+    });
+
+    const initLegToggles = () => {
+      root.querySelectorAll('.itin-chrono__leg-header[data-leg-toggle]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const legId = btn.dataset.legToggle;
+          const container = root.querySelector(`#${legId}`);
+          if (!container) return;
+          const isCollapsed = container.classList.toggle('is-collapsed');
+          btn.setAttribute('aria-expanded', String(!isCollapsed));
+        });
+      });
+    };
+
+    const initMobilePicker = () => {
+      const picker = root.querySelector('.itin-chrono__mobile-picker');
+      if (!picker) return;
+
+      const dayCards = root.querySelectorAll('.itin-chrono__day[data-day-section]');
+      dayCards.forEach((dayCard) => {
+        const dayId = dayCard.dataset.daySection;
+        const titleEl = dayCard.querySelector('.itin-chrono__day-title');
+        const label = titleEl ? titleEl.textContent.trim() : `Day ${dayId}`;
+        const tab = document.createElement('div');
+        tab.className = 'itin-chrono__mobile-tab';
+        tab.dataset.target = dayId;
+        tab.textContent = label;
+        tab.addEventListener('click', () => {
+          scrollToDay(dayId, { behavior: smoothBehavior, updateHash: true, scrollRail: false });
+          picker.querySelectorAll('.itin-chrono__mobile-tab').forEach((t) => t.classList.remove('is-active'));
+          tab.classList.add('is-active');
+        });
+        picker.appendChild(tab);
+      });
+    };
+
+    const initBottomSheet = () => {
+      const overlay = root.querySelector('[data-bottom-sheet-overlay]');
+      if (!overlay) return;
+
+      overlay.addEventListener('click', (event) => {
+        if (event.target === overlay) {
+          overlay.classList.remove('is-open');
+        }
+      });
+    };
+
+    syncStickyOffset();
+    applyPinLinks();
+    normalizeRouteLocationLabels(root);
+    formatSnoopNarrative(root);
+    injectNarrativeCues(root);
+    suppressRunSheetWhenLiveWirePresent(root);
+    applyPinLinks(root);
+    initLegToggles();
+    initMobilePicker();
+    initBottomSheet();
+    initInspectorGuestCounters();
+    initInspectorCustomisationLinks();
+    initializeRailSync();
+    restorePreviewSelection();
+
+    const initialHashMatch = window.location.hash.match(/#day-(\d+)/);
+    if (initialHashMatch) {
+      window.requestAnimationFrame(() => {
+        scrollToDay(initialHashMatch[1], {
+          behavior: 'auto',
+          updateHash: false,
+          scrollRail: false,
+        });
+      });
+    }
+
+    const chronologySource = root.dataset.chronologySource || '';
+    const existingDayCount = root.querySelectorAll('.itin-chrono__day').length;
+    const canonicalPayloadUrl = root.dataset.itinerarySourceJsonCdnUrl || '';
+
+    if (chronologySource === 'itinerary_source_json_inline' && existingDayCount > 0) {
+      return;
+    }
+
+    if (!railList || !contentRoot || !canonicalPayloadUrl) {
+      return;
+    }
+
+    const renderFromPayload = (payload) => {
+      const legs = [...(payload.legs || [])].sort((a, b) => Number(fieldValue(a, 'sequence') || 0) - Number(fieldValue(b, 'sequence') || 0));
+      const routes = [...(payload.routes || [])].sort((a, b) => Number(fieldValue(a, 'sequence') || 0) - Number(fieldValue(b, 'sequence') || 0));
+      const totalDays = Number(payload.days || 0);
+      if (!totalDays || legs.length === 0) {
+        return false;
+      }
+
+      const startDate = fieldValue(payload, 'start_date');
+      railList.innerHTML = '';
+      contentRoot.innerHTML = '';
+
+      for (let day = 1; day <= totalDays; day += 1) {
+        const legInfo = resolveLegForDay(legs, day);
+        if (!legInfo) continue;
+
+        const { leg, dayWithinLeg } = legInfo;
+        const periods = fieldValue(leg, 'periods') || [];
+        const period = periods[dayWithinLeg - 1] || (periods.length === 1 ? periods[0] : null);
+        const activities = period ? normalizeActivities(period) : [];
+        const commentaryItems = period ? normalizeCommentaryItems(period) : [];
+        const insertBlocks = period ? normalizeInsertBlocks(period) : [];
+        const checkIn = String(fieldValue(leg, 'check_in_time') || '');
+        const checkOut = String(fieldValue(leg, 'check_out_time') || '');
+        const accName = fieldValue(leg, 'accommodation_name') || '';
+        const destName = fieldValue(leg, 'destination_name') || '';
+
+        const dayRoutes = routes.filter((route) => {
+          const startDay = Number(fieldValue(route, 'start_day') || 0);
+          const endDay = Number(fieldValue(route, 'end_day') || startDay);
+          return startDay === day || endDay === day;
+        });
+
+        const timelineRows = [];
+        if (checkIn && checkIn !== 'None' && checkIn !== 'NotProvided' && dayWithinLeg === 1) {
+          timelineRows.push({
+            type: 'context',
+            time: checkIn,
+            minutes: toMinutes(checkIn),
+            rank: 10,
+            body: `Check-in${accName ? `: ${escapeHtml(accName)}` : ''}`,
+          });
+        }
+
+        dayRoutes.forEach((route) => {
+          const startPin = fieldValue(route, 'start_content_entity_id');
+          const endPin = fieldValue(route, 'end_content_entity_id');
+          const startName = fieldValue(route, 'start_location') || `Location PIN ${startPin}`;
+          const endName = fieldValue(route, 'end_location') || `Location PIN ${endPin}`;
+          const time = String(fieldValue(route, 'start_time') || '');
+          const mode = fieldValue(route, 'mode') || 'Transfer';
+          const modeLabel = fieldValue(route, 'label') || '';
+          timelineRows.push({
+            type: 'route',
+            time,
+            minutes: toMinutes(time),
+            rank: 20,
+            body: `<span class="itin-chrono__timeline-chip">${escapeHtml(humanizeRouteMode(mode, modeLabel))}</span><span class="itin-chrono__timeline-route">${pinLink(startPin, startName)} &rarr; ${pinLink(endPin, endName)}</span>`,
+          });
+        });
+
+        activities.forEach((activity) => {
+          const pin = fieldValue(activity, 'content_entity_id');
+          const name = fieldValue(activity, 'name') || (pin ? `PIN ${pin}` : 'Activity');
+          const time = String(fieldValue(activity, 'start_time') || fieldValue(activity, 'end_time') || '');
+          timelineRows.push({
+            type: 'activity',
+            time,
+            minutes: toMinutes(time),
+            rank: 30,
+            body: pin ? pinLink(pin, name) : escapeHtml(name),
+          });
+        });
+
+        const legType = String(fieldValue(leg, 'type') || '').toLowerCase();
+        if (checkOut && checkOut !== 'None' && checkOut !== 'NotProvided' && (legType === 'departure' || day === totalDays)) {
+          timelineRows.push({
+            type: 'context',
+            time: checkOut,
+            minutes: toMinutes(checkOut),
+            rank: 40,
+            body: `Check-out${accName ? `: ${escapeHtml(accName)}` : ''}`,
+          });
+        }
+
+        timelineRows.sort((a, b) => {
+          const minuteDiff = a.minutes - b.minutes;
+          if (minuteDiff !== 0) return minuteDiff;
+          return (a.rank || 99) - (b.rank || 99);
+        });
+
+        const railDate = buildDayDate(startDate, day);
+        const railItem = document.createElement('li');
+        railItem.className = 'itin-chrono__rail-item';
+        railItem.innerHTML = `<a href="#day-${day}" class="itin-chrono__rail-link"><span class="itin-chrono__rail-day">Day ${day}</span>${railDate ? `<span class="itin-chrono__rail-date">${escapeHtml(railDate)}</span>` : ''}</a>`;
+        railList.appendChild(railItem);
+
+        const narrativeRaw = period ? fieldValue(period, 'day_narrative') || fieldValue(period, 'consultant_notes') : '';
+        const consultantRaw = period ? fieldValue(period, 'consultant_notes') : '';
+        const includedRaw = period ? fieldValue(period, 'included') : '';
+        const notesRaw = period ? fieldValue(period, 'notes') : '';
+        const narrativeHtml = prettyText(narrativeRaw);
+        const consultantHtml = prettyText(consultantRaw);
+        const includedHtml = prettyText(includedRaw);
+        const notesHtml = prettyText(notesRaw);
+        const insertBlocksHtml = renderInsertBlocks(insertBlocks);
+        const commentaryStreamHtml = renderCommentaryStream(commentaryItems);
+        const dayDateDisplay = buildDayDate(startDate, day);
+
+        const article = document.createElement('article');
+        article.className = 'itin-chrono__day';
+        article.id = `day-${day}`;
+        article.setAttribute('data-day-section', String(day));
+        const transitionNote = dayRoutes.length > 0
+          ? `<p class="itin-chrono__transition-note">Inter-leg transition · ${dayRoutes.length} segment${dayRoutes.length === 1 ? '' : 's'}</p>`
+          : '';
+        article.innerHTML = `
+          <header class="itin-chrono__day-header">
+            <div class="itin-chrono__day-meta">
+              <span class="itin-chrono__day-number">Day ${day}</span>
+              ${dayDateDisplay ? `<span class="itin-chrono__day-date">${escapeHtml(dayDateDisplay)}</span>` : ''}
+            </div>
+            ${destName ? `<div class="itin-chrono__day-destination">${escapeHtml(destName)}</div>` : ''}
+          </header>
+          ${timelineRows.length > 0 ? `<section class="itin-chrono__timeline">${transitionNote}<ul class="itin-chrono__timeline-list" role="list">${timelineRows.map((row) => `<li class="itin-chrono__timeline-item${row.type === 'context' ? ' itin-chrono__timeline-item--context' : ''}">${row.time && row.time !== 'None' && row.time !== 'NotProvided' ? `<span class="itin-chrono__timeline-time">${escapeHtml(row.time)}</span>` : '<span></span>'}<span class="itin-chrono__timeline-text">${row.body}</span></li>`).join('')}</ul></section>` : ''}
+          ${commentaryStreamHtml}
+          ${narrativeHtml ? `<div class="itin-chrono__narrative" data-pin-links>${narrativeHtml}</div>` : ''}
+          ${insertBlocksHtml}
+          ${notesHtml ? `<details class="itin-chrono__notes" data-pin-links open><summary>Day notes</summary><div class="itin-chrono__notes-body">${notesHtml}</div></details>` : ''}
+          ${includedHtml ? `<details class="itin-chrono__notes" data-pin-links><summary>Included today</summary><div class="itin-chrono__notes-body">${includedHtml}</div></details>` : ''}
+          ${consultantHtml ? `<details class="itin-chrono__notes" data-pin-links open><summary>Consultant notes</summary><div class="itin-chrono__notes-body">${consultantHtml}</div></details>` : ''}
+        `;
+        contentRoot.appendChild(article);
+      }
+
+      applyPinLinks(contentRoot);
+      normalizeRouteLocationLabels(contentRoot);
+      formatSnoopNarrative(contentRoot);
+      injectNarrativeCues(contentRoot);
+      suppressRunSheetWhenLiveWirePresent(contentRoot);
+      applyPinLinks(contentRoot);
+      initializeRailSync();
+      restorePreviewSelection();
+      return contentRoot.querySelector('.itin-chrono__day') !== null;
+    };
+
+    const fetchAndRenderCanonicalPayload = async () => {
+      try {
+        const response = await fetch(canonicalPayloadUrl, { credentials: 'omit' });
+        if (!response.ok) return;
+
+        const payload = await response.json();
+        renderFromPayload(payload);
+      } catch (error) {
+        // Canonical payload fetch failed; leave chronology empty.
+      }
+    };
+
+    fetchAndRenderCanonicalPayload();
+  });
+{% endjavascript %}
+
+{% schema %}
+{
+  "name": "Itinerary timeline",
+  "tag": "section",
+  "class": "section-itin-chrono",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-5"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Itinerary timeline"
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,69 @@
+{% doc %}
+  WETU Parent Property Title Snippet
+  
+  Gets the parent property title for a WETU accommodation product.
+  
+  @param {product} product - The accommodation product object (required)
+  
+  Outputs variables:
+  - wetu_parent_property_title: string (the title of the parent property)
+  - wetu_parent_property_url: string (the URL to the parent property)
+  
+  @example
+  {% render 'wetu-parent-property-title', product: product %}
+  {% if wetu_parent_property_title %}
+    <a href="{{ wetu_parent_property_url }}">{{ wetu_parent_property_title }}</a>
+  {% endif %}
+{% enddoc %}
+
+{% liquid
+  assign product = product | default: closest.product
+  assign wetu_parent_property_title = ''
+  assign wetu_parent_property_url = ''
+  
+  if product == blank
+    assign wetu_parent_property_title = ''
+  else
+    comment Try to get parent property from accommodation metafield
+    endcomment
+    assign parent_property = product.metafields.wetu_room.parent_property.value
+    
+    unless parent_property
+      comment Try wetu_room.property_product metafield
+      endcomment
+      assign parent_property = product.metafields.wetu_room.property_product.value
+    endunless
+    
+    unless parent_property
+      comment Try wetu_linked_activity.property_product metafield
+      endcomment
+      assign parent_property = product.metafields.wetu_linked_activity.property_product.value
+    endunless
+    
+    unless parent_property
+      comment Try wetu_linked_restaurant.property_product metafield
+      endcomment
+      assign parent_property = product.metafields.wetu_linked_restaurant.property_product.value
+    endunless
+    
+    unless parent_property
+      comment Try wetu_linked_spa.property_product metafield
+      endcomment
+      assign parent_property = product.metafields.wetu_linked_spa.property_product.value
+    endunless
+    
+    if parent_property
+      assign wetu_parent_property_title = parent_property.title
+      assign wetu_parent_property_url = parent_property.url
+    else
+      comment Fallback: try to get from linked property metafield
+      endcomment
+      assign linked_property_ref = product.metafields.wetu.linked_property.value
+      
+      if linked_property_ref
+        assign wetu_parent_property_title = linked_property_ref.title
+        assign wetu_parent_property_url = linked_property_ref.url
+      endif
+    endif
+  endif
+%}

@@ -1,0 +1,2945 @@
+/**
+ * ============================================================================
+ * WETU FULLSCREEN MAP STYLES
+ * ============================================================================
+ * 
+ * Comprehensive styles for the fullscreen itinerary map experience.
+ * Supports light/dark themes using Horizon 3.1 color schemes.
+ * 
+ * Features:
+ * - Full-width 16:9 event cards
+ * - Mobile horizontal scroll with peek effect (1.2 cards visible)
+ * - Sticky day headers
+ * - 16:9 rectangle map markers
+ * - Popup arrows pointing close to markers
+ * 
+ * ============================================================================
+ */
+
+/* ============================================================================
+   CSS CUSTOM PROPERTIES
+   ============================================================================ */
+
+.wetu-fullscreen-map {
+  /* Layout */
+  --wfm-header-height: 64px;
+  --wfm-timeline-width: 380px;
+  --wfm-timeline-width-collapsed: 48px;
+  --wfm-mobile-drawer-height: 320px;
+  --wfm-mobile-drawer-collapsed: 80px;
+  
+  /* Spacing */
+  --wfm-gap: 16px;
+  --wfm-radius: 0px;
+  --wfm-radius-sm: 0px;
+  
+  /* Transitions */
+  --wfm-transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --wfm-transition-fast: 0.15s ease;
+  
+  /* Route colors - Using minimalist green color scheme (scheme 1/5) */
+  --wfm-route-driving: #10b981;
+  --wfm-route-flight: #059669;
+  --wfm-route-transfer: #34d399;
+  
+  /* Button colors - using #333333 instead of blue */
+  --wfm-button-bg: #333333;
+  --wfm-button-text: #ffffff;
+  --wfm-button-border: #333333;
+  
+  /* Theme variables - Light (default) */
+  --wfm-bg: var(--color-background);
+  --wfm-bg-elevated: var(--color-background);
+  --wfm-text: var(--color-foreground);
+  --wfm-text-muted: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+  --wfm-border: var(--color-border);
+  --wfm-primary: #333333;
+  --wfm-overlay: rgba(0, 0, 0, 0.5);
+  --wfm-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  --wfm-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Dark theme adjustments */
+.wetu-fullscreen-map[data-current-theme="dark"] {
+  --wfm-overlay: rgba(0, 0, 0, 0.7);
+  --wfm-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --wfm-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* ============================================================================
+   MAIN CONTAINER
+   ============================================================================ */
+
+.wetu-fullscreen-map {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  background: var(--wfm-bg);
+  overflow: hidden;
+}
+
+/* ============================================================================
+   HEADER
+   ============================================================================ */
+
+.wetu-fullscreen-map__header {
+  position: relative;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--wfm-gap);
+  height: var(--wfm-header-height);
+  padding: 0 20px;
+  background: var(--wfm-bg-elevated);
+  border-bottom: 1px solid var(--wfm-border);
+  box-shadow: var(--wfm-shadow-sm);
+}
+
+.wetu-fullscreen-map__header-left,
+.wetu-fullscreen-map__header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.wetu-fullscreen-map__header-center {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
+
+/* Logo - with layout shift prevention */
+.wetu-fullscreen-map__logo {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  /* Reserve space to prevent layout shift */
+  min-height: 32px;
+  max-height: 32px;
+}
+
+.wetu-fullscreen-map__logo img,
+.wetu-fullscreen-map__logo-img {
+  /* Fixed dimensions to prevent layout shift */
+  height: 32px !important;
+  width: auto !important;
+  max-width: 150px !important;
+  min-width: 0;
+  object-fit: contain;
+  /* Ensure image doesn't exceed container during load */
+  max-height: 32px !important;
+  /* Prevent initial large render */
+  contain: layout size;
+}
+
+.wetu-fullscreen-map__logo--text {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--wfm-text);
+}
+
+/* Journey Info */
+.wetu-fullscreen-map__journey-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wetu-fullscreen-map__title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--wfm-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wetu-fullscreen-map__meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--wfm-text-muted);
+}
+
+.wetu-fullscreen-map__divider {
+  opacity: 0.5;
+}
+
+/* Theme Toggle */
+.wetu-fullscreen-map__theme-toggle {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--wfm-border);
+  border-radius: var(--wfm-radius-sm);
+  color: var(--wfm-text);
+  cursor: pointer;
+  transition: all var(--wfm-transition-fast);
+}
+
+.wetu-fullscreen-map__theme-toggle:hover {
+  background: color-mix(in srgb, var(--wfm-text) 8%, transparent);
+}
+
+.wetu-fullscreen-map__theme-toggle .icon-moon {
+  display: none;
+}
+
+.wetu-fullscreen-map[data-current-theme="dark"] .wetu-fullscreen-map__theme-toggle .icon-sun {
+  display: none;
+}
+
+.wetu-fullscreen-map[data-current-theme="dark"] .wetu-fullscreen-map__theme-toggle .icon-moon {
+  display: block;
+}
+
+/* Title Link */
+.wetu-fullscreen-map__title-link {
+  color: var(--wfm-text);
+  text-decoration: none;
+  transition: all var(--wfm-transition-fast);
+}
+
+.wetu-fullscreen-map__title-link:hover {
+  color: var(--wfm-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Price Display */
+.wetu-fullscreen-map__price-container {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.wetu-fullscreen-map__price {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--wfm-text);
+}
+
+.wetu-fullscreen-map__compare-price {
+  font-size: 0.85rem;
+  color: var(--wfm-text-muted);
+  text-decoration: line-through;
+}
+
+/* Book Now Button */
+.wetu-fullscreen-map__book-now {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  background: var(--wfm-button-bg);
+  color: var(--wfm-button-text);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-radius: 0;
+  transition: all var(--wfm-transition-fast);
+}
+
+.wetu-fullscreen-map__book-now:hover {
+  opacity: 0.9;
+  transform: translateX(2px);
+}
+
+.wetu-fullscreen-map__book-now svg {
+  transition: transform var(--wfm-transition-fast);
+}
+
+.wetu-fullscreen-map__book-now:hover svg {
+  transform: translateX(3px);
+}
+
+/* ============================================================================
+   MAIN CONTENT LAYOUT
+   ============================================================================ */
+
+.wetu-fullscreen-map__content {
+  flex: 1;
+  display: flex;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ============================================================================
+   TIMELINE PANEL
+   ============================================================================ */
+
+.wetu-fullscreen-map__timeline {
+  position: relative;
+  width: var(--wfm-timeline-width);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--wfm-bg-elevated);
+  border-right: 1px solid var(--wfm-border);
+  box-shadow: var(--wfm-shadow-sm);
+  z-index: 50;
+  transition: width var(--wfm-transition);
+}
+
+.wetu-fullscreen-map__timeline--right {
+  order: 2;
+  border-right: none;
+  border-left: 1px solid var(--wfm-border);
+}
+
+.wetu-fullscreen-map__timeline.collapsed {
+  width: var(--wfm-timeline-width-collapsed);
+}
+
+/* Timeline Header */
+.wetu-fullscreen-map__timeline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid var(--wfm-border);
+  background: color-mix(in srgb, var(--wfm-text) 3%, var(--wfm-bg));
+}
+
+.wetu-fullscreen-map__timeline-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--wfm-text);
+}
+
+.wetu-fullscreen-map__timeline.collapsed .wetu-fullscreen-map__timeline-title {
+  display: none;
+}
+
+.wetu-fullscreen-map__timeline-collapse {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--wfm-text-muted);
+  cursor: pointer;
+  border-radius: var(--wfm-radius-sm);
+  transition: all var(--wfm-transition-fast);
+}
+
+.wetu-fullscreen-map__timeline-collapse:hover {
+  background: color-mix(in srgb, var(--wfm-text) 10%, transparent);
+  color: var(--wfm-text);
+}
+
+.wetu-fullscreen-map__timeline.collapsed .wetu-fullscreen-map__timeline-collapse svg {
+  transform: rotate(180deg);
+}
+
+.wetu-fullscreen-map__timeline--right .wetu-fullscreen-map__timeline-collapse svg {
+  transform: rotate(180deg);
+}
+
+.wetu-fullscreen-map__timeline--right.collapsed .wetu-fullscreen-map__timeline-collapse svg {
+  transform: rotate(0deg);
+}
+
+/* Timeline Content */
+.wetu-fullscreen-map__timeline-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px;
+}
+
+.wetu-fullscreen-map__timeline.collapsed .wetu-fullscreen-map__timeline-content {
+  display: none;
+}
+
+/* Mobile drawer handle */
+.wetu-fullscreen-map__timeline-handle {
+  display: none;
+}
+
+/* ============================================================================
+   JOURNEY TIMELINE - DAY GROUPINGS
+   ============================================================================ */
+
+.wetu-fullscreen-map__journey-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Day Grouping */
+.wetu-journey-day {
+  position: relative;
+}
+
+.wetu-journey-day__header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--wfm-bg-elevated);
+  padding: 8px 0;
+  border-bottom: 1px solid var(--wfm-border);
+}
+
+/* Day title uses theme h2/h3 typography (fallback) */
+.wetu-journey-day__title {
+  margin: 0;
+  font-family: var(--font-heading-family, inherit);
+  font-weight: var(--font-heading-weight, 600);
+  font-size: 1.25rem;
+  color: var(--wfm-text);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+/* NEW: Date label with weekday and date */
+.wetu-journey-day__date-label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.wetu-journey-day__day-number {
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--wfm-text);
+}
+
+.wetu-journey-day__date-divider {
+  font-size: 0.75rem;
+  color: var(--wfm-text-muted);
+  opacity: 0.5;
+}
+
+.wetu-journey-day__weekday {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--wfm-text-muted);
+}
+
+.wetu-journey-day__date {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--wfm-text-muted);
+}
+
+/* Legacy badge class - kept for backwards compatibility */
+.wetu-journey-day__badge {
+  flex-shrink: 0;
+  padding: 8px 16px;
+  background: var(--wfm-primary);
+  color: var(--color-primary-button-text, #fff);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.wetu-journey-day__line {
+  flex: 1;
+  height: 1px;
+  background: var(--wfm-border);
+}
+
+.wetu-journey-day__events {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ============================================================================
+   FULL-WIDTH EVENT CARDS (16:9)
+   ============================================================================ */
+
+.wetu-event-card {
+  position: relative;
+  background: var(--wfm-bg);
+  border: 1px solid var(--wfm-border);
+  overflow: hidden;
+  transition: all var(--wfm-transition-fast);
+}
+
+/* Clickable cards - entire card is interactive */
+.wetu-event-card--clickable {
+  cursor: pointer;
+}
+
+.wetu-event-card:hover,
+.wetu-event-card:focus-visible {
+  border-color: var(--wfm-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--wfm-primary) 20%, transparent),
+              var(--wfm-shadow-sm);
+  outline: none;
+}
+
+.wetu-event-card.active {
+  border-color: var(--wfm-primary);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--wfm-primary) 30%, transparent),
+              0 4px 16px color-mix(in srgb, var(--wfm-primary) 25%, transparent);
+}
+
+/* ARRIVE in label for destination cards */
+.wetu-event-card__arrive-label {
+  margin: 0 0 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--wfm-text-muted);
+}
+
+/* Event Card Media - Full width 16:9 */
+.wetu-event-card__media {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--wfm-text) 5%, transparent);
+}
+
+.wetu-event-card__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--wfm-transition);
+}
+
+.wetu-event-card:hover .wetu-event-card__image {
+  transform: scale(1.03);
+}
+
+.wetu-event-card__image--transit {
+  opacity: 0.7;
+}
+
+/* Placeholder when no image */
+.wetu-event-card__placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: var(--wfm-text-muted);
+  background: linear-gradient(135deg, 
+    color-mix(in srgb, var(--wfm-text) 3%, transparent) 0%, 
+    color-mix(in srgb, var(--wfm-text) 8%, transparent) 100%
+  );
+}
+
+.wetu-event-card__placeholder--activity {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color: #92400e;
+}
+
+.wetu-event-card__placeholder--transit {
+  background: linear-gradient(135deg, 
+    color-mix(in srgb, var(--wfm-route-driving) 10%, transparent) 0%, 
+    color-mix(in srgb, var(--wfm-route-driving) 20%, transparent) 100%
+  );
+  color: var(--wfm-route-driving);
+}
+
+.wetu-event-card__placeholder--flight {
+  background: linear-gradient(135deg, 
+    color-mix(in srgb, var(--wfm-route-flight) 10%, transparent) 0%, 
+    color-mix(in srgb, var(--wfm-route-flight) 20%, transparent) 100%
+  );
+  color: var(--wfm-route-flight);
+}
+
+.wetu-event-card__placeholder--transfer {
+  background: linear-gradient(135deg, 
+    color-mix(in srgb, var(--wfm-route-transfer) 10%, transparent) 0%, 
+    color-mix(in srgb, var(--wfm-route-transfer) 20%, transparent) 100%
+  );
+  color: var(--wfm-route-transfer);
+}
+
+/* Badge on image */
+.wetu-event-card__badge {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  backdrop-filter: blur(4px);
+}
+
+.wetu-event-card__badge--destination {
+  background: #10b981;
+}
+
+.wetu-event-card__badge--accommodation {
+  background: #333333;
+}
+
+.wetu-event-card__badge--activity {
+  background: #f59e0b;
+}
+
+.wetu-event-card__badge--drive {
+  background: var(--wfm-route-driving);
+}
+
+.wetu-event-card__badge--flight {
+  background: var(--wfm-route-flight);
+}
+
+.wetu-event-card__badge--transfer {
+  background: var(--wfm-route-transfer);
+}
+
+/* Transit stats overlay */
+.wetu-event-card__transit-stats {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 12px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  backdrop-filter: blur(4px);
+}
+
+.wetu-event-card__duration {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.wetu-event-card__distance {
+  opacity: 0.8;
+}
+
+/* Time slot badge */
+.wetu-event-card__time-slot {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  padding: 4px 10px;
+  background: rgba(0, 0, 0, 0.75);
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 600;
+  backdrop-filter: blur(4px);
+}
+
+/* Highlight badge */
+.wetu-event-card__highlight-badge {
+  position: absolute;
+  top: 12px;
+  right: 52px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: #f59e0b;
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+/* External link button */
+.wetu-event-card__external-link {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  text-decoration: none;
+  backdrop-filter: blur(4px);
+  transition: all var(--wfm-transition-fast);
+}
+
+.wetu-event-card__external-link:hover {
+  background: var(--wfm-button-bg);
+  transform: scale(1.05);
+}
+
+/* Event Card Body */
+.wetu-event-card__body {
+  padding: 16px;
+}
+
+.wetu-event-card__header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.wetu-event-card__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--wfm-text);
+  line-height: 1.3;
+}
+
+.wetu-event-card__rating {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.wetu-event-card__rating .star-filled {
+  color: #f59e0b;
+}
+
+.wetu-event-card__rating .star-empty {
+  color: var(--wfm-text-muted);
+  opacity: 0.3;
+}
+
+.wetu-event-card__location {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 6px 0;
+  font-size: 0.85rem;
+  color: var(--wfm-text-muted);
+}
+
+.wetu-event-card__location svg {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.wetu-event-card__meta-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  font-size: 0.75rem;
+}
+
+.wetu-event-card__category {
+  padding: 3px 8px;
+  background: color-mix(in srgb, var(--wfm-text) 8%, transparent);
+  color: var(--wfm-text-muted);
+  font-weight: 500;
+}
+
+.wetu-event-card__check-time {
+  color: var(--wfm-text-muted);
+}
+
+.wetu-event-card__category-label {
+  margin: 4px 0 0;
+  font-size: 0.8rem;
+  color: var(--wfm-text-muted);
+}
+
+.wetu-event-card__description {
+  margin: 8px 0 0;
+  font-size: 0.85rem;
+  color: var(--wfm-text-muted);
+  line-height: 1.5;
+}
+
+/* ============================================================================
+   SQUARE OVERLAY CARDS (1:1 with text on image)
+   ============================================================================ */
+
+.wetu-event-card--overlay {
+  position: relative;
+  background: transparent;
+  border: none;
+  overflow: hidden;
+}
+
+.wetu-event-card--overlay:hover,
+.wetu-event-card--overlay:focus-visible {
+  border-color: transparent;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.5),
+              0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.wetu-event-card--overlay.active {
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.7),
+              0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* Square media container */
+.wetu-event-card__square-media {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  background: #1a1a1a;
+}
+
+.wetu-event-card__square-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--wfm-transition);
+}
+
+.wetu-event-card--overlay:hover .wetu-event-card__square-image {
+  transform: scale(1.05);
+}
+
+/* Gradient overlay removed - using text shadows instead for cleaner look */
+.wetu-event-card__gradient-overlay {
+  display: none; /* No gradient overlay - using text shadows for readability */
+}
+
+/* Overlay content container */
+.wetu-event-card__overlay-content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 14px;
+}
+
+/* Top badges row */
+.wetu-event-card__overlay-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.wetu-event-card__overlay-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: white;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.wetu-event-card__overlay-badge--destination {
+  background: rgba(59, 130, 246, 0.9);
+}
+
+.wetu-event-card__overlay-badge--nights {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.wetu-event-card__overlay-badge--checkin {
+  background: rgba(16, 185, 129, 0.9);
+}
+
+.wetu-event-card__overlay-badge--activity {
+  background: rgba(245, 158, 11, 0.9);
+}
+
+.wetu-event-card__overlay-badge--time {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.wetu-event-card__overlay-badge--highlight {
+  background: rgba(245, 158, 11, 0.95);
+}
+
+.wetu-event-card__overlay-badge--day {
+  background: rgba(16, 185, 129, 0.9);
+  font-weight: 600;
+}
+
+/* Main content at bottom */
+.wetu-event-card__overlay-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Text styles with enhanced outer glow shadow for readability on any background */
+.wetu-event-card__overlay-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: white;
+  line-height: 1.25;
+  text-shadow: 
+    /* Multiple layered shadows for soft outer glow */
+    0 0 4px rgba(0, 0, 0, 0.9),
+    0 0 8px rgba(0, 0, 0, 0.8),
+    0 0 16px rgba(0, 0, 0, 0.7),
+    0 0 24px rgba(0, 0, 0, 0.5),
+    0 1px 2px rgba(0, 0, 0, 1);
+}
+
+.wetu-event-card__overlay-location {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  font-size: 0.8rem;
+  color: white;
+  text-shadow: 
+    0 0 4px rgba(0, 0, 0, 0.9),
+    0 0 8px rgba(0, 0, 0, 0.8),
+    0 0 16px rgba(0, 0, 0, 0.6),
+    0 1px 2px rgba(0, 0, 0, 1);
+}
+
+.wetu-event-card__overlay-location svg {
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.9)) drop-shadow(0 0 6px rgba(0, 0, 0, 0.7));
+}
+
+.wetu-event-card__overlay-category {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-shadow: 
+    0 0 4px rgba(0, 0, 0, 0.9),
+    0 0 8px rgba(0, 0, 0, 0.8),
+    0 0 16px rgba(0, 0, 0, 0.6),
+    0 1px 2px rgba(0, 0, 0, 1);
+}
+
+.wetu-event-card__overlay-rating {
+  display: flex;
+  gap: 2px;
+}
+
+.wetu-event-card__overlay-rating .star-filled {
+  color: #fbbf24;
+  filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.9)) drop-shadow(0 0 6px rgba(0, 0, 0, 0.7));
+}
+
+/* External link button on overlay cards */
+.wetu-event-card--overlay .wetu-event-card__external-link {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 10;
+}
+
+/* Transit route flow */
+.wetu-event-card__route-flow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.wetu-event-card__from,
+.wetu-event-card__to {
+  flex: 1;
+  min-width: 0;
+}
+
+.wetu-event-card__route-label {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--wfm-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+
+.wetu-event-card__route-name {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--wfm-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wetu-event-card__route-arrow {
+  flex-shrink: 0;
+  color: var(--wfm-text-muted);
+  opacity: 0.5;
+}
+
+.wetu-event-card__transit-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--wfm-border);
+  font-size: 0.75rem;
+  color: var(--wfm-text-muted);
+}
+
+.wetu-event-card__agency,
+.wetu-event-card__vehicle {
+  padding: 2px 8px;
+  background: color-mix(in srgb, var(--wfm-text) 5%, transparent);
+}
+
+/* Map trigger button - HIDDEN since cards are now fully clickable */
+.wetu-event-card__map-trigger {
+  display: none;
+}
+
+/* ============================================================================
+   COMPACT TRANSIT CARDS (no images, text-only)
+   ============================================================================ */
+
+.wetu-event-card--transit-compact {
+  background: var(--wfm-bg);
+}
+
+.wetu-event-card--transit-compact .wetu-event-card__media {
+  display: none;
+}
+
+.wetu-event-card__transit-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--wfm-border);
+}
+
+.wetu-event-card__transit-header--drive {
+  background: color-mix(in srgb, var(--wfm-route-driving) 8%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--wfm-route-driving) 20%, transparent);
+}
+
+.wetu-event-card__transit-header--flight {
+  background: color-mix(in srgb, var(--wfm-route-flight) 8%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--wfm-route-flight) 20%, transparent);
+}
+
+.wetu-event-card__transit-header--transfer {
+  background: color-mix(in srgb, var(--wfm-route-transfer) 8%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--wfm-route-transfer) 20%, transparent);
+}
+
+.wetu-event-card__transit-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.wetu-event-card--drive .wetu-event-card__transit-icon {
+  color: var(--wfm-route-driving);
+}
+
+.wetu-event-card--flight .wetu-event-card__transit-icon {
+  color: var(--wfm-route-flight);
+}
+
+.wetu-event-card--transfer .wetu-event-card__transit-icon {
+  color: var(--wfm-route-transfer);
+}
+
+.wetu-event-card__transit-type {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--wfm-text);
+}
+
+.wetu-event-card__transit-stats-inline {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: var(--wfm-text-muted);
+}
+
+.wetu-event-card__duration-inline {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 500;
+}
+
+.wetu-event-card__distance-inline {
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+.wetu-event-card__transit-body {
+  padding: 16px;
+}
+
+/* Drive details paragraph */
+.wetu-event-card__drive-details {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--wfm-border);
+}
+
+.wetu-event-card__drive-summary {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--wfm-text-muted);
+  line-height: 1.5;
+}
+
+.wetu-event-card__drive-summary strong {
+  color: var(--wfm-text);
+  font-weight: 600;
+}
+
+/* ============================================================================
+   MAP WRAPPER
+   ============================================================================ */
+
+.wetu-fullscreen-map__map-wrapper {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.wetu-fullscreen-map__canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.wetu-fullscreen-map__loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: var(--wfm-bg);
+  color: var(--wfm-text-muted);
+  font-size: 0.9rem;
+  z-index: 5;
+}
+
+.wetu-fullscreen-map__canvas.map-loaded .wetu-fullscreen-map__loading {
+  display: none;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid color-mix(in srgb, var(--wfm-text) 20%, transparent);
+  border-top-color: var(--wfm-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================================================
+   MAP CONTROLS
+   ============================================================================ */
+
+.wetu-fullscreen-map__controls {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 20;
+}
+
+.wetu-fullscreen-map__control {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--wfm-bg-elevated);
+  border: 1px solid var(--wfm-border);
+  border-radius: var(--wfm-radius-sm);
+  color: var(--wfm-text);
+  cursor: pointer;
+  box-shadow: var(--wfm-shadow-sm);
+  transition: all var(--wfm-transition-fast);
+}
+
+.wetu-fullscreen-map__control:hover {
+  background: var(--wfm-primary);
+  color: var(--color-primary-button-text, #fff);
+  border-color: var(--wfm-primary);
+}
+
+/* ============================================================================
+   ACTIVITY INLINE CARDS (Fallback for activities without images)
+   ============================================================================ */
+
+.wetu-event-card--activity-inline {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--wfm-bg-elevated);
+  border: 1px solid var(--wfm-border);
+  border-radius: var(--wfm-radius);
+  box-shadow: var(--wfm-shadow-sm);
+  transition: box-shadow var(--wfm-transition-fast), border-color var(--wfm-transition-fast);
+  min-height: 60px;
+}
+
+.wetu-event-card--activity-inline:hover {
+  box-shadow: var(--wfm-shadow);
+  border-color: var(--wfm-route-transfer);
+}
+
+.wetu-event-card--activity-inline.wetu-event-card--highlight {
+  border-left: 3px solid #f59e0b;
+}
+
+.wetu-event-card__activity-inline-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.wetu-event-card__activity-inline-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: var(--wfm-route-transfer);
+  border-radius: 50%;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.wetu-event-card__activity-inline-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.wetu-event-card__activity-inline-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--wfm-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wetu-event-card__activity-inline-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.wetu-event-card__activity-inline-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: #fff;
+  background: var(--wfm-text-muted);
+}
+
+.wetu-event-card__activity-inline-badge:first-child {
+  background: var(--wfm-route-transfer);
+}
+
+.wetu-event-card__activity-inline-badge--highlight {
+  background: #f59e0b;
+}
+
+.wetu-event-card__activity-inline-badge--day {
+  background: var(--wfm-route-driving);
+}
+
+/* ============================================================================
+   STAYING AT PROPERTY CARD
+   Simple text indicator for intermediate days in multi-night stays
+   ============================================================================ */
+
+.wetu-event-card--staying {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  background: color-mix(in srgb, var(--wfm-bg) 95%, var(--wfm-text) 5%);
+  border: 1px dashed var(--wfm-border);
+  border-radius: 0;
+  margin: 0;
+}
+
+.wetu-event-card__staying-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.wetu-event-card__staying-icon {
+  flex-shrink: 0;
+  color: var(--wfm-text-muted);
+  opacity: 0.6;
+}
+
+.wetu-event-card__staying-text {
+  font-size: 0.875rem;
+  color: var(--wfm-text-muted);
+  font-style: italic;
+}
+
+.wetu-event-card__staying-text strong {
+  color: var(--wfm-text);
+  font-style: normal;
+  font-weight: 600;
+}
+
+/* ============================================================================
+   ACTIVITY LINK CARD (without image)
+   Compact card style for activities that links to product page
+   ============================================================================ */
+
+.wetu-event-card--activity.wetu-event-card--no-image {
+  display: block;
+  text-decoration: none;
+  padding: 14px 16px;
+  background: var(--wfm-bg);
+  border: 1px solid var(--wfm-border);
+  border-left: 3px solid var(--wfm-route-transfer);
+  transition: var(--wfm-transition-fast);
+}
+
+.wetu-event-card--activity.wetu-event-card--no-image:hover {
+  background: color-mix(in srgb, var(--wfm-bg) 95%, var(--wfm-route-transfer) 5%);
+  border-color: var(--wfm-route-transfer);
+  box-shadow: var(--wfm-shadow-sm);
+}
+
+.wetu-event-card__activity-link-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.wetu-event-card__activity-link-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: var(--wfm-route-transfer);
+  border-radius: 50%;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.wetu-event-card__activity-link-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.wetu-event-card__activity-link-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--wfm-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wetu-event-card__activity-link-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.wetu-event-card__activity-link-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background: var(--wfm-text-muted);
+  color: var(--wfm-bg);
+  border-radius: 0;
+}
+
+.wetu-event-card__activity-link-badge:first-child {
+  background: var(--wfm-route-transfer);
+}
+
+.wetu-event-card__activity-link-badge--day {
+  background: var(--wfm-route-driving);
+}
+
+.wetu-event-card__activity-link-arrow {
+  flex-shrink: 0;
+  color: var(--wfm-text-muted);
+  opacity: 0.5;
+  transition: var(--wfm-transition-fast);
+}
+
+.wetu-event-card--activity.wetu-event-card--no-image:hover .wetu-event-card__activity-link-arrow {
+  opacity: 1;
+  color: var(--wfm-route-transfer);
+}
+
+/* ============================================================================
+   TEXT-BASED ACTIVITY CARD
+   For activities extracted from "included" text field without product references
+   ============================================================================ */
+
+.wetu-event-card--text-activity {
+  display: block;
+  padding: 12px 16px;
+  background: var(--wfm-bg);
+  border: 1px solid var(--wfm-border);
+  border-left: 3px solid var(--wfm-text-muted);
+  border-radius: 0;
+  transition: var(--wfm-transition-fast);
+}
+
+.wetu-event-card--text-activity:hover {
+  background: color-mix(in srgb, var(--wfm-bg) 95%, var(--wfm-text-muted) 5%);
+  border-color: var(--wfm-text-muted);
+}
+
+.wetu-event-card--text-activity .wetu-event-card__activity-inline {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.wetu-event-card--text-activity .wetu-event-card__activity-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: color-mix(in srgb, var(--wfm-text-muted) 20%, transparent);
+  border-radius: 50%;
+  color: var(--wfm-text-muted);
+  flex-shrink: 0;
+}
+
+.wetu-event-card--text-activity .wetu-event-card__activity-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.wetu-event-card--text-activity .wetu-event-card__activity-name {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--wfm-text);
+  line-height: 1.3;
+}
+
+.wetu-event-card--text-activity .wetu-event-card__activity-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.wetu-event-card--text-activity .wetu-event-card__activity-type {
+  display: inline-flex;
+  padding: 2px 8px;
+  font-size: 0.65rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background: var(--wfm-text-muted);
+  color: var(--wfm-bg);
+  border-radius: 0;
+}
+
+.wetu-event-card--text-activity .wetu-event-card__activity-day {
+  display: inline-flex;
+  padding: 2px 8px;
+  font-size: 0.65rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background: var(--wfm-route-driving);
+  color: var(--wfm-bg);
+  border-radius: 0;
+}
+
+/* ============================================================================
+   INCLUDED EXPERIENCES SUMMARY CARD
+   Shows the "included" field content from the itinerary period
+   ============================================================================ */
+
+.wetu-event-card--included-summary {
+  display: block;
+  padding: 14px 16px;
+  background: color-mix(in srgb, var(--wfm-bg) 98%, var(--wfm-accent) 2%);
+  border: 1px solid var(--wfm-border);
+  border-left: 3px solid var(--wfm-accent);
+  border-radius: 0;
+  transition: var(--wfm-transition-fast);
+}
+
+.wetu-event-card--included-summary:hover {
+  background: color-mix(in srgb, var(--wfm-bg) 95%, var(--wfm-accent) 5%);
+}
+
+.wetu-event-card__included-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.wetu-event-card__included-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.wetu-event-card__included-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: var(--wfm-accent);
+  border-radius: 50%;
+  color: var(--wfm-bg);
+  flex-shrink: 0;
+}
+
+.wetu-event-card__included-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.wetu-event-card__included-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.wetu-event-card__included-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--wfm-text);
+}
+
+.wetu-event-card__included-period {
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 2px 8px;
+  background: var(--wfm-route-driving);
+  color: var(--wfm-bg);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.wetu-event-card__included-list {
+  font-size: 0.85rem;
+  color: var(--wfm-text-muted);
+  line-height: 1.6;
+  padding-left: 38px;
+  margin: 0;
+  list-style: none;
+}
+
+.wetu-event-card__included-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--wfm-border) 50%, transparent);
+}
+
+.wetu-event-card__included-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.wetu-event-card__included-item:first-child {
+  padding-top: 0;
+}
+
+.wetu-event-card__included-item-icon {
+  flex-shrink: 0;
+  color: var(--wfm-route-driving);
+  margin-top: 3px;
+}
+
+.wetu-event-card__included-item span {
+  flex: 1;
+  color: var(--wfm-text);
+}
+
+/* Linked activity items in What's Included */
+.wetu-event-card__included-item--linked {
+  cursor: pointer;
+}
+
+.wetu-event-card__included-item--linked:hover {
+  background: color-mix(in srgb, var(--wfm-route-driving) 8%, transparent);
+  margin-left: -8px;
+  margin-right: -8px;
+  padding-left: 8px;
+  padding-right: 8px;
+  border-radius: 4px;
+}
+
+.wetu-event-card__included-item-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  text-decoration: none;
+  color: var(--wfm-accent);
+  transition: color var(--wfm-transition-fast);
+}
+
+/* Underline linked activity text to indicate it's clickable */
+.wetu-event-card__included-item-link span {
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--wfm-accent) 50%, transparent);
+  text-underline-offset: 2px;
+  transition: text-decoration-color var(--wfm-transition-fast);
+}
+
+.wetu-event-card__included-item-link:hover span {
+  text-decoration-color: var(--wfm-accent);
+}
+
+.wetu-event-card__included-item-link:hover {
+  color: var(--wfm-route-driving);
+}
+
+.wetu-event-card__included-item-link:hover span {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.wetu-event-card__included-item-external {
+  flex-shrink: 0;
+  opacity: 0;
+  color: var(--wfm-route-driving);
+  transition: opacity var(--wfm-transition-fast);
+}
+
+.wetu-event-card__included-item--linked:hover .wetu-event-card__included-item-external {
+  opacity: 1;
+}
+
+/* ============================================================================
+   PROPERTY-LINKED ACTIVITIES (Also Available at This Property)
+   ============================================================================ */
+
+.wetu-event-card--property-activities {
+  margin-top: 8px;
+  background: color-mix(in srgb, var(--wfm-route-driving) 5%, var(--wfm-bg));
+  border: 1px dashed color-mix(in srgb, var(--wfm-route-driving) 30%, transparent);
+}
+
+.wetu-event-card--property-activities .wetu-event-card__included-header {
+  border-bottom-color: color-mix(in srgb, var(--wfm-route-driving) 20%, transparent);
+}
+
+.wetu-event-card--property-activities .wetu-event-card__included-icon--activities {
+  background: color-mix(in srgb, var(--wfm-route-driving) 15%, transparent);
+  color: var(--wfm-route-driving);
+}
+
+.wetu-event-card__property-activities-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wetu-event-card__property-activity .wetu-event-card__included-item-icon {
+  color: var(--wfm-route-driving);
+}
+
+/* ============================================================================
+   ACTIVITY LINKS - Underlined hyperlinks for all linked activities
+   ============================================================================ */
+
+.wetu-activity-link {
+  text-decoration: underline !important;
+  text-decoration-color: currentColor;
+  text-underline-offset: 2px;
+  color: var(--wfm-accent, var(--wfm-route-driving));
+}
+
+.wetu-activity-link:hover {
+  text-decoration-thickness: 2px;
+  color: var(--wfm-route-driving);
+}
+
+.wetu-activity-link span {
+  text-decoration: underline;
+  text-decoration-color: inherit;
+}
+
+.wetu-event-card__included-description {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--wfm-text-muted);
+  line-height: 1.6;
+}
+
+/* ============================================================================
+   MAP LEGEND
+   ============================================================================ */
+
+.wetu-fullscreen-map__legend {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 20px;
+  background: var(--wfm-bg-elevated);
+  border: 1px solid var(--wfm-border);
+  border-radius: 0;
+  box-shadow: var(--wfm-shadow);
+  z-index: 20;
+}
+
+.wetu-fullscreen-map__legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wetu-fullscreen-map__legend-marker {
+  width: 20px;
+  height: 12px;
+  background: var(--wfm-button-bg);
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.wetu-fullscreen-map__legend-route {
+  width: 24px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.wetu-fullscreen-map__legend-route--driving {
+  background: var(--wfm-route-driving);
+}
+
+.wetu-fullscreen-map__legend-route--flight {
+  background: repeating-linear-gradient(
+    90deg,
+    var(--wfm-route-flight) 0px,
+    var(--wfm-route-flight) 6px,
+    transparent 6px,
+    transparent 10px
+  );
+}
+
+.wetu-fullscreen-map__legend-activity {
+  width: 14px;
+  height: 14px;
+  background: #f59e0b;
+  border-radius: 50%;
+}
+
+.wetu-fullscreen-map__legend-label {
+  font-size: 0.75rem;
+  color: var(--wfm-text-muted);
+  font-weight: 500;
+}
+
+/* ============================================================================
+   NAVIGATION ARROWS (Mobile)
+   ============================================================================ */
+
+.wetu-fullscreen-map__nav-arrows {
+  display: none;
+}
+
+/* ============================================================================
+   ROUTE DETAILS PANEL
+   ============================================================================ */
+
+.wetu-fullscreen-map__route-panel {
+  position: absolute;
+  bottom: 0;
+  left: var(--wfm-timeline-width);
+  right: 0;
+  max-height: 0;
+  background: var(--wfm-bg-elevated);
+  border-top: 1px solid var(--wfm-border);
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.15);
+  z-index: 40;
+  overflow: hidden;
+  transition: max-height var(--wfm-transition);
+}
+
+.wetu-fullscreen-map__route-panel.open {
+  max-height: 300px;
+}
+
+.wetu-fullscreen-map__route-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--wfm-border);
+}
+
+.wetu-fullscreen-map__route-panel-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--wfm-text);
+}
+
+.wetu-fullscreen-map__route-panel-close {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--wfm-text-muted);
+  cursor: pointer;
+  border-radius: var(--wfm-radius-sm);
+  transition: all var(--wfm-transition-fast);
+}
+
+.wetu-fullscreen-map__route-panel-close:hover {
+  background: color-mix(in srgb, var(--wfm-text) 10%, transparent);
+  color: var(--wfm-text);
+}
+
+.wetu-fullscreen-map__route-panel-content {
+  padding: 20px;
+  overflow-y: auto;
+  max-height: 220px;
+}
+
+/* ============================================================================
+   MAP MARKERS - 16:9 RECTANGLE THUMBNAILS
+   ============================================================================ */
+
+.wetu-map-marker {
+  position: relative;
+  width: 64px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #333333;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  overflow: hidden;
+}
+
+/* Thumbnail marker style */
+.wetu-map-marker--thumbnail {
+  padding: 0;
+}
+
+.wetu-map-marker--thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.wetu-map-marker__number {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #333333;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.wetu-map-marker:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+}
+
+.wetu-map-marker.active {
+  transform: scale(1.15);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  border-color: #333333;
+  outline: 3px solid #fff;
+  outline-offset: 0px;
+  z-index: 20;
+}
+
+/* Activity Markers - Smaller circular */
+.wetu-activity-marker {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f59e0b;
+  color: white;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.wetu-activity-marker:hover {
+  transform: scale(1.2);
+}
+
+.wetu-activity-marker svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* ============================================================================
+   MAP POPUPS - ARROW POINTING TO LOCATION
+   ============================================================================ */
+
+.mapboxgl-popup {
+  z-index: 100;
+}
+
+.mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip {
+  border-top-color: var(--wfm-bg-elevated);
+}
+
+.mapboxgl-popup-anchor-top .mapboxgl-popup-tip {
+  border-bottom-color: var(--wfm-bg-elevated);
+}
+
+.mapboxgl-popup-anchor-left .mapboxgl-popup-tip {
+  border-right-color: var(--wfm-bg-elevated);
+}
+
+.mapboxgl-popup-anchor-right .mapboxgl-popup-tip {
+  border-left-color: var(--wfm-bg-elevated);
+}
+
+.mapboxgl-popup-content {
+  padding: 0;
+  border-radius: 0;
+  overflow: hidden;
+  box-shadow: var(--wfm-shadow);
+  min-width: 280px;
+  max-width: 320px;
+  background: transparent;
+}
+
+.wetu-map-popup {
+  font-family: var(--font-body-family, inherit);
+  position: relative;
+}
+
+/* Square image container for property popups */
+.wetu-map-popup__image-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+}
+
+.wetu-map-popup__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Content overlay on image - NO gradient, using text shadows */
+.wetu-map-popup__content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 16px;
+}
+
+/* Fallback for popups without images */
+.wetu-map-popup--no-image .wetu-map-popup__content {
+  position: relative;
+  background: var(--wfm-bg-elevated);
+}
+
+.wetu-map-popup--no-image .wetu-map-popup__title,
+.wetu-map-popup--no-image .wetu-map-popup__meta,
+.wetu-map-popup--no-image .wetu-map-popup__location {
+  color: var(--wfm-text);
+  text-shadow: none;
+}
+
+.wetu-map-popup__title {
+  margin: 0 0 6px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: white;
+  text-shadow: 
+    0 0 4px rgba(0, 0, 0, 0.9),
+    0 0 8px rgba(0, 0, 0, 0.8),
+    0 0 16px rgba(0, 0, 0, 0.7),
+    0 0 24px rgba(0, 0, 0, 0.5),
+    0 1px 2px rgba(0, 0, 0, 1);
+}
+
+.wetu-map-popup__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: white;
+  margin-bottom: 6px;
+  text-shadow: 
+    0 0 4px rgba(0, 0, 0, 0.9),
+    0 0 8px rgba(0, 0, 0, 0.8),
+    0 1px 2px rgba(0, 0, 0, 1);
+}
+
+.wetu-map-popup__location {
+  font-size: 0.85rem;
+  color: white;
+  margin-bottom: 12px;
+  text-shadow: 
+    0 0 4px rgba(0, 0, 0, 0.9),
+    0 0 8px rgba(0, 0, 0, 0.8),
+    0 1px 2px rgba(0, 0, 0, 1);
+}
+
+.wetu-map-popup__description {
+  font-size: 0.85rem;
+  color: white;
+  line-height: 1.5;
+  margin-bottom: 12px;
+  text-shadow: 
+    0 0 4px rgba(0, 0, 0, 0.9),
+    0 0 8px rgba(0, 0, 0, 0.8),
+    0 1px 2px rgba(0, 0, 0, 1);
+}
+
+.wetu-map-popup__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* White outline button style */
+.wetu-map-popup__link {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background: transparent;
+  color: white;
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border: 1px solid white;
+  border-radius: 0;
+  transition: all 0.2s ease;
+  text-shadow: 
+    0 0 4px rgba(0, 0, 0, 0.9),
+    0 0 8px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.wetu-map-popup__link:hover {
+  background: white;
+  color: #333;
+  text-shadow: none;
+}
+
+.wetu-map-popup__link svg {
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.8));
+}
+
+.wetu-map-popup__link:hover svg {
+  filter: none;
+}
+
+/* Styles for popups without images (like routes) */
+.wetu-map-popup--route .wetu-map-popup__content {
+  position: relative;
+  background: var(--wfm-bg-elevated);
+  padding: 16px;
+}
+
+.wetu-map-popup--route .wetu-map-popup__title {
+  color: var(--wfm-text);
+  text-shadow: none;
+}
+
+.wetu-map-popup--route .wetu-map-popup__meta {
+  color: var(--wfm-text-muted);
+  text-shadow: none;
+}
+
+.wetu-map-popup--route .wetu-map-popup__location {
+  color: var(--wfm-text-muted);
+  text-shadow: none;
+}
+
+.wetu-map-popup--route .wetu-map-popup__link {
+  background: var(--wfm-button-bg);
+  color: var(--wfm-button-text);
+  border: 1px solid var(--wfm-button-bg);
+  text-shadow: none;
+  box-shadow: none;
+}
+
+.wetu-map-popup--route .wetu-map-popup__link:hover {
+  opacity: 0.9;
+}
+
+.wetu-map-popup--route .wetu-map-popup__link svg {
+  filter: none;
+}
+
+.mapboxgl-popup-close-button {
+  font-size: 24px;
+  padding: 4px 10px;
+  color: white;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 0;
+  line-height: 1;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.9);
+  z-index: 10;
+}
+
+.mapboxgl-popup-close-button:hover {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+/* Close button style for route popups (dark bg) */
+.wetu-map-popup--route + .mapboxgl-popup-close-button,
+.wetu-map-popup--no-image + .mapboxgl-popup-close-button {
+  color: var(--wfm-text);
+  background: transparent;
+  text-shadow: none;
+}
+
+.wetu-map-popup--route + .mapboxgl-popup-close-button:hover,
+.wetu-map-popup--no-image + .mapboxgl-popup-close-button:hover {
+  background: color-mix(in srgb, var(--wfm-text) 10%, transparent);
+}
+
+/* ============================================================================
+   ROUTE ANNOTATIONS - FLIGHT LABELS
+   ============================================================================ */
+
+.wetu-flight-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--wfm-route-flight);
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+  border: 2px solid white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.wetu-flight-label:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.wetu-flight-label__icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.wetu-drive-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--wfm-route-driving);
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+  border: 2px solid white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.wetu-drive-label:hover {
+  transform: scale(1.05);
+}
+
+/* Airport markers */
+.wetu-airport-marker {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--wfm-route-flight);
+  color: white;
+  border: 2px solid white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.wetu-airport-marker:hover {
+  transform: scale(1.15);
+}
+
+.wetu-airport-marker svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Flight icon on route */
+.wetu-flight-icon {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: white;
+  padding: 6px 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  cursor: pointer;
+}
+
+.wetu-flight-icon__info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--wfm-route-flight);
+  white-space: nowrap;
+}
+
+/* ============================================================================
+   MOBILE STYLES
+   ============================================================================ */
+
+@media screen and (max-width: 899px) {
+  .wetu-fullscreen-map__header {
+    padding: 0 16px;
+    height: 56px;
+  }
+  
+  .wetu-fullscreen-map__title {
+    font-size: 0.95rem;
+  }
+  
+  .wetu-fullscreen-map__meta {
+    display: none;
+  }
+  
+  /* Price and Book Now mobile adjustments */
+  .wetu-fullscreen-map__price-container {
+    display: none;
+  }
+  
+  .wetu-fullscreen-map__book-now {
+    padding: 8px 14px;
+    font-size: 0.8rem;
+  }
+  
+  .wetu-fullscreen-map__book-now span {
+    display: none;
+  }
+  
+  .wetu-fullscreen-map__book-now svg {
+    width: 18px;
+    height: 18px;
+  }
+  
+  /* Timeline becomes bottom drawer */
+  .wetu-fullscreen-map__content {
+    flex-direction: column;
+  }
+  
+  .wetu-fullscreen-map__timeline {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: var(--wfm-mobile-drawer-height);
+    border-right: none;
+    border-top: 1px solid var(--wfm-border);
+    border-radius: 0;
+    z-index: 60;
+    transition: height var(--wfm-transition);
+  }
+  
+  .wetu-fullscreen-map__timeline.collapsed {
+    height: var(--wfm-mobile-drawer-collapsed);
+    width: 100%;
+  }
+  
+  .wetu-fullscreen-map__timeline--right {
+    border-left: none;
+  }
+  
+  .wetu-fullscreen-map__timeline-header {
+    padding: 12px 16px;
+  }
+  
+  .wetu-fullscreen-map__timeline-collapse {
+    transform: rotate(-90deg);
+  }
+  
+  .wetu-fullscreen-map__timeline.collapsed .wetu-fullscreen-map__timeline-collapse {
+    transform: rotate(90deg);
+  }
+  
+  .wetu-fullscreen-map__timeline-content {
+    padding: 0 16px 16px;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  
+  /* Journey Timeline - Horizontal scroll with peek */
+  .wetu-fullscreen-map__journey-timeline {
+    display: flex;
+    flex-direction: row;
+    gap: 0;
+    padding-bottom: 8px;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Day wrapper for mobile - horizontal layout */
+  .wetu-journey-day {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    scroll-snap-align: start;
+  }
+  
+  /* Day header becomes vertical sidebar on mobile */
+  .wetu-journey-day__header {
+    position: sticky;
+    left: 0;
+    top: 0;
+    width: 48px;
+    min-height: 100%;
+    flex-shrink: 0;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 0;
+    margin-bottom: 0;
+    padding: 0;
+    background: var(--wfm-bg-elevated);
+    z-index: 15;
+    border-right: 1px solid var(--wfm-border);
+    border-bottom: none;
+  }
+  
+  /* Day date label on mobile - vertical text */
+  .wetu-journey-day__date-label {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg);
+    padding: 10px 6px;
+    height: auto;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+  
+  .wetu-journey-day__day-number {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--wfm-text);
+    letter-spacing: 0.3px;
+  }
+  
+  .wetu-journey-day__date-divider {
+    display: none;
+  }
+  
+  .wetu-journey-day__weekday {
+    font-size: 0.55rem;
+    color: var(--wfm-text-muted);
+  }
+  
+  .wetu-journey-day__date {
+    font-size: 0.6rem;
+    font-weight: 500;
+    color: var(--wfm-text-muted);
+  }
+  
+  /* Day title on mobile - vertical text (fallback) */
+  .wetu-journey-day__title {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg);
+    padding: 12px 8px;
+    font-size: 0.8rem;
+    letter-spacing: 0.3px;
+    height: auto;
+    width: 100%;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    color: var(--wfm-text);
+  }
+  
+  .wetu-journey-day__badge {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg);
+    padding: 12px 8px;
+    font-size: 0.7rem;
+    letter-spacing: 0.3px;
+    height: auto;
+    width: 100%;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .wetu-journey-day__line {
+    display: none;
+  }
+  
+  /* Transit cards on mobile - more compact */
+  .wetu-event-card__transit-header {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  
+  .wetu-event-card__transit-type {
+    font-size: 0.75rem;
+  }
+  
+  .wetu-event-card__transit-stats-inline {
+    gap: 8px;
+    font-size: 0.7rem;
+  }
+  
+  .wetu-event-card__transit-body {
+    padding: 12px;
+  }
+  
+  .wetu-event-card__route-flow {
+    gap: 8px;
+  }
+  
+  .wetu-event-card__route-name {
+    font-size: 0.8rem;
+  }
+  
+  .wetu-event-card__drive-details {
+    margin-top: 8px;
+    padding-top: 8px;
+  }
+  
+  .wetu-event-card__drive-summary {
+    font-size: 0.75rem;
+  }
+  
+  .wetu-journey-day__events {
+    display: flex;
+    flex-direction: row;
+    gap: 0;
+    padding: 0;
+    border-left: none;
+    margin-left: 0;
+  }
+  
+  /* Mobile Event Cards - Show ~1.15 cards for peek effect */
+  .wetu-event-card--full,
+  .wetu-event-card--overlay {
+    flex: 0 0 calc(80vw - 56px);
+    max-width: 260px;
+    scroll-snap-align: start;
+    margin-right: 10px;
+  }
+  
+  .wetu-event-card__media {
+    aspect-ratio: 16 / 9;
+  }
+  
+  /* Square images on mobile */
+  .wetu-event-card__square-media {
+    aspect-ratio: 1 / 1;
+  }
+  
+  /* Smaller text on mobile overlay cards */
+  .wetu-event-card__overlay-content {
+    padding: 10px;
+  }
+  
+  .wetu-event-card__overlay-title {
+    font-size: 0.95rem;
+  }
+  
+  .wetu-event-card__overlay-location {
+    font-size: 0.7rem;
+  }
+  
+  .wetu-event-card__overlay-category {
+    font-size: 0.6rem;
+  }
+  
+  .wetu-event-card__overlay-badge {
+    font-size: 0.55rem;
+    padding: 3px 7px;
+  }
+  
+  .wetu-event-card__body {
+    padding: 12px;
+  }
+  
+  .wetu-event-card__title {
+    font-size: 0.95rem;
+  }
+  
+  .wetu-event-card__map-trigger {
+    padding: 10px 12px;
+    font-size: 0.75rem;
+  }
+  
+  /* Hide activities and some transit details on mobile for cleaner UX */
+  .wetu-event-card--activity .wetu-event-card__description {
+    display: none;
+  }
+  
+  .wetu-event-card__transit-details {
+    display: none;
+  }
+  
+  /* Mobile drawer handle */
+  .wetu-fullscreen-map__timeline-handle {
+    display: flex;
+    justify-content: center;
+    padding: 8px 0 4px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: var(--wfm-bg-elevated);
+    border-bottom: 1px solid var(--wfm-border);
+    z-index: 20;
+  }
+  
+  .wetu-fullscreen-map__timeline-handle-bar {
+    width: 40px;
+    height: 4px;
+    background: color-mix(in srgb, var(--wfm-text) 25%, transparent);
+    border-radius: 2px;
+  }
+  
+  .wetu-fullscreen-map__timeline-header {
+    margin-top: 16px;
+  }
+  
+  /* Navigation Arrows */
+  .wetu-fullscreen-map__nav-arrows {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    position: absolute;
+    bottom: calc(var(--wfm-mobile-drawer-height) + 16px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    transition: bottom var(--wfm-transition);
+  }
+  
+  .wetu-fullscreen-map__timeline.collapsed ~ .wetu-fullscreen-map__map-wrapper .wetu-fullscreen-map__nav-arrows {
+    bottom: calc(var(--wfm-mobile-drawer-collapsed) + 16px);
+  }
+  
+  .wetu-fullscreen-map__nav-arrow {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--wfm-bg-elevated);
+    border: 1px solid var(--wfm-border);
+    border-radius: 50%;
+    color: var(--wfm-text);
+    cursor: pointer;
+    box-shadow: var(--wfm-shadow);
+    transition: all var(--wfm-transition-fast);
+  }
+  
+  .wetu-fullscreen-map__nav-arrow:hover,
+  .wetu-fullscreen-map__nav-arrow:active {
+    background: var(--wfm-primary);
+    color: var(--color-primary-button-text, #fff);
+  }
+  
+  .wetu-fullscreen-map__nav-arrow:disabled {
+    opacity: 0.4;
+    pointer-events: none;
+  }
+  
+  .wetu-fullscreen-map__nav-dots {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: var(--wfm-bg-elevated);
+    border: 1px solid var(--wfm-border);
+    border-radius: 0;
+    box-shadow: var(--wfm-shadow);
+  }
+  
+  .wetu-fullscreen-map__nav-dot {
+    width: 10px;
+    height: 10px;
+    padding: 0;
+    background: color-mix(in srgb, var(--wfm-text) 20%, transparent);
+    border: none;
+    border-radius: 0;
+    cursor: pointer;
+    transition: all var(--wfm-transition-fast);
+  }
+  
+  .wetu-fullscreen-map__nav-dot:hover,
+  .wetu-fullscreen-map__nav-dot.active {
+    background: var(--wfm-button-bg);
+    transform: scale(1.3);
+  }
+  
+  /* Legend */
+  .wetu-fullscreen-map__legend {
+    bottom: calc(var(--wfm-mobile-drawer-height) + 70px);
+    padding: 8px 14px;
+    gap: 12px;
+    transition: bottom var(--wfm-transition);
+  }
+  
+  .wetu-fullscreen-map__timeline.collapsed ~ .wetu-fullscreen-map__map-wrapper .wetu-fullscreen-map__legend {
+    bottom: calc(var(--wfm-mobile-drawer-collapsed) + 70px);
+  }
+  
+  .wetu-fullscreen-map__legend-label {
+    font-size: 0.7rem;
+  }
+  
+  /* Route panel */
+  .wetu-fullscreen-map__route-panel {
+    left: 0;
+  }
+  
+  /* Controls */
+  .wetu-fullscreen-map__controls {
+    top: 12px;
+    right: 12px;
+  }
+  
+  /* Map markers smaller on mobile */
+  .wetu-map-marker {
+    width: 52px;
+    height: 30px;
+    font-size: 10px;
+  }
+  
+  .wetu-map-marker__number {
+    width: 16px;
+    height: 16px;
+    font-size: 9px;
+  }
+}
+
+/* ============================================================================
+   SMALL MOBILE
+   ============================================================================ */
+
+@media screen and (max-width: 479px) {
+  .wetu-fullscreen-map__logo img {
+    height: 24px;
+    max-width: 100px;
+  }
+  
+  .wetu-fullscreen-map__title {
+    font-size: 0.85rem;
+  }
+  
+  .wetu-event-card--full,
+  .wetu-event-card--overlay {
+    flex: 0 0 calc(78vw - 44px);
+    max-width: 220px;
+  }
+  
+  .wetu-journey-day__badge {
+    font-size: 0.65rem;
+    padding: 10px 6px;
+  }
+  
+  .wetu-journey-day__header {
+    width: 40px;
+  }
+  
+  .wetu-journey-day__date-label {
+    padding: 8px 4px;
+    gap: 2px;
+  }
+  
+  .wetu-journey-day__day-number {
+    font-size: 0.55rem;
+  }
+  
+  .wetu-journey-day__weekday {
+    font-size: 0.45rem;
+  }
+  
+  .wetu-journey-day__date {
+    font-size: 0.5rem;
+  }
+  
+  .wetu-event-card__overlay-content {
+    padding: 8px;
+  }
+  
+  .wetu-event-card__overlay-title {
+    font-size: 0.85rem;
+  }
+  
+  .wetu-event-card__overlay-badge {
+    font-size: 0.5rem;
+    padding: 2px 6px;
+  }
+  
+  .wetu-fullscreen-map__legend {
+    gap: 8px;
+    padding: 6px 12px;
+  }
+}
+
+/* ============================================================================
+   DESTINATION ARRIVAL CARD
+   ============================================================================ */
+
+.wetu-destination-arrival {
+  margin-bottom: 12px;
+}
+
+.wetu-destination-arrival__link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--wfm-surface);
+  border: 1px solid var(--wfm-border);
+  border-radius: var(--wfm-radius-sm);
+  text-decoration: none;
+  color: inherit;
+  transition: var(--wfm-transition-fast);
+}
+
+.wetu-destination-arrival__link:not(.wetu-destination-arrival__link--no-link):hover {
+  background: var(--wfm-surface-elevated);
+  border-color: var(--wfm-text-muted);
+}
+
+/* Underline destination name to indicate it's clickable */
+.wetu-destination-arrival__link:not(.wetu-destination-arrival__link--no-link) .wetu-destination-arrival__name {
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--wfm-route-driving) 50%, transparent);
+  text-underline-offset: 2px;
+  transition: text-decoration-color var(--wfm-transition-fast);
+}
+
+.wetu-destination-arrival__link:not(.wetu-destination-arrival__link--no-link):hover .wetu-destination-arrival__name {
+  text-decoration-color: var(--wfm-route-driving);
+}
+
+.wetu-destination-arrival__link--no-link {
+  cursor: default;
+}
+
+.wetu-destination-arrival__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--wfm-accent-bg, rgba(16, 185, 129, 0.1));
+  color: var(--wfm-route-driving);
+  flex-shrink: 0;
+}
+
+.wetu-destination-arrival__icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.wetu-destination-arrival__content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wetu-destination-arrival__label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--wfm-text-muted);
+  font-weight: 500;
+}
+
+.wetu-destination-arrival__name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--wfm-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wetu-destination-arrival__arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--wfm-text-muted);
+  opacity: 0.6;
+  transition: var(--wfm-transition-fast);
+}
+
+.wetu-destination-arrival__link:hover .wetu-destination-arrival__arrow {
+  opacity: 1;
+  color: var(--wfm-route-driving);
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+  .wetu-destination-arrival__link {
+    padding: 8px 12px;
+    gap: 10px;
+  }
+  
+  .wetu-destination-arrival__icon {
+    width: 28px;
+    height: 28px;
+  }
+  
+  .wetu-destination-arrival__icon svg {
+    width: 14px;
+    height: 14px;
+  }
+  
+  .wetu-destination-arrival__name {
+    font-size: 0.85rem;
+  }
+}
+
+/* ============================================================================
+   PRINT STYLES
+   ============================================================================ */
+
+@media print {
+  .wetu-fullscreen-map {
+    position: static;
+    height: auto;
+  }
+  
+  .wetu-fullscreen-map__timeline,
+  .wetu-fullscreen-map__controls,
+  .wetu-fullscreen-map__nav-arrows,
+  .wetu-fullscreen-map__theme-toggle,
+  .wetu-fullscreen-map__back-link {
+    display: none !important;
+  }
+  
+  .wetu-fullscreen-map__canvas {
+    height: 600px;
+  }
+}

@@ -1,0 +1,884 @@
+/**
+ * ============================================================================
+ * WETU ITINERARY TEMPLATE STYLES
+ * ============================================================================
+ * 
+ * Mobile-first CSS with color scheme support for the WETU itinerary template.
+ * Uses CSS custom properties for theming and responsive design.
+ * 
+ * Table of Contents:
+ * 1. CSS Custom Properties
+ * 2. Base Section Styles
+ * 3. Typography
+ * 4. Touch Targets & Accessibility
+ * 5. Card Components
+ * 6. Day Badge
+ * 7. Collapsible Sections
+ * 8. Images & Media
+ * 9. Buttons & Links
+ * 10. Navigation
+ * 11. Utility Classes
+ * 12. Animation & Transitions
+ * 13. Print Styles
+ * 14. Reduced Motion
+ * 
+ * ============================================================================
+ */
+
+/* ============================================
+   1. CSS CUSTOM PROPERTIES
+   ============================================ */
+
+:root {
+  /* WETU Spacing Scale */
+  --wetu-space-xs: 4px;
+  --wetu-space-sm: 8px;
+  --wetu-space-md: 16px;
+  --wetu-space-lg: 24px;
+  --wetu-space-xl: 40px;
+  --wetu-space-2xl: 60px;
+  --wetu-space-3xl: 80px;
+  
+  /* WETU Typography Scale */
+  --wetu-font-xs: 0.75rem;
+  --wetu-font-sm: 0.875rem;
+  --wetu-font-base: 1rem;
+  --wetu-font-lg: 1.125rem;
+  --wetu-font-xl: 1.25rem;
+  --wetu-font-2xl: 1.5rem;
+  --wetu-font-3xl: 2rem;
+  --wetu-font-4xl: 2.5rem;
+  
+  /* WETU Border Radius */
+  --wetu-radius-sm: 4px;
+  --wetu-radius-md: 8px;
+  --wetu-radius-lg: 12px;
+  --wetu-radius-xl: 16px;
+  --wetu-radius-full: 9999px;
+  
+  /* WETU Z-Index Scale */
+  --wetu-z-dropdown: 100;
+  --wetu-z-sticky: 200;
+  --wetu-z-fixed: 300;
+  --wetu-z-modal-backdrop: 400;
+  --wetu-z-modal: 500;
+  --wetu-z-toast: 600;
+  
+  /* WETU Transition */
+  --wetu-transition-fast: 0.15s ease;
+  --wetu-transition-base: 0.2s ease;
+  --wetu-transition-slow: 0.3s ease;
+  
+  /* Touch Target Minimum */
+  --wetu-touch-target: 44px;
+}
+
+/* Light Theme (scheme-1) */
+.color-scheme-1,
+[data-color-scheme="scheme-1"] {
+  --wetu-bg: #f8f8f8;
+  --wetu-bg-secondary: #f0f0f0;
+  --wetu-bg-tertiary: #ffffff;
+  --wetu-text: #1a1a1a;
+  --wetu-text-secondary: rgba(17, 17, 17, 0.6);
+  --wetu-text-muted: rgba(17, 17, 17, 0.44);
+  --wetu-accent: #1a1a1a;
+  --wetu-accent-hover: #111111;
+  --wetu-border: #e2e2e2;
+  --wetu-border-hover: #d4d4d4;
+  --wetu-card-bg: #ffffff;
+  --wetu-card-bg-hover: #fafafa;
+  --wetu-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --wetu-shadow-lg: 0 3px 8px rgba(0, 0, 0, 0.06);
+  --wetu-overlay: rgba(0,0,0,0.5);
+}
+
+/* Dark Theme (scheme-5) */
+.color-scheme-5,
+[data-color-scheme="scheme-5"] {
+  --wetu-bg: #1e1e22;
+  --wetu-bg-secondary: #181820;
+  --wetu-bg-tertiary: #1a1a1f;
+  --wetu-text: #d4d4d8;
+  --wetu-text-secondary: rgba(212, 212, 216, 0.68);
+  --wetu-text-muted: rgba(212, 212, 216, 0.42);
+  --wetu-accent: #d4d4d8;
+  --wetu-accent-hover: #ececf0;
+  --wetu-border: #2d2d38;
+  --wetu-border-hover: #3a3a46;
+  --wetu-card-bg: #252530;
+  --wetu-card-bg-hover: #2a2a35;
+  --wetu-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  --wetu-shadow-lg: 0 5px 14px rgba(0, 0, 0, 0.28);
+  --wetu-overlay: rgba(15, 15, 20, 0.82);
+}
+
+/* ============================================
+   2. BASE SECTION STYLES
+   ============================================ */
+
+/* Prevent horizontal overflow */
+html {
+  overflow-x: hidden;
+}
+
+body {
+  overflow-x: hidden;
+  position: relative;
+}
+
+.wetu-section {
+  background: var(--wetu-bg);
+  color: var(--wetu-text);
+  padding-block: var(--section-padding-top, var(--wetu-space-2xl)) var(--section-padding-bottom, var(--wetu-space-2xl));
+  max-width: 100vw;
+  overflow-x: clip;
+}
+
+.wetu-section__header {
+  text-align: center;
+  margin-bottom: var(--wetu-space-xl);
+}
+
+.wetu-section__subheading {
+  display: inline-block;
+  font-size: var(--wetu-font-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--wetu-accent);
+  margin-bottom: var(--wetu-space-sm);
+}
+
+.wetu-section__heading {
+  margin: 0 0 var(--wetu-space-sm);
+  color: var(--wetu-text);
+}
+
+.wetu-section__description {
+  max-width: 600px;
+  margin: 0 auto;
+  font-size: var(--wetu-font-lg);
+  color: var(--wetu-text-secondary);
+}
+
+/* ============================================
+   3. TYPOGRAPHY
+   ============================================ */
+
+.wetu-text-xs { font-size: var(--wetu-font-xs); }
+.wetu-text-sm { font-size: var(--wetu-font-sm); }
+.wetu-text-base { font-size: var(--wetu-font-base); }
+.wetu-text-lg { font-size: var(--wetu-font-lg); }
+.wetu-text-xl { font-size: var(--wetu-font-xl); }
+.wetu-text-2xl { font-size: var(--wetu-font-2xl); }
+
+.wetu-text-muted { color: var(--wetu-text-muted); }
+.wetu-text-secondary { color: var(--wetu-text-secondary); }
+.wetu-text-accent { color: var(--wetu-accent); }
+
+.wetu-font-medium { font-weight: 500; }
+.wetu-font-semibold { font-weight: 600; }
+.wetu-font-bold { font-weight: 700; }
+
+.wetu-uppercase {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ============================================
+   4. TOUCH TARGETS & ACCESSIBILITY
+   ============================================ */
+
+/* Ensure minimum touch target size */
+.wetu-btn,
+.wetu-link,
+.wetu-tab,
+.wetu-nav-item,
+.wetu-card a,
+button,
+[role="button"],
+a[href] {
+  min-height: var(--wetu-touch-target);
+}
+
+/* Focus Visible States */
+.wetu-btn:focus-visible,
+.wetu-link:focus-visible,
+.wetu-tab:focus-visible,
+.wetu-card:focus-within,
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--wetu-accent);
+  outline-offset: 2px;
+}
+
+/* Remove default focus outline when not focus-visible */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Screen Reader Only */
+.sr-only,
+.wetu-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Skip Link */
+.wetu-skip-link {
+  position: absolute;
+  top: -100px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--wetu-z-toast);
+  padding: var(--wetu-space-sm) var(--wetu-space-md);
+  background: var(--wetu-accent);
+  color: white;
+  text-decoration: none;
+  font-weight: 500;
+  border-radius: var(--wetu-radius-md);
+  transition: top var(--wetu-transition-base);
+}
+
+.wetu-skip-link:focus {
+  top: var(--wetu-space-md);
+}
+
+/* ============================================
+   5. CARD COMPONENTS
+   ============================================ */
+
+.wetu-card {
+  background: var(--wetu-card-bg);
+  border: 1px solid var(--wetu-border);
+  border-radius: var(--wetu-radius-xl);
+  overflow: hidden;
+  transition: all var(--wetu-transition-base);
+}
+
+.wetu-card:hover {
+  background: var(--wetu-card-bg-hover);
+  border-color: var(--wetu-border-hover);
+  box-shadow: var(--wetu-shadow-lg);
+}
+
+.wetu-card--elevated {
+  box-shadow: var(--wetu-shadow);
+}
+
+.wetu-card--interactive {
+  cursor: pointer;
+}
+
+.wetu-card--interactive:hover {
+  transform: translateY(-2px);
+}
+
+.wetu-card__image {
+  position: relative;
+  overflow: hidden;
+}
+
+.wetu-card__image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--wetu-transition-slow);
+}
+
+.wetu-card:hover .wetu-card__image img {
+  transform: scale(1.05);
+}
+
+.wetu-card__content {
+  padding: var(--wetu-space-lg);
+}
+
+.wetu-card__title {
+  margin: 0 0 var(--wetu-space-sm);
+  font-size: var(--wetu-font-xl);
+  font-weight: 600;
+  color: var(--wetu-text);
+}
+
+.wetu-card__title a {
+  color: inherit;
+  text-decoration: none;
+  transition: color var(--wetu-transition-fast);
+}
+
+.wetu-card__title a:hover {
+  color: var(--wetu-accent);
+}
+
+.wetu-card__description {
+  margin: 0;
+  font-size: var(--wetu-font-sm);
+  color: var(--wetu-text-secondary);
+  line-height: 1.6;
+}
+
+/* ============================================
+   6. DAY BADGE
+   ============================================ */
+
+.wetu-day-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  height: 48px;
+  padding: 0 var(--wetu-space-md);
+  border-radius: var(--wetu-radius-full);
+  background: var(--wetu-accent);
+  color: white;
+  font-weight: 700;
+  font-size: var(--wetu-font-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.wetu-day-badge--sm {
+  min-width: 36px;
+  height: 36px;
+  font-size: var(--wetu-font-xs);
+}
+
+.wetu-day-badge--lg {
+  min-width: 56px;
+  height: 56px;
+  font-size: var(--wetu-font-base);
+}
+
+.wetu-day-badge--outlined {
+  background: transparent;
+  border: 2px solid var(--wetu-accent);
+  color: var(--wetu-accent);
+}
+
+/* ============================================
+   7. COLLAPSIBLE SECTIONS
+   ============================================ */
+
+.wetu-collapsible {
+  border-bottom: 1px solid var(--wetu-border);
+}
+
+.wetu-collapsible:first-child {
+  border-top: 1px solid var(--wetu-border);
+}
+
+.wetu-collapsible__trigger {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: var(--wetu-space-md);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: var(--wetu-font-base);
+  text-align: left;
+  color: var(--wetu-text);
+  transition: background var(--wetu-transition-fast);
+}
+
+.wetu-collapsible__trigger:hover {
+  background: var(--wetu-bg-secondary);
+}
+
+.wetu-collapsible__icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin-left: var(--wetu-space-sm);
+  transition: transform var(--wetu-transition-base);
+  color: var(--wetu-text-muted);
+}
+
+.wetu-collapsible.is-open .wetu-collapsible__icon {
+  transform: rotate(180deg);
+}
+
+.wetu-collapsible__content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height var(--wetu-transition-slow);
+}
+
+.wetu-collapsible.is-open .wetu-collapsible__content {
+  max-height: 2000px;
+}
+
+.wetu-collapsible__inner {
+  padding: 0 var(--wetu-space-md) var(--wetu-space-md);
+}
+
+/* ============================================
+   8. IMAGES & MEDIA
+   ============================================ */
+
+.wetu-image {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.wetu-image--cover {
+  object-fit: cover;
+}
+
+.wetu-image--contain {
+  object-fit: contain;
+}
+
+/* Lazy Loading */
+.wetu-lazy-image {
+  background: var(--wetu-bg-secondary);
+  opacity: 0;
+  transition: opacity var(--wetu-transition-slow);
+}
+
+.wetu-lazy-image.is-loaded {
+  opacity: 1;
+}
+
+/* Aspect Ratios */
+.wetu-aspect-square { aspect-ratio: 1/1; }
+.wetu-aspect-video { aspect-ratio: 16/9; }
+.wetu-aspect-photo { aspect-ratio: 4/3; }
+.wetu-aspect-portrait { aspect-ratio: 3/4; }
+.wetu-aspect-wide { aspect-ratio: 21/9; }
+
+/* Image Overlay */
+.wetu-image-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 50%);
+  opacity: 0;
+  transition: opacity var(--wetu-transition-base);
+}
+
+.wetu-image-container:hover .wetu-image-overlay {
+  opacity: 1;
+}
+
+/* ============================================
+   9. BUTTONS & LINKS
+   ============================================ */
+
+.wetu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--wetu-space-sm);
+  padding: var(--wetu-space-sm) var(--wetu-space-lg);
+  min-height: var(--wetu-touch-target);
+  font-size: var(--wetu-font-sm);
+  font-weight: 500;
+  text-decoration: none;
+  border-radius: var(--wetu-radius-md);
+  cursor: pointer;
+  transition: all var(--wetu-transition-base);
+  border: none;
+  white-space: nowrap;
+}
+
+.wetu-btn--primary {
+  background: var(--wetu-accent);
+  color: white;
+}
+
+.wetu-btn--primary:hover {
+  background: var(--wetu-accent-hover);
+}
+
+.wetu-btn--secondary {
+  background: var(--wetu-bg-secondary);
+  color: var(--wetu-text);
+  border: 1px solid var(--wetu-border);
+}
+
+.wetu-btn--secondary:hover {
+  background: var(--wetu-bg-tertiary);
+  border-color: var(--wetu-border-hover);
+}
+
+.wetu-btn--ghost {
+  background: transparent;
+  color: var(--wetu-text);
+}
+
+.wetu-btn--ghost:hover {
+  background: var(--wetu-bg-secondary);
+}
+
+.wetu-btn--sm {
+  padding: var(--wetu-space-xs) var(--wetu-space-md);
+  min-height: 36px;
+  font-size: var(--wetu-font-xs);
+}
+
+.wetu-btn--lg {
+  padding: var(--wetu-space-md) var(--wetu-space-xl);
+  min-height: 52px;
+  font-size: var(--wetu-font-base);
+}
+
+.wetu-btn--icon {
+  padding: 0;
+  width: var(--wetu-touch-target);
+  border-radius: var(--wetu-radius-full);
+}
+
+/* Links */
+.wetu-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--wetu-space-xs);
+  color: var(--wetu-accent);
+  text-decoration: none;
+  font-weight: 500;
+  transition: all var(--wetu-transition-fast);
+}
+
+.wetu-link:hover {
+  gap: var(--wetu-space-sm);
+  text-decoration: underline;
+}
+
+.wetu-link--muted {
+  color: var(--wetu-text-muted);
+}
+
+.wetu-link--muted:hover {
+  color: var(--wetu-accent);
+}
+
+/* ============================================
+   10. NAVIGATION
+   ============================================ */
+
+.wetu-nav {
+  display: flex;
+  gap: var(--wetu-space-xs);
+}
+
+.wetu-nav-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--wetu-space-sm) var(--wetu-space-md);
+  min-height: var(--wetu-touch-target);
+  font-size: var(--wetu-font-sm);
+  font-weight: 500;
+  color: var(--wetu-text-muted);
+  text-decoration: none;
+  border-radius: var(--wetu-radius-md);
+  transition: all var(--wetu-transition-fast);
+}
+
+.wetu-nav-item:hover {
+  color: var(--wetu-text);
+  background: var(--wetu-bg-secondary);
+}
+
+.wetu-nav-item.is-active {
+  color: white;
+  background: var(--wetu-accent);
+}
+
+/* Tabs */
+.wetu-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--wetu-space-sm);
+  margin-bottom: var(--wetu-space-lg);
+}
+
+.wetu-tab {
+  padding: var(--wetu-space-sm) var(--wetu-space-lg);
+  min-height: var(--wetu-touch-target);
+  background: transparent;
+  border: 1px solid var(--wetu-border);
+  border-radius: var(--wetu-radius-full);
+  font-size: var(--wetu-font-sm);
+  font-weight: 500;
+  color: var(--wetu-text);
+  cursor: pointer;
+  transition: all var(--wetu-transition-fast);
+}
+
+.wetu-tab:hover {
+  border-color: var(--wetu-accent);
+  color: var(--wetu-accent);
+}
+
+.wetu-tab.is-active {
+  background: var(--wetu-accent);
+  border-color: var(--wetu-accent);
+  color: white;
+}
+
+/* ============================================
+   11. UTILITY CLASSES
+   ============================================ */
+
+/* Spacing */
+.wetu-mt-0 { margin-top: 0; }
+.wetu-mt-sm { margin-top: var(--wetu-space-sm); }
+.wetu-mt-md { margin-top: var(--wetu-space-md); }
+.wetu-mt-lg { margin-top: var(--wetu-space-lg); }
+.wetu-mt-xl { margin-top: var(--wetu-space-xl); }
+
+.wetu-mb-0 { margin-bottom: 0; }
+.wetu-mb-sm { margin-bottom: var(--wetu-space-sm); }
+.wetu-mb-md { margin-bottom: var(--wetu-space-md); }
+.wetu-mb-lg { margin-bottom: var(--wetu-space-lg); }
+.wetu-mb-xl { margin-bottom: var(--wetu-space-xl); }
+
+.wetu-p-0 { padding: 0; }
+.wetu-p-sm { padding: var(--wetu-space-sm); }
+.wetu-p-md { padding: var(--wetu-space-md); }
+.wetu-p-lg { padding: var(--wetu-space-lg); }
+.wetu-p-xl { padding: var(--wetu-space-xl); }
+
+/* Display */
+.wetu-hidden { display: none; }
+.wetu-block { display: block; }
+.wetu-inline { display: inline; }
+.wetu-inline-block { display: inline-block; }
+.wetu-flex { display: flex; }
+.wetu-inline-flex { display: inline-flex; }
+.wetu-grid { display: grid; }
+
+/* Flexbox */
+.wetu-flex-wrap { flex-wrap: wrap; }
+.wetu-flex-col { flex-direction: column; }
+.wetu-items-start { align-items: flex-start; }
+.wetu-items-center { align-items: center; }
+.wetu-items-end { align-items: flex-end; }
+.wetu-justify-start { justify-content: flex-start; }
+.wetu-justify-center { justify-content: center; }
+.wetu-justify-end { justify-content: flex-end; }
+.wetu-justify-between { justify-content: space-between; }
+.wetu-gap-sm { gap: var(--wetu-space-sm); }
+.wetu-gap-md { gap: var(--wetu-space-md); }
+.wetu-gap-lg { gap: var(--wetu-space-lg); }
+
+/* Text Alignment */
+.wetu-text-left { text-align: left; }
+.wetu-text-center { text-align: center; }
+.wetu-text-right { text-align: right; }
+
+/* Borders */
+.wetu-border { border: 1px solid var(--wetu-border); }
+.wetu-border-t { border-top: 1px solid var(--wetu-border); }
+.wetu-border-b { border-bottom: 1px solid var(--wetu-border); }
+.wetu-rounded { border-radius: var(--wetu-radius-md); }
+.wetu-rounded-lg { border-radius: var(--wetu-radius-lg); }
+.wetu-rounded-xl { border-radius: var(--wetu-radius-xl); }
+.wetu-rounded-full { border-radius: var(--wetu-radius-full); }
+
+/* Overflow */
+.wetu-overflow-hidden { overflow: hidden; }
+.wetu-overflow-auto { overflow: auto; }
+.wetu-overflow-x-auto { overflow-x: auto; }
+.wetu-overflow-y-auto { overflow-y: auto; }
+
+/* Width */
+.wetu-w-full { width: 100%; }
+.wetu-max-w-sm { max-width: 24rem; }
+.wetu-max-w-md { max-width: 28rem; }
+.wetu-max-w-lg { max-width: 32rem; }
+.wetu-max-w-xl { max-width: 36rem; }
+
+/* ============================================
+   12. ANIMATION & TRANSITIONS
+   ============================================ */
+
+@keyframes wetu-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes wetu-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes wetu-fade-in-down {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes wetu-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes wetu-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes wetu-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.wetu-animate-fade-in { animation: wetu-fade-in 0.3s ease-out; }
+.wetu-animate-fade-in-up { animation: wetu-fade-in-up 0.4s ease-out; }
+.wetu-animate-fade-in-down { animation: wetu-fade-in-down 0.4s ease-out; }
+.wetu-animate-scale-in { animation: wetu-scale-in 0.3s ease-out; }
+.wetu-animate-pulse { animation: wetu-pulse 2s infinite; }
+.wetu-animate-spin { animation: wetu-spin 1s linear infinite; }
+
+/* Staggered Animation Delays */
+.wetu-delay-1 { animation-delay: 0.1s; }
+.wetu-delay-2 { animation-delay: 0.2s; }
+.wetu-delay-3 { animation-delay: 0.3s; }
+.wetu-delay-4 { animation-delay: 0.4s; }
+.wetu-delay-5 { animation-delay: 0.5s; }
+
+/* ============================================
+   13. PRINT STYLES
+   ============================================ */
+
+@media print {
+  /* Hide interactive elements */
+  .wetu-map,
+  .wetu-gallery__video,
+  .wetu-contact__actions,
+  .wetu-scroll-indicator,
+  .wetu-mobile-nav,
+  .wetu-overview.is-sticky,
+  .wetu-btn,
+  .wetu-lightbox,
+  video,
+  iframe {
+    display: none !important;
+  }
+
+  /* Show all collapsible content */
+  .wetu-collapsible__content {
+    max-height: none !important;
+  }
+
+  /* Prevent page breaks inside important elements */
+  .wetu-day,
+  .wetu-card,
+  .wetu-accommodation-card,
+  .wetu-transfer-item {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Start new sections on new pages */
+  .wetu-section {
+    page-break-before: auto;
+  }
+
+  /* Reset backgrounds for printing */
+  .wetu-section,
+  .wetu-card {
+    background: white !important;
+    color: black !important;
+    box-shadow: none !important;
+  }
+
+  /* Ensure images print */
+  img {
+    max-width: 100% !important;
+    page-break-inside: avoid;
+  }
+
+  /* Show URLs after links */
+  a[href]:after {
+    content: " (" attr(href) ")";
+    font-size: 0.8em;
+    color: #666;
+  }
+
+  /* Don't show URLs for internal links */
+  a[href^="#"]:after,
+  a[href^="javascript"]:after {
+    content: "";
+  }
+}
+
+/* ============================================
+   14. REDUCED MOTION
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .wetu-lazy-image {
+    opacity: 1;
+  }
+}
+
+/* ============================================
+   RESPONSIVE BREAKPOINTS
+   ============================================ */
+
+/* Mobile (default) */
+/* Styles above are mobile-first */
+
+/* Tablet */
+@media screen and (min-width: 750px) {
+  .wetu-hide-tablet { display: none; }
+  .wetu-show-tablet { display: block; }
+}
+
+/* Desktop */
+@media screen and (min-width: 1024px) {
+  .wetu-hide-desktop { display: none; }
+  .wetu-show-desktop { display: block; }
+}
+
+/* Large Desktop */
+@media screen and (min-width: 1200px) {
+  .wetu-hide-large { display: none; }
+  .wetu-show-large { display: block; }
+}

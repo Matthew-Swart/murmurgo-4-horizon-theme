@@ -1,0 +1,533 @@
+{% comment %}
+  WETU Destination Hero Component
+  ================================
+  Displays a full-width hero section for a destination with bento-style image gallery.
+  
+  Parameters:
+  - destination_product: The destination PIN product object
+  - destination_name: String - Name of the destination
+  - itinerary_description: String - Description from itinerary (NOT from PIN product)
+  - day_number: Number - Starting day number
+  - nights_here: Number - How many nights at this destination
+  - color_scheme: String - Color scheme class (default: 'scheme-5')
+  
+  Usage:
+  {% render 'wetu-destination-hero',
+    destination_product: dest_product,
+    destination_name: 'Sossusvlei',
+    itinerary_description: leg.destination_description,
+    day_number: 1,
+    nights_here: 2,
+    color_scheme: 'scheme-5'
+  %}
+{% endcomment %}
+
+{%- liquid
+  assign color_scheme = color_scheme | default: 'scheme-5'
+  assign day_end = day_number | plus: nights_here | minus: 1
+  
+  # Build day badge text
+  if nights_here > 1
+    assign day_badge = 'Day ' | append: day_number | append: '-' | append: day_end
+  else
+    assign day_badge = 'Day ' | append: day_number
+  endif
+  
+  # Collect images from destination product
+  assign all_images = destination_product.images
+  assign hero_image = all_images[0] | default: destination_product.featured_image
+  assign gallery_images = ''
+  
+  # Build gallery images array (skip hero image)
+  assign gallery_count = 0
+  for img in all_images
+    if forloop.first
+      continue
+    endif
+    assign gallery_count = gallery_count | plus: 1
+  endfor
+  
+  # Generate unique ID for this instance
+  assign hero_id = 'dest-hero-' | append: destination_name | handleize | append: '-' | append: day_number
+  
+  # Process itinerary_description for rich text handling
+  assign description_text = nil
+  assign description_is_richtext = false
+  assign richtext_content = nil
+  
+  if itinerary_description != blank
+    # Check if it's a metafield reference with .value that contains rich text structure
+    if itinerary_description.value.type == 'root' or itinerary_description.value.children
+      assign description_is_richtext = true
+      assign richtext_content = itinerary_description.value
+    elsif itinerary_description.type == 'root' or itinerary_description.children
+      # Direct rich text object
+      assign description_is_richtext = true
+      assign richtext_content = itinerary_description
+    elsif itinerary_description contains '"type"=>"root"' or itinerary_description contains '{"type"=>' or itinerary_description contains '"type"=>'
+      # It's a Ruby hash string representation - need to extract text content
+      assign temp_desc = itinerary_description | replace: '{"type"=>"root", "children"=>[{"type"=>"paragraph", "children"=>[{"type"=>"text", "value"=>"', '' | replace: '"}]}]}', '' | replace: '&nbsp;', ' ' | replace: '&amp;', '&'
+      if temp_desc != itinerary_description and temp_desc != blank
+        assign description_text = temp_desc
+      else
+        assign description_text = nil
+      endif
+    elsif itinerary_description contains '{"type"' or itinerary_description contains '"children"'
+      # It's a JSON string representation - skip it
+      assign description_is_richtext = false
+      assign description_text = nil
+    else
+      # Plain text
+      assign description_text = itinerary_description
+    endif
+  endif
+-%}
+
+<style>
+  /* ============================================
+     DESTINATION HERO STYLES
+     ============================================ */
+  
+  .wetu-dest-hero {
+    --hero-gap: 2px;
+    --content-padding-desktop: 48px;
+    --content-padding-mobile: 24px;
+    width: 100%;
+  }
+  
+  /* --- Hero Section --- */
+  .wetu-dest-hero__hero {
+    position: relative;
+    width: 100%;
+    min-height: 55vh;
+    overflow: hidden;
+  }
+  
+  .wetu-dest-hero__hero-image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  .wetu-dest-hero__hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: none;
+  }
+  
+  .wetu-dest-hero__hero-content {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: var(--content-padding-desktop);
+    gap: 24px;
+  }
+  
+  .wetu-dest-hero__hero-left {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .wetu-dest-hero__day-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #fff;
+    width: fit-content;
+  }
+  
+  .wetu-dest-hero__title {
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 300;
+    letter-spacing: -0.02em;
+    color: #fff;
+    margin: 0;
+    line-height: 1.1;
+  }
+  
+  /* --- Grid Section --- */
+  .wetu-dest-hero__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--hero-gap);
+    width: 100%;
+    padding-bottom: 2px;
+  }
+  
+  .wetu-dest-hero__gallery-side {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--hero-gap);
+    align-content: start;
+  }
+  
+  .wetu-dest-hero__content-side {
+    padding: var(--content-padding-desktop);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+  }
+  
+  .wetu-dest-hero__description {
+    font-size: 1.0625rem;
+    line-height: 1.7;
+    color: rgba(var(--color-foreground), 0.85);
+  }
+  
+  .wetu-dest-hero__description p {
+    margin: 0 0 1em 0;
+  }
+  
+  .wetu-dest-hero__description p:last-child {
+    margin-bottom: 0;
+  }
+  
+  .wetu-dest-hero__explore-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+    padding: 10px 0;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--color-primary, #d4a574);
+    text-decoration: none;
+    transition: opacity 0.2s ease;
+  }
+  
+  .wetu-dest-hero__explore-link:hover {
+    opacity: 0.8;
+  }
+  
+  .wetu-dest-hero__explore-link svg {
+    opacity: 0.7;
+  }
+  
+  /* --- Gallery Items --- */
+  .wetu-dest-hero__gallery-item {
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    border-radius: 0;
+    aspect-ratio: 16/9;
+  }
+  
+  .wetu-dest-hero__gallery-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+  }
+  
+  .wetu-dest-hero__gallery-item:hover img {
+    transform: scale(1.05);
+  }
+  
+  .wetu-dest-hero__gallery-item::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0);
+    transition: background 0.3s ease;
+  }
+  
+  .wetu-dest-hero__gallery-item:hover::after {
+    background: rgba(0, 0, 0, 0.1);
+  }
+  
+  
+  
+  /* --- Placeholder --- */
+  .wetu-dest-hero__placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    background: rgba(var(--color-foreground), 0.05);
+    color: rgba(var(--color-foreground), 0.5);
+    font-style: italic;
+  }
+  
+  /* --- Fullscreen Gallery --- */
+  .wetu-dest-hero__fullscreen {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0, 0, 0, 1);
+    display: none;
+    flex-direction: column;
+    overflow-y: auto;
+    padding: 0;
+  }
+  
+  .wetu-dest-hero__fullscreen.is-active {
+    display: flex;
+  }
+  
+  .wetu-dest-hero__fullscreen-close {
+    position: fixed;
+    top: 30px;
+    right: 30px;
+    width: 50px;
+    height: 50px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    transition: background 0.2s ease;
+    backdrop-filter: blur(4px);
+  }
+  
+  .wetu-dest-hero__fullscreen-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+  
+  .wetu-dest-hero__fullscreen-close svg {
+    width: 24px;
+    height: 24px;
+    stroke: #fff;
+    stroke-width: 2;
+  }
+  
+  .wetu-dest-hero__fullscreen-images {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .wetu-dest-hero__fullscreen-image {
+    width: 100%;
+    position: relative;
+    margin: 0;
+    padding: 0;
+    line-height: 0;
+  }
+  
+  .wetu-dest-hero__fullscreen-image img {
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: contain;
+  }
+  
+  /* --- Mobile Styles --- */
+  @media screen and (max-width: 900px) {
+    .wetu-dest-hero__hero {
+      min-height: 50vh;
+    }
+    
+    .wetu-dest-hero__hero-content {
+      flex-direction: column;
+      align-items: flex-start;
+      padding: var(--content-padding-mobile);
+    }
+    
+    .wetu-dest-hero__grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .wetu-dest-hero__content-side {
+      padding: var(--content-padding-mobile);
+      order: -1;
+    }
+  }
+</style>
+
+<div class="wetu-dest-hero color-{{ color_scheme }}" id="{{ hero_id }}">
+  
+  {%- comment -%} HERO SECTION {%- endcomment -%}
+  <div class="wetu-dest-hero__hero">
+    {%- if hero_image -%}
+      <img 
+        class="wetu-dest-hero__hero-image"
+        src="{{ hero_image | image_url: width: 1920 }}"
+        alt="{{ destination_name }}"
+        loading="lazy"
+        width="1920"
+        height="1080"
+      >
+    {%- else -%}
+      <div class="wetu-dest-hero__hero-image" style="background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);"></div>
+    {%- endif -%}
+    
+    <div class="wetu-dest-hero__hero-overlay"></div>
+    
+    <div class="wetu-dest-hero__hero-content">
+      <div class="wetu-dest-hero__hero-left">
+        <span class="wetu-dest-hero__day-badge">{{ day_badge }}</span>
+        <h2 class="wetu-dest-hero__title">{{ destination_name }}</h2>
+      </div>
+      
+    </div>
+  </div>
+  
+  {%- comment -%} GRID GALLERY + DESCRIPTION SECTION {%- endcomment -%}
+  {%- if gallery_count > 0 or itinerary_description != blank -%}
+    <div class="wetu-dest-hero__grid">
+      
+      {%- comment -%} Gallery Side {%- endcomment -%}
+      <div class="wetu-dest-hero__gallery-side">
+        {%- if gallery_count > 0 -%}
+          {%- for img in all_images -%}
+            {%- if forloop.first -%}
+              {%- continue -%}
+            {%- endif -%}
+            
+            <div 
+              class="wetu-dest-hero__gallery-item"
+              data-fullscreen-trigger="{{ hero_id }}"
+              data-image-index="{{ forloop.index0 }}"
+            >
+              <img 
+                src="{{ img | image_url: width: 800 }}"
+                alt="{{ destination_name }} - Image {{ forloop.index }}"
+                loading="lazy"
+              >
+            </div>
+          {%- endfor -%}
+        {%- else -%}
+          <div class="wetu-dest-hero__placeholder">
+            Gallery coming soon
+          </div>
+        {%- endif -%}
+      </div>
+      
+      {%- comment -%} Content Side {%- endcomment -%}
+      <div class="wetu-dest-hero__content-side">
+        {%- if description_is_richtext and richtext_content -%}
+          <div class="wetu-dest-hero__description">
+            {%- for child in richtext_content.children -%}
+              {%- if child.type == 'paragraph' -%}
+                <p>
+                  {%- for text_node in child.children -%}
+                    {{ text_node.value | replace: '&nbsp;', ' ' | replace: '&', '&' }}
+                  {%- endfor -%}
+                </p>
+              {%- endif -%}
+            {%- endfor -%}
+          </div>
+        {%- elsif description_text != blank -%}
+          <div class="wetu-dest-hero__description">
+            {{ description_text | newline_to_br }}
+          </div>
+        {%- elsif destination_product.description != blank -%}
+          {% comment %} Fallback to destination product description {% endcomment %}
+          <div class="wetu-dest-hero__description">
+            {{ destination_product.description }}
+          </div>
+        {%- else -%}
+          <div class="wetu-dest-hero__description">
+            <p>Discover the wonders of {{ destination_name }}.</p>
+          </div>
+        {%- endif -%}
+      </div>
+    </div>
+  {%- endif -%}
+  
+  {%- comment -%} FULLSCREEN GALLERY {%- endcomment -%}
+  <div class="wetu-dest-hero__fullscreen" id="{{ hero_id }}-fullscreen" aria-hidden="true">
+    <button class="wetu-dest-hero__fullscreen-close" aria-label="Close gallery">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M18 6L6 18M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    
+    <div class="wetu-dest-hero__fullscreen-images">
+      {%- for img in all_images -%}
+        <div class="wetu-dest-hero__fullscreen-image" data-index="{{ forloop.index0 }}">
+          <img 
+            src="{{ img | image_url: width: 2000 }}"
+            alt="{{ destination_name }} - Image {{ forloop.index }}"
+            loading="lazy"
+          >
+        </div>
+      {%- endfor -%}
+    </div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    const heroId = '{{ hero_id }}';
+    const container = document.getElementById(heroId);
+    if (!container) return;
+    
+    const fullscreen = document.getElementById(heroId + '-fullscreen');
+    const closeBtn = fullscreen?.querySelector('.wetu-dest-hero__fullscreen-close');
+    const triggers = container.querySelectorAll('[data-fullscreen-trigger="{{ hero_id }}"]');
+    const imagesContainer = fullscreen?.querySelector('.wetu-dest-hero__fullscreen-images');
+    
+    function openGallery(scrollToIndex) {
+      if (!fullscreen) return;
+      fullscreen.classList.add('is-active');
+      fullscreen.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+      
+      if (scrollToIndex !== undefined && imagesContainer) {
+        const images = imagesContainer.querySelectorAll('.wetu-dest-hero__fullscreen-image');
+        if (images[scrollToIndex]) {
+           images[scrollToIndex].scrollIntoView();
+        }
+      }
+    }
+    
+    function closeGallery() {
+      if (!fullscreen) return;
+      fullscreen.classList.remove('is-active');
+      fullscreen.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+    }
+    
+    triggers.forEach(trigger => {
+      trigger.addEventListener('click', () => {
+        const index = parseInt(trigger.dataset.imageIndex, 10);
+        openGallery(index);
+      });
+    });
+    
+    if (closeBtn) {
+      closeBtn.addEventListener('click', closeGallery);
+    }
+    
+    // Close when clicking an image (as requested)
+    if (imagesContainer) {
+       imagesContainer.addEventListener('click', function(e) {
+          if (e.target.tagName === 'IMG' || e.target.classList.contains('wetu-dest-hero__fullscreen-image')) {
+             closeGallery();
+          }
+       });
+    }
+    
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && fullscreen?.classList.contains('is-active')) {
+        closeGallery();
+      }
+    });
+    
+    fullscreen?.addEventListener('click', (e) => {
+      if (e.target === fullscreen) {
+        closeGallery();
+      }
+    });
+  })();
+</script>

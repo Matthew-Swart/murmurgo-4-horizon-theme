@@ -1,0 +1,180 @@
+{% comment %}
+  ============================================================================
+  WETU RICH TEXT RENDERER
+  ============================================================================
+
+  Parses and renders WETU JSON rich text structure.
+
+  PARAMETERS:
+  - json_data: The JSON structure from wetu_leg_period.notes
+  - extract_flights: (optional) If true, returns flight info in separate variable
+
+  JSON STRUCTURE:
+  {
+    "type": "root",
+    "children": [
+      {
+        "type": "list",
+        "listType": "unordered",
+        "children": [
+          {"type": "list-item", "children": [{"type": "text", "value": "..."}]}
+        ]
+      },
+      {
+        "type": "paragraph",
+        "children": [
+          {"type": "text", "value": "Flight: ..."}
+        ]
+      }
+    ]
+  }
+
+  ============================================================================
+{% endcomment %}
+
+{% liquid
+  assign json_data = json_data | default: blank
+  assign extract_flights = extract_flights | default: false
+
+  assign flight_lines_serialized = ''
+%}
+
+{% if json_data.children %}
+  {% for child in json_data.children %}
+    {% case child.type %}
+
+      {% comment %} Unordered Lists {% endcomment %}
+      {% when 'list' %}
+        {% if child.listType == 'unordered' or child.listType == blank %}
+          <ul class="wetu-rich-text__list">
+            {% for item in child.children %}
+              {% if item.type == 'list-item' %}
+                <li class="wetu-rich-text__list-item">
+                  {% for text_node in item.children %}
+                    {% if text_node.type == 'text' %}
+                      {% assign text_value = text_node.value | strip %}
+
+                      {% comment %} Check if this is a flight line {% endcomment %}
+                      {% if extract_flights and text_value contains 'Flight:' %}
+                        {%- capture flight_lines_serialized -%}
+                          {%- if flight_lines_serialized != blank -%}{{- flight_lines_serialized -}}|||__WETU_FLIGHT_DELIM__|||{%- endif -%}{{- text_value -}}
+                        {%- endcapture -%}
+                      {% elsif extract_flights and text_value contains 'flight' and text_value contains 'minutes' %}
+                        {%- capture flight_lines_serialized -%}
+                          {%- if flight_lines_serialized != blank -%}{{- flight_lines_serialized -}}|||__WETU_FLIGHT_DELIM__|||{%- endif -%}{{- text_value -}}
+                        {%- endcapture -%}
+                      {% else %}
+                        {% comment %} Check for emphasis (italics) {% endcomment %}
+                        {% if text_node.emphasis %}
+                          <em>{{ text_value }}</em>
+                        {% else %}
+                          {{ text_value }}
+                        {% endif %}
+                      {% endif %}
+                    {% endif %}
+                  {% endfor %}
+                </li>
+              {% endif %}
+            {% endfor %}
+          </ul>
+        {% elsif child.listType == 'ordered' %}
+          <ol class="wetu-rich-text__list wetu-rich-text__list--ordered">
+            {% for item in child.children %}
+              {% if item.type == 'list-item' %}
+                <li class="wetu-rich-text__list-item">
+                  {% for text_node in item.children %}
+                    {% if text_node.type == 'text' %}
+                      {% assign text_value = text_node.value | strip %}
+                      {% if text_node.emphasis %}
+                        <em>{{ text_value }}</em>
+                      {% else %}
+                        {{ text_value }}
+                      {% endif %}
+                    {% endif %}
+                  {% endfor %}
+                </li>
+              {% endif %}
+            {% endfor %}
+          </ol>
+        {% endif %}
+
+      {% comment %} Paragraphs {% endcomment %}
+      {% when 'paragraph' %}
+        <p class="wetu-rich-text__paragraph">
+          {% for text_node in child.children %}
+            {% if text_node.type == 'text' %}
+              {% assign text_value = text_node.value | strip %}
+
+              {% comment %} Check if this is a flight paragraph {% endcomment %}
+              {% if extract_flights and text_value contains 'Flight:' %}
+                {%- capture flight_lines_serialized -%}
+                  {%- if flight_lines_serialized != blank -%}{{- flight_lines_serialized -}}|||__WETU_FLIGHT_DELIM__|||{%- endif -%}{{- text_value -}}
+                {%- endcapture -%}
+              {% elsif text_node.emphasis %}
+                <em>{{ text_value }}</em>
+              {% else %}
+                {{ text_value }}
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+        </p>
+
+      {% comment %} Headings {% endcomment %}
+      {% when 'heading' %}
+        {% assign heading_level = child.level | default: 3 %}
+        <h{{ heading_level }} class="wetu-rich-text__heading">
+          {% for text_node in child.children %}
+            {% if text_node.type == 'text' %}
+              {{ text_node.value | strip }}
+            {% endif %}
+          {% endfor %}
+        </h{{ heading_level }}>
+
+    {% endcase %}
+  {% endfor %}
+{% endif %}
+
+<style>
+.wetu-rich-text__list {
+  margin: 0;
+  padding-left: 20px;
+  list-style-type: disc;
+}
+
+.wetu-rich-text__list--ordered {
+  list-style-type: decimal;
+}
+
+.wetu-rich-text__list-item {
+  margin-bottom: 10px;
+  line-height: 1.7;
+  color: color-mix(in srgb, var(--color-foreground) 80%, transparent);
+}
+
+.wetu-rich-text__list-item:last-child {
+  margin-bottom: 0;
+}
+
+.wetu-rich-text__paragraph {
+  margin: 0 0 16px;
+  line-height: 1.7;
+  color: color-mix(in srgb, var(--color-foreground) 80%, transparent);
+}
+
+.wetu-rich-text__paragraph:last-child {
+  margin-bottom: 0;
+}
+
+.wetu-rich-text__paragraph em,
+.wetu-rich-text__list-item em {
+  font-style: italic;
+  color: color-mix(in srgb, var(--color-foreground) 70%, transparent);
+}
+
+.wetu-rich-text__heading {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-foreground);
+  margin: 0 0 12px;
+}
+</style>

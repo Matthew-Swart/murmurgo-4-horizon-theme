@@ -1,0 +1,34 @@
+{% comment %}
+  polygon-map.liquid
+  MapLibre + OpenFreeMap + polygon overlay for region/park pages.
+{% endcomment %}
+{% include 'murmurgo-resolve-place' %}
+
+<section class="murmurgo-polygon-map page-width" data-section-id="{{ section.id }}">
+  {% if m_poly_centroid_lat and m_poly_centroid_lon %}
+    <div id="polygon-map-{{ section.id }}"
+         class="polygon-map__container"
+         data-lat="{{ m_poly_centroid_lat }}"
+         data-lon="{{ m_poly_centroid_lon }}"
+         data-bbox="{{ m_poly_bbox | json | escape }}"
+         data-geometry-url="{{ m_poly_geo_url }}"
+         data-geometry-inline='{{ m_poly_geometry | json | escape }}'
+         data-name="{{ m_poly_name | escape }}"
+         style="width:100%;height:400px;background:#f0f0f0;">
+      <p style="padding:1rem;">Map loading for {{ m_poly_name }}</p>
+    </div>
+  {% endif %}
+</section>
+
+{% schema %}
+{
+  "name": "Polygon Map",
+  "class": "section-polygon-map",
+  "settings": [],
+  "presets": [
+    {
+      "name": "Polygon Map"
+    }
+  ]
+}
+{% endschema %}

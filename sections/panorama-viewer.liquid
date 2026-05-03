@@ -1,0 +1,31 @@
+{% comment %}
+  panorama-viewer.liquid
+  Pannellum 360° viewer placeholder.
+{% endcomment %}
+{% include 'murmurgo-resolve-place' %}
+
+<section class="murmurgo-panorama-viewer page-width" data-section-id="{{ section.id }}">
+  {% if murmurgo_place.panorama_url %}
+    <div id="panorama-{{ section.id }}"
+         class="panorama-viewer__container"
+         data-panorama-url="{{ murmurgo_place.panorama_url }}"
+         data-panorama-type="{{ murmurgo_place.panorama_type | default: 'equirect' }}"
+         style="width:100%;height:400px;background:#000;">
+    </div>
+  {% else %}
+    <p>No 360° panorama available for this place.</p>
+  {% endif %}
+</section>
+
+{% schema %}
+{
+  "name": "Panorama Viewer",
+  "class": "section-panorama-viewer",
+  "settings": [],
+  "presets": [
+    {
+      "name": "Panorama Viewer"
+    }
+  ]
+}
+{% endschema %}

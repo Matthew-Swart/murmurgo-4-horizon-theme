@@ -1,0 +1,752 @@
+{% comment %}
+  ============================================================================
+  WETU ITINERARY MAP V2 - FULLSCREEN IMMERSIVE EXPERIENCE
+  ============================================================================
+  
+  A redesigned full-viewport map experience with:
+  - Full screen Mapbox map as the base layer
+  - Transparent overlay header with logo (hover effect) + Shopify controls
+  - Floating property card timeline on left 40%
+  - Property cards grouped by stays (3 nights at one property = 1 card)
+  - Same design for desktop and mobile
+  - No menu, no legend, no title in header
+  
+  TEMPLATE: product.wetu-itinerary-map.json
+  
+  ============================================================================
+{% endcomment %}
+
+{% comment %} Load itinerary data {% endcomment %}
+{% render 'wetu-itinerary-data', product: product %}
+
+{% assign itinerary = product.metafields.wetu.itinerary_metaobject.value %}
+{% assign legs_array = itinerary.legs.value %}
+{% assign routes_array = itinerary.routes.value %}
+{% assign client_name = itinerary.client_name.value %}
+{% assign journey_title = product.title %}
+{% assign total_days = product.metafields.wetu.itinerary_days.value | default: wetu_total_days %}
+{% assign itinerary_type = product.metafields.wetu.itinerary_type.value %}
+{% assign trip_start_date = itinerary.start_date.value %}
+
+{% comment %} Define weekday names array {% endcomment %}
+{% assign weekday_names = 'Sunday,Monday,Tuesday,Wednesday,Thursday,Friday,Saturday' | split: ',' %}
+{% assign month_names = 'January,February,March,April,May,June,July,August,September,October,November,December' | split: ',' %}
+
+{% comment %} 
+  Load accommodation, activity, and component products directly from metafields.
+{% endcomment %}
+{% assign accommodation_products = product.metafields.wetu_itinerary.accommodations.value %}
+{% assign activity_products = product.metafields.wetu_itinerary.activities.value %}
+{% assign all_component_products = product.metafields.wetu_itinerary.component_products.value %}
+
+{% comment %} Build markers data from legs {% endcomment %}
+{% capture markers_json %}
+[
+  {% assign marker_index = 0 %}
+  {% assign current_day = 1 %}
+  {% for leg in legs_array %}
+    {% assign leg_type = leg.type.value | default: "Standard" %}
+    {% assign leg_nights = leg.nights.value | default: 0 %}
+    
+    {% if leg_type == "Departure" %}
+      {% continue %}
+    {% endif %}
+    
+    {% assign content_id = leg.content_entity_id.value | append: '' %}
+    {% assign property = nil %}
+    
+    {% for acc_prod in accommodation_products %}
+      {% assign prod_pin_id = acc_prod.metafields.wetu.pin_id.value | append: '' %}
+      {% if prod_pin_id == content_id %}
+        {% assign property = acc_prod %}
+        {% break %}
+      {% endif %}
+    {% endfor %}
+    
+    {% assign accommodation_name = leg.accommodation_name.value | default: property.title | default: "Destination" %}
+    
+    {% if property != blank %}
+      {% assign position = property.metafields.wetu.position.value %}
+      
+      {% if position.latitude != blank and position.longitude != blank %}
+        {% assign marker_image = "" %}
+        {% assign marker_thumb = "" %}
+        {% if property.featured_image != blank %}
+          {% assign marker_image = property.featured_image | image_url: width: 640, height: 360, crop: 'center' %}
+          {% assign marker_thumb = property.featured_image | image_url: width: 320, height: 180, crop: 'center' %}
+        {% endif %}
+        
+        {% if marker_index > 0 %},{% endif %}
+        {
+          "id": "marker-{{ content_id }}",
+          "contentId": {{ content_id | json }},
+          "name": {{ accommodation_name | json }},
+          "lat": {{ position.latitude }},
+          "lng": {{ position.longitude }},
+          "drivingLat": {{ position.driving_latitude | default: position.latitude }},
+          "drivingLng": {{ position.driving_longitude | default: position.longitude }},
+          "nights": {{ leg_nights }},
+          "day": {{ current_day }},
+          "dayEnd": {{ current_day | plus: leg_nights | minus: 1 }},
+          "sequence": {{ leg.sequence.value | default: forloop.index0 }},
+          "type": "accommodation",
+          "country": {{ position.country | default: "" | json }},
+          "region": {{ position.region | default: "" | json }},
+          "destination": {{ position.destination | default: "" | json }},
+          "image": {{ marker_image | json }},
+          "imageThumb": {{ marker_thumb | json }},
+          "url": {{ property.url | default: "" | json }},
+          "category": {{ property.metafields.wetu.category.value | default: "Accommodation" | json }}
+        }
+        {% assign marker_index = marker_index | plus: 1 %}
+      {% endif %}
+    {% endif %}
+    
+    {% assign current_day = current_day | plus: leg_nights %}
+  {% endfor %}
+]
+{% endcapture %}
+
+{% comment %} Build routes data {% endcomment %}
+{% capture routes_json %}
+[
+  {% assign route_index = 0 %}
+  {% for route in routes_array %}
+    {% assign route_mode = route.mode.value | default: "" %}
+    {% assign route_type = route.type.value | default: "" %}
+    {% assign start_location = route.start_location.value | default: "" | strip_newlines %}
+    {% assign end_location = route.end_location.value | default: "" | strip_newlines %}
+    {% assign points = route.points.value | default: "" %}
+    {% assign duration = route.duration.value | default: "" %}
+    {% assign distance = route.distance.value | default: 0 %}
+    {% assign start_day = route.start_day.value | default: 0 %}
+    {% assign end_day = route.end_day.value | default: 0 %}
+    
+    {% assign start_id = route.start_content_entity_id.value | append: '' %}
+    {% assign end_id = route.end_content_entity_id.value | append: '' %}
+    
+    {% assign embedded_start_lat = route.start_latitude.value %}
+    {% assign embedded_start_lng = route.start_longitude.value %}
+    {% assign embedded_end_lat = route.end_latitude.value %}
+    {% assign embedded_end_lng = route.end_longitude.value %}
+    {% assign embedded_start_name = route.start_name.value %}
+    {% assign embedded_end_name = route.end_name.value %}
+    
+    {% assign linked_start_product = route.start_product.value %}
+    {% assign linked_end_product = route.end_product.value %}
+    
+    {% assign start_product = linked_start_product %}
+    {% assign end_product = linked_end_product %}
+    {% if start_product == blank or end_product == blank %}
+      {% for comp_prod in all_component_products %}
+        {% assign prod_pin_id = comp_prod.metafields.wetu.pin_id.value | append: '' %}
+        {% if prod_pin_id == start_id and start_product == blank %}
+          {% assign start_product = comp_prod %}
+        {% endif %}
+        {% if prod_pin_id == end_id and end_product == blank %}
+          {% assign end_product = comp_prod %}
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+    
+    {% assign start_position = start_product.metafields.wetu.position.value %}
+    {% assign end_position = end_product.metafields.wetu.position.value %}
+    
+    {% assign final_start_lat = embedded_start_lat | default: start_position.driving_latitude | default: start_position.latitude %}
+    {% assign final_start_lng = embedded_start_lng | default: start_position.driving_longitude | default: start_position.longitude %}
+    {% assign final_end_lat = embedded_end_lat | default: end_position.driving_latitude | default: end_position.latitude %}
+    {% assign final_end_lng = embedded_end_lng | default: end_position.driving_longitude | default: end_position.longitude %}
+    
+    {% assign route_mode_lower = route_mode | downcase %}
+    {% assign is_flight = false %}
+    {% if route_mode_lower contains 'flight' or route_mode_lower contains 'scheduled' or route_mode_lower contains 'charter' or route_mode_lower contains 'helicopter' %}
+      {% assign is_flight = true %}
+    {% endif %}
+    
+    {% if final_start_lat != blank and final_end_lat != blank %}
+      {% if route_index > 0 %},{% endif %}
+      {
+        "id": "route-{{ forloop.index0 }}",
+        "mode": {{ route_mode | json }},
+        "type": {{ route_type | json }},
+        "label": {{ route.label.value | default: route_mode | strip_newlines | json }},
+        "routeLabel": {{ route.route_label.value | default: "" | strip_newlines | json }},
+        "startLocation": {{ embedded_start_name | default: start_location | json }},
+        "endLocation": {{ embedded_end_name | default: end_location | json }},
+        "startLat": {{ final_start_lat }},
+        "startLng": {{ final_start_lng }},
+        "endLat": {{ final_end_lat }},
+        "endLng": {{ final_end_lng }},
+        "points": {{ points | strip_newlines | json }},
+        "duration": {{ duration | json }},
+        "distance": {{ distance | default: 0 }},
+        "distanceKm": {{ distance | default: 0 | divided_by: 1000.0 | round: 1 }},
+        "startDay": {{ start_day | default: 0 }},
+        "endDay": {{ end_day | default: 0 }},
+        "sequence": {{ route.sequence.value | default: forloop.index0 }},
+        "agency": {{ route.agency.value | default: "" | strip_newlines | json }},
+        "vehicle": {{ route.vehicle.value | default: "" | strip_newlines | json }},
+        "startContentId": {{ start_id | json }},
+        "endContentId": {{ end_id | json }},
+        "isFlight": {{ is_flight }}
+      }
+      {% assign route_index = route_index | plus: 1 %}
+    {% endif %}
+  {% endfor %}
+]
+{% endcapture %}
+
+{% comment %} Clean up JSON whitespace {% endcomment %}
+{% assign markers_data = markers_json | strip_newlines | replace: '  ', '' %}
+{% assign routes_data = routes_json | strip_newlines | replace: '  ', '' %}
+
+{% comment %} Get shop logo {% endcomment %}
+{% assign shop_logo = settings.logo %}
+{% assign inverse_logo = settings.inverse_logo %}
+
+{% comment %} Build property cards data - group by property stays {% endcomment %}
+{% capture property_cards_html %}
+{% assign card_index = 0 %}
+{% assign current_day = 1 %}
+{% for leg in legs_array %}
+  {% assign leg_type = leg.type.value | default: "Standard" %}
+  {% assign leg_nights = leg.nights.value | default: 0 %}
+  
+  {% if leg_type == "Departure" %}
+    {% continue %}
+  {% endif %}
+  
+  {% assign content_id = leg.content_entity_id.value | append: '' %}
+  {% assign property = nil %}
+  
+  {% for acc_prod in accommodation_products %}
+    {% assign prod_pin_id = acc_prod.metafields.wetu.pin_id.value | append: '' %}
+    {% if prod_pin_id == content_id %}
+      {% assign property = acc_prod %}
+      {% break %}
+    {% endif %}
+  {% endfor %}
+  
+  {% assign accommodation_name = leg.accommodation_name.value | default: property.title | default: "Destination" %}
+  {% assign position = property.metafields.wetu.position.value %}
+  {% assign destination = position.destination | default: position.area | default: position.country %}
+  
+  {% comment %} Calculate day range {% endcomment %}
+  {% assign day_start = current_day %}
+  {% assign day_end = current_day | plus: leg_nights | minus: 1 %}
+  
+  {% comment %} Get property image {% endcomment %}
+  {% assign card_image = "" %}
+  {% if property.featured_image != blank %}
+    {% assign card_image = property.featured_image | image_url: width: 600, height: 400, crop: 'center' %}
+  {% endif %}
+  
+  {% comment %} Calculate date info {% endcomment %}
+  {% assign day_offset_seconds = day_start | minus: 1 | times: 86400 %}
+  {% if trip_start_date != blank %}
+    {% assign day_timestamp = trip_start_date | date: "%s" | plus: day_offset_seconds %}
+    {% assign day_weekday_num = day_timestamp | date: "%w" | plus: 0 %}
+    {% assign day_weekday = weekday_names[day_weekday_num] %}
+    {% assign day_month_num = day_timestamp | date: "%-m" | minus: 1 %}
+    {% assign day_month = month_names[day_month_num] %}
+    {% assign day_date_num = day_timestamp | date: "%-d" %}
+  {% else %}
+    {% assign day_weekday = "" %}
+    {% assign day_month = "" %}
+    {% assign day_date_num = "" %}
+  {% endif %}
+  
+  <div class="itinerary-card" 
+       data-card-index="{{ card_index }}" 
+       data-content-id="{{ content_id }}"
+       data-lat="{{ position.latitude }}"
+       data-lng="{{ position.longitude }}"
+       tabindex="0">
+    {% if card_image != "" %}
+      <div class="itinerary-card__image">
+        <img src="{{ card_image }}" alt="{{ accommodation_name | escape }}" loading="lazy">
+        <div class="itinerary-card__overlay"></div>
+      </div>
+    {% else %}
+      <div class="itinerary-card__image itinerary-card__image--placeholder">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+        </svg>
+        <div class="itinerary-card__overlay"></div>
+      </div>
+    {% endif %}
+    
+    <div class="itinerary-card__content">
+      <div class="itinerary-card__number">{{ card_index | plus: 1 }}</div>
+      
+      <div class="itinerary-card__details">
+        <div class="itinerary-card__days">
+          {% if day_start == day_end %}
+            Day {{ day_start }}
+          {% else %}
+            Days {{ day_start }} - {{ day_end }}
+          {% endif %}
+          {% if trip_start_date != blank %}
+            <span class="itinerary-card__date">· {{ day_weekday | slice: 0, 3 }} {{ day_date_num }} {{ day_month | slice: 0, 3 }}</span>
+          {% endif %}
+        </div>
+        
+        <h3 class="itinerary-card__name">{{ accommodation_name }}</h3>
+        
+        {% if destination != blank %}
+          <div class="itinerary-card__location">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+            {{ destination }}
+          </div>
+        {% endif %}
+        
+        <div class="itinerary-card__meta">
+          <span class="itinerary-card__nights">
+            {{ leg_nights }} Night{% if leg_nights != 1 %}s{% endif %}
+          </span>
+        </div>
+      </div>
+      
+      {% if property.url != blank %}
+        <a href="{{ property.url }}" class="itinerary-card__link" target="_blank" rel="noopener">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+            <polyline points="15 3 21 3 21 9"/>
+            <line x1="10" y1="14" x2="21" y2="3"/>
+          </svg>
+        </a>
+      {% endif %}
+    </div>
+  </div>
+  
+  {% assign current_day = current_day | plus: leg_nights %}
+  {% assign card_index = card_index | plus: 1 %}
+{% endfor %}
+{% endcapture %}
+
+<div 
+  id="itinerary-map-v2"
+  class="itinerary-map-v2"
+  data-map-style-light="{{ section.settings.map_style_light }}"
+  data-map-style-dark="{{ section.settings.map_style_dark }}"
+  data-mapbox-token="{% if settings.mapbox_access_token != blank %}{{ settings.mapbox_access_token }}{% else %}{{ MAPBOX_ACCESS_TOKEN }}{% endif %}"
+>
+  {% comment %} ================================================================
+    FULLSCREEN MAP CANVAS
+  ================================================================ {% endcomment %}
+  <div 
+    id="itinerary-map-canvas"
+    class="itinerary-map-v2__canvas"
+    data-markers='{{ markers_data }}'
+    data-routes='{{ routes_data }}'
+    aria-label="Interactive itinerary journey map"
+    role="application"
+  >
+    <div class="itinerary-map-v2__loading">
+      <div class="loading-spinner"></div>
+      <span>Loading your journey...</span>
+    </div>
+  </div>
+
+  {% comment %} ================================================================
+    OVERLAY HEADER - Logo + Shopify Controls
+  ================================================================ {% endcomment %}
+  <header class="itinerary-map-v2__header">
+    <div class="itinerary-map-v2__header-left">
+      <a href="{{ routes.root_url }}" class="itinerary-map-v2__logo">
+        {% if inverse_logo != blank %}
+          <div class="itinerary-map-v2__logo-wrapper">
+            {{ inverse_logo | image_url: width: 200 | image_tag: 
+              loading: 'eager', 
+              fetchpriority: 'high',
+              width: 150,
+              height: 40,
+              alt: shop.name,
+              class: 'itinerary-map-v2__logo-img'
+            }}
+          </div>
+        {% elsif shop_logo != blank %}
+          <div class="itinerary-map-v2__logo-wrapper">
+            {{ shop_logo | image_url: width: 200 | image_tag: 
+              loading: 'eager', 
+              fetchpriority: 'high',
+              width: 150,
+              height: 40,
+              alt: shop.name,
+              class: 'itinerary-map-v2__logo-img'
+            }}
+          </div>
+        {% else %}
+          <span class="itinerary-map-v2__logo-text">{{ shop.name }}</span>
+        {% endif %}
+      </a>
+    </div>
+    
+    <div class="itinerary-map-v2__header-right">
+      {% comment %} Language Selector {% endcomment %}
+      {% if localization.available_languages.size > 1 or localization.available_countries.size > 1 %}
+        <div class="itinerary-map-v2__localization">
+          {% render 'dropdown-localization', 
+            show_country: section.settings.show_country, 
+            show_language: section.settings.show_language, 
+            country_style: true 
+          %}
+        </div>
+      {% endif %}
+      
+      {% comment %} Account Icon {% endcomment %}
+      {% if shop.customer_accounts_enabled %}
+        <a href="{{ routes.account_url }}" class="itinerary-map-v2__control-btn" aria-label="{{ 'accessibility.account' | t }}">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+        </a>
+      {% endif %}
+      
+      {% comment %} Cart Icon {% endcomment %}
+      <a href="{{ routes.cart_url }}" class="itinerary-map-v2__control-btn itinerary-map-v2__cart" aria-label="{{ 'accessibility.cart' | t }}">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="9" cy="21" r="1"/>
+          <circle cx="20" cy="21" r="1"/>
+          <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+        </svg>
+        {% if cart.item_count > 0 %}
+          <span class="itinerary-map-v2__cart-count">{{ cart.item_count }}</span>
+        {% endif %}
+      </a>
+    </div>
+  </header>
+
+  {% comment %} ================================================================
+    FLOATING TIMELINE PANEL
+  ================================================================ {% endcomment %}
+  <aside class="itinerary-map-v2__timeline" data-timeline>
+    <div class="itinerary-map-v2__timeline-header">
+      <div class="itinerary-map-v2__journey-info">
+        <h1 class="itinerary-map-v2__title">{{ journey_title }}</h1>
+        <div class="itinerary-map-v2__meta">
+          {% if client_name != blank %}
+            <span class="itinerary-map-v2__client">{{ client_name }}</span>
+            <span class="itinerary-map-v2__divider">•</span>
+          {% endif %}
+          <span class="itinerary-map-v2__duration">{{ total_days }} Days</span>
+        </div>
+        
+        {% comment %} Price and Book Now Button {% endcomment %}
+        {% assign selected_variant = product.selected_or_first_available_variant %}
+        {% if selected_variant.price > 0 %}
+          <div class="itinerary-map-v2__price-booking">
+            <div class="itinerary-map-v2__price">
+              {% comment %} 
+                Round price to nearest full currency unit (no cents)
+                Price is in cents, so we divide by 100, round, then multiply back to cents
+                to pass to the money filter which expects cents
+              {% endcomment %}
+              {% assign price_in_cents = selected_variant.price %}
+              {% assign price_in_dollars = price_in_cents | divided_by: 100.0 %}
+              {% assign price_rounded_dollars = price_in_dollars | round %}
+              {% assign price_rounded_cents = price_rounded_dollars | times: 100 %}
+              {{ price_rounded_cents | money_without_trailing_zeros }}
+            </div>
+            <a href="/cart/{{ selected_variant.id }}:1" class="itinerary-map-v2__book-btn">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 12l2 2 4-4"/>
+                <circle cx="12" cy="12" r="10"/>
+              </svg>
+              Book Now
+            </a>
+          </div>
+        {% endif %}
+      </div>
+      
+      <button type="button" class="itinerary-map-v2__timeline-toggle" data-timeline-toggle aria-label="Toggle timeline">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M15 18l-6-6 6-6"/>
+        </svg>
+      </button>
+    </div>
+    
+    <div class="itinerary-map-v2__timeline-scroll" data-timeline-scroll>
+      <div class="itinerary-map-v2__cards">
+        {{ property_cards_html }}
+      </div>
+    </div>
+  </aside>
+
+  {% comment %} ================================================================
+    MAP CONTROLS
+  ================================================================ {% endcomment %}
+  <div class="itinerary-map-v2__controls">
+    <button type="button" class="itinerary-map-v2__control" data-map-fit title="Fit all locations">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+      </svg>
+    </button>
+    <button type="button" class="itinerary-map-v2__control" data-map-zoom-in title="Zoom in">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/>
+        <path d="M21 21l-4.35-4.35M11 8v6M8 11h6"/>
+      </svg>
+    </button>
+    <button type="button" class="itinerary-map-v2__control" data-map-zoom-out title="Zoom out">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/>
+        <path d="M21 21l-4.35-4.35M8 11h6"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+{% comment %} 
+  ================================================================
+  CRITICAL CSS - Inlined to prevent layout shift
+  These styles establish the fullscreen layout IMMEDIATELY before
+  any external CSS loads, preventing flash of unstyled content.
+  ================================================================
+{% endcomment %}
+<style>
+  /* Critical layout styles - must load immediately */
+  .itinerary-map-v2 {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    z-index: 999;
+    background: #1a1a2e;
+  }
+  
+  .itinerary-map-v2__canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  }
+  
+  .itinerary-map-v2__loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    color: #ffffff;
+    font-size: 1rem;
+    z-index: 5;
+    transition: opacity 0.4s ease, visibility 0.4s ease;
+  }
+  
+  .itinerary-map-v2__loading.is-hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+  
+  .loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(255, 255, 255, 0.2);
+    border-top-color: #10b981;
+    border-radius: 50%;
+    animation: map-spin 1s linear infinite;
+  }
+  
+  @keyframes map-spin {
+    to { transform: rotate(360deg); }
+  }
+  
+  .itinerary-map-v2__header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 72px;
+    padding: 0 24px;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.5) 0%, transparent 100%);
+    z-index: 100;
+    pointer-events: none;
+  }
+  
+  .itinerary-map-v2__header > * {
+    pointer-events: auto;
+  }
+  
+  .itinerary-map-v2__timeline {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 40%;
+    max-width: 480px;
+    min-width: 320px;
+    display: flex;
+    flex-direction: column;
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    z-index: 50;
+    transition: transform 0.4s ease;
+  }
+  
+  .itinerary-map-v2__controls {
+    position: absolute;
+    bottom: 32px;
+    right: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 50;
+  }
+  
+  /* Mobile responsive critical styles */
+  @media screen and (max-width: 768px) {
+    .itinerary-map-v2__header {
+      height: 64px;
+      padding: 0 16px;
+    }
+    
+    .itinerary-map-v2__timeline {
+      width: 65%;
+      max-width: 280px;
+      min-width: 260px;
+    }
+    
+    .itinerary-map-v2__controls {
+      bottom: 24px;
+      right: 16px;
+    }
+  }
+  
+  @media screen and (max-width: 480px) {
+    .itinerary-map-v2__timeline {
+      max-width: 260px;
+      min-width: 220px;
+    }
+  }
+  
+  /* Hide Shopify header/footer immediately to prevent layout shift */
+  body:has(.itinerary-map-v2) #header-component,
+  body:has(.itinerary-map-v2) header-component,
+  body:has(.itinerary-map-v2) .header,
+  body:has(.itinerary-map-v2) .announcement-bar,
+  body:has(.itinerary-map-v2) #MainContent > :not(.section-wetu-itinerary-map-v2),
+  body:has(.itinerary-map-v2) footer,
+  body:has(.itinerary-map-v2) .footer {
+    display: none !important;
+  }
+  
+  body:has(.itinerary-map-v2) {
+    overflow: hidden !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  
+  body:has(.itinerary-map-v2) main,
+  body:has(.itinerary-map-v2) #MainContent {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+  }
+</style>
+
+{% comment %} Preload Mapbox CSS for faster loading {% endcomment %}
+<link rel="preload" href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css"></noscript>
+
+{% comment %} Load custom CSS {% endcomment %}
+{{ 'wetu-itinerary-map-v2.css' | asset_url | stylesheet_tag }}
+
+{% comment %} Preload Mapbox GL JS for faster loading {% endcomment %}
+<link rel="preload" href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js" as="script">
+
+{% comment %} Load Mapbox GL JS and our custom script {% endcomment %}
+<script src='https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js'></script>
+<script src="{{ 'wetu-itinerary-map-v2.js' | asset_url }}" defer></script>
+
+{% schema %}
+{
+  "name": "Itinerary Map V2",
+  "tag": "section",
+  "class": "section-wetu-itinerary-map-v2",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Map Settings"
+    },
+    {
+      "type": "select",
+      "id": "map_style_light",
+      "label": "Map style",
+      "options": [
+        { "value": "outdoors-v12", "label": "Outdoors" },
+        { "value": "streets-v12", "label": "Streets" },
+        { "value": "light-v11", "label": "Light" },
+        { "value": "satellite-v9", "label": "Satellite" },
+        { "value": "satellite-streets-v12", "label": "Satellite with Streets" }
+      ],
+      "default": "outdoors-v12"
+    },
+    {
+      "type": "select",
+      "id": "map_style_dark",
+      "label": "Map style (dark)",
+      "options": [
+        { "value": "dark-v11", "label": "Dark" },
+        { "value": "navigation-night-v1", "label": "Navigation Night" },
+        { "value": "satellite-v9", "label": "Satellite" }
+      ],
+      "default": "dark-v11"
+    },
+    {
+      "type": "header",
+      "content": "Header Settings"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_language",
+      "label": "Show language selector",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_country",
+      "label": "Show country selector",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "Route Colors"
+    },
+    {
+      "type": "color",
+      "id": "route_color_driving",
+      "label": "Driving route color",
+      "default": "#10b981"
+    },
+    {
+      "type": "color",
+      "id": "route_color_flight",
+      "label": "Flight route color",
+      "default": "#8b5cf6"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Itinerary Map V2"
+    }
+  ]
+}
+{% endschema %}
+

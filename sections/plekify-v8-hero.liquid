@@ -1,0 +1,400 @@
+{% style %}
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Inter:wght@300;400;500&family=IBM+Plex+Mono:wght@300;400&display=swap');
+  body { background-color: #fff !important; }
+{% endstyle %}
+
+<div class="plekify-v8-fw">
+  <section class="v8-hero" id="hero">
+    <div class="v8-contain">
+
+      {%- if section.settings.eyebrow != blank -%}
+        <span class="v8-hero__eyebrow">{{ section.settings.eyebrow }}</span>
+      {%- endif -%}
+
+      <h1 class="v8-hero__heading">
+        {{- section.settings.headline -}}
+        {%- if section.settings.headline_italic != blank -%}
+          <br><em>{{ section.settings.headline_italic }}</em>
+        {%- endif -%}
+      </h1>
+
+      {%- if section.settings.subheadline != blank -%}
+        <p class="v8-hero__lead">{{ section.settings.subheadline }}</p>
+      {%- endif -%}
+
+      {%- if section.settings.subheadline_secondary != blank -%}
+        <p class="v8-hero__lead v8-hero__lead--secondary">{{ section.settings.subheadline_secondary }}</p>
+      {%- endif -%}
+
+      <!-- TWO CAPABILITY COLUMNS -->
+      <div class="v8-hero__capabilities">
+        {%- if section.settings.cap_left_heading != blank -%}
+          <div class="v8-hero__cap">
+            <h3 class="v8-hero__cap-heading">{{ section.settings.cap_left_heading }}</h3>
+            <p class="v8-hero__cap-text">{{ section.settings.cap_left_text }}</p>
+          </div>
+        {%- endif -%}
+        {%- if section.settings.cap_right_heading != blank -%}
+          <div class="v8-hero__cap">
+            <h3 class="v8-hero__cap-heading">{{ section.settings.cap_right_heading }}</h3>
+            <p class="v8-hero__cap-text">{{ section.settings.cap_right_text }}</p>
+          </div>
+        {%- endif -%}
+      </div>
+
+      <!-- VIDEO CTA CARD -->
+      {%- if section.settings.show_video_cta -%}
+        <div class="v8-hero__video-card" id="v8-video-card">
+          <button class="v8-hero__video-trigger" id="v8-video-trigger" aria-label="Play video walkthrough">
+            <span class="v8-hero__video-play">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <polygon points="6,3 20,12 6,21" fill="#555"/>
+              </svg>
+            </span>
+            <span class="v8-hero__video-copy">
+              <span class="v8-hero__video-primary">{{ section.settings.video_cta_text | default: 'Watch the 60-second walkthrough' }}</span>
+              {%- if section.settings.video_cta_sub != blank -%}
+                <span class="v8-hero__video-secondary">{{ section.settings.video_cta_sub }}</span>
+              {%- endif -%}
+            </span>
+          </button>
+          <div class="v8-hero__video-player" id="v8-video-player">
+            {%- if section.settings.video_url != blank -%}
+              <video
+                id="v8-video-el"
+                playsinline
+                controls
+                preload="metadata"
+                style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;background:#000;"
+              >
+                <source src="{{ section.settings.video_url }}" type="video/mp4">
+              </video>
+            {%- endif -%}
+          </div>
+        </div>
+      {%- endif -%}
+
+    </div>
+  </section>
+</div>
+
+<script>
+  (function() {
+    var trigger = document.getElementById('v8-video-trigger');
+    var card = document.getElementById('v8-video-card');
+    if (!trigger || !card) return;
+    trigger.addEventListener('click', function() {
+      card.classList.add('v8-hero__video-card--active');
+      var video = document.getElementById('v8-video-el');
+      if (video) {
+        video.play().catch(function() {});
+      }
+    });
+  })();
+</script>
+
+{% stylesheet %}
+
+/* ═══════════════════════════════════════════════════════════
+   V8 HERO — Full-width responsive layout
+   ═══════════════════════════════════════════════════════════ */
+
+.plekify-v8-fw {
+  font-family: 'Inter', sans-serif;
+  font-weight: 300;
+  color: #1a1a1a;
+  background: #fff;
+}
+
+/* ── CONTAINMENT ───────────────────────────────────────── */
+
+.plekify-v8-fw .v8-contain {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+/* ── HERO ───────────────────────────────────────────────── */
+
+.v8-hero {
+  padding: 2.5rem 0 3rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.v8-hero__eyebrow {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: #777;
+  font-weight: 400;
+}
+
+.v8-hero__heading {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 300;
+  font-size: clamp(38px, 5vw, 58px);
+  line-height: 1.08;
+  letter-spacing: -.01em;
+  color: #111;
+  margin: .75rem 0 1rem;
+}
+
+.v8-hero__heading em {
+  font-style: italic;
+  color: #444;
+}
+
+.v8-hero__lead {
+  font-size: 15px;
+  line-height: 1.75;
+  color: #333;
+  font-weight: 300;
+  max-width: 700px;
+  text-wrap: balance;
+}
+
+.v8-hero__lead--secondary {
+  margin-top: .65rem;
+  color: #444;
+  font-size: 14px;
+}
+
+/* ── CAPABILITY COLUMNS ────────────────────────────────── */
+
+.v8-hero__capabilities {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2.5rem;
+  margin-top: 1.75rem;
+}
+
+.v8-hero__cap-heading {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 1.2;
+  color: #111;
+  margin: 0 0 .5rem;
+  letter-spacing: .01em;
+}
+
+.v8-hero__cap-text {
+  font-size: 14px;
+  line-height: 1.7;
+  color: #444;
+  font-weight: 300;
+  margin: 0;
+}
+
+/* ── VIDEO CTA CARD ────────────────────────────────────── */
+
+.v8-hero__video-card {
+  max-width: 720px;
+  margin: 1.75rem auto 0;
+}
+
+.v8-hero__video-trigger {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  padding: 1rem 1.5rem;
+  border: 1px solid #ddd;
+  border-radius: 2px;
+  background: #fafafa;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+  text-align: left;
+  font-family: inherit;
+}
+
+.v8-hero__video-trigger:hover {
+  border-color: #999;
+  background: #f5f5f5;
+}
+
+.v8-hero__video-play {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #ccc;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: #fff;
+  transition: border-color .2s;
+}
+
+.v8-hero__video-trigger:hover .v8-hero__video-play {
+  border-color: #999;
+}
+
+.v8-hero__video-copy {
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+}
+
+.v8-hero__video-primary {
+  font-size: 14px;
+  font-weight: 400;
+  color: #222;
+  letter-spacing: .01em;
+}
+
+.v8-hero__video-secondary {
+  font-size: 12px;
+  font-weight: 300;
+  color: #777;
+  letter-spacing: .01em;
+}
+
+/* Player area — hidden until active */
+
+.v8-hero__video-player {
+  position: relative;
+  width: 100%;
+  padding-top: 0;
+  height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: height .4s ease, padding-top .4s ease, opacity .3s ease;
+}
+
+.v8-hero__video-card--active .v8-hero__video-trigger {
+  display: none;
+}
+
+.v8-hero__video-card--active .v8-hero__video-player {
+  padding-top: 56.25%; /* 16:9 */
+  height: auto;
+  opacity: 1;
+}
+
+/* ── RESPONSIVE ─────────────────────────────────────────── */
+
+@media (max-width: 720px) {
+  .plekify-v8-fw .v8-contain {
+    padding: 0 1.25rem;
+  }
+  .v8-hero {
+    padding: 2rem 0;
+  }
+  .v8-hero__capabilities {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  .v8-hero__video-card {
+    max-width: 100%;
+  }
+}
+
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Plekify V8 Hero",
+  "tag": "section",
+  "class": "plekify-v8-hero-section",
+  "limit": 1,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Hero content"
+    },
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Eyebrow",
+      "default": "For inbound DMCs and tour operators · Built on Shopify"
+    },
+    {
+      "type": "text",
+      "id": "headline",
+      "label": "Headline",
+      "default": "Design. Present. Transact."
+    },
+    {
+      "type": "text",
+      "id": "headline_italic",
+      "label": "Headline italic line",
+      "default": "On your own domain."
+    },
+    {
+      "type": "textarea",
+      "id": "subheadline",
+      "label": "Subheadline",
+      "default": "You spend months building the relationship, designing the itinerary, earning the client's trust. Then you send them to someone else's website to pay."
+    },
+    {
+      "type": "textarea",
+      "id": "subheadline_secondary",
+      "label": "Subheadline secondary line",
+      "default": "Plekify closes that gap. Your Wetu itineraries become bookable Shopify products. Your PMS availability becomes a live checkout. Both on your domain, under your brand, built for operators already running Wetu and Tourplan."
+    },
+    {
+      "type": "header",
+      "content": "Capability columns"
+    },
+    {
+      "type": "text",
+      "id": "cap_left_heading",
+      "label": "Left column heading",
+      "default": "Itinerary commerce"
+    },
+    {
+      "type": "textarea",
+      "id": "cap_left_text",
+      "label": "Left column text",
+      "default": "Design, enhance, or publish your Wetu itineraries as bookable Shopify products — with checkout, deposit scheduling, and B2B agent pricing on your domain."
+    },
+    {
+      "type": "text",
+      "id": "cap_right_heading",
+      "label": "Right column heading",
+      "default": "Accommodation booking"
+    },
+    {
+      "type": "textarea",
+      "id": "cap_right_text",
+      "label": "Right column text",
+      "default": "Live PMS rates and availability on your own site. The guest selects, pays, and the reservation lands in your PMS — without ever leaving your domain."
+    },
+    {
+      "type": "header",
+      "content": "Video CTA"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_video_cta",
+      "label": "Show video CTA",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "video_cta_text",
+      "label": "Video CTA primary text",
+      "default": "Watch the 60-second walkthrough"
+    },
+    {
+      "type": "text",
+      "id": "video_cta_sub",
+      "label": "Video CTA secondary text",
+      "default": "How the pipeline works — from brief to bookable product"
+    },
+    {
+      "type": "text",
+      "id": "video_url",
+      "label": "Video URL (Shopify CDN file URL, e.g. files/walkthrough.mp4)"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Plekify V8 Hero",
+      "category": "Plekify"
+    }
+  ]
+}
+{% endschema %}

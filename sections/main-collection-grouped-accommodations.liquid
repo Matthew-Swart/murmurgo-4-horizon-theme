@@ -1,0 +1,237 @@
+{%- liquid
+  # This section displays accommodation collections for ALL properties in the store
+  # It searches for wetu-property products and displays their accommodation collections
+  
+  assign max_items = section.settings.max_products
+  assign property_count = 0
+-%}
+
+{%- # Search for all property products in the store -%}
+{%- paginate collections['all-properties'].products by 50 -%}
+  {%- for property_product in collections['all-properties'].products -%}
+    {%- if property_product.type == 'wetu-property' -%}
+      {%- assign accommodations_collection = property_product.metafields.wetu.accommodation_collection.value -%}
+      
+      {%- if accommodations_collection and accommodations_collection.products_count > 0 -%}
+        {%- assign property_count = property_count | plus: 1 -%}
+
+<div class="section-background color-{{ section.settings.color_scheme }}"></div>
+<div
+  class="
+    section
+    section--{{ section.settings.section_width }}
+    color-{{ section.settings.color_scheme }}
+    section-resource-list
+    spacing-style
+    gap-style
+  "
+  style="
+    {% render 'spacing-style', settings: section.settings %}
+    {% render 'gap-style', value: section.settings.gap %}
+  "
+>
+  <div class="section-resource-list__header">
+    {%- content_for 'block', type: '_product-list-content', id: 'static-header', closest.collection: accommodations_collection -%}
+  </div>
+
+  {% # theme-check-disable ContentForInCapture %}
+  {% capture list_items %}
+    {% for product in accommodations_collection.products limit: max_items %}
+      <div class="resource-list__item">
+        {% # theme-check-disable UniqueStaticBlockId %}
+          {% content_for 'block', type: '_product-card', id: 'static-product-card', closest.product: product %}
+        {% # theme-check-enable UniqueStaticBlockId %}
+      </div>
+
+      {% unless forloop.last %}
+        <!--@list/split-->
+      {% endunless %}
+    {% endfor %}
+  {% endcapture %}
+  {% # theme-check-enable ContentForInCapture %}
+
+  {% liquid
+    # Create an array from the list items
+    assign list_items_array = list_items | strip | split: '<!--@list/split-->'
+  %}
+
+  {% render 'resource-list',
+    list_items: list_items,
+    list_items_array: list_items_array,
+    settings: section.settings,
+    slide_count: max_items,
+    content_type: 'products'
+  %}
+</div>
+
+      {%- endif -%}
+    {%- endif -%}
+  {%- endfor -%}
+{%- endpaginate -%}
+
+{%- # Show message if no properties found -%}
+{%- if property_count == 0 -%}
+  <div class="section section--page-width" style="padding: 48px 20px; text-align: center;">
+    <p>No accommodation collections found. Please ensure property products have the wetu.accommodation_collection metafield set.</p>
+  </div>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Grouped Accommodations",
+  "class": "section-grouped-accommodations",
+  "blocks": [
+    {
+      "type": "@theme"
+    },
+    {
+      "type": "@app"
+    }
+  ],
+  "settings": [
+    {
+      "type": "select",
+      "id": "layout_type",
+      "label": "Layout type",
+      "options": [
+        {
+          "value": "grid",
+          "label": "Grid"
+        }
+      ],
+      "default": "grid"
+    },
+    {
+      "type": "range",
+      "id": "max_products",
+      "label": "Maximum products per property",
+      "min": 1,
+      "max": 50,
+      "step": 1,
+      "default": 50
+    },
+    {
+      "type": "range",
+      "id": "columns",
+      "label": "Desktop columns",
+      "min": 1,
+      "max": 8,
+      "step": 1,
+      "default": 2
+    },
+    {
+      "type": "select",
+      "id": "mobile_columns",
+      "label": "Mobile columns",
+      "options": [
+        {
+          "value": "1",
+          "label": "1"
+        },
+        {
+          "value": "2",
+          "label": "2"
+        }
+      ],
+      "default": "2"
+    },
+    {
+      "type": "range",
+      "id": "columns_gap",
+      "label": "Horizontal gap",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 4
+    },
+    {
+      "type": "range",
+      "id": "rows_gap",
+      "label": "Vertical gap",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 4
+    },
+    {
+      "type": "select",
+      "id": "section_width",
+      "label": "Section width",
+      "options": [
+        {
+          "value": "full-width",
+          "label": "Full width"
+        },
+        {
+          "value": "page-width",
+          "label": "Page width"
+        }
+      ],
+      "default": "full-width"
+    },
+    {
+      "type": "select",
+      "id": "horizontal_alignment",
+      "label": "Horizontal alignment",
+      "options": [
+        {
+          "value": "flex-start",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "flex-end",
+          "label": "Right"
+        }
+      ],
+      "default": "flex-start"
+    },
+    {
+      "type": "range",
+      "id": "gap",
+      "label": "Section gap",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 4
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "label": "Padding top",
+      "min": 0,
+      "max": 200,
+      "step": 4,
+      "unit": "px",
+      "default": 4
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "label": "Padding bottom",
+      "min": 0,
+      "max": 200,
+      "step": 4,
+      "unit": "px",
+      "default": 0
+    }
+  ],
+  "presets": [
+    {
+      "name": "Grouped Accommodations"
+    }
+  ]
+}
+{% endschema %}

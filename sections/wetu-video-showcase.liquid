@@ -1,0 +1,80 @@
+{% comment %}
+  Wetu Video Showcase Section
+  Displays travel_video metaobjects from product.metafields.wetu.videos
+  Enhanced for Horizon theme compatibility and page templates
+{% endcomment %}
+
+{% comment %} Resolve product context for use on product or page {% endcomment %}
+{% assign subject_product = product %}
+{% if subject_product == blank and section.settings.property_product %}
+  {% assign subject_product = section.settings.property_product %}
+{% endif %}
+{% if subject_product == blank and page %}
+  {% assign subject_product = page.metafields.wetu_page.source_property.value %}
+{% endif %}
+
+{% comment %} Prefer metaobject references; fallback to JSON array {% endcomment %}
+{% assign videos = subject_product.metafields.wetu.videos.value %}
+{% if videos == blank %}
+  {% assign videos = subject_product.metafields.wetu_property.videos_json.value %}
+{% endif %}
+
+{% if videos and videos.size > 0 %}
+  <div class="wetu-video-showcase page-width">
+    {% if section.settings.section_title != blank %}
+      <h3 class="wetu-video-showcase__title">{{ section.settings.section_title }}</h3>
+    {% endif %}
+    {% for video in videos %}
+      <div class="wetu-video-item">
+        {% if video.embed_url %}
+          <div class="video-embed">
+            <iframe src="{{ video.embed_url }}" width="100%" height="480" allowfullscreen loading="lazy" title="{{ video.title | default: 'Video' }}"></iframe>
+          </div>
+        {% elsif video.url %}
+          <div class="video-embed">
+            <iframe src="{{ video.url }}" width="100%" height="480" allowfullscreen loading="lazy" title="{{ video.title | default: 'Video' }}"></iframe>
+          </div>
+        {% endif %}
+        <div class="video-meta">
+          <h3>{{ video.title | default: video.label }}</h3>
+          {% if video.description %}<p>{{ video.description }}</p>{% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<style>
+  .wetu-video-showcase { margin: 2rem auto; }
+  .wetu-video-showcase__title { font-size: 1.25rem; font-weight: 600; margin: 0 0 1.5rem 0; color: #1a1a1a; letter-spacing: -0.01em; }
+  .wetu-video-item { margin-bottom: 1.5rem; }
+  .video-embed { position: relative; width: 100%; }
+  .video-meta h3 { margin: 0.5rem 0 0.25rem 0; font-size: 1rem; }
+  .video-meta p { margin: 0; color: #555; font-size: 0.9375rem; }
+</style>
+
+{% schema %}
+{
+  "name": "Wetu Video Showcase",
+  "tag": "section",
+  "class": "section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "section_title",
+      "label": "Section Title",
+      "default": "Videos"
+    },
+    {
+      "type": "product",
+      "id": "property_product",
+      "label": "Property product (for pages)"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Wetu Video Showcase"
+    }
+  ]
+}
+{% endschema %}

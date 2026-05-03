@@ -1,0 +1,52 @@
+{% comment %}
+  place-summary-and-claim.liquid
+  Description + AI snippet + price band + claim state.
+{% endcomment %}
+{% include 'murmurgo-resolve-place' %}
+
+<section class="murmurgo-place-summary page-width" data-section-id="{{ section.id }}">
+  {% if m_place_ai_snippet %}
+    <div class="place-summary__ai-snippet">
+      <p>{{ m_place_ai_snippet }}</p>
+    </div>
+  {% endif %}
+
+  {% if m_place_description %}
+    <div class="place-summary__description rte">
+      {{ m_place_description }}
+    </div>
+  {% endif %}
+
+  <div class="place-summary__meta-row">
+    {% if m_place_price %}
+      <div class="place-summary__price">
+        <span class="label">Price range:</span>
+        <span class="value">{{ m_place_price }}</span>
+      </div>
+    {% endif %}
+    {% if m_place_check_in or m_place_check_out %}
+      <div class="place-summary__times">
+        {% if m_place_check_in %}<span>Check-in: {{ m_place_check_in }}</span>{% endif %}
+        {% if m_place_check_out %}<span>Check-out: {{ m_place_check_out }}</span>{% endif %}
+      </div>
+    {% endif %}
+    {% if m_place_claim %}
+      <div class="place-summary__claim claim-state--{{ m_place_claim }}">
+        Claim: {{ m_place_claim | capitalize }}
+      </div>
+    {% endif %}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Place Summary & Claim",
+  "class": "section-place-summary",
+  "settings": [],
+  "presets": [
+    {
+      "name": "Place Summary & Claim"
+    }
+  ]
+}
+{% endschema %}

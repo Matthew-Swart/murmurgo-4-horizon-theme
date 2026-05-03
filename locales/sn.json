@@ -1,0 +1,496 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin language editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "accessibility": {
+    "account": "Akaunti",
+    "cart": "Ngoro",
+    "cart_count": "Zvinhu zvose zviri mungoro",
+    "close_dialog": "Vhara bhokisi rehurukuro",
+    "country_region": "Nyika/Dunhu",
+    "country_results_count": "{{ count }} mhedzisiro",
+    "decrease_quantity": "Deredza huwandu",
+    "discount": "Isa kodhi yediscount",
+    "discount_menu": "Makodhi eDiscount",
+    "discount_applied": "Kodhi yediscount yaiswa: {{ code }}",
+    "filters": "Mafirita",
+    "filter_count": {
+      "one": "{{ count }} firita yaiswa",
+      "other": "{{ count }} mafirita aiswa"
+    },
+    "increase_quantity": "Wedzera huwandu",
+    "inventory_status": "Mamiriro ezvinhu zviri mudura",
+    "localization_region_and_language": "Musarudzo wedunhu nemutauro",
+    "menu": "Menyu",
+    "nested_product": "{{ product_title }} ye {{ parent_title }}",
+    "new_window": "Zarura muhwindo idzva.",
+    "quantity": "Uwandu",
+    "pause_video": "Misa vhidhiyo",
+    "play_model": "Ridza modhi ye3D",
+    "play_video": "Ridza vhidhiyo",
+    "loading_product_recommendations": "Kurodha zvigadzirwa zvinokurudzirwa",
+    "rating": "Chiyero chechigadzirwa ichi chiri {{ rating }} kubva pa5",
+    "remove_item": "Bvisa {{ title}}",
+    "reset_search": "Gadzirisa zvekutsvaga",
+    "scroll_to": "Skorora ku {{ title }}",
+    "search_results_count": "{{ count }} mhedzisiro dzekutsvaga dzawanikwa dze \"{{ query }}\"",
+    "search_results_no_results": "Hapana mhedzisiro dzawanikwa dze \"{{ query }}\"",
+    "skip_to_product_info": "Svetukira kuruzivo rwechigadzirwa",
+    "skip_to_results_list": "Svetukira kurondedzero yemhedzisiro",
+    "skip_to_text": "Svetukira kune zviri mukati",
+    "slide_status": "Siraidhi {{ index }} ye {{ length }}",
+    "slideshow_next": "Siraidhi inotevera",
+    "slideshow_pause": "Misa siraidhi show",
+    "slideshow_play": "Ridza siraidhi show",
+    "slideshow_previous": "Siraidhi yapfuura",
+    "unit_price": "Mutengo wechikamu",
+    "find_country": "Tsvaga nyika"
+  },
+  "actions": {
+    "add": "Wedzera",
+    "add_to_cart": "Wedzera kungoro",
+    "added": "Yawedzerwa",
+    "apply": "Isa",
+    "back": "Dzokera",
+    "choose": "Sarudza",
+    "clear": "Bvisa",
+    "clear_all": "Bvisa zvese",
+    "close": "Vhara",
+    "open": "Zarura",
+    "continue_shopping": "Enderera nekutenga",
+    "enter_password": "Pinda password",
+    "log_in_html": "Une account here? <a href=\"{{ link }}\">Pinda</a> kuti upedze kutenga nekukurumidza.",
+    "log_in": "Pinda",
+    "log_out": "Buda",
+    "open_image_in_full_screen": "Vhura mufananidzo mu full screen",
+    "remove": "Bvisa",
+    "remove_discount": "Bvisa discount {{ code }}",
+    "show_all_options": "Ratidza zvese zvingasarudzwa",
+    "see_items": {
+      "one": "Ona chinhu {{ count }}",
+      "other": "Ona zvinhu {{ count }}"
+    },
+    "show_filters": "Sefa",
+    "show_less": "Ratidza zvishoma",
+    "show_more": "Ratidza zvakawanda",
+    "sign_in_options": "Dzimwe nzira dzekupinda nadzo",
+    "view_in_your_space": "Ona munzvimbo yako",
+    "view_all": "Ona zvese",
+    "more": "Zvakawanda",
+    "zoom": "Zoom",
+    "close_dialog": "Vhara dialog",
+    "reset": "Reset",
+    "enter_using_password": "Pinda uchishandisa password",
+    "sign_up": "Nyoresa",
+    "submit": "Tumira",
+    "view_store_information": "Ona ruzivo rwezvitoro",
+    "sort": "Ronga"
+  },
+  "blocks": {
+    "contact_form": {
+      "name": "Zita",
+      "email": "Email",
+      "phone": "Nhare",
+      "comment": "Mhinduro",
+      "post_success": "Ndatenda nekutibata. Tichakubata nekukurumidza.",
+      "error_heading": "Ndokumbira ugadzirise zvinotevera:"
+    },
+    "email_signup": {
+      "label": "Email",
+      "placeholder": "Kero ye email",
+      "success": "Ndatenda nekunyoresa!"
+    },
+    "filter": "Sefa",
+    "load_video": "Rodha vhidhiyo: {{ description }}",
+    "sold_out": "Yapera",
+    "payment_methods": "Nzira dzekubhadhara nadzo"
+  },
+  "blogs": {
+    "article": {
+      "comments_heading": {
+        "one": "Mhinduro {{ count }}",
+        "other": "Mhinduro {{ count }}"
+      },
+      "comment_author_separator": "•"
+    },
+    "comment_form": {
+      "email": "Email",
+      "error": "Mhinduro haina kutumirwa, ndokumbira ugadzirise zvinotevera:",
+      "heading": "Siya mhinduro",
+      "message": "Meseji",
+      "moderated": "Ndokumbira uone kuti, mhinduro dzinofanira kubvumidzwa dzisati dzaburitswa.",
+      "name": "Zita",
+      "post": "Tumira mhinduro",
+      "success_moderated": "Mhinduro yatumirwa, ichamirira kubvumidzwa",
+      "success": "Mhinduro yatumirwa"
+    }
+  },
+  "content": {
+    "discount": "Kuderedzwa kwemutengo",
+    "account_title": "Akaunti",
+    "terms_and_policies": "Mitemo nemirau",
+    "account_title_personalized": "Mhoro {{ first_name }}",
+    "account_orders": "Maodha",
+    "account_profile": "Purofari",
+    "blog_details_separator": "|",
+    "cart_estimated_total": "Mari inofungidzirwa",
+    "cart_title": "Ngoro",
+    "cart_subtotal": "Mari isati yawedzerwa zvimwe",
+    "cart_total": "Mari yose yengoro",
+    "checkout": "Enda kubhadhara",
+    "collection_placeholder": "Musoro wekuunganidza",
+    "discount_code": "Kodhi yekuderedza mutengo",
+    "shipping_discount_error": "Kuderedzwa kwemutengo wekutumira kunoratidzwa pakubhadhara mushure mekuisa kero",
+    "discount_code_error": "Kodhi yekuderedza mutengo haigone kushandiswa kungoro yako",
+    "discounts": "Kuderedzwa kwemutengo",
+    "duties_and_taxes_included": "Mabasa nemitero zvinosanganisirwa.",
+    "duties_and_taxes_included_shipping_at_checkout_with_policy_html": "Mabasa nemitero zvinosanganisirwa. Kuderedzwa kwemutengo uye <a href=\"{{ link }}\">kutumira</a> zvinoverengerwa pakubhadhara.",
+    "duties_and_taxes_included_shipping_at_checkout_with_policy_without_discounts_html": "Mabasa nemitero zvinosanganisirwa. Kutumira kunoverengerwa pakubhadhara.",
+    "duties_and_taxes_included_shipping_at_checkout_without_policy": "Mabasa nemitero zvinosanganisirwa. Kuderedzwa kwemutengo nekutumira zvinoverengerwa pakubhadhara.",
+    "duties_and_taxes_included_shipping_at_checkout_without_policy_without_discounts": "Mabasa nemitero zvinosanganisirwa. Kutumira kunoverengerwa pakubhadhara.",
+    "duties_included": "Mabasa anosanganisirwa.",
+    "duties_included_taxes_at_checkout_shipping_at_checkout_with_policy_html": "Mabasa anosanganisirwa. Mitero, kuderedzwa kwemutengo uye <a href=\"{{ link }}\">kutumira</a> zvinoverengerwa pakubhadhara.",
+    "duties_included_taxes_at_checkout_shipping_at_checkout_with_policy_without_discounts_html": "Mabasa anosanganisirwa. Kutumira kunoverengerwa pakubhadhara.",
+    "duties_included_taxes_at_checkout_shipping_at_checkout_without_policy": "Mabasa anosanganisirwa. Mitero, kuderedzwa kwemutengo nekutumira zvinoverengerwa pakubhadhara.",
+    "duties_included_taxes_at_checkout_shipping_at_checkout_without_policy_without_discounts": "Mabasa anosanganisirwa. Kutumira kunoverengerwa pakubhadhara.",
+    "featured_products": "Zvigadzirwa zvakasarudzwa",
+    "filters": "Zvishandiso zvekusefa",
+    "grid_view": {
+      "default_view": "Zvenguva dzose",
+      "grid_fieldset": "Gridhi yemakoramu",
+      "single_item": "Chimwe chete",
+      "zoom_out": "Dzikisa ukuru"
+    },
+    "inventory_low_stock_show_count": {
+      "one": "{{ count }} chasara",
+      "other": "{{ count }} zvasara"
+    },
+    "inventory_low_stock": "Zvinhu zvishoma",
+    "inventory_in_stock": "Zviripo",
+    "inventory_out_of_stock": "Zvapera",
+    "item_count": {
+      "one": "{{ count }} chinhu",
+      "other": "{{ count }} zvinhu"
+    },
+    "language": "Mutauro",
+    "localization_region_and_language": "Dunhu nemutauro",
+    "no_products_found": "Hapana zvigadzirwa zvawanikwa.",
+    "no_results_found": "Hapana zvawanikwa",
+    "page_placeholder_title": "Musoro wepeji",
+    "page_placeholder_content": "Sarudza peji kuratidza zviri mukati maro.",
+    "pagination": {
+      "nav_label": "Kufamba kwemapeji",
+      "previous": "Zvapfuura",
+      "next": "Zvinotevera",
+      "page": "Peji {{ page }}"
+    },
+    "pickup_available_at_html": "Kutora kuripo pa <b>{{ location }}</b>",
+    "pickup_available_in": "Kutora kuripo, {{ pickup_time }}",
+    "pickup_not_available": "Kutora hakusati kuripo parizvino",
+    "pickup_ready_in": "{{ pickup_time }}",
+    "powered_by": "Chitoro ichi chichashandiswa ne",
+    "price": "Mutengo",
+    "price_compare_at": "Enzanisa nemutengo we",
+    "price_from": "Kubva pa {{ price }}",
+    "price_regular": "Mutengo wenguva dzose",
+    "price_sale": "Mutengo wekutengesa",
+    "price_filter_html": "Mutengo wepamusoro-soro i {{ price }}",
+    "product_image": "Mufananidzo wechigadzirwa",
+    "product_information": "Ruzivo rwechigadzirwa",
+    "product_total": "Mari yese yechigadzirwa",
+    "product_badge_sold_out": "Zvapedza",
+    "product_badge_sale": "Kutengesa",
+    "product_card_placeholder": "Zita rechigadzirwa",
+    "placeholder_image": "Mufananidzo wekutsiva",
+    "quantity": "Huwandu",
+    "recently_viewed_products": "Zvichangobva kuonekwa",
+    "reviews": "ongororo",
+    "read_more": "Verenga zvimwe...",
+    "search_input_label": "Tsvaga",
+    "search_input_placeholder": "Tsvaga",
+    "search": "Tsvaga",
+    "search_results": "Mhedzisiro yekutsvaga",
+    "search_results_label": "Mhedzisiro yekutsvaga",
+    "search_results_no_results": "Hapana mhedzisiro yawawanikwa ye \"{{ terms }}\". Edza kutsvaga kumwe.",
+    "search_results_no_results_check_spelling": "Hapana mhedzisiro yawawanikwa ye \"{{ terms }}\". Tarisa manyorero kana shandisa izwi kana mutsara wakasiyana.",
+    "search_results_resource_articles": "Zvinyorwa zvebhurogu",
+    "search_results_resource_collections": "Munganidzo",
+    "search_results_resource_pages": "Mapeji",
+    "search_results_resource_products": "Zvigadzirwa",
+    "search_results_resource_products_count": {
+      "one": "{{ count }} chigadzirwa",
+      "other": "{{ count }} zvigadzirwa"
+    },
+    "search_results_resource_queries": "Mazano ekutsvaga",
+    "search_results_view_all": "Ona zvese",
+    "search_results_view_all_button": "Ona zvese",
+    "seller_note": "Mirayiridzo yakakosha",
+    "shipping_policy": "Mari yekutumira inoverengerwa pakubhadhara.",
+    "shipping_policy_html": "<a href=\"{{ link }}\">Kutumira</a> inoverengerwa pakubhadhara.",
+    "store_owner_link_html": "Ndiwe muridzi wechitoro here? <a href=\"{{ link }}\">Pinda pano</a>",
+    "taxes_at_checkout_shipping_at_checkout_with_policy_html": "Mitero, zvidzikiso uye <a href=\"{{ link }}\">kutumira</a> zvinoverengerwa pakubhadhara.",
+    "taxes_at_checkout_shipping_at_checkout_with_policy_without_discounts_html": "Mitero uye <a href=\"{{ link }}\">kutumira</a> zvinoverengerwa pakubhadhara.",
+    "taxes_at_checkout_shipping_at_checkout_without_policy": "Mitero, zvidzikiso uye kutumira zvinoverengerwa pakubhadhara.",
+    "taxes_at_checkout_shipping_at_checkout_without_policy_without_discounts": "Mitero uye kutumira zvinoverengerwa pakubhadhara.",
+    "taxes_included": "Mitero inosanganisirwa.",
+    "taxes_included_shipping_at_checkout_with_policy_html": "Mitero inosanganisirwa. Zvidzikiso uye <a href=\"{{ link }}\">kutumira</a> zvinoverengerwa pakubhadhara.",
+    "taxes_included_shipping_at_checkout_with_policy_without_discounts_html": "Mitero inosanganisirwa. Kutumira kunoverengerwa pakubhadhara.",
+    "taxes_included_shipping_at_checkout_without_policy": "Mitero yaiswa. Zvidzikiso nemari yekutumira zvinoverengwa pakubhadhara.",
+    "taxes_included_shipping_at_checkout_without_policy_without_discounts": "Mitero yaiswa. Mari yekutumira inoverengwa pakubhadhara.",
+    "unavailable": "Haisipo",
+    "use_fewer_filters_html": "Edza kushandisa mafirita mashoma, kana <a class=\"{{ class }}\" href=\"{{ link }}\">bvisa mafirita ese</a>.",
+    "view_more_details": "Ona ruzivo rwakawanda",
+    "your_cart_is_empty": "Ngoro yako haina chinhu",
+    "product_count": "Nhamba yezvigadzirwa",
+    "errors": "Zvikanganiso",
+    "wrong_password": "Pasiwedhi isiriyo",
+    "recipient_form_send_to": "Tumira kuna",
+    "recipient_form_email_label": "Email yemugamuchiri",
+    "recipient_form_email_label_my_email": "Email yangu",
+    "recipient_form_email_address": "Kero yeemail yemugamuchiri",
+    "recipient_form_name_label": "Zita remugamuchiri (sarudzo)",
+    "recipient_form_message": "Meseji (sarudzo)",
+    "recipient_form_characters_used": "{{ used_chars }}/{{ max_chars }} mavara ashandiswa",
+    "recipient_form_send_on": "YYYY-MM-DD",
+    "recipient_form_send_on_label": "Tumira pazuva (sarudzo)",
+    "recipient_form_fields_visible": "Nzvimbo dzekuzadza dzemugamuchiri dzava kuoneka",
+    "recipient_form_fields_hidden": "Nzvimbo dzekuzadza dzemugamuchiri dzava kuvanzwa",
+    "recipient_form_error": "Pakave nekukanganisa pakutumira fomu",
+    "product_custom_property_character_count": "{{ used_chars }}/{{ max_chars }} mavara ashandiswa"
+  },
+  "fields": {
+    "separator": "kusvika"
+  },
+  "gift_cards": {
+    "issued": {
+      "how_to_use_gift_card": "Shandisa kodhi yegift card online kana QR kodhi muchitoro",
+      "title": "Heino mari yako ye{{ value }} yegift card ye{{ shop }}!",
+      "subtext": "Gift card yako",
+      "shop_link": "Shanyira chitoro chepa internet",
+      "add_to_apple_wallet": "Wedzera kuApple Wallet",
+      "qr_image_alt": "QR kodhi — skana kuti ushandise gift card",
+      "copy_code": "Kopa kodhi yegift card",
+      "expiration_date": "Inopera musi wa{{ expires_on }}",
+      "copy_code_success": "Kodhi yakakopwa zvakanaka",
+      "expired": "Yapera nguva"
+    }
+  },
+  "placeholders": {
+    "password": "Pasiwedhi",
+    "search": "Tsvaga",
+    "product_title": "Musoro wechigadzirwa",
+    "collection_title": "Musoro wekuunganidza",
+    "blog_posts": "Zvinyorwa zveBlog",
+    "blog_post_title": "Musoro",
+    "blog_post_author": "Munyori",
+    "blog_post_date": "Zuva",
+    "blog_post_description": "Chikamu chidiki chezviri mublog post yako"
+  },
+  "products": {
+    "product": {
+      "add_to_cart": "Wedzera kungoro",
+      "adding_to_cart": "Kuri kuwedzerwa...",
+      "added_to_cart": "Yawedzerwa kungoro",
+      "add_to_cart_error": "Kukanganisa pakuwedzera kungoro",
+      "quantity_error_max": "Chinhu ichi chine huwandu hwe{{ maximum }}",
+      "sold_out": "Chapera",
+      "unavailable": "Haisipo",
+      "quantity": "Huwandu",
+      "quantity_increments": "Zviwedzero zve {{ increment }}",
+      "quantity_minimum": "Chidiki che {{ minimum }}",
+      "quantity_maximum": "Chikuru che {{ maximum }}",
+      "in_cart": "mubhasikiti",
+      "from": "Kubva",
+      "per_person_sharing": "pamunhu mumwe chete anogovana",
+      "single": "imwe chete",
+      "per_room": "pakamuri",
+      "per_night": "paurosiku"
+    },
+    "general": {
+      "no_video": "Hapana vhidhiyo iripo yechigadzirwa ichi."
+    }
+  },
+  "general": {
+    "redirecting": "Kutungamirira kune nzvimbo..."
+  },
+  "collections": {
+    "no_products": "Hapana nzvimbo dziripo panguva ino."
+  },
+  "travel_search": {
+    "title": "Tsvaga Pekugara Kwako Kwakakwana",
+    "subtitle": "Tsvaga pekugara nenzvimbo, mazuva, uye vaenzi",
+    "placeholder": "Uri kuenda kupi?",
+    "dates_label": "Mazuva ekufamba",
+    "check_in": "Kupinda",
+    "check_out": "Kubuda",
+    "guests": "Vaenzi",
+    "search_button": "Tsvaga Nzvimbo",
+    "searching": "Kutsvaga...",
+    "no_results": "Hapana nzvimbo kana maguta akawanikwa",
+    "error": "Paita chikanganiso. Ndapota edza zvakare.",
+    "destinations": "Nzvimbo dzekuenda",
+    "properties": "Nzvimbo",
+    "select_checkin": "Sarudza zuva rako rekupinda",
+    "select_checkout": "Sarudza zuva rako rekubuda",
+    "hover_for_nights": "Fambisa mbeva pamusoro pemazuva kuti uone nhamba yeusiku",
+    "one_night": "Usiku humwe",
+    "nights_count": "Usiku hu {{ count }}",
+    "guest_options": {
+      "one_adult": "Munhu Mukuru 1, Kamuri 1",
+      "two_adults": "Vanhu Vakuru 2, Kamuri 1",
+      "three_adults": "Vanhu Vakuru 3, Kamuri 1",
+      "four_adults_one": "Vanhu Vakuru 4, Kamuri 1",
+      "four_adults_two": "Vanhu Vakuru 4, Makamuri 2",
+      "six_adults_two": "Vanhu Vakuru 6, Makamuri 2",
+      "six_adults_three": "Vanhu Vakuru 6, Makamuri 3"
+    }
+  },
+  "wetu": {
+    "property": {
+      "total_rooms": "Makamuri Ese",
+      "perfect_for": "Yakakwana Kune",
+      "key_details": "Ruzivo Rukuru",
+      "property_facilities": "Zvivakwa Zvenzvimbo",
+      "available_services": "Masevhisi Aripo",
+      "check_times": "Kupinda & Kubuda",
+      "check_in": "Nguva Yekupinda",
+      "check_out": "Nguva Yekubuda",
+      "languages_spoken": "Mitauro Inotaurwa",
+      "contact": "Bata",
+      "telephone": "Runhare",
+      "email": "Email"
+    },
+    "accommodation": {
+      "room": "Kamuri",
+      "occupancy": "Kugara",
+      "guests_count": "{{ count }} vaenzi",
+      "adults_children": "{{ adults }} vakuru, {{ children }} vana",
+      "bed_configuration": "Kurongeka Kwemibhedha",
+      "meal_plan": "Chirongwa Chekudya",
+      "key_details": "Ruzivo Rwekamuri",
+      "room_amenities": "Zvishandiso Zvekamuri",
+      "special_features": "Zvimiro Zvakakosha",
+      "room_features": "Zvimiro Zvekamuri",
+      "view": "Maonero",
+      "has_balcony": "Balcony Yakavanzika",
+      "has_jacuzzi": "Jacuzzi Yakavanzika",
+      "property": "Nzvimbo",
+      "view_property": "Tarisa ruzivo rwe {{ property }}"
+    },
+    "rates": {
+      "title": "Mitengo & Mari",
+      "from": "kubva",
+      "to": "kusvika",
+      "view_details": "Tarisa mitengo yakadzama uye kuwanikwa",
+      "view_full_details": "Tarisa Ruzivo Rwakazara",
+      "special_offers": "Zvipiriso Zvakakosha",
+      "valid_from": "Inoshanda kubva",
+      "valid_to": "Inoshanda kusvika",
+      "valid_dates": "Mazuva anoshanda",
+      "terms_conditions": "Mitemo & Mamiriro",
+      "per_person_sharing": "Pamunhu Anogovana",
+      "single_occupancy": "Kugara Wemunhu Mumwe",
+      "per_room": "Pakamuri",
+      "pricing": "Mari",
+      "seasonal_pricing": "Mitengo Yemwaka",
+      "room_rates": "Mitengo Yekamuri",
+      "included": "Zvinosanganisirwa",
+      "conditions": "Mamiriro",
+      "amenities": "Zvishandiso",
+      "rates": "mitengo",
+      "items": "zvinhu"
+    },
+    "pricing": {
+      "title": "Mitengo & zvipiriso zvakakosha",
+      "from": "Kubva",
+      "range_note": "Mitengo inotangira pa {{ min }} kusvika pa {{ max }} pamunhu pazuva, zvichienderana nerudzi rwekugara nemwaka.",
+      "special_offers": "Zvipiriso Zvakakosha",
+      "current_offers": "Zvipiriso zvakakosha zvazvino",
+      "all_accommodation_rates": "Sarudzo dzose dzekugara nemitengo yemwaka",
+      "accommodation_options": "Sarudzo dzekugara & mitengo yemwaka",
+      "valid_dates": "Inoshanda:",
+      "terms_conditions": "Mitemo & mamiriro",
+      "accommodation_rates": "Mitengo Yekugara",
+      "per_unit_night": "pachikamu pazuva",
+      "per_person_night": "pamunhu pazuva",
+      "per_person_sharing": "Pamunhu pazuva, kugovana",
+      "view_rates": "Tarisa mitengo yemwaka",
+      "notice_title": "Ruzivo rwakakosha rwemari",
+      "notice_text": "Mitengo yese inoenderana nekuwanikwa uye inogona kuchinja pasina chiziviso. Mari dzekuchengetedza dzimwe uye dzekufambisa dzinogona kushanda. Ndapota tibatei kuti muwane mutengo wakadzama wakagadzirirwa mazuva enyu ekufamba uye zvinodiwa.",
+      "seasonal_rates": "Mitengo yema mwaka",
+      "rates_intro": "Mitengo yese inoratidzwa zvichitevedzana nemwaka. Sarudza nguva kuti uone mitengo yakadzama nemamiriro.",
+      "rate_periods": "Nguva dzemitengo",
+      "rate_includes": "Mutengo unosanganisira",
+      "available_offers": "Zvipo zvakakosha zviripo",
+      "view_details": "Ona ruzivo"
+    },
+    "videos": {
+      "heading": "Mavhidhiyo ane hukama"
+    },
+    "documents": {
+      "heading": "Zvinyorwa & Zvishandiso",
+      "opens_new_window": "Inovhura PDF muhwindo idzva",
+      "other": "Zvimwe Zvinyorwa"
+    }
+  },
+  "sections": {
+    "collection": {
+      "empty": "Hapana zvigadzirwa zvawanikwa muunganidzwa uyu.",
+      "view_all": "Ona zvese"
+    },
+    "property_highlights": {
+      "name": "Zvinonyanya kukosha zvepfuma",
+      "collection_summary": "Unganidzwa wedu une pfuma shanu dzakasarudzwa zvakanaka, imwe neimwe yakaiswa zvine hungwaru kuti ipe mukana usina kukanganiswa kunzvimbo dzeKenya dzine mukurumbira dzemhuka dzesango uye ichipa huwandu hwakazara hwe68 dzimba dzekugara dzakashongedzwa zvakanaka.",
+      "masai_mara_detail": "Pfuma nhatu mukati meMasai Mara ecosystem, kusanganisira yedu huru Governors' Camp yakavambwa muna 1972",
+      "naivasha_detail": "Loldia House pamahombekombe eLake Naivasha, ichipa nzvimbo dzakasiyana-siyana nemabasa",
+      "laikipia_detail": "Governors' Mugie House muLaikipia Plateau, ichipa mukana wakasarudzika kunzvimbo dzemusango dzekuchamhembe kweKenya",
+      "experience_summary": "Kubva kuGreat Migration ine mukurumbira kusvika pakusangana kwepedyo nemhuka dzesango, kunyura mutsika, uye zvirongwa zvekuchengetedza, pfuma imwe neimwe inopa ruzivo rwechokwadi rwesafari rwakanatswa kwemakore makumi mashanu ekushanda.",
+      "settings": {
+        "heading": {
+          "label": "Musoro"
+        },
+        "description": {
+          "label": "Tsanangudzo"
+        },
+        "button_text": {
+          "label": "Rugwaro rwebhatani"
+        },
+        "button_url": {
+          "label": "URL yebhatani"
+        }
+      },
+      "presets": {
+        "property_highlights": {
+          "name": "Zvinonyanya kukosha zvepfuma"
+        }
+      }
+    },
+    "property_collection_highlights": {
+      "properties": "Pfuma",
+      "accommodations": "Dzimba dzekugara",
+      "activities": "Mabasa",
+      "dining": "Nzvimbo dzekudyira",
+      "wellness": "Hutano",
+      "room_types": "Marudzi emakamuri",
+      "dining_venues": "Kudya",
+      "spa": "Spa",
+      "geography_intro": "Yakaiswa munzvimbo dzakasiyana-siyana:",
+      "view_property": "Ona pfuma",
+      "view_all_properties": "Ona pfuma dzese",
+      "no_properties": "Hapana pfuma dziripo"
+    },
+    "group_highlights": {
+      "unique_properties": "Pfuma Dzakasarudzika",
+      "luxury_spaces": "Matende eumbozha, maSuites & maCottages",
+      "iconic_destinations": "Nzvimbo Dzine Mukurumbira",
+      "explore": "Ongorora",
+      "view_collection": "Ona unganidzwa"
+    }
+  }
+}

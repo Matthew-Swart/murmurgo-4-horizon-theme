@@ -1,0 +1,46 @@
+{
+  "sections": {
+    "place-hero": {
+      "type": "place-hero",
+      "settings": {}
+    },
+    "place-summary-and-claim": {
+      "type": "place-summary-and-claim",
+      "settings": {}
+    },
+    "place-gallery": {
+      "type": "place-gallery",
+      "settings": {}
+    },
+    "place-amenities": {
+      "type": "place-amenities",
+      "settings": {}
+    },
+    "place-contact": {
+      "type": "place-contact",
+      "settings": {}
+    },
+    "place-mini-map": {
+      "type": "place-mini-map",
+      "settings": {}
+    },
+    "claim-badge": {
+      "type": "claim-badge",
+      "settings": {}
+    },
+    "place-jsonld": {
+      "type": "place-jsonld",
+      "settings": {}
+    }
+  },
+  "order": [
+    "place-hero",
+    "place-summary-and-claim",
+    "place-gallery",
+    "place-amenities",
+    "place-contact",
+    "place-mini-map",
+    "claim-badge",
+    "place-jsonld"
+  ]
+}

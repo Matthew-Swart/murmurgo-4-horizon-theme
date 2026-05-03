@@ -1,0 +1,518 @@
+{% comment %}
+  SPA Product and Map Row Section
+  Displays SPA product and property map side-by-side in 16:9 format
+  - Left: SPA product with title overlay (bottom left, white text)
+  - Right: Property map with popup open, linking to full map page
+{% endcomment %}
+
+{% liquid
+  # Get the spa collection from settings or fall back to metafield
+  assign spa_collection = section.settings.collection
+  
+  if spa_collection == blank and product != blank
+    assign spa_collection = product.metafields.wetu.spa_collection.value
+  endif
+  
+  # Count products in the collection
+  assign spa_count = 0
+  if spa_collection != blank
+    assign spa_count = spa_collection.products_count
+  endif
+  
+  # Check if SPA has already been inserted into activities section
+  assign spa_already_shown = false
+  if product != blank and spa_count == 1
+    assign activities_collection = product.metafields.wetu.activities_collection_ref.value
+    if activities_collection != blank
+      assign activities_count = activities_collection.products_count
+      assign activities_mod = activities_count | modulo: 2
+      # If odd number of activities, the spa was inserted there
+      if activities_mod == 1
+        assign spa_already_shown = true
+      endif
+    endif
+  endif
+  
+  # Adjust spa_count if already shown to hide it from this section
+  if spa_already_shown
+    assign spa_count = 0
+  endif
+  
+  # Determine the link URL based on product count
+  assign spa_url = ''
+  if spa_count == 1
+    assign spa_url = spa_collection.products.first.url
+  elsif spa_count > 1
+    assign spa_url = spa_collection.url
+  endif
+  
+  # Get the first product for display
+  assign first_product = spa_collection.products.first
+  
+  # Get map data
+  assign location = product.metafields.travel.location.value
+  assign has_map_data = false
+  
+  if location and location.latitude and location.longitude
+    assign has_map_data = true
+    assign latitude = location.latitude.value | times: 1.0
+    assign longitude = location.longitude.value | times: 1.0
+    assign destination = location.destination.value | default: product.title
+    assign country = location.country.value | default: ''
+    
+    assign property_name = product.title
+    assign property_url = product.url
+    assign property_image = ''
+    
+    if product.featured_image
+      assign property_image = product.featured_image | image_url: width: 800
+    endif
+  endif
+  
+  # Get the map page URL (if exists)
+  assign map_page_url = ''
+  if product.metafields.wetu.map_page_url != blank
+    assign map_page_url = product.metafields.wetu.map_page_url
+  else
+    # Try to construct it from handle
+    assign map_page_url = '/pages/map-' | append: product.handle
+  endif
+%}
+
+{% if spa_count > 0 or has_map_data %}
+<div class="spa-map-row-section color-{{ section.settings.color_scheme }} {% if spa_count == 0 %}spa-map-row-section--map-only{% endif %}" style="{% render 'spacing-style', settings: section.settings %}">
+  <div class="spa-map-row">
+    
+    {% comment %} Left: SPA Product {% endcomment %}
+    {% if spa_count > 0 %}
+    <div class="spa-map-row__spa">
+      <a href="{{ spa_url }}" class="spa-map-row__spa-link">
+        {% if first_product.featured_image %}
+          {{
+            first_product.featured_image
+            | image_url: width: 1920
+            | image_tag:
+              widths: '750, 1100, 1500, 1920',
+              sizes: '(min-width: 750px) 50vw, 100vw',
+              alt: first_product.featured_image.alt | default: first_product.title,
+              class: 'spa-map-row__spa-image',
+              loading: 'lazy'
+          }}
+        {% else %}
+          <div class="spa-map-row__spa-placeholder">
+            {{ 'product-1' | placeholder_svg_tag }}
+          </div>
+        {% endif %}
+        
+        {% comment %} Title overlay - bottom left, white text {% endcomment %}
+        <div class="spa-map-row__spa-title-overlay">
+          {{ first_product.title }}
+        </div>
+      </a>
+    </div>
+    {% endif %}
+    
+    {% comment %} Right: Map (or full-width if no SPA) {% endcomment %}
+    {% if has_map_data %}
+    <div class="spa-map-row__map">
+      <div class="spa-map-row__map-container" id="spa-map-{{ section.id }}"></div>
+    </div>
+    {% endif %}
+    
+  </div>
+</div>
+
+{% if has_map_data %}
+<script src='https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.js'></script>
+<link href='https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.css' rel='stylesheet' />
+
+<script>
+(function() {
+  const mapId = 'spa-map-{{ section.id }}';
+  const mapContainer = document.getElementById(mapId);
+  
+  if (!mapContainer || typeof mapboxgl === 'undefined') {
+    console.error('Map container or Mapbox GL not found');
+    return;
+  }
+  
+  mapboxgl.accessToken = '{{ settings.mapbox_access_token | default: "{{ MAPBOX_ACCESS_TOKEN }}" }}';
+  
+  const property = {
+    id: "{{ product.id }}",
+    name: "{{ property_name | escape }}",
+    handle: "{{ product.handle }}",
+    url: "{{ map_page_url }}",
+    image: "{{ property_image }}",
+    latitude: {{ latitude }},
+    longitude: {{ longitude }},
+    destination: "{{ destination | escape }}",
+    country: "{{ country | escape }}"
+  };
+  
+  const map = new mapboxgl.Map({
+    container: mapId,
+    style: 'mapbox://styles/mapbox/{{ section.settings.map_style }}',
+    center: [property.longitude, property.latitude],
+    zoom: 13
+  });
+  
+  map.on('load', () => {
+    // Add geojson source for white dot marker
+    map.addSource('property', {
+      type: 'geojson',
+      data: {
+        type: 'FeatureCollection',
+        features: [{
+          type: 'Feature',
+          geometry: {
+            type: 'Point',
+            coordinates: [property.longitude, property.latitude]
+          },
+          properties: { id: property.id }
+        }]
+      }
+    });
+    
+    // Add white dot marker layer
+    map.addLayer({
+      id: 'position-dot',
+      type: 'circle',
+      source: 'property',
+      paint: {
+        'circle-radius': 6,
+        'circle-color': '#ffffff',
+        'circle-stroke-width': 2,
+        'circle-stroke-color': '#333333',
+        'circle-opacity': 1
+      }
+    });
+    
+    // Create popup that links to full map page
+    const popupContent = `
+      <div class="popup-wrapper">
+        <div class="popup-pointer"></div>
+        <div class="popup-image-container" onclick="window.location.href='${property.url}'">
+          <img src="${property.image}" alt="${property.name}">
+          <div class="popup-overlay">
+            <div class="popup-title">${property.name}</div>
+            <div class="popup-location">${property.destination}${property.country ? ', ' + property.country : ''}</div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    const popup = new mapboxgl.Popup({
+      offset: [15, 0],
+      closeButton: false,
+      closeOnClick: false,
+      closeOnMove: false,
+      className: 'property-popup',
+      anchor: 'left'
+    })
+    .setLngLat([property.longitude, property.latitude])
+    .setHTML(popupContent)
+    .addTo(map);
+    
+    // Center map with appropriate padding to show popup in center
+    map.fitBounds(
+      [[property.longitude, property.latitude], [property.longitude, property.latitude]],
+      {
+        padding: { top: 50, bottom: 50, left: 50, right: 300 },
+        maxZoom: 13
+      }
+    );
+  });
+  
+  // Add navigation control
+  map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+})();
+</script>
+
+<style>
+/* Mapbox popup base styles */
+.mapboxgl-popup {
+  max-width: none !important;
+}
+.mapboxgl-popup-content {
+  padding: 0;
+  overflow: visible;
+  background: transparent;
+  box-shadow: none;
+}
+.mapboxgl-popup-tip {
+  display: none;
+}
+
+/* Desktop expanded popup */
+.popup-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+  gap: 0;
+}
+.popup-pointer {
+  width: 0;
+  height: 0;
+  border-top: 10px solid transparent;
+  border-bottom: 10px solid transparent;
+  border-right: 15px solid white;
+  flex-shrink: 0;
+  margin-left: 8px;
+  margin-right: 0;
+}
+.popup-image-container {
+  position: relative;
+  width: 280px;
+  height: 157.5px;
+  cursor: pointer;
+  overflow: hidden;
+  border: 2px solid white;
+  background: white;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+.popup-image-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.popup-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%);
+  padding: 12px;
+}
+.popup-title {
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 4px 0;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+.popup-location {
+  color: white;
+  font-size: 12px;
+  margin: 0;
+  opacity: 0.95;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+</style>
+{% endif %}
+
+{% endif %}
+
+{% stylesheet %}
+.spa-map-row-section {
+  width: 100%;
+  overflow: hidden;
+}
+
+.spa-map-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  width: 100%;
+}
+
+/* When map only (no SPA): full viewport width, but height equivalent to half-width 16:9 */
+.spa-map-row-section--map-only {
+  width: 100vw;
+  position: relative;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
+}
+
+.spa-map-row-section--map-only .spa-map-row {
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+
+.spa-map-row-section--map-only .spa-map-row__map {
+  /* Height of a half-width 16:9 element: (50vw / 16) * 9 = 28.125vw */
+  aspect-ratio: auto;
+  height: 28.125vw;
+}
+
+/* SPA Product Column */
+.spa-map-row__spa {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+}
+
+.spa-map-row__spa-link {
+  display: block;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  text-decoration: none;
+}
+
+.spa-map-row__spa-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.spa-map-row__spa-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-background-secondary, #f5f5f5);
+}
+
+.spa-map-row__spa-placeholder svg {
+  width: 100%;
+  height: 100%;
+  opacity: 0.3;
+}
+
+/* Title overlay - bottom left, white text */
+.spa-map-row__spa-title-overlay {
+  position: absolute;
+  bottom: 2rem;
+  left: 2rem;
+  color: #ffffff;
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.3;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+  z-index: 2;
+  max-width: 70%;
+}
+
+/* Map Column */
+.spa-map-row__map {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+}
+
+.spa-map-row__map-container {
+  width: 100%;
+  height: 100%;
+}
+
+/* Mobile: stack vertically */
+@media screen and (max-width: 749px) {
+  .spa-map-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .spa-map-row__spa-title-overlay {
+    bottom: 1.25rem;
+    left: 1.25rem;
+    font-size: 1.125rem;
+    max-width: 80%;
+  }
+  
+  /* On mobile, map-only should use standard 16:9 */
+  .spa-map-row-section--map-only .spa-map-row__map {
+    aspect-ratio: 16 / 9;
+    height: auto;
+  }
+}
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "SPA & Map Row",
+  "class": "section-spa-map-row",
+  "disabled_on": {
+    "groups": ["header", "footer"]
+  },
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "Displays SPA product and map side-by-side in 16:9 format. SPA on left with title overlay (white text, bottom left), map on right with popup linking to full map page."
+    },
+    {
+      "type": "collection",
+      "id": "collection",
+      "label": "SPA Collection",
+      "info": "Select the collection containing the SPA product. Only the first product will be displayed."
+    },
+    {
+      "type": "select",
+      "id": "map_style",
+      "label": "Map Style",
+      "options": [
+        {
+          "value": "satellite-streets-v12",
+          "label": "Satellite with Streets"
+        },
+        {
+          "value": "streets-v12",
+          "label": "Streets"
+        },
+        {
+          "value": "outdoors-v12",
+          "label": "Outdoors"
+        },
+        {
+          "value": "light-v11",
+          "label": "Light"
+        },
+        {
+          "value": "dark-v11",
+          "label": "Dark"
+        }
+      ],
+      "default": "satellite-streets-v12"
+    },
+    {
+      "type": "header",
+      "content": "Section settings"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "header",
+      "content": "Padding"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "label": "Top padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "label": "Bottom padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 0
+    }
+  ],
+  "presets": [
+    {
+      "name": "SPA & Map Row",
+      "category": "Products"
+    }
+  ]
+}
+{% endschema %}
+

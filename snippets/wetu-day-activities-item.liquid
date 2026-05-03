@@ -1,0 +1,427 @@
+{% comment %}
+  ============================================================================
+  WETU DAY ACTIVITIES ITEM SNIPPET - ENHANCED
+  ============================================================================
+
+  Helper snippet that renders a single activity in list view format with
+  enhanced activity type badges and time display.
+
+  PARAMETERS:
+  - activity: The activity metaobject
+  - activity_map_ids: Array of simple_item_ids for product matching
+  - activity_map_handles: Array of product handles matching activity_map_ids
+
+  ACTIVITY TYPES:
+  - Included: Green checkmark - scheduled/confirmed activity
+  - Recommended: Blue lightbulb - expert suggestion
+  - Optional: Gray plus - available at extra cost
+  - Information: Purple info icon - cultural/practical tips
+  - Destination: Cyan location pin - place being visited
+  - Greeting: Pink handshake - meet & greet arrangements
+
+  ============================================================================
+{% endcomment %}
+
+{% assign activity_name = activity.name.value | default: activity.name %}
+{% assign activity_type = activity.type.value | default: activity.type | default: 'Included' %}
+{% assign content_id = activity.content_entity_id.value | default: activity.content_entity_id %}
+{% assign is_highlight = activity.is_highlight.value | default: activity.is_highlight %}
+{% assign start_time = activity.start_time.value | default: activity.start_time %}
+{% assign end_time = activity.end_time.value | default: activity.end_time %}
+{% assign duration = activity.duration.value | default: activity.duration %}
+{% assign description = activity.description.value | default: activity.description %}
+{% assign simple_id = activity.simple_item_id.value | default: activity.simple_item_id | append: '' %}
+
+{% comment %} Smart product linking {% endcomment %}
+{% assign activity_product = nil %}
+
+{% if simple_id != blank and activity_map_ids != blank %}
+  {% for map_id in activity_map_ids %}
+    {% if map_id == simple_id %}
+      {% assign handle = activity_map_handles[forloop.index0] %}
+      {% assign activity_product = all_products[handle] %}
+      {% break %}
+    {% endif %}
+  {% endfor %}
+{% endif %}
+
+{% if activity_product == nil and content_id != blank %}
+  {% assign activity_handle = 'wetu-' | append: content_id %}
+  {% assign activity_product = all_products[activity_handle] %}
+{% endif %}
+
+{% comment %} Format time display {% endcomment %}
+{% assign time_display = '' %}
+{% if start_time != blank and end_time != blank %}
+  {% assign time_display = start_time | append: ' - ' | append: end_time %}
+{% elsif start_time != blank %}
+  {% assign time_display = start_time %}
+{% endif %}
+
+{% comment %} Determine type styling {% endcomment %}
+{% assign type_class = activity_type | handleize %}
+
+<li class="activity-list-item activity-list-item--{{ type_class }}{% if is_highlight %} activity-list-item--highlight{% endif %}">
+  {% comment %} Activity type icon bullet {% endcomment %}
+  <span class="activity-list-item__bullet activity-list-item__bullet--{{ type_class }}">
+    {% case activity_type %}
+      {% when 'Included' %}
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      {% when 'Recommended' %}
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 18h6"/>
+          <path d="M10 22h4"/>
+          <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/>
+        </svg>
+      {% when 'Optional' %}
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+      {% when 'Information' %}
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="16" x2="12" y2="12"/>
+          <line x1="12" y1="8" x2="12.01" y2="8"/>
+        </svg>
+      {% when 'Destination' %}
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+          <circle cx="12" cy="10" r="3"/>
+        </svg>
+      {% when 'Greeting' %}
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 8.5V3a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v5.5"/>
+          <path d="M14 8.5V3"/>
+          <path d="M2 14.5A5.5 5.5 0 0 0 7.5 20h9a5.5 5.5 0 0 0 0-11h-9A5.5 5.5 0 0 0 2 14.5z"/>
+        </svg>
+      {% else %}
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+    {% endcase %}
+  </span>
+
+  <div class="activity-list-item__content">
+    {% comment %} Main row: name + time + type {% endcomment %}
+    <div class="activity-list-item__main">
+      <span class="activity-list-item__name">
+        {% if activity_product != blank %}
+          <a href="{{ activity_product.url }}">{{ activity_name }}</a>
+        {% else %}
+          {{ activity_name }}
+        {% endif %}
+        {% if is_highlight %}
+          <svg class="activity-list-item__star" width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+        {% endif %}
+      </span>
+
+      {% comment %} Time display {% endcomment %}
+      {% if time_display != blank %}
+        <span class="activity-list-item__time">{{ time_display }}</span>
+      {% endif %}
+
+      {% comment %} Duration badge {% endcomment %}
+      {% if duration != blank %}
+        <span class="activity-list-item__duration">{{ duration }}</span>
+      {% endif %}
+
+      {% comment %} Type badge {% endcomment %}
+      <span class="activity-list-item__type activity-list-item__type--{{ type_class }}">
+        {% case activity_type %}
+          {% when 'Included' %}
+            Included
+          {% when 'Recommended' %}
+            Recommended
+          {% when 'Optional' %}
+            Optional
+          {% when 'Information' %}
+            Info
+          {% when 'Destination' %}
+            Destination
+          {% when 'Greeting' %}
+            Meet & Greet
+          {% else %}
+            {{ activity_type }}
+        {% endcase %}
+      </span>
+    </div>
+
+    {% comment %} Description (if present) {% endcomment %}
+    {% if description != blank %}
+      <p class="activity-list-item__description">{{ description }}</p>
+    {% endif %}
+
+    {% comment %} Product link {% endcomment %}
+    {% if activity_product != blank %}
+      <a href="{{ activity_product.url }}" class="activity-list-item__link">
+        View details
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="5" y1="12" x2="19" y2="12"/>
+          <polyline points="12 5 19 12 12 19"/>
+        </svg>
+      </a>
+    {% endif %}
+  </div>
+</li>
+
+<style>
+  /* ============================================
+     ACTIVITY LIST ITEM - ENHANCED
+     ============================================ */
+
+  .activity-list-item {
+    --type-included: #16a34a;
+    --type-recommended: #2563eb;
+    --type-optional: #64748b;
+    --type-information: #8b5cf6;
+    --type-destination: #0891b2;
+    --type-greeting: #db2777;
+    --highlight-gold: #f59e0b;
+
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 14px;
+    background: color-mix(in srgb, var(--color-foreground) 2%, transparent);
+    border-radius: 10px;
+    transition: background 0.15s ease;
+  }
+
+  .activity-list-item:hover {
+    background: color-mix(in srgb, var(--color-foreground) 5%, transparent);
+  }
+
+  /* Highlight variant */
+  .activity-list-item--highlight {
+    background: color-mix(in srgb, var(--highlight-gold) 8%, transparent);
+    border-left: 3px solid var(--highlight-gold);
+  }
+
+  .activity-list-item--highlight:hover {
+    background: color-mix(in srgb, var(--highlight-gold) 12%, transparent);
+  }
+
+  /* Type-specific subtle backgrounds */
+  .activity-list-item--information {
+    background: color-mix(in srgb, var(--type-information) 5%, transparent);
+  }
+
+  .activity-list-item--information:hover {
+    background: color-mix(in srgb, var(--type-information) 8%, transparent);
+  }
+
+  /* ============================================
+     BULLET / ICON
+     ============================================ */
+
+  .activity-list-item__bullet {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    margin-top: 2px;
+  }
+
+  .activity-list-item__bullet--included {
+    background: color-mix(in srgb, var(--type-included) 12%, transparent);
+    color: var(--type-included);
+  }
+
+  .activity-list-item__bullet--recommended {
+    background: color-mix(in srgb, var(--type-recommended) 12%, transparent);
+    color: var(--type-recommended);
+  }
+
+  .activity-list-item__bullet--optional {
+    background: color-mix(in srgb, var(--type-optional) 12%, transparent);
+    color: var(--type-optional);
+  }
+
+  .activity-list-item__bullet--information {
+    background: color-mix(in srgb, var(--type-information) 12%, transparent);
+    color: var(--type-information);
+  }
+
+  .activity-list-item__bullet--destination {
+    background: color-mix(in srgb, var(--type-destination) 12%, transparent);
+    color: var(--type-destination);
+  }
+
+  .activity-list-item__bullet--greeting {
+    background: color-mix(in srgb, var(--type-greeting) 12%, transparent);
+    color: var(--type-greeting);
+  }
+
+  .activity-list-item--highlight .activity-list-item__bullet {
+    background: var(--highlight-gold);
+    color: white;
+  }
+
+  /* ============================================
+     CONTENT
+     ============================================ */
+
+  .activity-list-item__content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .activity-list-item__main {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    line-height: 1.4;
+  }
+
+  .activity-list-item__name {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--color-foreground);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .activity-list-item__name a {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.15s ease;
+  }
+
+  .activity-list-item__name a:hover {
+    color: var(--color-primary);
+  }
+
+  .activity-list-item__star {
+    color: var(--highlight-gold);
+    flex-shrink: 0;
+  }
+
+  /* Time display */
+  .activity-list-item__time {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--color-foreground);
+    background: color-mix(in srgb, var(--color-foreground) 6%, transparent);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Duration badge */
+  .activity-list-item__duration {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+  }
+
+  /* Type badge */
+  .activity-list-item__type {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-left: auto;
+  }
+
+  .activity-list-item__type--included {
+    background: color-mix(in srgb, var(--type-included) 12%, transparent);
+    color: var(--type-included);
+  }
+
+  .activity-list-item__type--recommended {
+    background: color-mix(in srgb, var(--type-recommended) 12%, transparent);
+    color: var(--type-recommended);
+  }
+
+  .activity-list-item__type--optional {
+    background: color-mix(in srgb, var(--type-optional) 12%, transparent);
+    color: var(--type-optional);
+  }
+
+  .activity-list-item__type--information {
+    background: color-mix(in srgb, var(--type-information) 12%, transparent);
+    color: var(--type-information);
+  }
+
+  .activity-list-item__type--destination {
+    background: color-mix(in srgb, var(--type-destination) 12%, transparent);
+    color: var(--type-destination);
+  }
+
+  .activity-list-item__type--greeting {
+    background: color-mix(in srgb, var(--type-greeting) 12%, transparent);
+    color: var(--type-greeting);
+  }
+
+  /* Description */
+  .activity-list-item__description {
+    margin: 6px 0 0;
+    font-size: 0.85rem;
+    color: color-mix(in srgb, var(--color-foreground) 70%, transparent);
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Product link */
+  .activity-list-item__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-primary, #2563eb);
+    text-decoration: none;
+    transition: gap 0.15s ease;
+  }
+
+  .activity-list-item__link:hover {
+    gap: 8px;
+  }
+
+  /* ============================================
+     RESPONSIVE
+     ============================================ */
+
+  @media screen and (max-width: 480px) {
+    .activity-list-item__main {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 4px;
+    }
+
+    .activity-list-item__type {
+      margin-left: 0;
+    }
+  }
+
+  /* ============================================
+     PRINT STYLES
+     ============================================ */
+
+  @media print {
+    .activity-list-item {
+      padding: 8px 10px;
+      break-inside: avoid;
+    }
+
+    .activity-list-item__description {
+      -webkit-line-clamp: unset;
+    }
+  }
+</style>

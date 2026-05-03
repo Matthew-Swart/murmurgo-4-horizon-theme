@@ -1,0 +1,712 @@
+{% comment %}
+  ============================================================================
+  WETU TRANSFER JOURNEY SNIPPET
+  ============================================================================
+
+  Enhanced transfer/route display for chronological itineraries.
+  Shows full journey details with visual timeline, map preview, and linked
+  products for departure/arrival points.
+
+  For flights (ScheduledFlight/CharterFlight), renders an enhanced boarding
+  pass style card with full booking details.
+
+  USAGE:
+    {% render 'wetu-transfer-journey',
+      route: route_object,
+      from_product: departure_product,
+      to_product: arrival_product,
+      day_number: 3,
+      color_scheme: 'scheme-5',
+      show_map: true,
+      itinerary_date: '2024-03-15'
+    %}
+
+  PARAMETERS:
+    - route: The route metaobject
+    - from_product: Shopify product for departure point (optional)
+    - to_product: Shopify product for arrival point (optional)
+    - day_number: Which day this transfer occurs
+    - color_scheme: Color scheme class (default: 'scheme-5')
+    - show_map: Boolean - show static map preview (default: true)
+    - itinerary_date: Date of this transfer (optional, for calendar export)
+    - use_boarding_pass: Boolean - force boarding pass style for flights (default: true)
+
+  ROUTE MODES:
+    - CharterFlight, ScheduledFlight: Air travel (boarding pass style)
+    - Helicopter: Helicopter transfer (shows chopper icon)
+    - Transfer, Shuttle: Ground vehicle (shows car icon, with map)
+    - Selfdrive: Self-drive route (shows steering wheel icon, with map + directions)
+    - Boat: Water transport (shows boat icon)
+    - Train: Rail travel (shows train icon)
+
+  ============================================================================
+{% endcomment %}
+
+{%- liquid
+  assign color_scheme = color_scheme | default: 'scheme-5'
+  assign show_map = show_map | default: true
+  assign show_directions_param = show_directions | default: true
+  assign use_boarding_pass = use_boarding_pass | default: true
+
+  # Extract route data
+  assign route_mode = route.mode.value
+
+  # Check if this is a flight - use enhanced boarding pass style
+  assign render_as_boarding_pass = false
+  if route_mode == 'ScheduledFlight' or route_mode == 'CharterFlight'
+    if use_boarding_pass
+      assign render_as_boarding_pass = true
+    endif
+  endif
+-%}
+
+{%- comment -%} Render flight as boarding pass {%- endcomment -%}
+{%- if render_as_boarding_pass -%}
+  {% render 'wetu-flight-boarding-pass',
+    route: route,
+    from_product: from_product,
+    to_product: to_product,
+    day_number: day_number,
+    color_scheme: color_scheme,
+    itinerary_date: itinerary_date
+  %}
+{%- else -%}
+
+{%- liquid
+  # Continue with standard transfer journey rendering
+  assign from_name = route.start_location.value | default: route.from_name.value | default: from_product.title | default: 'Departure'
+  assign to_name = route.end_location.value | default: route.to_name.value | default: to_product.title | default: 'Arrival'
+  assign start_time = route.start_time.value
+  assign end_time = route.end_time.value
+  assign duration_str = route.duration.value
+  assign distance = route.distance.value
+  assign directions = route.directions.value
+  assign agency = route.agency.value
+  assign reference_codes = route.reference_codes.value
+  assign route_points = route.points.value
+  assign vehicle = route.vehicle.value
+  assign via_points = route.via_points.value
+  
+  # Calculate formatted duration
+  if duration_str != blank
+    if duration_str contains ':'
+      assign dur_parts = duration_str | split: ':'
+      assign hours = dur_parts[0] | plus: 0
+      assign mins = dur_parts[1] | plus: 0
+      if hours > 0 and mins > 0
+        assign formatted_duration = hours | append: 'h ' | append: mins | append: 'm'
+      elsif hours > 0
+        assign formatted_duration = hours | append: 'h'
+      else
+        assign formatted_duration = mins | append: 'm'
+      endif
+    else
+      assign formatted_duration = duration_str
+    endif
+  else
+    assign formatted_duration = nil
+  endif
+  
+  # Calculate distance in km
+  if distance != blank
+    assign distance_num = distance | plus: 0
+    if distance_num > 1000
+      assign distance_km = distance_num | divided_by: 1000.0 | round: 1
+    else
+      assign distance_km = distance_num
+    endif
+  endif
+  
+  # Determine transport type
+  assign show_route_map = false
+  assign show_directions = false
+
+  case route_mode
+    when 'ScheduledFlight'
+      assign mode_label = 'Flight'
+      assign mode_icon = 'plane'
+    when 'CharterFlight'
+      assign mode_label = 'Charter Flight'
+      assign mode_icon = 'plane'
+    when 'Helicopter'
+      assign mode_label = 'Helicopter'
+      assign mode_icon = 'helicopter'
+    when 'Selfdrive', 'SelfDrive'
+      assign mode_label = 'Self-Drive'
+      assign mode_icon = 'car'
+      assign show_route_map = true
+      assign show_directions = true
+    when 'Transfer'
+      assign mode_label = 'Private Transfer'
+      assign mode_icon = 'car'
+      assign show_route_map = true
+    when 'Shuttle'
+      assign mode_label = 'Shuttle'
+      assign mode_icon = 'bus'
+      assign show_route_map = true
+    when 'Train'
+      assign mode_label = 'Train'
+      assign mode_icon = 'train'
+    when 'Boat'
+      assign mode_label = 'Boat'
+      assign mode_icon = 'boat'
+    else
+      assign mode_label = route_mode | replace: '_', ' '
+      assign mode_icon = 'arrow'
+  endcase
+  
+  # Generate unique ID
+  assign unique_id = 'transfer-' | append: day_number | append: '-' | append: route_mode | handleize | append: '-' | append: 'now' | date: '%s' | slice: -4, 4
+  
+  # Check if we have linked products for thumbnails
+  assign has_from_product = false
+  assign has_to_product = false
+  if from_product != blank and from_product.featured_image
+    assign has_from_product = true
+  endif
+  if to_product != blank and to_product.featured_image
+    assign has_to_product = true
+  endif
+  
+  # Parse directions into steps if available
+  assign direction_steps = nil
+  if directions != blank and directions contains '|'
+    assign direction_steps = directions | split: '|'
+  endif
+-%}
+
+<div class="wetu-transfer-journey wetu-transfer-journey--{{ mode_icon }} color-{{ color_scheme }}" id="{{ unique_id }}">
+  
+  {%- comment -%} Mode Badge {%- endcomment -%}
+  <div class="wetu-transfer-journey__badge">
+    <span class="wetu-transfer-journey__badge-icon">
+      {%- case mode_icon -%}
+        {%- when 'plane' -%}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>
+          </svg>
+        {%- when 'helicopter' -%}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3v8M4 4h16M6 18h12a2 2 0 0 0 2-2v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2a2 2 0 0 0 2 2zM12 14v7M9 21h6"/>
+          </svg>
+        {%- when 'car' -%}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 17H3v-5l2-6h14l2 6v5h-2M6 17a2 2 0 1 0 4 0 2 2 0 0 0-4 0zM14 17a2 2 0 1 0 4 0 2 2 0 0 0-4 0z"/>
+          </svg>
+        {%- when 'bus' -%}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="14" rx="2"/>
+            <path d="M3 10h18M8 18v2M16 18v2M6 14h.01M18 14h.01"/>
+          </svg>
+        {%- when 'train' -%}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4" y="3" width="16" height="16" rx="2"/>
+            <path d="M4 11h16M12 3v8M8 19l-2 3M16 19l2 3M8 15h.01M16 15h.01"/>
+          </svg>
+        {%- when 'boat' -%}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 21c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.5 0 2.5 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/>
+            <path d="M19.38 20A11.6 11.6 0 0 0 21 14l-9-4-9 4c0 2.9.94 5.34 2.81 7.76"/>
+            <path d="M19 13V7a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v6M12 1v4"/>
+          </svg>
+        {%- else -%}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+      {%- endcase -%}
+    </span>
+    <span class="wetu-transfer-journey__badge-text">{{ mode_label }}</span>
+    {%- if reference_codes != blank -%}
+      <span class="wetu-transfer-journey__badge-ref">{{ reference_codes }}</span>
+    {%- endif -%}
+  </div>
+  
+  {%- comment -%} Journey Visual {%- endcomment -%}
+  <div class="wetu-transfer-journey__content">
+    
+    <div class="wetu-transfer-journey__timeline">
+      {%- comment -%} Departure Point {%- endcomment -%}
+      <div class="wetu-transfer-journey__point wetu-transfer-journey__point--departure">
+        <div class="wetu-transfer-journey__point-marker">
+          <span class="wetu-transfer-journey__point-dot"></span>
+        </div>
+        <div class="wetu-transfer-journey__point-content">
+          {%- if has_from_product -%}
+            <a href="{{ from_product.url }}" class="wetu-transfer-journey__point-link">
+              <img 
+                src="{{ from_product.featured_image | image_url: width: 120, height: 80, crop: 'center' }}"
+                alt="{{ from_name }}"
+                class="wetu-transfer-journey__point-thumb"
+                width="120"
+                height="80"
+                loading="lazy"
+              >
+              <div class="wetu-transfer-journey__point-info">
+                <span class="wetu-transfer-journey__point-label">Depart</span>
+                <span class="wetu-transfer-journey__point-name">{{ from_name }}</span>
+                {%- if start_time != blank -%}
+                  <span class="wetu-transfer-journey__point-time">{{ start_time }}</span>
+                {%- endif -%}
+              </div>
+            </a>
+          {%- else -%}
+            <div class="wetu-transfer-journey__point-info">
+              <span class="wetu-transfer-journey__point-label">Depart</span>
+              <span class="wetu-transfer-journey__point-name">{{ from_name }}</span>
+              {%- if start_time != blank -%}
+                <span class="wetu-transfer-journey__point-time">{{ start_time }}</span>
+              {%- endif -%}
+            </div>
+          {%- endif -%}
+        </div>
+      </div>
+      
+      {%- comment -%} Journey Line with Details {%- endcomment -%}
+      <div class="wetu-transfer-journey__connector">
+        <div class="wetu-transfer-journey__connector-line"></div>
+        <div class="wetu-transfer-journey__connector-details">
+          {%- if formatted_duration != blank -%}
+            <span class="wetu-transfer-journey__connector-stat">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+              {{ formatted_duration }}
+            </span>
+          {%- endif -%}
+          {%- if distance_km != blank -%}
+            <span class="wetu-transfer-journey__connector-stat">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+              {{ distance_km }} km
+            </span>
+          {%- endif -%}
+          {%- if agency != blank -%}
+            <span class="wetu-transfer-journey__connector-agency">{{ agency }}</span>
+          {%- endif -%}
+          {%- if vehicle != blank -%}
+            <span class="wetu-transfer-journey__connector-agency" style="border-left: 1px solid var(--transfer-border); padding-left: 8px;">{{ vehicle }}</span>
+          {%- endif -%}
+        </div>
+        
+        {%- if via_points != blank -%}
+          <div style="font-size: 0.85rem; color: var(--transfer-muted); margin-bottom: 8px; margin-left: 8px;">
+            <strong>Via:</strong> {{ via_points }}
+          </div>
+        {%- endif -%}
+      </div>
+      
+      {%- comment -%} Arrival Point {%- endcomment -%}
+      <div class="wetu-transfer-journey__point wetu-transfer-journey__point--arrival">
+        <div class="wetu-transfer-journey__point-marker">
+          <span class="wetu-transfer-journey__point-dot wetu-transfer-journey__point-dot--arrival"></span>
+        </div>
+        <div class="wetu-transfer-journey__point-content">
+          {%- if has_to_product -%}
+            <a href="{{ to_product.url }}" class="wetu-transfer-journey__point-link">
+              <img 
+                src="{{ to_product.featured_image | image_url: width: 120, height: 80, crop: 'center' }}"
+                alt="{{ to_name }}"
+                class="wetu-transfer-journey__point-thumb"
+                width="120"
+                height="80"
+                loading="lazy"
+              >
+              <div class="wetu-transfer-journey__point-info">
+                <span class="wetu-transfer-journey__point-label">Arrive</span>
+                <span class="wetu-transfer-journey__point-name">{{ to_name }}</span>
+                {%- if end_time != blank -%}
+                  <span class="wetu-transfer-journey__point-time">{{ end_time }}</span>
+                {%- endif -%}
+              </div>
+            </a>
+          {%- else -%}
+            <div class="wetu-transfer-journey__point-info">
+              <span class="wetu-transfer-journey__point-label">Arrive</span>
+              <span class="wetu-transfer-journey__point-name">{{ to_name }}</span>
+              {%- if end_time != blank -%}
+                <span class="wetu-transfer-journey__point-time">{{ end_time }}</span>
+              {%- endif -%}
+            </div>
+          {%- endif -%}
+        </div>
+      </div>
+    </div>
+    
+    {%- comment -%} Map Preview (for driving routes) {%- endcomment -%}
+    {%- if show_map and show_route_map and route_points != blank -%}
+      <div class="wetu-transfer-journey__map" data-route-points="{{ route_points }}" data-unique-id="{{ unique_id }}">
+        <div class="wetu-transfer-journey__map-placeholder">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <path d="M3 9h18M9 21V9"/>
+            <circle cx="15" cy="15" r="2"/>
+          </svg>
+          <span>Route Map</span>
+        </div>
+      </div>
+    {%- endif -%}
+    
+  </div>
+  
+  {%- comment -%} Driving Directions (for self-drive) {%- endcomment -%}
+  {%- if show_directions_param and show_directions and direction_steps != nil and direction_steps.size > 0 -%}
+    <details class="wetu-transfer-journey__directions">
+      <summary class="wetu-transfer-journey__directions-toggle">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 11l19-9-9 19-2-8-8-2z"/>
+        </svg>
+        <span>View Driving Directions</span>
+        <svg class="wetu-transfer-journey__directions-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </summary>
+      <ol class="wetu-transfer-journey__directions-list">
+        {%- for step in direction_steps -%}
+          {%- unless step == blank -%}
+            <li>{{ step | strip }}</li>
+          {%- endunless -%}
+        {%- endfor -%}
+      </ol>
+    </details>
+  {%- endif -%}
+  
+</div>
+
+<style>
+  /* ============================================
+     TRANSFER JOURNEY STYLES
+     ============================================ */
+  
+  .wetu-transfer-journey {
+    --transfer-accent: var(--color-primary, #c9a66b);
+    --transfer-muted: color-mix(in srgb, var(--color-foreground) 50%, transparent);
+    --transfer-subtle-bg: color-mix(in srgb, var(--color-foreground) 4%, transparent);
+    --transfer-border: color-mix(in srgb, var(--color-foreground) 12%, transparent);
+    
+    width: 100%;
+    padding: 24px;
+    background: var(--transfer-subtle-bg);
+    border-radius: 12px;
+    margin: 24px 0;
+  }
+  
+  /* Mode-specific accent colors */
+  .wetu-transfer-journey--plane {
+    --transfer-accent: #3b82f6;
+  }
+  .wetu-transfer-journey--helicopter {
+    --transfer-accent: #8b5cf6;
+  }
+  .wetu-transfer-journey--car {
+    --transfer-accent: #10b981;
+  }
+  .wetu-transfer-journey--bus {
+    --transfer-accent: #f59e0b;
+  }
+  .wetu-transfer-journey--train {
+    --transfer-accent: #ef4444;
+  }
+  .wetu-transfer-journey--boat {
+    --transfer-accent: #06b6d4;
+  }
+
+  /* Badge */
+  .wetu-transfer-journey__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    background: color-mix(in srgb, var(--transfer-accent) 15%, transparent);
+    border: 1px solid color-mix(in srgb, var(--transfer-accent) 30%, transparent);
+    border-radius: 6px;
+    margin-bottom: 20px;
+  }
+  
+  .wetu-transfer-journey__badge-icon {
+    width: 20px;
+    height: 20px;
+    color: var(--transfer-accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .wetu-transfer-journey__badge-icon svg {
+    width: 100%;
+    height: 100%;
+  }
+  
+  .wetu-transfer-journey__badge-text {
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--transfer-accent);
+  }
+  
+  .wetu-transfer-journey__badge-ref {
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    background: rgba(var(--color-foreground), 0.1);
+    border-radius: 4px;
+    color: var(--transfer-muted);
+    font-family: monospace;
+  }
+
+  /* Content Layout */
+  .wetu-transfer-journey__content {
+    display: flex;
+    gap: 24px;
+  }
+  
+  .wetu-transfer-journey__timeline {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Points (Departure/Arrival) */
+  .wetu-transfer-journey__point {
+    display: flex;
+    gap: 16px;
+  }
+  
+  .wetu-transfer-journey__point-marker {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 4px;
+  }
+  
+  .wetu-transfer-journey__point-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--transfer-accent);
+    flex-shrink: 0;
+  }
+  
+  .wetu-transfer-journey__point-dot--arrival {
+    background: transparent;
+    border: 3px solid var(--color-foreground);
+  }
+  
+  .wetu-transfer-journey__point-content {
+    flex: 1;
+    padding-bottom: 12px;
+  }
+  
+  .wetu-transfer-journey__point-link {
+    display: flex;
+    gap: 12px;
+    text-decoration: none;
+    color: inherit;
+    transition: opacity 0.2s ease;
+  }
+  
+  .wetu-transfer-journey__point-link:hover {
+    opacity: 0.85;
+  }
+  
+  .wetu-transfer-journey__point-thumb {
+    width: 80px;
+    height: 56px;
+    object-fit: cover;
+    border-radius: 6px;
+    flex-shrink: 0;
+  }
+  
+  .wetu-transfer-journey__point-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  
+  .wetu-transfer-journey__point-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--transfer-muted);
+  }
+  
+  .wetu-transfer-journey__point-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-foreground);
+    line-height: 1.3;
+  }
+  
+  .wetu-transfer-journey__point-time {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--transfer-accent);
+    margin-top: 2px;
+  }
+
+  /* Connector */
+  .wetu-transfer-journey__connector {
+    display: flex;
+    gap: 16px;
+    padding-left: 6px;
+    min-height: 60px;
+  }
+  
+  .wetu-transfer-journey__connector-line {
+    width: 2px;
+    background: repeating-linear-gradient(
+      180deg,
+      var(--transfer-border) 0px,
+      var(--transfer-border) 6px,
+      transparent 6px,
+      transparent 10px
+    );
+    flex-shrink: 0;
+  }
+  
+  .wetu-transfer-journey__connector-details {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 0;
+    margin-left: 8px;
+  }
+  
+  .wetu-transfer-journey__connector-stat {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--color-foreground);
+  }
+  
+  .wetu-transfer-journey__connector-stat svg {
+    color: var(--transfer-accent);
+  }
+  
+  .wetu-transfer-journey__connector-agency {
+    font-size: 0.85rem;
+    color: var(--transfer-muted);
+  }
+
+  /* Map Preview */
+  .wetu-transfer-journey__map {
+    width: 200px;
+    height: 160px;
+    background: var(--transfer-subtle-bg);
+    border: 1px solid var(--transfer-border);
+    border-radius: 8px;
+    overflow: hidden;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .wetu-transfer-journey__map-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    color: var(--transfer-muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  .wetu-transfer-journey__map-placeholder svg {
+    width: 32px;
+    height: 32px;
+    opacity: 0.5;
+  }
+
+  /* Directions */
+  .wetu-transfer-journey__directions {
+    margin-top: 16px;
+    border: 1px solid var(--transfer-border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  
+  .wetu-transfer-journey__directions-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-foreground);
+    background: var(--transfer-subtle-bg);
+    list-style: none;
+    transition: background 0.2s ease;
+  }
+  
+  .wetu-transfer-journey__directions-toggle::-webkit-details-marker {
+    display: none;
+  }
+  
+  .wetu-transfer-journey__directions-toggle:hover {
+    background: color-mix(in srgb, var(--color-foreground) 8%, transparent);
+  }
+  
+  .wetu-transfer-journey__directions-toggle svg:first-child {
+    color: var(--transfer-accent);
+  }
+  
+  .wetu-transfer-journey__directions-chevron {
+    margin-left: auto;
+    transition: transform 0.2s ease;
+  }
+  
+  .wetu-transfer-journey__directions[open] .wetu-transfer-journey__directions-chevron {
+    transform: rotate(180deg);
+  }
+  
+  .wetu-transfer-journey__directions-list {
+    padding: 16px 16px 16px 40px;
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.8;
+    color: var(--color-foreground);
+    border-top: 1px solid var(--transfer-border);
+  }
+  
+  .wetu-transfer-journey__directions-list li {
+    padding: 4px 0;
+  }
+  
+  .wetu-transfer-journey__directions-list li::marker {
+    color: var(--transfer-accent);
+  }
+
+  /* Mobile Adjustments */
+  @media screen and (max-width: 768px) {
+    .wetu-transfer-journey {
+      padding: 16px;
+    }
+    
+    .wetu-transfer-journey__content {
+      flex-direction: column;
+    }
+    
+    .wetu-transfer-journey__map {
+      width: 100%;
+      height: 120px;
+      order: -1;
+      margin-bottom: 16px;
+    }
+    
+    .wetu-transfer-journey__point-thumb {
+      width: 60px;
+      height: 44px;
+    }
+  }
+</style>
+
+{%- endif -%}

@@ -1,0 +1,178 @@
+{% comment %}
+  Snippet: wetu-dynamic-menu-selector
+  
+  Dynamically selects which menu to display based on page context:
+  - Home page (/) → No menu or main-menu
+  - Wetu property pages → Property-specific menu
+  - Wetu room/accommodation pages → Parent property's menu
+  - Wetu collection pages → Related property's menu
+  - All other pages → main-menu or no menu
+  
+  Usage in theme header:
+    {% render 'wetu-dynamic-menu-selector' %}
+    {% if selected_menu_handle %}
+      {{ linklists[selected_menu_handle] }}
+    {% endif %}
+  
+  Or for header sections:
+    {% render 'wetu-dynamic-menu-selector' %}
+    {% assign menu = linklists[selected_menu_handle] %}
+{% endcomment %}
+
+{% liquid
+  assign selected_menu_handle = ''
+  assign is_home_page = false
+  assign is_wetu_context = false
+  
+  # Check if we're on the home page
+  if request.path == '/' or template.name == 'index'
+    assign is_home_page = true
+  endif
+  
+  # Don't show menu on home page
+  if is_home_page
+    assign selected_menu_handle = ''
+  else
+    # Check product pages
+    if product
+      # Check if it's a Wetu property product
+      if product.type == 'wetu-property'
+        assign menu_handle = product.metafields.wetu_property.menu_handle
+        if menu_handle and menu_handle != blank
+          assign selected_menu_handle = menu_handle
+          assign is_wetu_context = true
+          echo '<!-- DEBUG SELECTOR: Property product detected, menu_handle from metafield: ' | append: menu_handle | append: ' -->'
+        else
+          # Fallback: Try to construct menu handle from pin_id
+          assign pin_id = product.metafields.wetu.pin_id
+          if pin_id and pin_id != blank
+            assign constructed_handle = 'property-menu-' | append: pin_id
+            if linklists[constructed_handle]
+              assign selected_menu_handle = constructed_handle
+              assign is_wetu_context = true
+              echo '<!-- DEBUG SELECTOR: Property product, constructed menu handle from pin_id: ' | append: constructed_handle | append: ' -->'
+            else
+              echo '<!-- DEBUG SELECTOR: Property product, pin_id: ' | append: pin_id | append: ', but menu not found with handle: ' | append: constructed_handle | append: ' -->'
+            endif
+          else
+            echo '<!-- DEBUG SELECTOR: Property product detected but no menu_handle or pin_id metafield found -->'
+          endif
+        endif
+      endif
+      
+      # Check if it's a Wetu accommodation/room product
+      if product.type == 'wetu-accommodation'
+        # Get parent property and its menu
+        assign parent_property = product.metafields.wetu_room.property_product.value
+        if parent_property
+          assign menu_handle = parent_property.metafields.wetu_property.menu_handle
+          if menu_handle and menu_handle != blank
+            assign selected_menu_handle = menu_handle
+            assign is_wetu_context = true
+            echo '<!-- DEBUG SELECTOR: Accommodation product, parent property menu: ' | append: menu_handle | append: ' -->'
+          endif
+        endif
+      endif
+      
+      # Check for Wetu asset products (videos, 3d-views, documents, activities, restaurants, spa, etc.)
+      if product.type contains 'wetu-'
+        # Try to get property reference from various metafields
+        assign property_ref = product.metafields.wetu.property_product.value
+        unless property_ref
+          assign property_ref = product.metafields.wetu_video.property_product.value
+        endunless
+        unless property_ref
+          assign property_ref = product.metafields.wetu_panorama.property_product.value
+        endunless
+        unless property_ref
+          assign property_ref = product.metafields.wetu_document.property_product.value
+        endunless
+        unless property_ref
+          assign property_ref = product.metafields.wetu_activity.property_product.value
+        endunless
+        unless property_ref
+          assign property_ref = product.metafields.wetu_restaurant.property_product.value
+        endunless
+        unless property_ref
+          assign property_ref = product.metafields.wetu_spa.property_product.value
+        endunless
+        
+        if property_ref
+          assign menu_handle = property_ref.metafields.wetu_property.menu_handle
+          if menu_handle and menu_handle != blank
+            assign selected_menu_handle = menu_handle
+            assign is_wetu_context = true
+            echo '<!-- DEBUG SELECTOR: Wetu asset product, property menu: ' | append: menu_handle | append: ' -->'
+          endif
+        endif
+      endif
+    endif
+    
+    # Check collection pages
+    if collection and selected_menu_handle == blank
+      # Check if collection has property reference
+      assign property_ref = collection.metafields.wetu.property_product.value
+      unless property_ref
+        assign property_ref = collection.metafields.wetu_collection.property_product.value
+      endunless
+      
+      if property_ref
+        assign menu_handle = property_ref.metafields.wetu_property.menu_handle
+        if menu_handle and menu_handle != blank
+          assign selected_menu_handle = menu_handle
+          assign is_wetu_context = true
+          echo '<!-- DEBUG SELECTOR: Collection page, property menu: ' | append: menu_handle | append: ' -->'
+        endif
+      endif
+      
+      # Fallback: Check collection tags for property pin ID
+      if selected_menu_handle == blank
+        for tag in collection.tags
+          if tag contains 'wetu_pin_'
+            assign pin_parts = tag | split: 'wetu_pin_'
+            if pin_parts.size > 1
+              assign pin_id = pin_parts[1]
+              assign potential_handle = 'property-menu-' | append: pin_id
+              if linklists[potential_handle]
+                assign selected_menu_handle = potential_handle
+                assign is_wetu_context = true
+                echo '<!-- DEBUG SELECTOR: Collection page, menu from tag pin_id: ' | append: potential_handle | append: ' -->'
+                break
+              endif
+            endif
+          endif
+        endfor
+      endif
+    endif
+    
+    # Check page objects
+    if page and selected_menu_handle == blank
+      # Check if page has property reference
+      assign property_ref = page.metafields.wetu_page.source_property.value
+      if property_ref
+        assign menu_handle = property_ref.metafields.wetu_property.menu_handle
+        if menu_handle and menu_handle != blank
+          assign selected_menu_handle = menu_handle
+          assign is_wetu_context = true
+          echo '<!-- DEBUG SELECTOR: Page object, property menu: ' | append: menu_handle | append: ' -->'
+        endif
+      endif
+    endif
+    
+    # Fallback to main-menu if not in Wetu context
+    unless is_wetu_context
+      assign selected_menu_handle = 'main-menu'
+      echo '<!-- DEBUG SELECTOR: Fallback to main-menu -->'
+    endunless
+  endif
+%}
+
+{% comment %}
+  Output the selected menu handle as a variable that can be used by the theme
+{% endcomment %}
+{% if selected_menu_handle and selected_menu_handle != blank %}
+  <script>
+    // Make the selected menu available to JavaScript if needed
+    window.wetuSelectedMenu = '{{ selected_menu_handle }}';
+  </script>
+{% endif %}

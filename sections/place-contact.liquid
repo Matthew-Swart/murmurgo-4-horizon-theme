@@ -1,0 +1,36 @@
+{% comment %}
+  place-contact.liquid
+  Check-in/out + contact fallback.
+{% endcomment %}
+{% include 'murmurgo-resolve-place' %}
+
+<section class="murmurgo-place-contact page-width" data-section-id="{{ section.id }}">
+  <div class="place-contact__card">
+    {% if m_place_check_in or m_place_check_out %}
+      <div class="place-contact__times">
+        {% if m_place_check_in %}
+          <p><strong>Check-in:</strong> {{ m_place_check_in }}</p>
+        {% endif %}
+        {% if m_place_check_out %}
+          <p><strong>Check-out:</strong> {{ m_place_check_out }}</p>
+        {% endif %}
+      </div>
+    {% endif %}
+    <div class="place-contact__fallback">
+      <p>Contact the property directly for bookings and enquiries.</p>
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Place Contact",
+  "class": "section-place-contact",
+  "settings": [],
+  "presets": [
+    {
+      "name": "Place Contact"
+    }
+  ]
+}
+{% endschema %}

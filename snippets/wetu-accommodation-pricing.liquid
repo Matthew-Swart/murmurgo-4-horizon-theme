@@ -1,0 +1,1233 @@
+{%- comment -%}
+  Enhanced Wetu Accommodation Pricing Display
+  Shows seasonal rates, inclusions, and conditions for specific accommodations
+  
+  Accepts:
+  - product: {Object} Accommodation product object
+  
+  Usage:
+  {% render 'wetu-accommodation-pricing', product: product %}
+{%- endcomment -%}
+
+{%- liquid
+  comment === Extract rate data from multiple sources ===
+  endcomment
+  assign seasonal_rates_json = product.metafields.wetu_room.seasonal_rates.value
+  assign base_rate = product.metafields.wetu_room.base_rate.value
+  assign currency = product.metafields.wetu_room.currency.value | default: product.metafields.wetu.min_base_rate_currency.value | default: 'USD'
+  assign rate_type = product.metafields.wetu_room.rate_type.value
+  assign property_product = product.metafields.wetu_room.property_product.value
+  assign special_offers = property_product.metafields.wetu.special_offers.value
+  assign current_timestamp = 'now' | date: '%s' | times: 1
+  assign room_name = product.title
+  assign room_image = product.featured_image
+  
+  comment Parse seasonal rates JSON if available
+  endcomment
+  assign seasonal_rates = nil
+  if seasonal_rates_json != blank
+    assign seasonal_rates = seasonal_rates_json | parse_json
+  endif
+  
+  comment Try to get rate_tiers from metaobject references (Fundu Lagoon style)
+  endcomment
+  assign rate_tiers = product.metafields.wetu_room.aggregated_rate_tiers.value
+  comment Fallback to legacy location if aggregate is not present
+  endcomment
+  if rate_tiers == blank or rate_tiers == empty
+    assign rate_tiers = product.metafields.wetu.rate_tiers.value
+  endif
+  
+  comment Sort rates chronologically
+  endcomment
+  assign sorted_seasonal_rates = seasonal_rates | sort: 'start_date'
+  
+  comment Determine if we have comprehensive rate data
+  endcomment
+  comment Check validity of rates (filtering expired ones) before deciding to show anything
+  endcomment
+  assign has_valid_rate_tiers = false
+  if rate_tiers != blank and rate_tiers != empty
+    for tier in rate_tiers
+      assign show_tier = true
+      if tier.end_date.value != blank
+        assign tier_end = tier.end_date.value | date: '%s' | times: 1
+        if tier_end < current_timestamp
+          assign show_tier = false
+        endif
+      endif
+      if show_tier
+        assign has_valid_rate_tiers = true
+        break
+      endif
+    endfor
+  endif
+
+  assign has_valid_seasonal_rates = false
+  if sorted_seasonal_rates != blank and sorted_seasonal_rates.size > 0
+    for rate_period in sorted_seasonal_rates
+      assign show_period = true
+      if rate_period.end_date != blank
+        assign period_end = rate_period.end_date | date: '%s' | times: 1
+        if period_end < current_timestamp
+          assign show_period = false
+        endif
+      endif
+      if show_period
+        assign has_valid_seasonal_rates = true
+        break
+      endif
+    endfor
+  endif
+-%}
+
+{%- if has_valid_rate_tiers or has_valid_seasonal_rates -%}
+  <div class="wetu-accommodation-pricing-wrapper">
+    <div class="wetu-accommodation-pricing">
+      {%- comment -%} Header with Room and Property Info {%- endcomment -%}
+      <div class="wetu-pricing-header">
+        <h2>{{ 'wetu.pricing.seasonal_rates' | t | default: 'Seasonal Rates' }}</h2>
+        <p class="wetu-pricing-subtitle">
+          {{ room_name }}
+          {%- if property_product -%}
+            , <a href="{{ property_product.url }}" class="wetu-property-link">{{ property_product.title }}</a>
+          {%- endif -%}
+        </p>
+      </div>
+
+    {%- comment -%} === ENHANCED RATE DISPLAY === {%- endcomment -%}
+    {%- comment -%} Support both rate_tiers (metaobjects) and seasonal_rates (JSON) {%- endcomment -%}
+    
+    {%- if has_valid_rate_tiers -%}
+      {%- comment -%} METAOBJECT RATE TIERS - Comprehensive Display {%- endcomment -%}
+      
+      {%- comment -%} Group rates by type {%- endcomment -%}
+      {%- liquid
+        assign per_person_tiers = ''
+        assign single_tiers = ''
+        assign per_room_tiers = ''
+        assign has_per_person = false
+        assign has_single = false
+        assign has_per_room = false
+        
+        for tier in rate_tiers
+          assign rate_type_value = tier.rate_type.value | default: 'per_person_sharing'
+          if rate_type_value == 'per_person_sharing' or rate_type_value == 'per_person'
+            assign has_per_person = true
+          elsif rate_type_value == 'single' or rate_type_value == 'single_occupancy'
+            assign has_single = true
+          elsif rate_type_value == 'per_room' or rate_type_value == 'unit'
+            assign has_per_room = true
+          endif
+        endfor
+      -%}
+      
+      <div class="wetu-seasonal-rates">
+        {%- comment -%} Rate Type Tabs {%- endcomment -%}
+        {%- if has_per_person and has_single or has_per_person and has_per_room or has_single and has_per_room -%}
+          <div class="wetu-rate-tabs" role="tablist">
+            {%- if has_per_person -%}
+              <button class="wetu-rate-tab wetu-rate-tab--active" 
+                      role="tab" 
+                      aria-selected="true" 
+                      data-rate-type="per_person">
+                Per Person Sharing
+              </button>
+            {%- endif -%}
+            {%- if has_single -%}
+              <button class="wetu-rate-tab" 
+                      role="tab" 
+                      aria-selected="false" 
+                      data-rate-type="single">
+                Single Occupancy
+              </button>
+            {%- endif -%}
+            {%- if has_per_room -%}
+              <button class="wetu-rate-tab" 
+                      role="tab" 
+                      aria-selected="false" 
+                      data-rate-type="per_room">
+                Per Room
+              </button>
+            {%- endif -%}
+          </div>
+        {%- endif -%}
+        
+        <div class="wetu-rates-accordion wetu-rates-enhanced">
+          {%- for tier in rate_tiers -%}
+            {%- liquid
+              comment Check if rate is expired
+              endcomment
+              assign show_rate = true
+              if tier.end_date.value != blank
+                assign rate_end = tier.end_date.value | date: '%s' | times: 1
+                if rate_end < current_timestamp
+                  assign show_rate = false
+                endif
+              endif
+              
+              if show_rate
+                comment Format dates and amounts
+                endcomment
+                assign start_date = tier.start_date.value | date: "%b %d, %Y"
+                assign end_date = tier.end_date.value | date: "%b %d, %Y"
+                assign seasonal_label = tier.seasonal_label.value
+                assign rate_amount = tier.rate_amount.value
+                assign rate_currency = tier.currency.value | default: currency
+                assign rate_type_value = tier.rate_type.value | default: 'per_person_sharing'
+                
+                comment Determine if seasonal_label is meaningful (contains "Season") or just date duplication
+                endcomment
+                assign show_seasonal_badge = false
+                if seasonal_label != blank
+                  assign label_lower = seasonal_label | downcase
+                  if label_lower contains 'season'
+                    assign show_seasonal_badge = true
+                  endif
+                endif
+                
+                comment Round to nearest dollar/rand (nearest 100 for most currencies)
+                endcomment
+                if rate_currency == 'USD' or rate_currency == 'ZAR'
+                  assign rate_amount_rounded = rate_amount | round: 0
+                else
+                  assign rate_amount_rounded = rate_amount | round: 0
+                endif
+                
+                comment Format rate type display
+                endcomment
+                assign rate_type_label = 'per person sharing'
+                assign normalized_rate_type = 'per_person'
+                if rate_type_value == 'single' or rate_type_value == 'single_occupancy'
+                  assign rate_type_label = 'single occupancy'
+                  assign normalized_rate_type = 'single'
+                elsif rate_type_value == 'per_room' or rate_type_value == 'unit'
+                  assign rate_type_label = 'per unit per night'
+                  assign normalized_rate_type = 'per_room'
+                elsif rate_type_value == 'per_person_sharing' or rate_type_value == 'per_person'
+                  assign normalized_rate_type = 'per_person'
+                endif
+              endif
+            -%}
+            
+            {%- if show_rate -%}
+            <details class="wetu-accordion-item wetu-rate-card" 
+                     data-rate-type="{{ normalized_rate_type }}"
+                     {% if forloop.first %}open{% endif %}>
+              <summary class="wetu-accordion-header">
+                <div class="wetu-accordion-title">
+                  <div class="wetu-rate-header">
+                    <div class="wetu-rate-primary">
+                      {%- if show_seasonal_badge -%}
+                        <span class="wetu-season-badge">{{ seasonal_label }}</span>
+                      {%- endif -%}
+                      <span class="wetu-rate-dates">{{ start_date }} – {{ end_date }}</span>
+                    </div>
+                    <div class="wetu-rate-pricing">
+                      <span class="wetu-rate-price">{{ rate_currency }} {{ rate_amount_rounded }}</span>
+                      <span class="wetu-rate-qualifier">{{ rate_type_label }}</span>
+                    </div>
+                  </div>
+                </div>
+                <svg class="wetu-accordion-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="square" stroke-linejoin="miter" stroke-width="1.5" d="M19 9l-7 7-7-7"/>
+                </svg>
+              </summary>
+              
+              <div class="wetu-accordion-content">
+                {%- comment -%} Rate Inclusions {%- endcomment -%}
+                {%- if tier.rate_included.value != blank -%}
+                  <div class="wetu-rate-section wetu-rate-inclusions">
+                    <div class="wetu-section-label">
+                      <svg class="wetu-section-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M13.334 4L6.00065 11.3333L2.66732 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                      {{ 'wetu.pricing.rate_includes' | t | default: 'Rate includes' }}
+                    </div>
+                    <div class="wetu-section-content">
+                      {{ tier.rate_included.value }}
+                    </div>
+                  </div>
+                {%- endif -%}
+                
+                {%- comment -%} Terms & Conditions {%- endcomment -%}
+                {%- if tier.rate_conditions.value != blank -%}
+                  <div class="wetu-rate-section wetu-rate-conditions">
+                    <div class="wetu-section-label">
+                      <svg class="wetu-section-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5"/>
+                        <path d="M8 4.66669V8.00002M8 11.3334H8.00667" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                      {{ 'wetu.pricing.terms_conditions' | t | default: 'Terms & conditions' }}
+                    </div>
+                    <div class="wetu-section-content wetu-legal-text">
+                      {{ tier.rate_conditions.value }}
+                    </div>
+                  </div>
+                {%- endif -%}
+              </div>
+            </details>
+            {%- endif -%}
+          {%- endfor -%}
+        </div>
+      </div>
+      
+    {%- elsif has_valid_seasonal_rates -%}
+      {%- comment -%} JSON SEASONAL RATES - Enhanced Display {%- endcomment -%}
+      
+      {%- comment -%} Group rates by type {%- endcomment -%}
+      {%- liquid
+        assign has_per_person = false
+        assign has_single = false
+        assign has_per_room = false
+        
+        for rate_period in sorted_seasonal_rates
+          assign rate_display_type = rate_period.type | default: rate_type
+          if rate_display_type == 'per_person_sharing' or rate_display_type == 'per_person' or rate_display_type == blank
+            assign has_per_person = true
+          elsif rate_display_type == 'single' or rate_display_type == 'single_occupancy'
+            assign has_single = true
+          elsif rate_display_type == 'per_room' or rate_display_type == 'unit'
+            assign has_per_room = true
+          endif
+        endfor
+      -%}
+      
+      <div class="wetu-seasonal-rates">
+        {%- comment -%} Rate Type Tabs {%- endcomment -%}
+        {%- if has_per_person and has_single or has_per_person and has_per_room or has_single and has_per_room -%}
+          <div class="wetu-rate-tabs" role="tablist">
+            {%- if has_per_person -%}
+              <button class="wetu-rate-tab wetu-rate-tab--active" 
+                      role="tab" 
+                      aria-selected="true" 
+                      data-rate-type="per_person">
+                Per Person Sharing
+              </button>
+            {%- endif -%}
+            {%- if has_single -%}
+              <button class="wetu-rate-tab" 
+                      role="tab" 
+                      aria-selected="false" 
+                      data-rate-type="single">
+                Single Occupancy
+              </button>
+            {%- endif -%}
+            {%- if has_per_room -%}
+              <button class="wetu-rate-tab" 
+                      role="tab" 
+                      aria-selected="false" 
+                      data-rate-type="per_room">
+                Per Room
+              </button>
+            {%- endif -%}
+          </div>
+        {%- endif -%}
+        
+        <div class="wetu-rates-accordion wetu-rates-enhanced">
+          {%- for rate_period in sorted_seasonal_rates -%}
+            {%- liquid
+              comment Check if rate is expired
+              endcomment
+              assign show_rate = true
+              if rate_period.end_date != blank
+                assign rate_end = rate_period.end_date | date: '%s' | times: 1
+                if rate_end < current_timestamp
+                  assign show_rate = false
+                endif
+              endif
+              
+              if show_rate
+                comment Format dates and amounts
+                endcomment
+                assign start_date = rate_period.start_date | date: "%b %d, %Y"
+                assign end_date = rate_period.end_date | date: "%b %d, %Y"
+                assign rate_amount = rate_period.rate
+                assign rate_currency = rate_period.currency | default: currency
+                assign rate_display_type = rate_period.type | default: rate_type
+                assign seasonal_label = rate_period.label | default: blank
+                
+                comment Determine if seasonal_label is meaningful (contains "Season") or just date duplication
+                endcomment
+                assign show_seasonal_badge = false
+                if seasonal_label != blank
+                  assign label_lower = seasonal_label | downcase
+                  if label_lower contains 'season'
+                    assign show_seasonal_badge = true
+                  endif
+                endif
+                
+                comment Round to nearest dollar/rand
+                endcomment
+                if rate_currency == 'USD' or rate_currency == 'ZAR'
+                  assign rate_amount_rounded = rate_amount | round: 0
+                else
+                  assign rate_amount_rounded = rate_amount | round: 0
+                endif
+                
+                comment Format rate type display
+                endcomment
+                assign rate_type_label = 'per person sharing'
+                assign normalized_rate_type = 'per_person'
+                if rate_display_type == 'single' or rate_display_type == 'single_occupancy'
+                  assign rate_type_label = 'single occupancy'
+                  assign normalized_rate_type = 'single'
+                elsif rate_display_type == 'per_room' or rate_display_type == 'unit'
+                  assign rate_type_label = 'per unit per night'
+                  assign normalized_rate_type = 'per_room'
+                elsif rate_display_type == 'per_person_sharing' or rate_display_type == 'per_person' or rate_display_type == blank
+                  assign normalized_rate_type = 'per_person'
+                endif
+              endif
+            -%}
+            
+            {%- if show_rate -%}
+            <details class="wetu-accordion-item wetu-rate-card" 
+                     data-rate-type="{{ normalized_rate_type }}"
+                     {% if forloop.first %}open{% endif %}>
+              <summary class="wetu-accordion-header">
+                <div class="wetu-accordion-title">
+                  <div class="wetu-rate-header">
+                    <div class="wetu-rate-primary">
+                      {%- if show_seasonal_badge -%}
+                        <span class="wetu-season-badge">{{ seasonal_label }}</span>
+                      {%- endif -%}
+                      <span class="wetu-rate-dates">{{ start_date }} – {{ end_date }}</span>
+                    </div>
+                    <div class="wetu-rate-pricing">
+                      <span class="wetu-rate-price">{{ rate_currency }} {{ rate_amount_rounded }}</span>
+                      <span class="wetu-rate-qualifier">{{ rate_type_label }}</span>
+                    </div>
+                  </div>
+                </div>
+                <svg class="wetu-accordion-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="square" stroke-linejoin="miter" stroke-width="1.5" d="M19 9l-7 7-7-7"/>
+                </svg>
+              </summary>
+              
+              <div class="wetu-accordion-content">
+                {%- comment -%} Rate Inclusions {%- endcomment -%}
+                {%- if rate_period.included != blank -%}
+                  <div class="wetu-rate-section wetu-rate-inclusions">
+                    <div class="wetu-section-label">
+                      <svg class="wetu-section-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M13.334 4L6.00065 11.3333L2.66732 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                      {{ 'wetu.pricing.rate_includes' | t | default: 'Rate includes' }}
+                    </div>
+                    <div class="wetu-section-content">
+                      {{ rate_period.included }}
+                    </div>
+                  </div>
+                {%- endif -%}
+                
+                {%- comment -%} Terms & Conditions {%- endcomment -%}
+                {%- if rate_period.conditions != blank -%}
+                  <div class="wetu-rate-section wetu-rate-conditions">
+                    <div class="wetu-section-label">
+                      <svg class="wetu-section-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5"/>
+                        <path d="M8 4.66669V8.00002M8 11.3334H8.00667" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                      {{ 'wetu.pricing.terms_conditions' | t | default: 'Terms & conditions' }}
+                    </div>
+                    <div class="wetu-section-content wetu-legal-text">
+                      {{ rate_period.conditions }}
+                    </div>
+                  </div>
+                {%- endif -%}
+              </div>
+            </details>
+            {%- endif -%}
+          {%- endfor -%}
+        </div>
+      </div>
+    {%- endif -%}
+
+    {%- comment -%} Special Offers - Only show if there are valid (non-expired) offers {%- endcomment -%}
+    {%- if special_offers != blank and special_offers.size > 0 -%}
+      {%- liquid
+        assign has_valid_offers = false
+        for offer in special_offers
+          assign offer_valid = true
+          if offer.end != blank
+            assign offer_end = offer.end | date: '%s' | times: 1
+            if offer_end < current_timestamp
+              assign offer_valid = false
+            endif
+          endif
+          if offer_valid
+            assign has_valid_offers = true
+            break
+          endif
+        endfor
+      -%}
+      
+      {%- if has_valid_offers -%}
+      <div class="wetu-applicable-offers">
+        <h2>{{ 'wetu.pricing.special_offers' | t | default: 'Special Offers' }}</h2>
+        
+        <div class="wetu-offers-accordion">
+          {%- for offer in special_offers -%}
+            {%- liquid
+              assign show_offer = true
+              if offer.end != blank
+                assign offer_end = offer.end | date: '%s' | times: 1
+                if offer_end < current_timestamp
+                  assign show_offer = false
+                endif
+              endif
+            -%}
+            
+            {%- if show_offer -%}
+            <div class="wetu-offer-card">
+              <div class="wetu-offer-header">
+                <div class="wetu-offer-name">{{ offer.name }}</div>
+                <div class="wetu-offer-meta">
+                  {%- if offer.type != blank -%}
+                    <span class="wetu-offer-type">{{ offer.type }}</span>
+                  {%- endif -%}
+                  {%- if offer.start and offer.end -%}
+                    <span class="wetu-offer-dates">
+                      {{ offer.start | date: "%b %d, %Y" }} to {{ offer.end | date: "%b %d, %Y" }}
+                    </span>
+                  {%- endif -%}
+                </div>
+              </div>
+              
+              {%- if offer.description != blank -%}
+                <div class="wetu-offer-description">
+                  {{ offer.description }}
+                </div>
+              {%- endif -%}
+              
+              {%- if offer.conditions != blank -%}
+                <details class="wetu-offer-conditions-toggle">
+                  <summary class="wetu-conditions-summary">
+                    <span class="wetu-conditions-label">{{ 'wetu.pricing.terms_conditions' | t | default: 'Terms & Conditions' }}</span>
+                    <svg class="wetu-conditions-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="square" stroke-linejoin="miter" stroke-width="1.5" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                  </summary>
+                  <div class="wetu-conditions-text">
+                    {{ offer.conditions }}
+                  </div>
+                </details>
+              {%- endif -%}
+            </div>
+            {%- endif -%}
+          {%- endfor -%}
+        </div>
+      </div>
+      {%- endif -%}
+    {%- endif -%}
+
+    {%- comment -%} Important Notice {%- endcomment -%}
+      <div class="wetu-pricing-notice">
+        <strong>{{ 'wetu.pricing.notice_title' | t | default: 'Important Pricing Information' }}</strong>
+        {{ 'wetu.pricing.notice_text' | t | default: 'All rates are subject to availability and may change without notice. Additional conservation fees and transfers may apply. Please contact us for a detailed quote tailored to your specific travel dates and requirements.' }}
+      </div>
+    </div>
+  </div>
+
+  <style>
+    /* === FULL-WIDTH WRAPPER === */
+    .wetu-accommodation-pricing-wrapper {
+      background: transparent;
+      padding: 4rem 0;
+      margin-top: 4rem;
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: inherit;
+    }
+    
+    /* === ENHANCED ACCOMMODATION PRICING STYLES === */
+    .wetu-accommodation-pricing {
+      color: rgb(var(--color-foreground));
+      grid-column: 2;
+    }
+    
+    /* === HEADER === */
+    .wetu-pricing-header {
+      margin-bottom: 2rem;
+    }
+
+    .wetu-pricing-header h2 {
+      margin: 0 0 0.5rem 0;
+    }
+
+    .wetu-pricing-subtitle {
+      font-size: 0.9375rem;
+      color: rgba(var(--color-foreground), 0.7);
+      line-height: 1.5;
+      margin: 0 0 2rem 0;
+    }
+
+    .wetu-property-link {
+      color: inherit;
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+
+    .wetu-property-link:hover {
+      color: rgb(var(--color-foreground));
+      text-decoration: underline;
+    }
+    
+    /* === RATE TYPE TABS === */
+    .wetu-rate-tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 1rem;
+      border: 1px solid rgba(var(--color-foreground), 0.12);
+      background: rgb(var(--color-background));
+      width: fit-content;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+    
+    .wetu-rate-tab {
+      background: rgba(var(--color-foreground), 0.03);
+      border: none;
+      border-right: 1px solid rgba(var(--color-foreground), 0.12);
+      padding: 0.875rem 2rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: rgba(var(--color-foreground), 0.6);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+      font-family: inherit;
+      position: relative;
+      text-decoration: underline;
+      text-decoration-color: rgba(var(--color-foreground), 0.4);
+      text-underline-offset: 3px;
+    }
+    
+    .wetu-rate-tab:last-child {
+      border-right: none;
+    }
+    
+    .wetu-rate-tab:hover:not(.wetu-rate-tab--active) {
+      background: rgba(var(--color-foreground), 0.06);
+      color: rgba(var(--color-foreground), 0.8);
+      text-decoration-color: rgba(var(--color-foreground), 0.6);
+    }
+    
+    .wetu-rate-tab--active {
+      background: rgb(var(--color-background));
+      color: rgb(var(--color-foreground));
+      font-weight: 500;
+      text-decoration: none;
+      cursor: default;
+    }
+    
+    .wetu-rate-tab:focus-visible {
+      outline: 2px solid rgb(var(--color-foreground));
+      outline-offset: -2px;
+      z-index: 1;
+    }
+    
+    /* === SECTION HEADERS === */
+    .wetu-applicable-offers h2 {
+      margin: 3rem 0 1.5rem 0;
+    }
+    
+    /* === ACCORDION CONTAINER === */
+    .wetu-seasonal-rates,
+    .wetu-applicable-offers {
+      margin-bottom: 3rem;
+    }
+    
+    .wetu-rates-accordion,
+    .wetu-offers-accordion {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    
+    /* === ACCORDION ITEM / RATE CARD === */
+    .wetu-rate-card {
+      background: rgba(var(--color-foreground), 0.06);
+      border: 1px solid rgba(var(--color-foreground), 0.12);
+      transition: all 0.2s ease;
+      border-radius: 0;
+    }
+    
+    .wetu-rate-card:hover {
+      border-color: rgba(var(--color-foreground), 0.2);
+      background: rgba(var(--color-foreground), 0.08);
+    }
+    
+    .wetu-rate-card[open] {
+      border-color: rgba(var(--color-foreground), 0.25);
+      background: rgba(var(--color-foreground), 0.07);
+    }
+    
+    /* === ACCORDION HEADER === */
+    .wetu-accordion-header {
+      padding: 1.5rem 2rem;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      background: transparent;
+      transition: all 0.2s ease;
+      list-style: none;
+      gap: 1.5rem;
+    }
+    
+    .wetu-accordion-header::-webkit-details-marker,
+    .wetu-accordion-header::marker {
+      display: none;
+    }
+    
+    .wetu-accordion-title {
+      flex: 1;
+      min-width: 0;
+    }
+    
+    /* === RATE HEADER LAYOUT === */
+    .wetu-rate-header {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    
+    .wetu-rate-primary {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    
+    .wetu-season-badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      background: rgb(var(--color-foreground));
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      border-radius: 2px;
+      color: rgb(var(--color-background));
+    }
+    
+    .wetu-rate-dates {
+      font-weight: 500;
+      font-size: 0.9375rem;
+      color: rgb(var(--color-foreground));
+      letter-spacing: 0.01em;
+    }
+    
+    .wetu-rate-pricing {
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    
+    .wetu-rate-price {
+      font-size: 1.5rem;
+      font-weight: 300;
+      letter-spacing: -0.02em;
+      color: rgb(var(--color-foreground));
+      font-family: var(--font-heading--family);
+    }
+    
+    .wetu-rate-qualifier,
+    .wetu-rate-label {
+      font-size: 0.6875rem;
+      color: rgba(var(--color-foreground), 0.6);
+      text-transform: lowercase;
+      letter-spacing: 0.02em;
+    }
+    
+    /* === ACCORDION ICON === */
+    .wetu-accordion-icon {
+      width: 1.25rem;
+      height: 1.25rem;
+      min-width: 1.25rem;
+      max-width: 1.25rem;
+      min-height: 1.25rem;
+      max-height: 1.25rem;
+      margin-top: 0.125rem;
+      flex-shrink: 0;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      color: rgba(var(--color-foreground), 0.5);
+      overflow: hidden;
+    }
+    
+    .wetu-accordion-item[open] .wetu-accordion-icon {
+      transform: rotate(180deg);
+      color: rgb(var(--color-foreground));
+    }
+    
+    /* === ACCORDION CONTENT === */
+    .wetu-accordion-content {
+      background: rgba(var(--color-foreground), 0.02);
+      border-top: 1px solid rgba(var(--color-foreground), 0.1);
+      font-size: 0.875rem;
+      line-height: 1.7;
+    }
+    
+    /* === RATE SECTIONS === */
+    .wetu-rate-section {
+      padding: 2rem;
+    }
+    
+    .wetu-rate-section + .wetu-rate-section {
+      border-top: 1px solid rgba(var(--color-foreground), 0.12);
+    }
+    
+    .wetu-section-label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.6875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: rgba(var(--color-foreground), 0.7);
+      margin-bottom: 1rem;
+      font-weight: 600;
+    }
+    
+    .wetu-section-icon {
+      flex-shrink: 0;
+      color: rgba(var(--color-foreground), 0.6);
+    }
+    
+    .wetu-section-content {
+      color: rgba(var(--color-foreground), 0.8);
+      line-height: 1.7;
+    }
+    
+    .wetu-section-content ul {
+      margin: 0.75rem 0 0 0;
+      padding: 0 0 0 1.5rem;
+      list-style: disc;
+    }
+    
+    .wetu-section-content li {
+      margin-bottom: 0.5rem;
+      padding-left: 0.25rem;
+    }
+    
+    .wetu-section-content p {
+      margin-bottom: 1rem;
+    }
+    
+    .wetu-section-content p:last-child {
+      margin-bottom: 0;
+    }
+    
+    .wetu-section-content strong {
+      font-weight: 600;
+      color: rgb(var(--color-foreground));
+    }
+    
+    /* === LEGAL TEXT STYLING === */
+    .wetu-legal-text {
+      color: rgba(var(--color-foreground), 0.7);
+      font-size: 0.8125rem;
+    }
+    
+    .wetu-legal-text p {
+      margin-bottom: 0.875rem;
+    }
+    
+    .wetu-legal-text ul {
+      margin-top: 0.75rem;
+    }
+    
+    .wetu-legal-text li {
+      margin-bottom: 0.375rem;
+    }
+    
+    .wetu-conditions {
+      color: rgba(var(--color-foreground), 0.7);
+    }
+    
+    /* === SPECIAL OFFERS === */
+    .wetu-offers-accordion {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    
+    .wetu-offer-card {
+      background: rgba(var(--color-foreground), 0.06);
+      border: 1px solid rgba(var(--color-foreground), 0.12);
+      padding: 2rem;
+      border-radius: 0;
+      transition: all 0.2s ease;
+    }
+    
+    .wetu-offer-card:hover {
+      border-color: rgba(var(--color-foreground), 0.2);
+      background: rgba(var(--color-foreground), 0.08);
+    }
+    
+    .wetu-offer-header {
+      margin-bottom: 1.5rem;
+    }
+    
+    .wetu-offer-name {
+      font-weight: 500;
+      font-size: 1.0625rem;
+      margin-bottom: 0.75rem;
+      font-family: var(--font-heading--family);
+      color: rgb(var(--color-foreground));
+      line-height: 1.3;
+    }
+
+    .wetu-offer-meta {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    
+    .wetu-offer-type {
+      font-size: 0.6875rem;
+      color: rgb(var(--color-background));
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 0.25rem 0.75rem;
+      background: rgb(var(--color-foreground));
+      border-radius: 2px;
+      font-weight: 600;
+    }
+    
+    .wetu-offer-dates {
+      font-size: 0.75rem;
+      color: rgba(var(--color-foreground), 0.65);
+      letter-spacing: 0.01em;
+    }
+    
+    .wetu-offer-description {
+      font-size: 0.9375rem;
+      line-height: 1.7;
+      color: rgba(var(--color-foreground), 0.8);
+      margin-bottom: 1.5rem;
+    }
+
+    /* Terms & Conditions Toggle */
+    .wetu-offer-conditions-toggle {
+      margin-top: 1.5rem;
+      padding-top: 0;
+      border-top: none;
+    }
+
+    .wetu-conditions-summary {
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      list-style: none;
+      padding: 0.75rem 0;
+      transition: opacity 0.2s ease;
+    }
+    
+    .wetu-conditions-summary:hover {
+      opacity: 0.8;
+    }
+
+    .wetu-conditions-summary::-webkit-details-marker,
+    .wetu-conditions-summary::marker {
+      display: none;
+    }
+
+    .wetu-conditions-label {
+      font-size: 0.6875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: rgba(var(--color-foreground), 0.7);
+      font-weight: 600;
+      text-decoration: underline;
+    }
+
+    .wetu-conditions-icon {
+      width: 1rem;
+      height: 1rem;
+      flex-shrink: 0;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      color: rgba(var(--color-foreground), 0.5);
+    }
+
+    .wetu-offer-conditions-toggle[open] .wetu-conditions-icon {
+      transform: rotate(180deg);
+      color: rgb(var(--color-foreground));
+    }
+
+    .wetu-conditions-text {
+      font-size: 0.875rem;
+      line-height: 1.7;
+      color: rgba(var(--color-foreground), 0.7);
+      padding-top: 1rem;
+    }
+
+    .wetu-conditions-text p {
+      margin-bottom: 1rem;
+    }
+
+    .wetu-conditions-text p:last-child {
+      margin-bottom: 0;
+    }
+    
+    .wetu-conditions-text strong {
+      font-weight: 600;
+      color: rgb(var(--color-foreground));
+    }
+    
+    /* === PRICING NOTICE === */
+    .wetu-pricing-notice {
+      margin-top: 3rem;
+      padding: 2rem;
+      background: rgba(var(--color-foreground), 0.06);
+      border: 1px solid rgba(var(--color-foreground), 0.12);
+      border-left: 3px solid rgba(var(--color-foreground), 0.35);
+      font-size: 0.8125rem;
+      line-height: 1.7;
+      color: rgba(var(--color-foreground), 0.7);
+    }
+    
+    .wetu-pricing-notice strong {
+      display: block;
+      margin-bottom: 0.75rem;
+      color: rgb(var(--color-foreground));
+      font-weight: 600;
+      font-size: 0.875rem;
+      letter-spacing: 0.02em;
+    }
+    
+    /* === RESPONSIVE DESIGN === */
+    @media screen and (max-width: 749px) {
+      .wetu-accommodation-pricing-wrapper {
+        padding: 2rem 0;
+      }
+      
+      .wetu-rate-tabs {
+        width: 100%;
+        margin-bottom: 1.5rem;
+      }
+      
+      .wetu-rate-tab {
+        flex: 1;
+        padding: 0.75rem 1rem;
+        font-size: 0.8125rem;
+      }
+      
+      .wetu-pricing-main-title {
+        font-size: 1.25rem;
+      }
+      
+      .wetu-pricing-subtitle {
+        font-size: 0.875rem;
+      }
+      
+      .wetu-section-mainheader {
+        font-size: 1.25rem;
+        margin-bottom: 1rem;
+      }
+      
+      .wetu-section-subheader {
+        font-size: 1rem;
+        margin-bottom: 0.625rem;
+      }
+      
+      .wetu-rates-intro {
+        font-size: 0.8125rem;
+        margin-bottom: 1.5rem;
+      }
+      
+      .wetu-accordion-header {
+        padding: 1.25rem 1.25rem;
+        gap: 1rem;
+      }
+      
+      .wetu-rate-header {
+        gap: 0.625rem;
+      }
+      
+      .wetu-season-badge {
+        font-size: 0.625rem;
+        padding: 0.1875rem 0.625rem;
+      }
+      
+      .wetu-rate-dates {
+        font-size: 0.875rem;
+      }
+      
+      .wetu-rate-price {
+        font-size: 1.25rem;
+      }
+      
+      .wetu-rate-qualifier,
+      .wetu-rate-label {
+        font-size: 0.625rem;
+      }
+      
+      .wetu-accordion-content {
+        font-size: 0.8125rem;
+      }
+      
+      .wetu-rate-section {
+        padding: 1.25rem;
+      }
+      
+      .wetu-section-label {
+        font-size: 0.625rem;
+        margin-bottom: 0.875rem;
+      }
+      
+      .wetu-section-content {
+        font-size: 0.8125rem;
+      }
+      
+      .wetu-legal-text {
+        font-size: 0.75rem;
+      }
+      
+      .wetu-offer-card {
+        padding: 1.25rem;
+      }
+      
+      .wetu-offer-header {
+        margin-bottom: 1.25rem;
+      }
+      
+      .wetu-offer-name {
+        font-size: 1rem;
+        margin-bottom: 0.625rem;
+      }
+      
+      .wetu-offer-meta {
+        gap: 0.75rem;
+      }
+      
+      .wetu-offer-type {
+        font-size: 0.625rem;
+        padding: 0.1875rem 0.625rem;
+      }
+      
+      .wetu-offer-dates {
+        font-size: 0.6875rem;
+      }
+      
+      .wetu-offer-description {
+        font-size: 0.875rem;
+        margin-bottom: 1.25rem;
+      }
+      
+      .wetu-offer-conditions-toggle {
+        margin-top: 1.25rem;
+        padding-top: 1.25rem;
+      }
+      
+      .wetu-conditions-label {
+        font-size: 0.625rem;
+        margin-bottom: 0.875rem;
+      }
+      
+      .wetu-conditions-text {
+        font-size: 0.8125rem;
+      }
+      
+      .wetu-pricing-notice {
+        margin-top: 2rem;
+        padding: 1.25rem;
+        font-size: 0.75rem;
+      }
+      
+      .wetu-pricing-notice strong {
+        font-size: 0.8125rem;
+        margin-bottom: 0.625rem;
+      }
+    }
+    
+    /* === TABLET (BETWEEN MOBILE AND DESKTOP) === */
+    @media screen and (min-width: 750px) and (max-width: 989px) {
+      .wetu-accordion-header {
+        padding: 1.375rem 1.75rem;
+      }
+      
+      .wetu-rate-section {
+        padding: 1.75rem;
+      }
+      
+      .wetu-offer-header {
+        padding: 1.375rem 1.75rem;
+      }
+      
+      .wetu-offer-content {
+        padding: 0 1.75rem 1.75rem 1.75rem;
+      }
+    }
+  </style>
+  
+  <script>
+    // Rate type tab switching functionality - runs immediately to prevent flash
+    (function() {
+      function initRateTabs() {
+        const tabContainers = document.querySelectorAll('.wetu-rate-tabs');
+        
+        tabContainers.forEach(tabContainer => {
+          const tabs = tabContainer.querySelectorAll('.wetu-rate-tab');
+          const seasonalRatesSection = tabContainer.closest('.wetu-seasonal-rates');
+          if (!seasonalRatesSection) return;
+          
+          const rateCards = seasonalRatesSection.querySelectorAll('.wetu-rate-card');
+          
+          // Initialize - show only the first tab's rate type (runs immediately)
+          if (tabs.length > 0) {
+            const firstTab = tabs[0];
+            const selectedType = firstTab.getAttribute('data-rate-type');
+            
+            rateCards.forEach(card => {
+              const cardType = card.getAttribute('data-rate-type');
+              if (cardType === selectedType) {
+                card.style.display = '';
+              } else {
+                card.style.display = 'none';
+              }
+            });
+          }
+          
+          // Add click handlers
+          tabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+              const selectedType = this.getAttribute('data-rate-type');
+              
+              // Update tab states
+              tabs.forEach(t => {
+                t.classList.remove('wetu-rate-tab--active');
+                t.setAttribute('aria-selected', 'false');
+              });
+              this.classList.add('wetu-rate-tab--active');
+              this.setAttribute('aria-selected', 'true');
+              
+              // Show/hide rate cards based on type
+              rateCards.forEach(card => {
+                const cardType = card.getAttribute('data-rate-type');
+                if (cardType === selectedType) {
+                  card.style.display = '';
+                  card.removeAttribute('open'); // Close all expanded cards when switching
+                } else {
+                  card.style.display = 'none';
+                }
+              });
+            });
+          });
+        });
+      }
+      
+      // Run immediately if DOM is already loaded, otherwise wait
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initRateTabs);
+      } else {
+        initRateTabs();
+      }
+    })();
+  </script>
+{%- endif -%}

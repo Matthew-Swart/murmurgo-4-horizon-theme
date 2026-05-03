@@ -1,0 +1,270 @@
+{% doc %}
+  WETU Document Item Snippet
+  
+  Renders a single document item from Wetu API data synced via Plekify.
+  Fields populated from Wetu API Documentation (Section → section, Label → title, Url → url).
+  Card-based design with straight corners and clean typography.
+  
+  @param {metaobject} document - The travel_document metaobject (required)
+  @param {string} layout - Display layout: 'list' or 'grid' (default: 'list')
+  @param {boolean} hide_category - Hide category in meta text when already grouped (default: false)
+  
+  @example
+  {% render 'wetu-document-item', 
+    document: doc, 
+    layout: 'list',
+    hide_category: true
+  %}
+{% enddoc %}
+
+{% liquid
+  assign document = document | default: empty
+  assign layout = layout | default: 'list'
+  assign hide_category = hide_category | default: false
+  
+  unless document != empty
+    break
+  endunless
+  
+  # Direct field access - enabled by Plekify sync with displayNameKey
+  # Wetu API Documentation → Shopify metaobject field mapping:
+  # - Label → label (the proper title from Wetu)
+  # - Section → section  
+  # - Url → url (after CDN upload)
+  # - title may contain filename
+  assign doc_label = document.label
+  assign doc_title = document.title
+  assign doc_url = document.url
+  assign doc_section = document.section
+  
+  # Use the Wetu Label field as the primary title (per Wetu API spec)
+  # Only fall back to title field if label is empty
+  if doc_label != blank
+    assign raw_title = doc_label
+  elsif doc_title != blank
+    assign raw_title = doc_title
+  else
+    assign raw_title = 'Document'
+  endif
+  
+  if doc_section == blank
+    assign doc_section = 'Other / General'
+  endif
+  
+  # Simple cleanup: just remove file extensions and replace underscores/hyphens
+  # Keep the original title structure from Wetu
+  assign cleaned_title = raw_title | replace: '.pdf', '' | replace: '.PDF', '' | replace: '_', ' ' | replace: '-', ' ' | strip
+  
+  # Remove leading numeric codes (like "5793" at the start of filenames)
+  assign title_parts = cleaned_title | split: ' '
+  assign final_title = ''
+  assign skip_leading_numbers = true
+  
+  for part in title_parts
+    assign part_stripped = part | strip
+    assign part_size = part_stripped | size
+    
+    if skip_leading_numbers and part_size > 0
+      # Check if this part is purely numeric (a leading ID/code to skip)
+      assign is_numeric = true
+      assign chars = part_stripped | split: ''
+      for char in chars
+        unless char == '0' or char == '1' or char == '2' or char == '3' or char == '4' or char == '5' or char == '6' or char == '7' or char == '8' or char == '9'
+          assign is_numeric = false
+          break
+        endunless
+      endfor
+      
+      if is_numeric
+        # Skip this leading number
+        continue
+      else
+        # Found first non-numeric part, stop skipping
+        assign skip_leading_numbers = false
+      endif
+    endif
+    
+    if part_size > 0 and skip_leading_numbers == false
+      if final_title == ''
+        assign final_title = part_stripped
+      else
+        assign final_title = final_title | append: ' ' | append: part_stripped
+      endif
+    endif
+  endfor
+  
+  # If everything was stripped, use original cleaned title
+  if final_title == blank
+    assign final_title = cleaned_title
+  endif
+  
+  # Apply proper title capitalization - capitalize first letter of each word
+  assign title_words = final_title | downcase | split: ' '
+  assign capitalized_parts = ''
+  
+  for word in title_words
+    assign word_size = word | size
+    if word_size > 0
+      assign first_char = word | slice: 0 | upcase
+      assign rest_chars = word | slice: 1, word_size
+      assign cap_word = first_char | append: rest_chars
+      
+      if capitalized_parts == ''
+        assign capitalized_parts = cap_word
+      else
+        assign capitalized_parts = capitalized_parts | append: ' ' | append: cap_word
+      endif
+    endif
+  endfor
+  
+  assign final_title = capitalized_parts
+  
+  # If we ended up with nothing, use original
+  if final_title == blank
+    assign final_title = raw_title | strip
+  endif
+%}
+
+<li class="wetu-document-item wetu-document-item--{{ layout }}">
+  <a 
+    href="{{ doc_url }}" 
+    target="_blank" 
+    rel="noopener noreferrer" 
+    class="wetu-document-item__link"
+    aria-label="{{ final_title }} - {{ 'wetu.documents.opens_new_window' | t }}"
+  >
+    <div class="wetu-document-item__content">
+      <div class="wetu-document-item__icon">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="24" height="24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+        </svg>
+      </div>
+      <div class="wetu-document-item__details">
+        <span class="wetu-document-item__title">{{ final_title }}</span>
+        <span class="wetu-document-item__meta">PDF{% unless hide_category %}{% if doc_section %} · {{ doc_section }}{% endif %}{% endunless %}</span>
+      </div>
+      <div class="wetu-document-item__action">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+        </svg>
+      </div>
+    </div>
+  </a>
+</li>
+
+{% style %}
+  .wetu-document-item {
+    margin: 0;
+  }
+  
+  .wetu-document-item__link {
+    display: block;
+    padding: 1rem 1.25rem;
+    background: rgba(var(--color-foreground), 0.06);
+    border: 1px solid rgba(var(--color-foreground), 0.12);
+    border-radius: 0;
+    text-decoration: none;
+    color: rgb(var(--color-foreground));
+    transition: all 0.2s ease;
+  }
+  
+  .wetu-document-item__link:hover {
+    border-color: rgba(var(--color-foreground), 0.2);
+    background: rgba(var(--color-foreground), 0.1);
+  }
+  
+  .wetu-document-item__content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  
+  .wetu-document-item__icon {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(var(--color-foreground), 0.08);
+    border-radius: 0;
+    color: rgba(var(--color-foreground), 0.7);
+  }
+  
+  .wetu-document-item__details {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .wetu-document-item__title {
+    display: block;
+    font-weight: 500;
+    font-size: 0.9375rem;
+    line-height: 1.4;
+    margin-bottom: 0.25rem;
+    color: rgb(var(--color-foreground));
+  }
+  
+  .wetu-document-item__meta {
+    display: block;
+    font-size: 0.8125rem;
+    color: rgba(var(--color-foreground), 0.6);
+  }
+  
+  .wetu-document-item__action {
+    flex-shrink: 0;
+    color: rgba(var(--color-foreground), 0.5);
+    transition: color 0.2s ease;
+  }
+  
+  .wetu-document-item__link:hover .wetu-document-item__action {
+    color: rgba(var(--color-foreground), 0.8);
+  }
+  
+  /* Grid layout adjustments */
+  .wetu-document-item--grid .wetu-document-item__content {
+    flex-direction: column;
+    text-align: center;
+    padding: 0.5rem 0;
+  }
+  
+  .wetu-document-item--grid .wetu-document-item__icon {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .wetu-document-item--grid .wetu-document-item__details {
+    width: 100%;
+  }
+  
+  .wetu-document-item--grid .wetu-document-item__link {
+    min-height: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem 1rem;
+  }
+  
+  .wetu-document-item--grid .wetu-document-item__action {
+    margin-top: 0.5rem;
+  }
+  
+  @media (max-width: 749px) {
+    .wetu-document-item__content {
+      gap: 0.75rem;
+    }
+    
+    .wetu-document-item__link {
+      padding: 0.875rem 1rem;
+    }
+    
+    .wetu-document-item__icon {
+      width: 36px;
+      height: 36px;
+    }
+    
+    .wetu-document-item__title {
+      font-size: 0.875rem;
+    }
+  }
+{% endstyle %}

@@ -1,0 +1,965 @@
+{% comment %}
+  ============================================================================
+  WETU FULLSCREEN MAP PAGE TEMPLATE
+  ============================================================================
+  
+  Dedicated fullscreen map page for itinerary visualization.
+  Features:
+  - 100vh map display
+  - Collapsible sidebar with day-by-day list
+  - Route filter toggles
+  - Back to itinerary link
+  
+  USAGE:
+  Create a page and select this template. Link to it from the itinerary
+  product page for an immersive map experience.
+  
+  URL PARAMETER:
+  ?product=handle - Load itinerary data from a specific product
+  
+  ============================================================================
+{% endcomment %}
+
+{% comment %} Get product from URL parameter or page metafield {% endcomment %}
+{% assign itinerary_handle = request.params.product | default: page.metafields.wetu.itinerary_product.value %}
+{% assign itinerary_product = all_products[itinerary_handle] %}
+
+{% if itinerary_product == blank %}
+  {% comment %} Show error if no product found {% endcomment %}
+  <div class="wetu-fullscreen-map__error">
+    <div class="error-content">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M12 8v4M12 16h.01"/>
+      </svg>
+      <h1>Itinerary Not Found</h1>
+      <p>Please access this page from a valid itinerary product.</p>
+      <a href="{{ routes.root_url }}" class="button">Return Home</a>
+    </div>
+  </div>
+  
+  <style>
+    .wetu-fullscreen-map__error {
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--color-background);
+      color: var(--color-foreground);
+      text-align: center;
+      padding: 24px;
+    }
+    .error-content {
+      max-width: 400px;
+    }
+    .error-content svg {
+      margin-bottom: 24px;
+      color: color-mix(in srgb, var(--color-foreground) 40%, transparent);
+    }
+    .error-content h1 {
+      margin: 0 0 12px;
+      font-size: 1.5rem;
+    }
+    .error-content p {
+      margin: 0 0 24px;
+      color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+    }
+  </style>
+{% else %}
+  {% comment %} Load itinerary data {% endcomment %}
+  {% assign product = itinerary_product %}
+  {% render 'wetu-itinerary-data', product: product %}
+  
+  {% assign itinerary = product.metafields.wetu.itinerary_metaobject.value %}
+  {% assign legs_array = itinerary.legs.value %}
+  {% assign routes_array = itinerary.routes.value %}
+  
+  {% comment %} Build markers data {% endcomment %}
+  {% capture markers_json %}
+  [
+    {% assign marker_index = 0 %}
+    {% assign current_day = 1 %}
+    {% for leg in legs_array %}
+      {% assign leg_type = leg.type.value | default: "Standard" %}
+      {% assign leg_nights = leg.nights.value | default: 0 %}
+      
+      {% if leg_type == "Departure" %}{% continue %}{% endif %}
+      
+      {% assign content_id = leg.content_entity_id.value %}
+      {% assign property_handle = 'wetu-' | append: content_id %}
+      {% assign property = all_products[property_handle] %}
+      {% assign accommodation_name = leg.accommodation_name.value | default: property.title | default: "Destination" %}
+      
+      {% if property != blank %}
+        {% assign position = property.metafields.wetu.position.value %}
+        {% if position.latitude != blank and position.longitude != blank %}
+          {% if marker_index > 0 %},{% endif %}
+          {
+            "id": "marker-{{ content_id }}",
+            "name": {{ accommodation_name | json }},
+            "lat": {{ position.latitude }},
+            "lng": {{ position.longitude }},
+            "drivingLat": {{ position.driving_latitude | default: position.latitude }},
+            "drivingLng": {{ position.driving_longitude | default: position.longitude }},
+            "nights": {{ leg_nights }},
+            "day": {{ current_day }},
+            "dayEnd": {{ current_day | plus: leg_nights | minus: 1 }},
+            "sequence": {{ leg.sequence.value | default: forloop.index0 }},
+            "type": "accommodation",
+            "country": {{ position.country | default: "" | json }},
+            "destination": {{ position.destination | default: "" | json }},
+            "image": {{ property.featured_image | image_url: width: 400 | json }},
+            "url": {{ property.url | json }},
+            "contentId": {{ content_id | json }}
+          }
+          {% assign marker_index = marker_index | plus: 1 %}
+        {% endif %}
+      {% endif %}
+      
+      {% assign current_day = current_day | plus: leg_nights %}
+    {% endfor %}
+  ]
+  {% endcapture %}
+  
+  {% comment %} Build routes data {% endcomment %}
+  {% capture routes_json %}
+  [
+    {% assign route_index = 0 %}
+    {% for route in routes_array %}
+      {% assign route_mode = route.mode.value %}
+      {% assign start_id = route.start_content_entity_id.value %}
+      {% assign end_id = route.end_content_entity_id.value %}
+      {% assign start_handle = 'wetu-' | append: start_id %}
+      {% assign end_handle = 'wetu-' | append: end_id %}
+      {% assign start_product = all_products[start_handle] %}
+      {% assign end_product = all_products[end_handle] %}
+      {% assign start_position = start_product.metafields.wetu.position.value %}
+      {% assign end_position = end_product.metafields.wetu.position.value %}
+      
+      {% if start_position.latitude != blank and end_position.latitude != blank %}
+        {% if route_index > 0 %},{% endif %}
+        {
+          "id": "route-{{ forloop.index0 }}",
+          "mode": {{ route_mode | json }},
+          "type": {{ route.type.value | json }},
+          "label": {{ route.label.value | default: route_mode | json }},
+          "startLocation": {{ route.start_location.value | json }},
+          "endLocation": {{ route.end_location.value | json }},
+          "startLat": {{ start_position.driving_latitude | default: start_position.latitude }},
+          "startLng": {{ start_position.driving_longitude | default: start_position.longitude }},
+          "endLat": {{ end_position.driving_latitude | default: end_position.latitude }},
+          "endLng": {{ end_position.driving_longitude | default: end_position.longitude }},
+          "points": {{ route.points.value | default: "" | json }},
+          "duration": {{ route.duration.value | json }},
+          "distance": {{ route.distance.value | default: 0 }},
+          "sequence": {{ route.sequence.value | default: forloop.index0 }},
+          "agency": {{ route.agency.value | default: "" | json }},
+          "vehicle": {{ route.vehicle.value | default: "" | json }}
+        }
+        {% assign route_index = route_index | plus: 1 %}
+      {% endif %}
+    {% endfor %}
+  ]
+  {% endcapture %}
+  
+  {% assign markers_data = markers_json | strip_newlines | replace: '  ', '' %}
+  {% assign routes_data = routes_json | strip_newlines | replace: '  ', '' %}
+  
+  <div class="wetu-fullscreen-map" data-product="{{ product.handle }}">
+    {% comment %} Header Bar {% endcomment %}
+    <header class="wetu-fullscreen-map__header">
+      <a href="{{ product.url }}" class="wetu-fullscreen-map__back">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        <span>Back to Itinerary</span>
+      </a>
+      <h1 class="wetu-fullscreen-map__title">{{ product.title }}</h1>
+      <div class="wetu-fullscreen-map__actions">
+        <button type="button" class="wetu-fullscreen-map__filter-btn" data-toggle-filters>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+          </svg>
+          <span>Filters</span>
+        </button>
+      </div>
+    </header>
+    
+    {% comment %} Main Map Container {% endcomment %}
+    <div class="wetu-fullscreen-map__main">
+      {% comment %} Sidebar {% endcomment %}
+      <aside class="wetu-fullscreen-map__sidebar" data-sidebar>
+        <div class="sidebar__header">
+          <h2 class="sidebar__title">Destinations</h2>
+          <span class="sidebar__count">{{ legs_array.size }} stops</span>
+        </div>
+        
+        <div class="sidebar__content">
+          <ul class="sidebar__destinations" role="list">
+            {% assign current_day = 1 %}
+            {% for leg in legs_array %}
+              {% assign leg_type = leg.type.value | default: "Standard" %}
+              {% assign leg_nights = leg.nights.value | default: 0 %}
+              
+              {% if leg_type == "Departure" %}{% continue %}{% endif %}
+              
+              {% assign content_id = leg.content_entity_id.value %}
+              {% assign property_handle = 'wetu-' | append: content_id %}
+              {% assign property = all_products[property_handle] %}
+              {% assign accommodation_name = leg.accommodation_name.value | default: property.title %}
+              {% assign position = property.metafields.wetu.position.value %}
+              
+              <li class="sidebar__destination" data-marker-id="marker-{{ content_id }}">
+                <button type="button" class="destination__button" data-focus-marker="marker-{{ content_id }}">
+                  <span class="destination__day">
+                    {% if leg_nights > 1 %}
+                      {{ current_day }}-{{ current_day | plus: leg_nights | minus: 1 }}
+                    {% else %}
+                      {{ current_day }}
+                    {% endif %}
+                  </span>
+                  <div class="destination__content">
+                    {% if property and property.featured_image %}
+                      <img 
+                        src="{{ property.featured_image | image_url: width: 120 }}" 
+                        alt="{{ accommodation_name }}"
+                        class="destination__image"
+                        width="120"
+                        height="80"
+                        loading="lazy"
+                      >
+                    {% endif %}
+                    <div class="destination__info">
+                      <span class="destination__name">{{ accommodation_name }}</span>
+                      <span class="destination__meta">
+                        {{ leg_nights }} {{ leg_nights | pluralize: 'night', 'nights' }}
+                        {% if position.destination != blank %}
+                          • {{ position.destination }}
+                        {% endif %}
+                      </span>
+                    </div>
+                  </div>
+                </button>
+              </li>
+              
+              {% assign current_day = current_day | plus: leg_nights %}
+            {% endfor %}
+          </ul>
+        </div>
+        
+        <button type="button" class="sidebar__toggle" aria-label="Toggle sidebar" data-sidebar-toggle>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 18l-6-6 6-6"/>
+          </svg>
+        </button>
+      </aside>
+      
+      {% comment %} Map {% endcomment %}
+      <div class="wetu-fullscreen-map__canvas">
+        <div 
+          id="wetu-fullscreen-map"
+          class="map-container"
+          data-markers='{{ markers_data }}'
+          data-routes='{{ routes_data }}'
+          data-style="outdoors-v12"
+          data-animate="false"
+          data-mapbox-token="{% if settings.mapbox_access_token != blank %}{{ settings.mapbox_access_token }}{% else %}{{ MAPBOX_ACCESS_TOKEN }}{% endif %}"
+        >
+          <div class="map-loading">
+            <div class="loading-spinner"></div>
+            <span>Loading map...</span>
+          </div>
+        </div>
+        
+        {% comment %} Map Controls {% endcomment %}
+        <div class="map-controls">
+          <button type="button" class="map-control" data-map-fit aria-label="Fit all locations">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+            </svg>
+          </button>
+        </div>
+        
+        {% comment %} Legend {% endcomment %}
+        <div class="map-legend">
+          <div class="legend-item">
+            <span class="legend-marker legend-marker--accommodation"></span>
+            <span>Accommodation</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-route legend-route--driving"></span>
+            <span>Driving</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-route legend-route--flight"></span>
+            <span>Flight</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    {% comment %} Filters Panel {% endcomment %}
+    <div class="wetu-fullscreen-map__filters" data-filters hidden>
+      <div class="filters__header">
+        <h3 class="filters__title">Filter Routes</h3>
+        <button type="button" class="filters__close" data-close-filters aria-label="Close filters">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div class="filters__content">
+        <label class="filter-option">
+          <input type="checkbox" name="route-filter" value="driving" checked>
+          <span class="filter-checkbox"></span>
+          <span class="filter-label">
+            <span class="filter-icon filter-icon--driving"></span>
+            Driving Routes
+          </span>
+        </label>
+        <label class="filter-option">
+          <input type="checkbox" name="route-filter" value="flight" checked>
+          <span class="filter-checkbox"></span>
+          <span class="filter-label">
+            <span class="filter-icon filter-icon--flight"></span>
+            Flights
+          </span>
+        </label>
+        <label class="filter-option">
+          <input type="checkbox" name="route-filter" value="transfer" checked>
+          <span class="filter-checkbox"></span>
+          <span class="filter-label">
+            <span class="filter-icon filter-icon--transfer"></span>
+            Transfers
+          </span>
+        </label>
+      </div>
+    </div>
+  </div>
+  
+  {% comment %} Mapbox GL JS {% endcomment %}
+  {% # theme-check-disable RemoteAsset %}
+  <link href='https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css' rel='stylesheet' />
+  <script src='https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js' defer></script>
+  {% # theme-check-enable RemoteAsset %}
+  <script src="{{ 'wetu-map.js' | asset_url }}" defer></script>
+  
+  <style>
+    /* Reset for fullscreen */
+    .wetu-fullscreen-map {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      background: var(--color-background);
+    }
+
+    /* Header */
+    .wetu-fullscreen-map__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 12px 20px;
+      background: var(--color-background);
+      border-bottom: 1px solid var(--color-border);
+      z-index: 100;
+    }
+
+    .wetu-fullscreen-map__back {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--color-foreground);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      padding: 8px 12px;
+      border-radius: 8px;
+      transition: background 0.2s ease;
+    }
+
+    .wetu-fullscreen-map__back:hover {
+      background: color-mix(in srgb, var(--color-foreground) 8%, transparent);
+    }
+
+    .wetu-fullscreen-map__title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin: 0;
+      color: var(--color-foreground);
+      flex: 1;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .wetu-fullscreen-map__filter-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      background: transparent;
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      color: var(--color-foreground);
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .wetu-fullscreen-map__filter-btn:hover {
+      background: color-mix(in srgb, var(--color-foreground) 5%, transparent);
+    }
+
+    /* Main Container */
+    .wetu-fullscreen-map__main {
+      flex: 1;
+      display: flex;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Sidebar */
+    .wetu-fullscreen-map__sidebar {
+      width: 340px;
+      background: var(--color-background);
+      border-right: 1px solid var(--color-border);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      transition: margin-left 0.3s ease;
+      z-index: 10;
+    }
+
+    .wetu-fullscreen-map__sidebar.collapsed {
+      margin-left: -340px;
+    }
+
+    .sidebar__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .sidebar__title {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--color-foreground);
+    }
+
+    .sidebar__count {
+      font-size: 0.8rem;
+      color: color-mix(in srgb, var(--color-foreground) 50%, transparent);
+      background: color-mix(in srgb, var(--color-foreground) 8%, transparent);
+      padding: 4px 10px;
+      border-radius: 12px;
+    }
+
+    .sidebar__content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+    }
+
+    .sidebar__destinations {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .sidebar__destination {
+      border-radius: 12px;
+      overflow: hidden;
+      transition: background 0.2s ease;
+    }
+
+    .sidebar__destination:hover,
+    .sidebar__destination.active {
+      background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    }
+
+    .destination__button {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      padding: 12px;
+      background: transparent;
+      border: none;
+      text-align: left;
+      cursor: pointer;
+      color: inherit;
+    }
+
+    .destination__day {
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--color-primary);
+      color: var(--color-background);
+      font-size: 0.8rem;
+      font-weight: 700;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .destination__content {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .destination__image {
+      width: 56px;
+      height: 42px;
+      object-fit: cover;
+      border-radius: 6px;
+      flex-shrink: 0;
+    }
+
+    .destination__info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .destination__name {
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--color-foreground);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .destination__meta {
+      font-size: 0.75rem;
+      color: color-mix(in srgb, var(--color-foreground) 50%, transparent);
+    }
+
+    .sidebar__toggle {
+      position: absolute;
+      right: -16px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 32px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--color-background);
+      border: 1px solid var(--color-border);
+      border-left: none;
+      border-radius: 0 8px 8px 0;
+      cursor: pointer;
+      color: var(--color-foreground);
+      transition: background 0.2s ease;
+    }
+
+    .sidebar__toggle:hover {
+      background: color-mix(in srgb, var(--color-foreground) 5%, transparent);
+    }
+
+    .wetu-fullscreen-map__sidebar.collapsed .sidebar__toggle svg {
+      transform: rotate(180deg);
+    }
+
+    /* Map Canvas */
+    .wetu-fullscreen-map__canvas {
+      flex: 1;
+      position: relative;
+    }
+
+    .map-container {
+      width: 100%;
+      height: 100%;
+    }
+
+    .map-loading {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      background: color-mix(in srgb, var(--color-foreground) 5%, transparent);
+      color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+    }
+
+    .map-container.map-loaded .map-loading {
+      display: none;
+    }
+
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid color-mix(in srgb, var(--color-foreground) 20%, transparent);
+      border-top-color: var(--color-primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Map Controls */
+    .map-controls {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .map-control {
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--color-background);
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      cursor: pointer;
+      color: var(--color-foreground);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      transition: all 0.2s ease;
+    }
+
+    .map-control:hover {
+      background: var(--color-primary);
+      border-color: var(--color-primary);
+      color: var(--color-background);
+    }
+
+    /* Legend */
+    .map-legend {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      display: flex;
+      gap: 16px;
+      padding: 10px 16px;
+      background: var(--color-background);
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8rem;
+      color: color-mix(in srgb, var(--color-foreground) 70%, transparent);
+    }
+
+    .legend-marker {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+    }
+
+    .legend-marker--accommodation {
+      background: var(--color-primary);
+    }
+
+    .legend-route {
+      width: 20px;
+      height: 3px;
+      border-radius: 2px;
+    }
+
+    .legend-route--driving {
+      background: #3b82f6;
+    }
+
+    .legend-route--flight {
+      background: repeating-linear-gradient(90deg, #8b5cf6 0px, #8b5cf6 5px, transparent 5px, transparent 8px);
+    }
+
+    /* Filters Panel */
+    .wetu-fullscreen-map__filters {
+      position: absolute;
+      top: 60px;
+      right: 20px;
+      width: 280px;
+      background: var(--color-background);
+      border: 1px solid var(--color-border);
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+      z-index: 100;
+    }
+
+    .wetu-fullscreen-map__filters[hidden] {
+      display: none;
+    }
+
+    .filters__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .filters__title {
+      margin: 0;
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .filters__close {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+      border-radius: 6px;
+    }
+
+    .filters__close:hover {
+      background: color-mix(in srgb, var(--color-foreground) 10%, transparent);
+    }
+
+    .filters__content {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .filter-option {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+    }
+
+    .filter-option input {
+      display: none;
+    }
+
+    .filter-checkbox {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--color-border);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+
+    .filter-option input:checked + .filter-checkbox {
+      background: var(--color-primary);
+      border-color: var(--color-primary);
+    }
+
+    .filter-option input:checked + .filter-checkbox::after {
+      content: '';
+      width: 6px;
+      height: 10px;
+      border: 2px solid white;
+      border-top: none;
+      border-left: none;
+      transform: rotate(45deg);
+      margin-bottom: 2px;
+    }
+
+    .filter-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.9rem;
+      color: var(--color-foreground);
+    }
+
+    .filter-icon {
+      width: 16px;
+      height: 3px;
+      border-radius: 2px;
+    }
+
+    .filter-icon--driving {
+      background: #3b82f6;
+    }
+
+    .filter-icon--flight {
+      background: #8b5cf6;
+    }
+
+    .filter-icon--transfer {
+      background: #22c55e;
+    }
+
+    /* Mobile Responsive */
+    @media screen and (max-width: 749px) {
+      .wetu-fullscreen-map__header {
+        padding: 12px 16px;
+      }
+
+      .wetu-fullscreen-map__back span {
+        display: none;
+      }
+
+      .wetu-fullscreen-map__title {
+        font-size: 0.95rem;
+      }
+
+      .wetu-fullscreen-map__sidebar {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 300px;
+        box-shadow: 4px 0 16px rgba(0,0,0,0.1);
+      }
+
+      .wetu-fullscreen-map__sidebar.collapsed {
+        margin-left: -300px;
+      }
+
+      .map-legend {
+        bottom: auto;
+        top: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 0.7rem;
+        gap: 12px;
+        padding: 8px 12px;
+      }
+
+      .wetu-fullscreen-map__filters {
+        right: 16px;
+        left: 16px;
+        width: auto;
+      }
+    }
+
+    /* Custom Marker Styles (from wetu-map.js) */
+    .wetu-map-marker {
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--color-primary, #2563eb);
+      color: white;
+      font-size: 14px;
+      font-weight: 700;
+      border-radius: 50%;
+      border: 3px solid white;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+
+    .wetu-map-marker:hover {
+      transform: scale(1.1);
+    }
+
+    .wetu-map-marker.active {
+      background: #ef4444;
+      transform: scale(1.15);
+    }
+  </style>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Initialize fullscreen map
+      const mapEl = document.getElementById('wetu-fullscreen-map');
+      if (mapEl) {
+        window.wetuFullscreenMap = new WetuItineraryMap('wetu-fullscreen-map');
+      }
+
+      // Sidebar toggle
+      const sidebar = document.querySelector('[data-sidebar]');
+      const sidebarToggle = document.querySelector('[data-sidebar-toggle]');
+      if (sidebar && sidebarToggle) {
+        sidebarToggle.addEventListener('click', () => {
+          sidebar.classList.toggle('collapsed');
+          setTimeout(() => {
+            if (window.wetuFullscreenMap?.map) {
+              window.wetuFullscreenMap.map.resize();
+            }
+          }, 300);
+        });
+      }
+
+      // Destination focus
+      document.querySelectorAll('[data-focus-marker]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const markerId = btn.dataset.focusMarker;
+          if (window.wetuFullscreenMap) {
+            window.wetuFullscreenMap.focusMarker(markerId);
+          }
+          // Update active state
+          document.querySelectorAll('.sidebar__destination').forEach(el => {
+            el.classList.toggle('active', el.dataset.markerId === markerId);
+          });
+        });
+      });
+
+      // Filters toggle
+      const filtersPanel = document.querySelector('[data-filters]');
+      const filterToggle = document.querySelector('[data-toggle-filters]');
+      const filterClose = document.querySelector('[data-close-filters]');
+
+      if (filterToggle && filtersPanel) {
+        filterToggle.addEventListener('click', () => {
+          filtersPanel.hidden = !filtersPanel.hidden;
+        });
+      }
+
+      if (filterClose && filtersPanel) {
+        filterClose.addEventListener('click', () => {
+          filtersPanel.hidden = true;
+        });
+      }
+
+      // Route filters
+      document.querySelectorAll('input[name="route-filter"]').forEach(checkbox => {
+        checkbox.addEventListener('change', () => {
+          const map = window.wetuFullscreenMap?.map;
+          if (!map) return;
+
+          const value = checkbox.value;
+          const visible = checkbox.checked;
+
+          // Get all layers and filter by type
+          map.getStyle().layers.forEach(layer => {
+            if (layer.id.includes('route-')) {
+              if (value === 'flight' && layer.id.includes('flight')) {
+                map.setLayoutProperty(layer.id, 'visibility', visible ? 'visible' : 'none');
+              } else if (value === 'driving' && layer.id.includes('driving')) {
+                map.setLayoutProperty(layer.id, 'visibility', visible ? 'visible' : 'none');
+              }
+            }
+          });
+        });
+      });
+    });
+  </script>
+{% endif %}

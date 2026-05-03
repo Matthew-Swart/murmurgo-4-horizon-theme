@@ -1,0 +1,734 @@
+{% comment %}
+  ============================================================================
+  WETU DESTINATION HERO + GALLERY SNIPPET
+  ============================================================================
+  
+  Renders a destination/accommodation detail view with:
+  1. Hero bottom-aligned image with title, days badge, and tagline overlay
+  2. 50/50 split: description (left) + masonry gallery (right)
+  3. Full-screen vertically scrollable gallery on thumbnail click
+  
+  USAGE:
+  {% render 'wetu-destination-hero-gallery',
+    detail_product: dest_product,
+    fallback_product: acc_product,
+    hero_image: hero_image,
+    all_images: acc_product.images,
+    title: dest_name,
+    days_text: "3 Nights",
+    tagline: dest_product.metafields.wetu.tagline.value,
+    description: dest_product.description,
+    color_scheme: "scheme-5",
+    section_id: section.id,
+    leg_index: leg_index
+  %}
+  
+  ============================================================================
+{% endcomment %}
+
+{% liquid
+  assign unique_id = section_id | append: '-' | append: leg_index | default: 'default'
+  
+  # Resolve hero image
+  assign final_hero_image = hero_image
+  if final_hero_image == blank and detail_product.featured_image
+    assign final_hero_image = detail_product.featured_image
+  endif
+  if final_hero_image == blank and fallback_product.featured_image
+    assign final_hero_image = fallback_product.featured_image
+  endif
+  
+  # Resolve title
+  assign final_title = title
+  if final_title == blank
+    assign final_title = detail_product.title | default: fallback_product.title
+  endif
+  
+  # Resolve tagline
+  assign final_tagline = tagline
+  if final_tagline == blank
+    assign final_tagline = detail_product.metafields.wetu.tagline.value | default: detail_product.metafields.plekify.tagline.value
+  endif
+  if final_tagline == blank and fallback_product
+    assign final_tagline = fallback_product.metafields.wetu.tagline.value | default: fallback_product.metafields.plekify.tagline.value
+  endif
+  
+  # Resolve description
+  assign final_description = description
+  if final_description == blank
+    assign final_description = detail_product.description
+  endif
+  if final_description == blank and fallback_product
+    assign final_description = fallback_product.description
+  endif
+  
+  # Resolve images for gallery
+  assign gallery_images = all_images
+  if gallery_images == blank or gallery_images.size == 0
+    if detail_product.images.size > 0
+      assign gallery_images = detail_product.images
+    elsif fallback_product and fallback_product.images.size > 0
+      assign gallery_images = fallback_product.images
+    endif
+  endif
+  
+  # Count gallery images (exclude featured if it's the same as hero)
+  assign gallery_count = gallery_images.size
+  assign has_gallery = false
+  if gallery_count > 1
+    assign has_gallery = true
+  endif
+%}
+
+<div class="wetu-dest-detail color-{{ color_scheme | default: 'scheme-5' }}" id="dest-detail-{{ unique_id }}" data-dest-detail>
+  
+  {% comment %} === HERO BOTTOM ALIGNED === {% endcomment %}
+  <div class="wetu-dest-detail__hero">
+    {% if final_hero_image %}
+      <img
+        src="{{ final_hero_image | image_url: width: 2000 }}"
+        srcset="{{ final_hero_image | image_url: width: 800 }} 800w, {{ final_hero_image | image_url: width: 1200 }} 1200w, {{ final_hero_image | image_url: width: 1600 }} 1600w, {{ final_hero_image | image_url: width: 2000 }} 2000w, {{ final_hero_image | image_url: width: 2400 }} 2400w"
+        sizes="100vw"
+        alt="{{ final_title | escape }}"
+        loading="lazy"
+        class="wetu-dest-detail__hero-image"
+      >
+    {% else %}
+      <div class="wetu-dest-detail__hero-placeholder"></div>
+    {% endif %}
+    
+    {% comment %} Gradient overlay for text legibility {% endcomment %}
+    <div class="wetu-dest-detail__hero-overlay"></div>
+    
+    {% comment %} Bottom-aligned content overlay {% endcomment %}
+    <div class="wetu-dest-detail__hero-content">
+      <div class="wetu-dest-detail__hero-left">
+        {% if days_text != blank %}
+          <span class="wetu-dest-detail__days-badge">{{ days_text }}</span>
+        {% endif %}
+        {% if final_title != blank %}
+          <h2 class="wetu-dest-detail__title">{{ final_title }}</h2>
+        {% endif %}
+      </div>
+      
+      {% if final_tagline != blank %}
+        <div class="wetu-dest-detail__hero-right">
+          <p class="wetu-dest-detail__tagline">{{ final_tagline }}</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+  
+  {% comment %} === BENTO GALLERY + DESCRIPTION === {% endcomment %}
+  {% if final_description != blank or has_gallery %}
+    <div class="wetu-dest-detail__bento" data-gallery-grid="{{ unique_id }}">
+      
+      {% comment %} TEXT BLOCK: Pinned to top-right on desktop {% endcomment %}
+      {% if final_description != blank %}
+        <div class="wetu-dest-detail__text-block">
+          <div class="wetu-dest-detail__description rte">
+            {{ final_description }}
+          </div>
+        </div>
+      {% endif %}
+
+      {% comment %} BENTO IMAGES: Flow around and below text {% endcomment %}
+      {% if has_gallery %}
+        {% assign visible_images = 0 %}
+        
+        {% for image in gallery_images %}
+          {% if forloop.index0 == 0 and image == final_hero_image %}
+            {% continue %}
+          {% endif %}
+          {% assign visible_images = visible_images | plus: 1 %}
+          
+          {% comment %} 
+            Pattern for flush rows (6 column grid, 3 columns available in left):
+            - Row 1: 1 tall (2 rows) + 2 standard = fills 3 cols
+            - Row 2: continuing tall + 2 standard = fills 3 cols
+            - Row 3 (full width below text): 1 wide (2 cols) + 4 standard = fills 6 cols
+            - Row 4: 1 big (2x2) + 4 standard = fills 6 cols
+            - Repeat pattern every 12 images for consistency
+          {% endcomment %}
+          {% assign pattern_position = visible_images | modulo: 12 %}
+          
+          {% assign variation_class = '' %}
+          
+          {% case pattern_position %}
+            {% when 1 %}
+              {% assign variation_class = 'wetu-dest-detail__img--tall' %}
+            {% when 4 %}
+              {% assign variation_class = 'wetu-dest-detail__img--wide' %}
+            {% when 7 %}
+              {% assign variation_class = 'wetu-dest-detail__img--big' %}
+            {% when 10 %}
+              {% assign variation_class = 'wetu-dest-detail__img--wide' %}
+          {% endcase %}
+          
+          <button
+            type="button"
+            class="wetu-dest-detail__img-card {{ variation_class }}"
+            data-gallery-trigger="{{ unique_id }}"
+            data-image-index="{{ forloop.index0 }}"
+            aria-label="View {{ image.alt | default: final_title }} in fullscreen gallery"
+          >
+            <img
+              src="{{ image | image_url: width: 800 }}"
+              srcset="{{ image | image_url: width: 400 }} 400w, {{ image | image_url: width: 600 }} 600w, {{ image | image_url: width: 800 }} 800w, {{ image | image_url: width: 1200 }} 1200w"
+              sizes="(max-width: 749px) 50vw, (max-width: 989px) 25vw, 16.67vw"
+              alt="{{ image.alt | default: final_title }}"
+              loading="lazy"
+              class="wetu-dest-detail__img-card-image"
+            >
+            <div class="wetu-dest-detail__img-overlay">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+              </svg>
+            </div>
+          </button>
+        {% endfor %}
+      {% endif %}
+    </div>
+  {% endif %}
+  
+  {% comment %} === FULLSCREEN VERTICAL GALLERY (Horizon Style) === {% endcomment %}
+  {% if has_gallery %}
+    <div 
+      class="wetu-dest-detail__fullscreen" 
+      id="fullscreen-gallery-{{ unique_id }}"
+      data-fullscreen-gallery="{{ unique_id }}"
+      hidden
+      aria-hidden="true"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Fullscreen gallery for {{ final_title | escape }}"
+    >
+      <div class="wetu-dest-detail__fullscreen-backdrop"></div>
+      
+      <button type="button" class="wetu-dest-detail__fullscreen-close" aria-label="Close gallery">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+      
+      {% comment %} Gallery counter {% endcomment %}
+      <div class="wetu-dest-detail__fullscreen-counter">
+        <span data-current-index>1</span> / {{ gallery_count }}
+      </div>
+      
+      {% comment %} Vertically scrollable image stack {% endcomment %}
+      <div class="wetu-dest-detail__fullscreen-scroller">
+        {% for image in gallery_images %}
+          <div 
+            class="wetu-dest-detail__fullscreen-item" 
+            data-fullscreen-image-index="{{ forloop.index0 }}"
+          >
+            <img
+              src="{{ image | image_url: width: 2000 }}"
+              srcset="{{ image | image_url: width: 1200 }} 1200w, {{ image | image_url: width: 1600 }} 1600w, {{ image | image_url: width: 2000 }} 2000w"
+              sizes="100vw"
+              alt="{{ image.alt | default: final_title }}"
+              loading="lazy"
+              class="wetu-dest-detail__fullscreen-img"
+            >
+            {% if image.alt != blank %}
+              <p class="wetu-dest-detail__fullscreen-caption">{{ image.alt }}</p>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+</div>
+
+<style>
+  /* ============================================
+     WETU DESTINATION DETAIL STYLES
+     ============================================ */
+  
+  .wetu-dest-detail {
+    background: var(--color-background);
+    color: var(--color-foreground);
+  }
+  
+  /* === HERO BOTTOM ALIGNED === */
+  .wetu-dest-detail__hero {
+    position: relative;
+    width: 100%;
+    height: 70vh;
+    min-height: 400px;
+    max-height: 800px;
+    overflow: hidden;
+  }
+  
+  @media (max-width: 749px) {
+    .wetu-dest-detail__hero {
+      height: 56vh;
+      min-height: 320px;
+      max-height: 500px;
+    }
+  }
+  
+  .wetu-dest-detail__hero-image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center bottom;
+  }
+  
+  .wetu-dest-detail__hero-placeholder {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(145deg, rgba(var(--color-foreground-rgb), 0.05) 0%, rgba(var(--color-foreground-rgb), 0.1) 100%);
+  }
+  
+  .wetu-dest-detail__hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to top,
+      rgba(0, 0, 0, 0.6) 0%,
+      rgba(0, 0, 0, 0.3) 30%,
+      rgba(0, 0, 0, 0.1) 60%,
+      transparent 100%
+    );
+    pointer-events: none;
+  }
+  
+  .wetu-dest-detail__hero-content {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 40px;
+    gap: 24px;
+  }
+  
+  @media (max-width: 749px) {
+    .wetu-dest-detail__hero-content {
+      flex-direction: column;
+      align-items: flex-start;
+      padding: 24px;
+      gap: 16px;
+    }
+  }
+  
+  .wetu-dest-detail__hero-left {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .wetu-dest-detail__days-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 14px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 20px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    width: fit-content;
+  }
+  
+  .wetu-dest-detail__title {
+    margin: 0;
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 500;
+    color: #fff;
+    line-height: 1.1;
+    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+  }
+  
+  .wetu-dest-detail__hero-right {
+    max-width: 300px;
+    text-align: right;
+  }
+  
+  @media (max-width: 749px) {
+    .wetu-dest-detail__hero-right {
+      text-align: left;
+      max-width: 100%;
+    }
+  }
+  
+  .wetu-dest-detail__tagline {
+    margin: 0;
+    font-size: 1rem;
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.5;
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.3);
+  }
+  
+  /* === BENTO GRID LAYOUT === */
+  .wetu-dest-detail__bento {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 2px;
+    grid-auto-flow: dense;
+    background: var(--color-background);
+    width: 100%;
+  }
+  
+  /* Tablet: 4-column grid */
+  @media (max-width: 989px) {
+    .wetu-dest-detail__bento {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+  
+  /* Mobile: 2-column grid */
+  @media (max-width: 749px) {
+    .wetu-dest-detail__bento {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  
+  /* TEXT BLOCK: Pinned to top-right, height adapts to content */
+  .wetu-dest-detail__text-block {
+    grid-column: 4 / 7;
+    grid-row: 1 / auto;
+    padding: 48px 40px;
+    background: var(--color-background);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    box-sizing: border-box;
+    z-index: 2;
+    height: fit-content;
+    min-height: 200px;
+  }
+  
+  @media (max-width: 989px) {
+    .wetu-dest-detail__text-block {
+      grid-column: 1 / -1;
+      grid-row: auto;
+      padding: 40px 32px;
+    }
+  }
+  
+  @media (max-width: 749px) {
+    .wetu-dest-detail__text-block {
+      grid-column: span 2;
+      padding: 32px 24px;
+    }
+  }
+  
+  .wetu-dest-detail__description {
+    font-size: 1rem;
+    line-height: 1.8;
+    color: rgba(var(--color-foreground-rgb), 0.85);
+    max-width: 600px;
+  }
+  
+  .wetu-dest-detail__description p {
+    margin-bottom: 1.25em;
+  }
+  
+  .wetu-dest-detail__description p:last-child {
+    margin-bottom: 0;
+  }
+  
+  /* === BENTO IMAGE CARDS === */
+  .wetu-dest-detail__img-card {
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    border: none;
+    padding: 0;
+    background: rgba(var(--color-foreground-rgb), 0.05);
+    display: block;
+    aspect-ratio: 1 / 1;
+  }
+  
+  /* Variation classes for bento variety - aspect ratios ensure flush rows */
+  .wetu-dest-detail__img--wide {
+    grid-column: span 2;
+    aspect-ratio: 2 / 1;
+  }
+  
+  .wetu-dest-detail__img--tall {
+    grid-row: span 2;
+    aspect-ratio: 1 / 2;
+  }
+  
+  .wetu-dest-detail__img--big {
+    grid-column: span 2;
+    grid-row: span 2;
+    aspect-ratio: 1 / 1;
+  }
+  
+  /* Mobile: Adjust for 2-column grid */
+  @media (max-width: 749px) {
+    .wetu-dest-detail__img-card {
+      aspect-ratio: 4 / 3;
+    }
+    
+    .wetu-dest-detail__img--wide,
+    .wetu-dest-detail__img--big {
+      grid-column: span 2;
+      aspect-ratio: 2 / 1;
+    }
+    
+    .wetu-dest-detail__img--tall {
+      grid-row: span 1;
+      aspect-ratio: 4 / 3;
+    }
+    
+    .wetu-dest-detail__img--big {
+      grid-row: span 1;
+    }
+  }
+  
+  .wetu-dest-detail__img-card-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.6s ease;
+  }
+  
+  .wetu-dest-detail__img-card:hover .wetu-dest-detail__img-card-image {
+    transform: scale(1.05);
+  }
+  
+  .wetu-dest-detail__img-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0);
+    color: #fff;
+    opacity: 0;
+    transition: opacity 0.3s ease, background 0.3s ease;
+  }
+  
+  .wetu-dest-detail__img-card:hover .wetu-dest-detail__img-overlay {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.3);
+  }
+  
+  /* === FULLSCREEN GALLERY (Horizon Style) === */
+  .wetu-dest-detail__fullscreen {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .wetu-dest-detail__fullscreen[hidden] {
+    display: none;
+  }
+  
+  .wetu-dest-detail__fullscreen-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.95);
+  }
+  
+  .wetu-dest-detail__fullscreen-close {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 10001;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: none;
+    border-radius: 50%;
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.2s ease;
+  }
+  
+  .wetu-dest-detail__fullscreen-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.05);
+  }
+  
+  .wetu-dest-detail__fullscreen-counter {
+    position: fixed;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10001;
+    padding: 8px 16px;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #fff;
+    letter-spacing: 0.02em;
+  }
+  
+  .wetu-dest-detail__fullscreen-scroller {
+    position: relative;
+    z-index: 10000;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    padding: 80px 0 40px;
+  }
+  
+  .wetu-dest-detail__fullscreen-item {
+    width: 100%;
+    max-width: 100%;
+    margin-bottom: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .wetu-dest-detail__fullscreen-img {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+  
+  .wetu-dest-detail__fullscreen-caption {
+    width: 100%;
+    padding: 12px 24px;
+    margin: 0;
+    background: rgba(0, 0, 0, 0.6);
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.875rem;
+    text-align: center;
+  }
+  
+  /* Focus states for accessibility */
+  .wetu-dest-detail__img-card:focus-visible,
+  .wetu-dest-detail__fullscreen-close:focus-visible {
+    outline: 2px solid var(--color-primary, #d4a574);
+    outline-offset: 2px;
+  }
+  
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .wetu-dest-detail__img-card-image,
+    .wetu-dest-detail__img-overlay,
+    .wetu-dest-detail__fullscreen-close {
+      transition: none;
+    }
+    
+    .wetu-dest-detail__img-card:hover .wetu-dest-detail__img-card-image {
+      transform: none;
+    }
+    
+    .wetu-dest-detail__fullscreen-scroller {
+      scroll-behavior: auto;
+    }
+  }
+</style>
+
+<script>
+(function() {
+  'use strict';
+  
+  const uniqueId = '{{ unique_id }}';
+  const container = document.getElementById('dest-detail-{{ unique_id }}');
+  if (!container) return;
+  
+  const triggers = container.querySelectorAll('[data-gallery-trigger="{{ unique_id }}"]');
+  const fullscreen = document.getElementById('fullscreen-gallery-{{ unique_id }}');
+  if (!fullscreen || triggers.length === 0) return;
+  
+  const closeBtn = fullscreen.querySelector('.wetu-dest-detail__fullscreen-close');
+  const backdrop = fullscreen.querySelector('.wetu-dest-detail__fullscreen-backdrop');
+  const scroller = fullscreen.querySelector('.wetu-dest-detail__fullscreen-scroller');
+  const counterCurrent = fullscreen.querySelector('[data-current-index]');
+  const galleryItems = fullscreen.querySelectorAll('[data-fullscreen-image-index]');
+  
+  function openGallery(startIndex) {
+    fullscreen.hidden = false;
+    fullscreen.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    
+    // Scroll to clicked image
+    const targetItem = fullscreen.querySelector(`[data-fullscreen-image-index="${startIndex}"]`);
+    if (targetItem) {
+      requestAnimationFrame(() => {
+        targetItem.scrollIntoView({ behavior: 'instant', block: 'start' });
+      });
+    }
+    
+    updateCounter();
+    
+    // Focus close button for accessibility
+    closeBtn.focus();
+  }
+  
+  function closeGallery() {
+    fullscreen.hidden = true;
+    fullscreen.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+  }
+  
+  function updateCounter() {
+    if (!counterCurrent || !scroller) return;
+    
+    const scrollerRect = scroller.getBoundingClientRect();
+    const scrollerCenter = scrollerRect.top + scrollerRect.height / 2;
+    
+    let currentIndex = 0;
+    galleryItems.forEach((item, index) => {
+      const itemRect = item.getBoundingClientRect();
+      if (itemRect.top <= scrollerCenter && itemRect.bottom >= scrollerCenter) {
+        currentIndex = index;
+      }
+    });
+    
+    counterCurrent.textContent = currentIndex + 1;
+  }
+  
+  // Attach click handlers to thumbnails
+  triggers.forEach(trigger => {
+    trigger.addEventListener('click', () => {
+      const index = parseInt(trigger.dataset.imageIndex, 10) || 0;
+      openGallery(index);
+    });
+  });
+  
+  // Close handlers
+  closeBtn.addEventListener('click', closeGallery);
+  backdrop.addEventListener('click', closeGallery);
+  
+  // Keyboard navigation
+  fullscreen.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeGallery();
+    }
+  });
+  
+  // Update counter on scroll
+  scroller.addEventListener('scroll', updateCounter, { passive: true });
+  
+  // Prevent body scroll when gallery is open (additional safety)
+  fullscreen.addEventListener('wheel', (e) => {
+    e.stopPropagation();
+  }, { passive: true });
+})();
+</script>

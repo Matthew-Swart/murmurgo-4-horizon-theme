@@ -1,0 +1,411 @@
+{% comment %}
+  ============================================================================
+  WETU IMAGE CAROUSEL SNIPPET
+  ============================================================================
+  
+  A touch-friendly image carousel using native scroll-snap.
+  No external dependencies required.
+  
+  PARAMETERS:
+  - images: Array of image objects (from product.images)
+  - property_name: Name for alt text
+  - show_counter: Boolean to show image counter
+  - show_arrows: Boolean to show navigation arrows
+  - lazy_load: Boolean for lazy loading images
+  - aspect_ratio: Aspect ratio (default: 16/10)
+  - max_images: Maximum number of images to show (default: 10)
+  
+  ============================================================================
+{% endcomment %}
+
+{% assign carousel_id = 'carousel-' | append: property_name | handleize | append: '-' | append: 'now' | date: '%N' %}
+{% assign carousel_aspect = aspect_ratio | default: '16/10' %}
+{% assign max_images = max_images | default: 10 %}
+{% assign image_count = images.size %}
+{% if image_count > max_images %}
+  {% assign image_count = max_images %}
+{% endif %}
+
+<div 
+  class="wetu-carousel" 
+  id="{{ carousel_id }}"
+  data-carousel
+  style="--carousel-aspect-ratio: {{ carousel_aspect }};"
+>
+  {% comment %} Track Container {% endcomment %}
+  <div class="carousel__track" data-carousel-track>
+    {% for image in images limit: max_images %}
+      <div 
+        class="carousel__slide{% if forloop.first %} is-active{% endif %}" 
+        data-slide-index="{{ forloop.index0 }}"
+      >
+        {% if lazy_load and forloop.index > 1 %}
+          <img
+            class="carousel__image"
+            src="{{ image | image_url: width: 50 }}"
+            data-src="{{ image | image_url: width: 1200 }}"
+            alt="{{ property_name | escape }} - Image {{ forloop.index }}"
+            loading="lazy"
+            decoding="async"
+          >
+        {% else %}
+          <img
+            class="carousel__image"
+            src="{{ image | image_url: width: 1200 }}"
+            alt="{{ property_name | escape }} - Image {{ forloop.index }}"
+            {% if forloop.first %}fetchpriority="high"{% else %}loading="lazy" decoding="async"{% endif %}
+          >
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+
+  {% comment %} Navigation Arrows {% endcomment %}
+  {% if show_arrows and image_count > 1 %}
+    <button 
+      type="button" 
+      class="carousel__arrow carousel__arrow--prev" 
+      data-carousel-prev
+      aria-label="Previous image"
+      disabled
+    >
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M15 18l-6-6 6-6"/>
+      </svg>
+    </button>
+    <button 
+      type="button" 
+      class="carousel__arrow carousel__arrow--next" 
+      data-carousel-next
+      aria-label="Next image"
+    >
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 18l6-6-6-6"/>
+      </svg>
+    </button>
+  {% endif %}
+
+  {% comment %} Image Counter {% endcomment %}
+  {% if show_counter and image_count > 1 %}
+    <div class="carousel__counter" data-carousel-counter>
+      <span data-current-slide>1</span> / <span>{{ image_count }}</span>
+    </div>
+  {% endif %}
+
+  {% comment %} Dot Indicators (for smaller sets) {% endcomment %}
+  {% if image_count > 1 and image_count <= 6 %}
+    <div class="carousel__dots" role="tablist" aria-label="Image navigation">
+      {% for image in images limit: max_images %}
+        <button 
+          type="button" 
+          class="carousel__dot{% if forloop.first %} is-active{% endif %}" 
+          data-carousel-dot="{{ forloop.index0 }}"
+          role="tab"
+          aria-selected="{% if forloop.first %}true{% else %}false{% endif %}"
+          aria-label="Go to image {{ forloop.index }}"
+        ></button>
+      {% endfor %}
+    </div>
+  {% endif %}
+</div>
+
+<style>
+  .wetu-carousel {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--color-foreground) 5%, transparent);
+  }
+
+  /* Track */
+  .carousel__track {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .carousel__track::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Slides */
+  .carousel__slide {
+    flex: 0 0 100%;
+    scroll-snap-align: center;
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+
+  .carousel__image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: opacity 0.3s ease;
+  }
+
+  /* Lazy loading placeholder */
+  .carousel__image[data-src] {
+    filter: blur(10px);
+    transform: scale(1.1);
+  }
+
+  .carousel__image.is-loaded {
+    filter: none;
+    transform: scale(1);
+  }
+
+  /* Navigation Arrows */
+  .carousel__arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.4);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s ease, background 0.2s ease;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+
+  .wetu-carousel:hover .carousel__arrow:not([disabled]) {
+    opacity: 1;
+  }
+
+  .carousel__arrow:hover {
+    background: rgba(0, 0, 0, 0.6);
+  }
+
+  .carousel__arrow:focus-visible {
+    opacity: 1;
+    outline: 2px solid white;
+    outline-offset: 2px;
+  }
+
+  .carousel__arrow[disabled] {
+    opacity: 0.3 !important;
+    cursor: not-allowed;
+  }
+
+  .carousel__arrow--prev {
+    left: 16px;
+  }
+
+  .carousel__arrow--next {
+    right: 16px;
+  }
+
+  /* Counter */
+  .carousel__counter {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 10;
+    padding: 6px 12px;
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    font-size: 0.8rem;
+    font-weight: 500;
+    border-radius: 20px;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+
+  /* Dots */
+  .carousel__dots {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    display: flex;
+    gap: 8px;
+    padding: 6px 12px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 16px;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+
+  .carousel__dot {
+    width: 8px;
+    height: 8px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.4);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .carousel__dot:hover {
+    background: rgba(255, 255, 255, 0.7);
+  }
+
+  .carousel__dot.is-active {
+    background: white;
+    transform: scale(1.2);
+  }
+
+  /* Touch hint on mobile */
+  @media (hover: none) {
+    .carousel__arrow {
+      display: none;
+    }
+  }
+
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .carousel__track {
+      scroll-behavior: auto;
+    }
+    
+    .carousel__image {
+      transition: none;
+    }
+  }
+</style>
+
+<script>
+  (function() {
+    const carousel = document.getElementById('{{ carousel_id }}');
+    if (!carousel) return;
+
+    const track = carousel.querySelector('[data-carousel-track]');
+    const slides = carousel.querySelectorAll('.carousel__slide');
+    const prevBtn = carousel.querySelector('[data-carousel-prev]');
+    const nextBtn = carousel.querySelector('[data-carousel-next]');
+    const counter = carousel.querySelector('[data-current-slide]');
+    const dots = carousel.querySelectorAll('[data-carousel-dot]');
+    
+    let currentIndex = 0;
+    const totalSlides = slides.length;
+
+    // Update UI based on current slide
+    function updateUI() {
+      // Update counter
+      if (counter) {
+        counter.textContent = currentIndex + 1;
+      }
+
+      // Update arrows
+      if (prevBtn) {
+        prevBtn.disabled = currentIndex === 0;
+      }
+      if (nextBtn) {
+        nextBtn.disabled = currentIndex === totalSlides - 1;
+      }
+
+      // Update dots
+      dots.forEach((dot, i) => {
+        dot.classList.toggle('is-active', i === currentIndex);
+        dot.setAttribute('aria-selected', i === currentIndex ? 'true' : 'false');
+      });
+
+      // Update slide active states
+      slides.forEach((slide, i) => {
+        slide.classList.toggle('is-active', i === currentIndex);
+      });
+    }
+
+    // Scroll to specific slide
+    function goToSlide(index) {
+      if (index < 0 || index >= totalSlides) return;
+      currentIndex = index;
+      
+      const slide = slides[index];
+      track.scrollTo({
+        left: slide.offsetLeft,
+        behavior: 'smooth'
+      });
+      
+      updateUI();
+      
+      // Lazy load visible image
+      loadImage(index);
+      // Preload adjacent images
+      loadImage(index - 1);
+      loadImage(index + 1);
+    }
+
+    // Lazy load image
+    function loadImage(index) {
+      if (index < 0 || index >= totalSlides) return;
+      const img = slides[index].querySelector('img[data-src]');
+      if (img && !img.classList.contains('is-loaded')) {
+        img.src = img.dataset.src;
+        img.onload = () => {
+          img.classList.add('is-loaded');
+          img.removeAttribute('data-src');
+        };
+      }
+    }
+
+    // Arrow navigation
+    if (prevBtn) {
+      prevBtn.addEventListener('click', () => goToSlide(currentIndex - 1));
+    }
+    if (nextBtn) {
+      nextBtn.addEventListener('click', () => goToSlide(currentIndex + 1));
+    }
+
+    // Dot navigation
+    dots.forEach(dot => {
+      dot.addEventListener('click', () => {
+        const index = parseInt(dot.dataset.carouselDot);
+        goToSlide(index);
+      });
+    });
+
+    // Detect scroll position to update current index
+    let scrollTimeout;
+    track.addEventListener('scroll', () => {
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        const scrollLeft = track.scrollLeft;
+        const slideWidth = slides[0].offsetWidth;
+        const newIndex = Math.round(scrollLeft / slideWidth);
+        
+        if (newIndex !== currentIndex) {
+          currentIndex = newIndex;
+          updateUI();
+          // Lazy load images around new position
+          loadImage(currentIndex);
+          loadImage(currentIndex - 1);
+          loadImage(currentIndex + 1);
+        }
+      }, 50);
+    }, { passive: true });
+
+    // Keyboard navigation
+    carousel.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') {
+        goToSlide(currentIndex - 1);
+      } else if (e.key === 'ArrowRight') {
+        goToSlide(currentIndex + 1);
+      }
+    });
+
+    // Initial lazy load
+    loadImage(0);
+    loadImage(1);
+  })();
+</script>
+

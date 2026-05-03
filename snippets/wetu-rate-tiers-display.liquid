@@ -1,0 +1,130 @@
+{% comment %}
+  WETU Rate Tiers Display Snippet
+  
+  Displays rate information from metaobject references
+  Used for wetu.rate_tiers and wetu_room.aggregated_rate_tiers
+  
+  @param {array} rate_tiers - Array of rate tier metaobjects
+  @param {boolean} show_room_name - Display room name from tier (for property-level)
+  @param {array} amenities - List of amenities (optional)
+{% endcomment %}
+
+{% liquid
+  assign show_room_name = show_room_name | default: false
+%}
+
+{% if rate_tiers and rate_tiers.size > 0 %}
+  {% comment %} Group rate tiers by room if showing property-level rates {% endcomment %}
+  {% if show_room_name %}
+    {% assign rooms_map = '' %}
+    {% for tier in rate_tiers %}
+      {% assign room_name = tier.room_name.value | default: tier.accommodation_name.value | default: 'Standard Rate' %}
+      {% unless rooms_map contains room_name %}
+        {% if rooms_map != '' %}
+          {% assign rooms_map = rooms_map | append: '||' %}
+        {% endif %}
+        {% assign rooms_map = rooms_map | append: room_name %}
+      {% endunless %}
+    {% endfor %}
+    {% assign room_names = rooms_map | split: '||' %}
+    
+    {% comment %} Display each room's rates {% endcomment %}
+    {% for room_name in room_names %}
+      <div class="wetu-room">
+        <div class="wetu-room__header">
+          <h3 class="wetu-room__name">{{ room_name }}</h3>
+        </div>
+        
+        <div class="wetu-rate-section">
+          <h4 class="wetu-rate-section__title">{{ 'wetu.rates.seasonal_pricing' | t | default: 'Seasonal Rates' }}</h4>
+          <div class="wetu-rate-table">
+            {% for tier in rate_tiers %}
+              {% assign tier_room_name = tier.room_name.value | default: tier.accommodation_name.value | default: 'Standard Rate' %}
+              {% if tier_room_name == room_name %}
+                <div class="wetu-rate-row">
+                  <div class="wetu-rate-row__primary">
+                    <div class="wetu-rate-row__price">
+                      <span class="wetu-rate-row__currency">{{ tier.currency.value | default: 'USD' }}</span>
+                      <span class="wetu-rate-row__amount">{{ tier.rate.value | round: 0 }}</span>
+                      {% if tier.rate_type.value %}
+                        <span class="wetu-rate-row__type">{{ tier.rate_type.value | replace: '_', ' ' | capitalize }}</span>
+                      {% endif %}
+                    </div>
+                    {% if tier.start_date.value or tier.end_date.value %}
+                      <div class="wetu-rate-row__dates">
+                        {% if tier.start_date.value %}
+                          {{ tier.start_date.value | date: '%b %d, %Y' }}
+                        {% endif %}
+                        {% if tier.end_date.value %}
+                          - {{ tier.end_date.value | date: '%b %d, %Y' }}
+                        {% endif %}
+                      </div>
+                    {% endif %}
+                  </div>
+                  {% if tier.conditions.value or tier.included.value %}
+                    <div class="wetu-rate-row__details">
+                      {% if tier.included.value %}
+                        <div class="wetu-rate-row__included">
+                          <strong>{{ 'wetu.rates.included' | t | default: 'Included' }}:</strong> {{ tier.included.value }}
+                        </div>
+                      {% endif %}
+                      {% if tier.conditions.value %}
+                        <div class="wetu-rate-row__conditions">
+                          <strong>{{ 'wetu.rates.conditions' | t | default: 'Conditions' }}:</strong> {{ tier.conditions.value }}
+                        </div>
+                      {% endif %}
+                    </div>
+                  {% endif %}
+                </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  {% else %}
+    {% comment %} Display all rate tiers directly (for single room) {% endcomment %}
+    <div class="wetu-rate-section">
+      <h4 class="wetu-rate-section__title">{{ 'wetu.rates.seasonal_pricing' | t | default: 'Seasonal Rates' }}</h4>
+      <div class="wetu-rate-table">
+        {% for tier in rate_tiers %}
+          <div class="wetu-rate-row">
+            <div class="wetu-rate-row__primary">
+              <div class="wetu-rate-row__price">
+                <span class="wetu-rate-row__currency">{{ tier.currency.value | default: 'USD' }}</span>
+                <span class="wetu-rate-row__amount">{{ tier.rate.value | round: 0 }}</span>
+                {% if tier.rate_type.value %}
+                  <span class="wetu-rate-row__type">{{ tier.rate_type.value | replace: '_', ' ' | capitalize }}</span>
+                {% endif %}
+              </div>
+              {% if tier.start_date.value or tier.end_date.value %}
+                <div class="wetu-rate-row__dates">
+                  {% if tier.start_date.value %}
+                    {{ tier.start_date.value | date: '%b %d, %Y' }}
+                  {% endif %}
+                  {% if tier.end_date.value %}
+                    - {{ tier.end_date.value | date: '%b %d, %Y' }}
+                  {% endif %}
+                </div>
+              {% endif %}
+            </div>
+            {% if tier.conditions.value or tier.included.value %}
+              <div class="wetu-rate-row__details">
+                {% if tier.included.value %}
+                  <div class="wetu-rate-row__included">
+                    <strong>{{ 'wetu.rates.included' | t | default: 'Included' }}:</strong> {{ tier.included.value }}
+                  </div>
+                {% endif %}
+                {% if tier.conditions.value %}
+                  <div class="wetu-rate-row__conditions">
+                    <strong>{{ 'wetu.rates.conditions' | t | default: 'Conditions' }}:</strong> {{ tier.conditions.value }}
+                  </div>
+                {% endif %}
+              </div>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+{% endif %}

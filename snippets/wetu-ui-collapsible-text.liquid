@@ -1,0 +1,185 @@
+{% comment %}
+  wetu-ui-collapsible-text.liquid
+  
+  Renders long text content with truncation and "Read more" functionality.
+  Preserves HTML formatting while calculating truncation based on plain text length.
+  
+  Parameters:
+    - label: (string, optional) Title/heading displayed above the content
+    - html: (string, required) Rich text/HTML content to display
+    - id: (string, required) Unique identifier for this instance
+    - truncate_chars: (number, optional) Character limit before truncation, default 220
+    - variant: (string, optional) Style variant for customization
+  
+  Example usage:
+    {% render 'wetu-ui-collapsible-text', 
+      label: 'Notes', 
+      html: leg.notes.value, 
+      id: 'leg-notes-1', 
+      truncate_chars: 200 
+    %}
+{% endcomment %}
+
+{%- liquid
+  assign truncate_limit = truncate_chars | default: 220
+  assign plain_text = html | strip_html | strip
+  assign text_length = plain_text | size
+  assign needs_toggle = false
+  
+  if text_length > truncate_limit
+    assign needs_toggle = true
+  endif
+  
+  assign component_id = 'collapsible-text-' | append: id
+  assign variant_class = ''
+  if variant != blank
+    assign variant_class = 'wetu-collapsible-text--' | append: variant
+  endif
+-%}
+
+{%- if html != blank -%}
+  <div 
+    class="wetu-collapsible-text {{ variant_class }}"
+    data-collapsible-text
+    data-collapsible-id="{{ component_id }}"
+    {% if needs_toggle %}data-needs-toggle{% endif %}
+  >
+    {%- if label != blank -%}
+      <h4 class="wetu-collapsible-text__label">{{ label }}</h4>
+    {%- endif -%}
+
+    <div 
+      class="wetu-collapsible-text__body{% if needs_toggle %} is-collapsed{% endif %}"
+      id="{{ component_id }}"
+      data-collapsible-body
+    >
+      <div class="wetu-collapsible-text__content">
+        {{ html }}
+      </div>
+    </div>
+
+    {%- if needs_toggle -%}
+      <button 
+        type="button"
+        class="wetu-collapsible-text__toggle"
+        data-collapsible-toggle
+        aria-expanded="false"
+        aria-controls="{{ component_id }}"
+      >
+        <span class="wetu-collapsible-text__toggle-more">
+          {{ 'wetu.enquiry.read_more' | t | default: 'Read more' }}
+        </span>
+        <span class="wetu-collapsible-text__toggle-less">
+          {{ 'wetu.enquiry.read_less' | t | default: 'Read less' }}
+        </span>
+      </button>
+    {%- endif -%}
+  </div>
+
+  <style>
+    .wetu-collapsible-text {
+      position: relative;
+    }
+
+    .wetu-collapsible-text__label {
+      margin: 0 0 0.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .wetu-collapsible-text__body {
+      overflow: hidden;
+      transition: max-height 0.35s ease-out;
+    }
+
+    .wetu-collapsible-text__body.is-collapsed {
+      max-height: 6em;
+      position: relative;
+    }
+
+    .wetu-collapsible-text__body.is-collapsed::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 2em;
+      background: linear-gradient(to bottom, transparent, var(--color-background, #fff));
+      pointer-events: none;
+    }
+
+    .wetu-collapsible-text__body.is-expanded {
+      max-height: none;
+    }
+
+    .wetu-collapsible-text__body.is-expanded::after {
+      display: none;
+    }
+
+    .wetu-collapsible-text__content {
+      line-height: 1.6;
+    }
+
+    .wetu-collapsible-text__content p:first-child {
+      margin-top: 0;
+    }
+
+    .wetu-collapsible-text__content p:last-child {
+      margin-bottom: 0;
+    }
+
+    .wetu-collapsible-text__toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      margin-top: 0.5rem;
+      padding: 0;
+      background: none;
+      border: none;
+      color: var(--color-link, currentColor);
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    .wetu-collapsible-text__toggle:hover {
+      opacity: 0.8;
+    }
+
+    .wetu-collapsible-text__toggle-less {
+      display: none;
+    }
+
+    .wetu-collapsible-text__toggle[aria-expanded="true"] .wetu-collapsible-text__toggle-more {
+      display: none;
+    }
+
+    .wetu-collapsible-text__toggle[aria-expanded="true"] .wetu-collapsible-text__toggle-less {
+      display: inline;
+    }
+  </style>
+
+  <script>
+    (function() {
+      const container = document.querySelector('[data-collapsible-id="{{ component_id }}"]').closest('[data-collapsible-text]');
+      if (!container || container.hasAttribute('data-initialized')) return;
+      
+      container.setAttribute('data-initialized', 'true');
+      
+      const toggle = container.querySelector('[data-collapsible-toggle]');
+      const body = container.querySelector('[data-collapsible-body]');
+      
+      if (!toggle || !body) return;
+      
+      toggle.addEventListener('click', function() {
+        const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
+        
+        toggle.setAttribute('aria-expanded', !isExpanded);
+        body.classList.toggle('is-collapsed', isExpanded);
+        body.classList.toggle('is-expanded', !isExpanded);
+      });
+    })();
+  </script>
+{%- endif -%}

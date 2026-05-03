@@ -1,0 +1,714 @@
+{% comment %}
+  ============================================================================
+  WETU ITINERARY BOOKING WIDGET
+  ============================================================================
+  
+  A reusable booking widget with guest selector and dynamic pricing.
+  
+  USAGE:
+    {% render 'wetu-itinerary-booking-widget',
+      product: product,
+      variant: 'hero' | 'sticky' | 'full',
+      show_guests: true,
+      show_customize: true
+    %}
+  
+  PRICING LOGIC (per-person-sharing model):
+    - Stored price = per-person-sharing rate (always displayed)
+    - Total = stored_price × number of guests
+    - This is the package total, NOT per night
+    - Default: 2 guests
+    
+    Example: stored price $7,980 per person sharing
+      - 1 guest:  $7,980 × 1 = $7,980
+      - 2 guests: $7,980 × 2 = $15,960
+      - 3 guests: $7,980 × 3 = $23,940
+      - 4 guests: $7,980 × 4 = $31,920
+  
+  ============================================================================
+{% endcomment %}
+
+{% assign selected_variant = product.selected_or_first_available_variant %}
+{% assign base_price_cents = selected_variant.price | default: 0 %}
+{% assign has_price = false %}
+{% if base_price_cents > 0 %}
+  {% assign has_price = true %}
+{% endif %}
+
+{% assign widget_variant = variant | default: 'full' %}
+{% assign show_guest_selector = show_guests | default: true %}
+{% assign show_customize_link = show_customize | default: false %}
+{% assign widget_id = 'booking-widget-' | append: section.id | append: '-' | append: widget_variant %}
+
+{% comment %} Calculate display price (rounded to whole currency) {% endcomment %}
+{% comment %} Stored price IS the per-person-sharing rate - display as-is {% endcomment %}
+{% assign price_in_dollars = base_price_cents | divided_by: 100.0 %}
+{% assign price_rounded = price_in_dollars | round %}
+
+<div 
+  class="booking-widget booking-widget--{{ widget_variant }}"
+  id="{{ widget_id }}"
+  data-base-price="{{ base_price_cents }}"
+  data-currency="{{ shop.currency }}"
+  data-locale="{{ request.locale.iso_code | default: 'en-US' }}"
+>
+  {% if has_price %}
+    {% comment %} Price Display {% endcomment %}
+    <div class="booking-widget__price-section">
+      <div class="booking-widget__price-row">
+        <span class="booking-widget__price-label">From</span>
+        <span class="booking-widget__price-value" data-price-display>
+          {{ shop.currency }} {{ price_rounded | round }}
+        </span>
+        <span class="booking-widget__price-unit" data-price-unit>per person sharing</span>
+      </div>
+      
+      {% if show_guest_selector %}
+        <div class="booking-widget__total-row" data-total-row>
+          <span class="booking-widget__total-value" data-total-display></span>
+          <span class="booking-widget__total-label" data-total-label>total for 2 guests</span>
+        </div>
+      {% endif %}
+    </div>
+
+    {% if show_guest_selector %}
+      {% comment %} Guest Selector {% endcomment %}
+      <div class="booking-widget__guests">
+        <label class="booking-widget__guests-label" for="{{ widget_id }}-guests">
+          <svg class="booking-widget__guests-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          <span>Guests</span>
+        </label>
+        <div class="booking-widget__guests-selector">
+          <button 
+            type="button" 
+            class="booking-widget__guests-btn booking-widget__guests-btn--minus"
+            data-guest-decrease
+            aria-label="Decrease guests"
+            disabled
+          >
+            <svg width="14" height="2" viewBox="0 0 14 2" fill="none">
+              <path d="M1 1h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <input 
+            type="number"
+            id="{{ widget_id }}-guests"
+            class="booking-widget__guests-input"
+            value="2"
+            min="1"
+            max="20"
+            data-guest-input
+            readonly
+          >
+          <button 
+            type="button" 
+            class="booking-widget__guests-btn booking-widget__guests-btn--plus"
+            data-guest-increase
+            aria-label="Increase guests"
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    {% endif %}
+
+    {% comment %} Book Now Form - redirects directly to checkout {% endcomment %}
+    {%- assign product_form_id = 'booking-form-' | append: section.id | append: '-' | append: widget_variant -%}
+    {%- form 'product', product, id: product_form_id, class: 'booking-widget__form', novalidate: 'novalidate', data-type: 'add-to-cart-form', data-direct-checkout: 'true' -%}
+      <input type="hidden" name="id" value="{{ selected_variant.id }}">
+      <input type="hidden" name="quantity" value="2" data-quantity-input>
+      <input type="hidden" name="return_to" value="/checkout">
+      
+      <button 
+        type="submit" 
+        name="add" 
+        class="booking-widget__book-btn button"
+        {% unless selected_variant.available %}disabled{% endunless %}
+      >
+        <svg class="booking-widget__book-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 12l2 2 4-4"/>
+          <circle cx="12" cy="12" r="10"/>
+        </svg>
+        <span class="booking-widget__book-text">
+          {% if selected_variant.available %}
+            Book Now
+          {% else %}
+            Currently Unavailable
+          {% endif %}
+        </span>
+      </button>
+    {%- endform -%}
+
+    {% if show_customize_link %}
+      <a href="#contact" class="booking-widget__customize-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+        Customize This Trip
+      </a>
+    {% endif %}
+
+    <p class="booking-widget__note">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M12 16v-4M12 8h.01"/>
+      </svg>
+      Prices per person sharing. Instant confirmation.
+    </p>
+
+  {% else %}
+    {% comment %} No price - show enquiry CTA {% endcomment %}
+    <div class="booking-widget__enquiry">
+      <p class="booking-widget__enquiry-text">Contact us for pricing and availability</p>
+      <a href="#contact" class="booking-widget__book-btn button">
+        <svg class="booking-widget__book-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+        Enquire Now
+      </a>
+    </div>
+  {% endif %}
+</div>
+
+<style>
+/* ====================================
+   Booking Widget - Base Styles
+   ==================================== */
+
+.booking-widget {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  font-family: var(--font-body--family);
+}
+
+/* Price Section */
+.booking-widget__price-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.booking-widget__price-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.booking-widget__price-label {
+  font-size: 0.875rem;
+  color: var(--color-foreground-muted, rgba(255,255,255,0.7));
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.booking-widget__price-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--color-foreground, #fff);
+  line-height: 1;
+}
+
+.booking-widget__price-unit {
+  font-size: 0.875rem;
+  color: var(--color-foreground-muted, rgba(255,255,255,0.7));
+}
+
+.booking-widget__total-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 12px 16px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+
+.booking-widget__total-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-foreground, #fff);
+}
+
+.booking-widget__total-label {
+  font-size: 0.875rem;
+  color: var(--color-foreground-muted, rgba(255,255,255,0.7));
+}
+
+/* Guest Selector */
+.booking-widget__guests {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 8px;
+}
+
+.booking-widget__guests-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9375rem;
+  color: var(--color-foreground, #fff);
+}
+
+.booking-widget__guests-icon {
+  opacity: 0.8;
+}
+
+.booking-widget__guests-selector {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(0,0,0,0.2);
+  border-radius: 24px;
+  padding: 4px;
+}
+
+.booking-widget__guests-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: rgba(255,255,255,0.15);
+  border: none;
+  border-radius: 50%;
+  color: var(--color-foreground, #fff);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.booking-widget__guests-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,0.25);
+  transform: scale(1.05);
+}
+
+.booking-widget__guests-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.booking-widget__guests-input {
+  width: 48px;
+  text-align: center;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-foreground, #fff);
+  background: transparent;
+  border: none;
+  -moz-appearance: textfield;
+}
+
+.booking-widget__guests-input::-webkit-outer-spin-button,
+.booking-widget__guests-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Book Button */
+.booking-widget__form {
+  margin: 0;
+}
+
+.booking-widget__book-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 16px 24px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-button-text, #1a1a2e);
+  background: var(--color-button, #fff);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.booking-widget__book-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+}
+
+.booking-widget__book-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.booking-widget__book-icon {
+  flex-shrink: 0;
+}
+
+/* Customize Link */
+.booking-widget__customize-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  font-size: 0.9375rem;
+  color: var(--color-foreground, #fff);
+  text-decoration: none;
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.booking-widget__customize-link:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.5);
+}
+
+/* Note */
+.booking-widget__note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  color: var(--color-foreground-muted, rgba(255,255,255,0.6));
+  margin: 0;
+}
+
+/* Enquiry State */
+.booking-widget__enquiry {
+  text-align: center;
+}
+
+.booking-widget__enquiry-text {
+  font-size: 1rem;
+  color: var(--color-foreground-muted, rgba(255,255,255,0.8));
+  margin: 0 0 16px;
+}
+
+/* ====================================
+   Variant: Hero (compact, horizontal on desktop)
+   ==================================== */
+
+.booking-widget--hero {
+  max-width: 420px;
+  padding: 24px;
+  background: rgba(0,0,0,0.4);
+  backdrop-filter: blur(12px);
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+@media (min-width: 768px) {
+  .booking-widget--hero {
+    padding: 28px 32px;
+  }
+  
+  .booking-widget--hero .booking-widget__price-value {
+    font-size: 2.5rem;
+  }
+}
+
+/* ====================================
+   Variant: Sticky (minimal, horizontal)
+   ==================================== */
+
+.booking-widget--sticky {
+  flex-direction: row;
+  align-items: center;
+  gap: 20px;
+  padding: 12px 16px;
+  background: var(--color-background, #1a1a2e);
+  border-top: 1px solid var(--color-border);
+}
+
+.booking-widget--sticky .booking-widget__price-section {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+
+.booking-widget--sticky .booking-widget__price-row {
+  flex-wrap: nowrap;
+}
+
+.booking-widget--sticky .booking-widget__price-label {
+  display: none;
+}
+
+.booking-widget--sticky .booking-widget__price-value {
+  font-size: 1.5rem;
+}
+
+.booking-widget--sticky .booking-widget__total-row {
+  display: none;
+}
+
+.booking-widget--sticky .booking-widget__guests {
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+}
+
+.booking-widget--sticky .booking-widget__guests-label {
+  display: none;
+}
+
+.booking-widget--sticky .booking-widget__form {
+  flex-shrink: 0;
+}
+
+.booking-widget--sticky .booking-widget__book-btn {
+  width: auto;
+  padding: 12px 24px;
+  white-space: nowrap;
+}
+
+.booking-widget--sticky .booking-widget__customize-link,
+.booking-widget--sticky .booking-widget__note {
+  display: none;
+}
+
+/* Mobile sticky - simplified */
+@media (max-width: 767px) {
+  .booking-widget--sticky {
+    justify-content: space-between;
+  }
+  
+  .booking-widget--sticky .booking-widget__guests {
+    display: none;
+  }
+  
+  .booking-widget--sticky .booking-widget__book-btn {
+    padding: 12px 20px;
+  }
+}
+
+/* ====================================
+   Variant: Full (booking section at bottom)
+   ==================================== */
+
+.booking-widget--full {
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 32px;
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+}
+
+.booking-widget--full .booking-widget__price-value {
+  font-size: 2.75rem;
+  color: var(--color-foreground);
+}
+
+.booking-widget--full .booking-widget__price-label,
+.booking-widget--full .booking-widget__price-unit,
+.booking-widget--full .booking-widget__total-label,
+.booking-widget--full .booking-widget__note {
+  color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+}
+
+.booking-widget--full .booking-widget__guests {
+  background: color-mix(in srgb, var(--color-foreground) 5%, transparent);
+  border: 1px solid var(--color-border);
+}
+
+.booking-widget--full .booking-widget__guests-label,
+.booking-widget--full .booking-widget__guests-input,
+.booking-widget--full .booking-widget__total-guests,
+.booking-widget--full .booking-widget__total-value {
+  color: var(--color-foreground);
+}
+
+.booking-widget--full .booking-widget__guests-selector {
+  background: color-mix(in srgb, var(--color-foreground) 8%, transparent);
+}
+
+.booking-widget--full .booking-widget__guests-btn {
+  background: var(--color-primary);
+  color: var(--color-background);
+}
+
+.booking-widget--full .booking-widget__guests-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-primary) 85%, black);
+}
+
+.booking-widget--full .booking-widget__total-row {
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+
+.booking-widget--full .booking-widget__book-btn {
+  background: var(--color-primary);
+  color: var(--color-background);
+}
+
+.booking-widget--full .booking-widget__customize-link {
+  color: var(--color-foreground);
+  border-color: var(--color-border);
+}
+
+.booking-widget--full .booking-widget__customize-link:hover {
+  background: color-mix(in srgb, var(--color-foreground) 5%, transparent);
+}
+</style>
+
+<script>
+(function() {
+  // Initialize all booking widgets on page (with guard against duplicate initialization)
+  document.querySelectorAll('.booking-widget').forEach(widget => {
+    // Skip if already initialized
+    if (widget.dataset.initialized === 'true') return;
+    widget.dataset.initialized = 'true';
+    
+    const basePrice = parseInt(widget.dataset.basePrice) || 0;
+    const currency = widget.dataset.currency || 'USD';
+    const locale = widget.dataset.locale || 'en-US';
+    
+    const guestInput = widget.querySelector('[data-guest-input]');
+    const quantityInput = widget.querySelector('[data-quantity-input]');
+    const decreaseBtn = widget.querySelector('[data-guest-decrease]');
+    const increaseBtn = widget.querySelector('[data-guest-increase]');
+    const totalRow = widget.querySelector('[data-total-row]');
+    const totalDisplay = widget.querySelector('[data-total-display]');
+    const guestCountDisplay = widget.querySelector('[data-guest-count-display]');
+    
+    if (!guestInput) return;
+    
+    // Format currency
+    function formatMoney(cents) {
+      return new Intl.NumberFormat(locale, {
+        style: 'currency',
+        currency: currency,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      }).format(cents / 100);
+    }
+    
+    // Calculate total price
+    // basePrice = per-person-sharing rate (the stored/displayed price)
+    // Total = basePrice × number of guests
+    // This is the package total, not per night
+    function calculateTotal(guests) {
+      return Math.round(basePrice * guests);
+    }
+    
+    // Update display
+    function updateDisplay() {
+      const guests = parseInt(guestInput.value) || 2;
+      const total = calculateTotal(guests);
+      
+      // Update quantity for cart
+      if (quantityInput) {
+        quantityInput.value = guests;
+      }
+      
+      // Get label elements
+      const priceUnit = widget.querySelector('[data-price-unit]');
+      const totalLabel = widget.querySelector('[data-total-label]');
+      
+      // Update price unit label based on guest count
+      if (priceUnit) {
+        if (guests === 1) {
+          priceUnit.textContent = 'per person';
+        } else {
+          priceUnit.textContent = 'per person sharing';
+        }
+      }
+      
+      // Update total display and label
+      if (totalDisplay && totalRow) {
+        totalDisplay.textContent = formatMoney(total);
+        if (totalLabel) {
+          if (guests === 1) {
+            totalLabel.textContent = 'total for 1 guest';
+          } else {
+            totalLabel.textContent = `total for ${guests} guests`;
+          }
+        }
+      }
+      
+      // Update button states
+      if (decreaseBtn) {
+        decreaseBtn.disabled = guests <= 1;
+      }
+      if (increaseBtn) {
+        increaseBtn.disabled = guests >= 20;
+      }
+    }
+    
+    // Event listeners
+    if (decreaseBtn) {
+      decreaseBtn.addEventListener('click', () => {
+        const current = parseInt(guestInput.value) || 2;
+        if (current > 1) {
+          guestInput.value = current - 1;
+          updateDisplay();
+        }
+      });
+    }
+    
+    if (increaseBtn) {
+      increaseBtn.addEventListener('click', () => {
+        const current = parseInt(guestInput.value) || 2;
+        if (current < 20) {
+          guestInput.value = current + 1;
+          updateDisplay();
+        }
+      });
+    }
+    
+    // Initialize with 2 guests
+    updateDisplay();
+    
+    // Handle form submission - redirect directly to checkout
+    const form = widget.querySelector('form[data-direct-checkout]');
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalText = submitBtn ? submitBtn.innerHTML : '';
+        
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = '<span>Processing...</span>';
+        }
+        
+        try {
+          const formData = new FormData(form);
+          const response = await fetch('/cart/add.js', {
+            method: 'POST',
+            body: formData
+          });
+          
+          if (response.ok) {
+            // Redirect directly to checkout
+            window.location.href = '/checkout';
+          } else {
+            throw new Error('Failed to add to cart');
+          }
+        } catch (error) {
+          console.error('Checkout error:', error);
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+          }
+          alert('There was an error processing your request. Please try again.');
+        }
+      });
+    }
+  });
+})();
+</script>

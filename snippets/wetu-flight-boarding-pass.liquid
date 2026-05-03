@@ -1,0 +1,1077 @@
+{% comment %}
+  ============================================================================
+  WETU FLIGHT BOARDING PASS
+  ============================================================================
+
+  Enhanced flight display with complete booking details in a boarding pass style.
+  Designed for ScheduledFlight and CharterFlight routes.
+
+  PARAMETERS:
+  - route: The route metaobject
+  - from_product: Shopify product for departure point (optional)
+  - to_product: Shopify product for arrival point (optional)
+  - day_number: Which day this flight occurs
+  - color_scheme: Color scheme class (default: 'scheme-5')
+  - itinerary_date: The actual date of the flight (optional, for calendar)
+
+  FLIGHT-SPECIFIC FIELDS (from API ItineraryRoute):
+  - start_terminal / end_terminal: Terminal information
+  - ticket_class: Economy, Business, First Class
+  - check_in_time: Enum like "Hour2" (2 hours before)
+  - agency: Airline name
+  - vehicle: Aircraft type (e.g., "Boeing 737-800")
+  - reference_codes: Ticket/PNR numbers
+  - contact_numbers: Airline emergency contacts
+
+  ============================================================================
+{% endcomment %}
+
+{%- liquid
+  assign color_scheme = color_scheme | default: 'scheme-5'
+
+  # Extract route data
+  assign route_mode = route.mode.value
+  assign route_label = route.label.value | default: route_mode
+  assign from_name = route.start_location.value | default: route.from_name.value | default: from_product.title | default: 'Departure'
+  assign to_name = route.end_location.value | default: route.to_name.value | default: to_product.title | default: 'Arrival'
+  assign start_time = route.start_time.value
+  assign end_time = route.end_time.value
+  assign duration_str = route.duration.value
+  assign distance = route.distance.value
+
+  # Flight-specific fields
+  assign agency = route.agency.value
+  assign vehicle = route.vehicle.value
+  assign reference_codes = route.reference_codes.value
+  assign ticket_class = route.ticket_class.value
+  assign start_terminal = route.start_terminal.value
+  assign end_terminal = route.end_terminal.value
+  assign check_in_time = route.check_in_time.value
+  assign contact_numbers = route.contact_numbers.value
+  assign flight_number = route.flight_number.value | default: vehicle
+
+  # Extract airport codes from location names if they contain them
+  # Common format: "Cape Town International Airport (CPT)" or "CPT - Cape Town"
+  assign from_code = ''
+  assign to_code = ''
+
+  # Try to extract 3-letter code from parentheses
+  if from_name contains '('
+    assign from_parts = from_name | split: '('
+    assign from_code_part = from_parts | last | split: ')' | first
+    if from_code_part.size == 3
+      assign from_code = from_code_part | upcase
+    endif
+  endif
+
+  if to_name contains '('
+    assign to_parts = to_name | split: '('
+    assign to_code_part = to_parts | last | split: ')' | first
+    if to_code_part.size == 3
+      assign to_code = to_code_part | upcase
+    endif
+  endif
+
+  # Clean location names (remove code if present)
+  assign from_name_clean = from_name | split: '(' | first | strip
+  assign to_name_clean = to_name | split: '(' | first | strip
+
+  # Calculate formatted duration
+  if duration_str != blank
+    if duration_str contains ':'
+      assign dur_parts = duration_str | split: ':'
+      assign hours = dur_parts[0] | plus: 0
+      assign mins = dur_parts[1] | plus: 0
+      if hours > 0 and mins > 0
+        assign formatted_duration = hours | append: 'h ' | append: mins | append: 'm'
+      elsif hours > 0
+        assign formatted_duration = hours | append: 'h'
+      else
+        assign formatted_duration = mins | append: 'm'
+      endif
+    else
+      assign formatted_duration = duration_str
+    endif
+  else
+    assign formatted_duration = nil
+  endif
+
+  # Parse check-in time enum
+  assign check_in_hours = ''
+  case check_in_time
+    when 'Hour1'
+      assign check_in_hours = '1 hour'
+    when 'Hour2'
+      assign check_in_hours = '2 hours'
+    when 'Hour3'
+      assign check_in_hours = '3 hours'
+    when 'Hour4'
+      assign check_in_hours = '4 hours'
+    when 'Minutes30'
+      assign check_in_hours = '30 minutes'
+    when 'Minutes45'
+      assign check_in_hours = '45 minutes'
+    when 'Minutes90'
+      assign check_in_hours = '90 minutes'
+  endcase
+
+  # Determine ticket class styling
+  assign class_color = 'gray'
+  assign class_label = ticket_class | default: 'Economy'
+  case ticket_class
+    when 'First', 'FirstClass', 'first', 'first_class'
+      assign class_color = 'gold'
+      assign class_label = 'First Class'
+    when 'Business', 'BusinessClass', 'business', 'business_class'
+      assign class_color = 'blue'
+      assign class_label = 'Business'
+    when 'PremiumEconomy', 'premium_economy', 'Premium Economy'
+      assign class_color = 'silver'
+      assign class_label = 'Premium Economy'
+    when 'Economy', 'economy', 'EconomyClass'
+      assign class_color = 'gray'
+      assign class_label = 'Economy'
+  endcase
+
+  # Determine if charter or scheduled
+  assign is_charter = false
+  if route_mode == 'CharterFlight'
+    assign is_charter = true
+  endif
+
+  # Generate unique ID for JavaScript
+  assign unique_id = 'flight-' | append: day_number | append: '-' | append: 'now' | date: '%s%N' | slice: -8, 8
+-%}
+
+<div class="wetu-flight-pass color-{{ color_scheme }}" id="{{ unique_id }}" data-flight-ref="{{ reference_codes }}">
+
+  {%- comment -%} Boarding Pass Header {%- endcomment -%}
+  <div class="wetu-flight-pass__header">
+    <div class="wetu-flight-pass__airline">
+      <div class="wetu-flight-pass__airline-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>
+        </svg>
+      </div>
+      <div class="wetu-flight-pass__airline-info">
+        {%- if agency != blank -%}
+          <span class="wetu-flight-pass__airline-name">{{ agency }}</span>
+        {%- else -%}
+          <span class="wetu-flight-pass__airline-name">{% if is_charter %}Charter Flight{% else %}Scheduled Flight{% endif %}</span>
+        {%- endif -%}
+        {%- if flight_number != blank -%}
+          <span class="wetu-flight-pass__flight-number">{{ flight_number }}</span>
+        {%- endif -%}
+      </div>
+    </div>
+
+    {%- comment -%} Ticket Class Badge {%- endcomment -%}
+    <div class="wetu-flight-pass__class wetu-flight-pass__class--{{ class_color }}">
+      <span class="wetu-flight-pass__class-label">{{ class_label }}</span>
+    </div>
+  </div>
+
+  {%- comment -%} Flight Route Visual {%- endcomment -%}
+  <div class="wetu-flight-pass__route">
+    {%- comment -%} Departure {%- endcomment -%}
+    <div class="wetu-flight-pass__endpoint wetu-flight-pass__endpoint--departure">
+      {%- if from_code != blank -%}
+        <span class="wetu-flight-pass__code">{{ from_code }}</span>
+      {%- endif -%}
+      <span class="wetu-flight-pass__location">{{ from_name_clean }}</span>
+      {%- if start_terminal != blank -%}
+        <span class="wetu-flight-pass__terminal">Terminal {{ start_terminal }}</span>
+      {%- endif -%}
+      {%- if start_time != blank -%}
+        <span class="wetu-flight-pass__time">{{ start_time }}</span>
+        <span class="wetu-flight-pass__time-label">Departure</span>
+      {%- endif -%}
+    </div>
+
+    {%- comment -%} Flight Path Visual {%- endcomment -%}
+    <div class="wetu-flight-pass__path">
+      <div class="wetu-flight-pass__path-line">
+        <span class="wetu-flight-pass__path-dot wetu-flight-pass__path-dot--start"></span>
+        <span class="wetu-flight-pass__path-plane">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
+          </svg>
+        </span>
+        <span class="wetu-flight-pass__path-dot wetu-flight-pass__path-dot--end"></span>
+      </div>
+      {%- if formatted_duration != blank -%}
+        <span class="wetu-flight-pass__duration">{{ formatted_duration }}</span>
+      {%- endif -%}
+    </div>
+
+    {%- comment -%} Arrival {%- endcomment -%}
+    <div class="wetu-flight-pass__endpoint wetu-flight-pass__endpoint--arrival">
+      {%- if to_code != blank -%}
+        <span class="wetu-flight-pass__code">{{ to_code }}</span>
+      {%- endif -%}
+      <span class="wetu-flight-pass__location">{{ to_name_clean }}</span>
+      {%- if end_terminal != blank -%}
+        <span class="wetu-flight-pass__terminal">Terminal {{ end_terminal }}</span>
+      {%- endif -%}
+      {%- if end_time != blank -%}
+        <span class="wetu-flight-pass__time">{{ end_time }}</span>
+        <span class="wetu-flight-pass__time-label">Arrival</span>
+      {%- endif -%}
+    </div>
+  </div>
+
+  {%- comment -%} Flight Details Grid {%- endcomment -%}
+  <div class="wetu-flight-pass__details">
+    {%- if check_in_hours != blank -%}
+      <div class="wetu-flight-pass__detail">
+        <span class="wetu-flight-pass__detail-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+        </span>
+        <span class="wetu-flight-pass__detail-label">Check-in</span>
+        <span class="wetu-flight-pass__detail-value">{{ check_in_hours }} before departure</span>
+      </div>
+    {%- endif -%}
+
+    {%- if vehicle != blank and vehicle != flight_number -%}
+      <div class="wetu-flight-pass__detail">
+        <span class="wetu-flight-pass__detail-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>
+          </svg>
+        </span>
+        <span class="wetu-flight-pass__detail-label">Aircraft</span>
+        <span class="wetu-flight-pass__detail-value">{{ vehicle }}</span>
+      </div>
+    {%- endif -%}
+
+    {%- if reference_codes != blank -%}
+      <div class="wetu-flight-pass__detail wetu-flight-pass__detail--reference">
+        <span class="wetu-flight-pass__detail-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+        </span>
+        <span class="wetu-flight-pass__detail-label">Booking Ref</span>
+        <span class="wetu-flight-pass__detail-value wetu-flight-pass__ref-code">
+          <code>{{ reference_codes }}</code>
+          <button
+            type="button"
+            class="wetu-flight-pass__copy-btn"
+            data-copy="{{ reference_codes }}"
+            aria-label="Copy booking reference"
+            title="Copy to clipboard"
+          >
+            <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </button>
+        </span>
+      </div>
+    {%- endif -%}
+
+    {%- if contact_numbers != blank -%}
+      <div class="wetu-flight-pass__detail">
+        <span class="wetu-flight-pass__detail-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+          </svg>
+        </span>
+        <span class="wetu-flight-pass__detail-label">Contact</span>
+        <span class="wetu-flight-pass__detail-value">
+          <a href="tel:{{ contact_numbers | remove: ' ' }}" class="wetu-flight-pass__phone">{{ contact_numbers }}</a>
+        </span>
+      </div>
+    {%- endif -%}
+  </div>
+
+  {%- comment -%} Action Buttons {%- endcomment -%}
+  <div class="wetu-flight-pass__actions">
+    {%- comment -%} Add to Calendar Button {%- endcomment -%}
+    <button
+      type="button"
+      class="wetu-flight-pass__action-btn wetu-flight-pass__calendar-btn"
+      data-flight-info="{{ unique_id }}"
+      data-from="{{ from_name }}"
+      data-to="{{ to_name }}"
+      data-start-time="{{ start_time }}"
+      data-end-time="{{ end_time }}"
+      data-airline="{{ agency }}"
+      data-flight="{{ flight_number }}"
+      data-ref="{{ reference_codes }}"
+      data-date="{{ itinerary_date }}"
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+        <line x1="16" y1="2" x2="16" y2="6"/>
+        <line x1="8" y1="2" x2="8" y2="6"/>
+        <line x1="3" y1="10" x2="21" y2="10"/>
+        <line x1="12" y1="14" x2="12" y2="18"/>
+        <line x1="10" y1="16" x2="14" y2="16"/>
+      </svg>
+      <span>Add to Calendar</span>
+    </button>
+  </div>
+
+  {%- comment -%} Decorative perforated edge (boarding pass style) {%- endcomment -%}
+  <div class="wetu-flight-pass__perforation"></div>
+
+  {%- comment -%} Barcode/QR placeholder for mobile authenticity {%- endcomment -%}
+  <div class="wetu-flight-pass__barcode" aria-hidden="true">
+    <div class="wetu-flight-pass__barcode-lines"></div>
+  </div>
+</div>
+
+<style>
+  /* ============================================
+     FLIGHT BOARDING PASS STYLES
+     ============================================ */
+
+  .wetu-flight-pass {
+    --flight-accent: #3b82f6;
+    --flight-gold: #d4a574;
+    --flight-blue: #2563eb;
+    --flight-silver: #64748b;
+    --flight-gray: #71717a;
+    --flight-muted: color-mix(in srgb, var(--color-foreground) 50%, transparent);
+    --flight-subtle-bg: color-mix(in srgb, var(--color-foreground) 3%, transparent);
+    --flight-border: color-mix(in srgb, var(--color-foreground) 10%, transparent);
+
+    position: relative;
+    width: 100%;
+    background: var(--color-background, #fff);
+    border: 1px solid var(--flight-border);
+    border-radius: 16px;
+    margin: 24px 0;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  }
+
+  /* Header */
+  .wetu-flight-pass__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    background: linear-gradient(135deg, var(--flight-accent) 0%, color-mix(in srgb, var(--flight-accent) 80%, #000) 100%);
+    color: white;
+  }
+
+  .wetu-flight-pass__airline {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .wetu-flight-pass__airline-icon {
+    width: 44px;
+    height: 44px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .wetu-flight-pass__airline-icon svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .wetu-flight-pass__airline-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .wetu-flight-pass__airline-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+
+  .wetu-flight-pass__flight-number {
+    font-size: 0.8rem;
+    opacity: 0.85;
+    font-family: monospace;
+    letter-spacing: 0.1em;
+  }
+
+  /* Ticket Class Badge */
+  .wetu-flight-pass__class {
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .wetu-flight-pass__class--gold {
+    background: linear-gradient(135deg, #d4a574 0%, #c9a66b 50%, #b8956a 100%);
+    color: #3d2914;
+    box-shadow: 0 2px 8px rgba(212, 165, 116, 0.4);
+  }
+
+  .wetu-flight-pass__class--blue {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+  }
+
+  .wetu-flight-pass__class--silver {
+    background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
+    color: white;
+  }
+
+  .wetu-flight-pass__class--gray {
+    background: rgba(255,255,255,0.2);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.3);
+  }
+
+  /* Route Section */
+  .wetu-flight-pass__route {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 32px 24px;
+    gap: 16px;
+  }
+
+  .wetu-flight-pass__endpoint {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    max-width: 40%;
+  }
+
+  .wetu-flight-pass__endpoint--arrival {
+    text-align: right;
+    align-items: flex-end;
+  }
+
+  .wetu-flight-pass__code {
+    font-size: 2.5rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--color-foreground);
+    letter-spacing: -0.02em;
+  }
+
+  .wetu-flight-pass__location {
+    font-size: 0.85rem;
+    color: var(--flight-muted);
+    line-height: 1.3;
+    max-width: 160px;
+  }
+
+  .wetu-flight-pass__endpoint--arrival .wetu-flight-pass__location {
+    margin-left: auto;
+  }
+
+  .wetu-flight-pass__terminal {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--flight-accent);
+    padding: 3px 8px;
+    background: color-mix(in srgb, var(--flight-accent) 10%, transparent);
+    border-radius: 4px;
+    display: inline-block;
+    margin-top: 4px;
+  }
+
+  .wetu-flight-pass__time {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-foreground);
+    margin-top: 8px;
+  }
+
+  .wetu-flight-pass__time-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--flight-muted);
+  }
+
+  /* Flight Path Visual */
+  .wetu-flight-pass__path {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+    min-width: 100px;
+    padding-top: 12px;
+  }
+
+  .wetu-flight-pass__path-line {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    width: 100%;
+    position: relative;
+  }
+
+  .wetu-flight-pass__path-line::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 8px;
+    right: 8px;
+    height: 2px;
+    background: repeating-linear-gradient(
+      90deg,
+      var(--flight-border) 0px,
+      var(--flight-border) 4px,
+      transparent 4px,
+      transparent 8px
+    );
+  }
+
+  .wetu-flight-pass__path-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+  }
+
+  .wetu-flight-pass__path-dot--start {
+    background: var(--flight-accent);
+  }
+
+  .wetu-flight-pass__path-dot--end {
+    background: transparent;
+    border: 2px solid var(--color-foreground);
+  }
+
+  .wetu-flight-pass__path-plane {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    position: relative;
+    z-index: 1;
+  }
+
+  .wetu-flight-pass__path-plane svg {
+    width: 28px;
+    height: 28px;
+    color: var(--flight-accent);
+    transform: rotate(90deg);
+    background: var(--color-background, #fff);
+    padding: 2px;
+  }
+
+  .wetu-flight-pass__duration {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--flight-muted);
+    background: var(--flight-subtle-bg);
+    padding: 4px 12px;
+    border-radius: 12px;
+  }
+
+  /* Details Grid */
+  .wetu-flight-pass__details {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1px;
+    background: var(--flight-border);
+    border-top: 1px solid var(--flight-border);
+  }
+
+  .wetu-flight-pass__detail {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 16px 20px;
+    background: var(--color-background, #fff);
+  }
+
+  .wetu-flight-pass__detail--reference {
+    grid-column: span 2;
+  }
+
+  .wetu-flight-pass__detail-icon {
+    width: 18px;
+    height: 18px;
+    color: var(--flight-accent);
+    margin-bottom: 4px;
+  }
+
+  .wetu-flight-pass__detail-icon svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  .wetu-flight-pass__detail-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--flight-muted);
+    font-weight: 600;
+  }
+
+  .wetu-flight-pass__detail-value {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--color-foreground);
+  }
+
+  /* Reference Code with Copy */
+  .wetu-flight-pass__ref-code {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .wetu-flight-pass__ref-code code {
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+    font-size: 1.1rem;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    color: var(--color-foreground);
+    background: var(--flight-subtle-bg);
+    padding: 6px 12px;
+    border-radius: 6px;
+  }
+
+  .wetu-flight-pass__copy-btn {
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--flight-border);
+    border-radius: 8px;
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+
+  .wetu-flight-pass__copy-btn:hover {
+    background: var(--flight-subtle-bg);
+    border-color: var(--flight-accent);
+  }
+
+  .wetu-flight-pass__copy-btn svg {
+    width: 18px;
+    height: 18px;
+    color: var(--flight-muted);
+  }
+
+  .wetu-flight-pass__copy-btn:hover svg {
+    color: var(--flight-accent);
+  }
+
+  .wetu-flight-pass__copy-btn.copied .copy-icon {
+    display: none;
+  }
+
+  .wetu-flight-pass__copy-btn.copied .check-icon {
+    display: block !important;
+    color: #10b981;
+  }
+
+  /* Phone Link */
+  .wetu-flight-pass__phone {
+    color: var(--flight-accent);
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  .wetu-flight-pass__phone:hover {
+    text-decoration: underline;
+  }
+
+  /* Actions */
+  .wetu-flight-pass__actions {
+    display: flex;
+    gap: 12px;
+    padding: 16px 24px;
+    background: var(--flight-subtle-bg);
+    border-top: 1px solid var(--flight-border);
+  }
+
+  .wetu-flight-pass__action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    border: 1px solid var(--flight-border);
+    border-radius: 10px;
+    background: var(--color-background, #fff);
+    color: var(--color-foreground);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .wetu-flight-pass__action-btn:hover {
+    background: var(--flight-accent);
+    color: white;
+    border-color: var(--flight-accent);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+  }
+
+  .wetu-flight-pass__action-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* Perforation Effect */
+  .wetu-flight-pass__perforation {
+    position: absolute;
+    bottom: 80px;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: repeating-linear-gradient(
+      90deg,
+      var(--flight-border) 0px,
+      var(--flight-border) 8px,
+      transparent 8px,
+      transparent 16px
+    );
+  }
+
+  .wetu-flight-pass__perforation::before,
+  .wetu-flight-pass__perforation::after {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    background: var(--color-background, #f8f8f8);
+    border-radius: 50%;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .wetu-flight-pass__perforation::before {
+    left: -10px;
+    box-shadow: inset -2px 0 4px rgba(0,0,0,0.05);
+  }
+
+  .wetu-flight-pass__perforation::after {
+    right: -10px;
+    box-shadow: inset 2px 0 4px rgba(0,0,0,0.05);
+  }
+
+  /* Barcode */
+  .wetu-flight-pass__barcode {
+    padding: 12px 24px 16px;
+    display: flex;
+    justify-content: center;
+  }
+
+  .wetu-flight-pass__barcode-lines {
+    width: 200px;
+    height: 40px;
+    background: repeating-linear-gradient(
+      90deg,
+      var(--color-foreground) 0px,
+      var(--color-foreground) 2px,
+      transparent 2px,
+      transparent 4px,
+      var(--color-foreground) 4px,
+      var(--color-foreground) 5px,
+      transparent 5px,
+      transparent 8px,
+      var(--color-foreground) 8px,
+      var(--color-foreground) 10px,
+      transparent 10px,
+      transparent 11px,
+      var(--color-foreground) 11px,
+      var(--color-foreground) 14px,
+      transparent 14px,
+      transparent 16px
+    );
+    opacity: 0.15;
+    border-radius: 4px;
+  }
+
+  /* ============================================
+     MOBILE STYLES - Boarding Pass Optimized
+     ============================================ */
+
+  @media screen and (max-width: 600px) {
+    .wetu-flight-pass {
+      margin: 16px 0;
+      border-radius: 12px;
+    }
+
+    .wetu-flight-pass__header {
+      padding: 16px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .wetu-flight-pass__airline-icon {
+      width: 36px;
+      height: 36px;
+    }
+
+    .wetu-flight-pass__airline-icon svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .wetu-flight-pass__airline-name {
+      font-size: 0.95rem;
+    }
+
+    .wetu-flight-pass__class {
+      padding: 6px 12px;
+      font-size: 0.7rem;
+    }
+
+    .wetu-flight-pass__route {
+      flex-direction: column;
+      padding: 24px 16px;
+      gap: 24px;
+    }
+
+    .wetu-flight-pass__endpoint {
+      max-width: 100%;
+      width: 100%;
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .wetu-flight-pass__endpoint--arrival {
+      text-align: left;
+      align-items: center;
+      flex-direction: row-reverse;
+    }
+
+    .wetu-flight-pass__endpoint--arrival .wetu-flight-pass__location {
+      margin-left: 0;
+      margin-right: auto;
+    }
+
+    .wetu-flight-pass__code {
+      font-size: 2rem;
+      min-width: 80px;
+    }
+
+    .wetu-flight-pass__location {
+      max-width: none;
+      flex: 1;
+    }
+
+    .wetu-flight-pass__time {
+      font-size: 1.25rem;
+      margin-top: 0;
+    }
+
+    .wetu-flight-pass__path {
+      width: 100%;
+      flex-direction: row;
+      padding: 0;
+      min-width: auto;
+    }
+
+    .wetu-flight-pass__path-line {
+      flex: 1;
+    }
+
+    .wetu-flight-pass__details {
+      grid-template-columns: 1fr;
+    }
+
+    .wetu-flight-pass__detail--reference {
+      grid-column: span 1;
+    }
+
+    .wetu-flight-pass__detail {
+      padding: 14px 16px;
+    }
+
+    .wetu-flight-pass__ref-code {
+      flex-wrap: wrap;
+    }
+
+    .wetu-flight-pass__ref-code code {
+      font-size: 1rem;
+    }
+
+    .wetu-flight-pass__actions {
+      padding: 12px 16px;
+      flex-wrap: wrap;
+    }
+
+    .wetu-flight-pass__action-btn {
+      flex: 1;
+      justify-content: center;
+      padding: 14px 16px;
+    }
+
+    .wetu-flight-pass__perforation {
+      display: none;
+    }
+
+    .wetu-flight-pass__barcode {
+      padding: 8px 16px 12px;
+    }
+
+    .wetu-flight-pass__barcode-lines {
+      width: 160px;
+      height: 32px;
+    }
+  }
+
+  /* Print Styles */
+  @media print {
+    .wetu-flight-pass {
+      break-inside: avoid;
+      box-shadow: none;
+      border: 2px solid #000;
+    }
+
+    .wetu-flight-pass__header {
+      background: #333;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .wetu-flight-pass__actions {
+      display: none;
+    }
+  }
+</style>
+
+<script>
+  (function() {
+    const flightPass = document.getElementById('{{ unique_id }}');
+    if (!flightPass) return;
+
+    // Copy to clipboard functionality
+    const copyBtns = flightPass.querySelectorAll('.wetu-flight-pass__copy-btn');
+    copyBtns.forEach(btn => {
+      btn.addEventListener('click', async function() {
+        const textToCopy = this.dataset.copy;
+        try {
+          await navigator.clipboard.writeText(textToCopy);
+          this.classList.add('copied');
+          setTimeout(() => {
+            this.classList.remove('copied');
+          }, 2000);
+        } catch (err) {
+          // Fallback for older browsers
+          const textarea = document.createElement('textarea');
+          textarea.value = textToCopy;
+          textarea.style.position = 'fixed';
+          textarea.style.opacity = '0';
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textarea);
+          this.classList.add('copied');
+          setTimeout(() => {
+            this.classList.remove('copied');
+          }, 2000);
+        }
+      });
+    });
+
+    // Add to Calendar functionality
+    const calendarBtn = flightPass.querySelector('.wetu-flight-pass__calendar-btn');
+    if (calendarBtn) {
+      calendarBtn.addEventListener('click', function() {
+        const fromLocation = this.dataset.from || 'Departure';
+        const toLocation = this.dataset.to || 'Arrival';
+        const startTime = this.dataset.startTime || '';
+        const endTime = this.dataset.endTime || '';
+        const airline = this.dataset.airline || '';
+        const flightNum = this.dataset.flight || '';
+        const ref = this.dataset.ref || '';
+        const dateStr = this.dataset.date || '';
+
+        // Build event title
+        let title = 'Flight';
+        if (airline) title = airline + ' Flight';
+        if (flightNum) title += ' ' + flightNum;
+        title += ': ' + fromLocation.split('(')[0].trim() + ' → ' + toLocation.split('(')[0].trim();
+
+        // Build description
+        let description = 'Flight Details:\\n';
+        description += 'From: ' + fromLocation + '\\n';
+        description += 'To: ' + toLocation + '\\n';
+        if (startTime) description += 'Departure: ' + startTime + '\\n';
+        if (endTime) description += 'Arrival: ' + endTime + '\\n';
+        if (ref) description += 'Booking Reference: ' + ref + '\\n';
+
+        // Create ICS content (simplified - works without specific date)
+        const now = new Date();
+        const startDate = dateStr ? new Date(dateStr) : now;
+
+        // Parse time if available
+        if (startTime) {
+          const timeParts = startTime.match(/(\d{1,2}):(\d{2})/);
+          if (timeParts) {
+            startDate.setHours(parseInt(timeParts[1]), parseInt(timeParts[2]));
+          }
+        }
+
+        // Assume 2 hour flight if no end time
+        const endDate = new Date(startDate);
+        if (endTime) {
+          const endParts = endTime.match(/(\d{1,2}):(\d{2})/);
+          if (endParts) {
+            endDate.setHours(parseInt(endParts[1]), parseInt(endParts[2]));
+          }
+        } else {
+          endDate.setHours(endDate.getHours() + 2);
+        }
+
+        // Format dates for ICS
+        const formatDate = (date) => {
+          return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+        };
+
+        const icsContent = [
+          'BEGIN:VCALENDAR',
+          'VERSION:2.0',
+          'PRODID:-//WETU Itinerary//Flight//EN',
+          'BEGIN:VEVENT',
+          'UID:' + '{{ unique_id }}' + '@wetu',
+          'DTSTAMP:' + formatDate(now),
+          'DTSTART:' + formatDate(startDate),
+          'DTEND:' + formatDate(endDate),
+          'SUMMARY:' + title,
+          'DESCRIPTION:' + description.replace(/\n/g, '\\n'),
+          'LOCATION:' + fromLocation,
+          'END:VEVENT',
+          'END:VCALENDAR'
+        ].join('\r\n');
+
+        // Download ICS file
+        const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'flight-' + (flightNum || 'booking') + '.ics';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+      });
+    }
+  })();
+</script>

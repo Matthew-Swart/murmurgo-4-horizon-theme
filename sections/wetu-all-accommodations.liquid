@@ -1,0 +1,507 @@
+{% comment %}
+  ============================================================================
+  WETU ALL ACCOMMODATIONS SECTION
+  ============================================================================
+  
+  Displays ALL unique properties from the itinerary in a dedicated gallery
+  section, outside the day-by-day flow. Supports grid and carousel layouts.
+  
+  TEMPLATE: product.wetu-itinerary3.json
+  
+  ============================================================================
+  DATA ACCESS
+  ============================================================================
+  
+  Uses wetu-itinerary-data snippet for centralized data loading.
+  Uses direct product references from:
+    - wetu_accommodation_products (list.product_reference)
+  
+  Calculates total nights per property by matching product handle to legs.
+  
+  ============================================================================
+{% endcomment %}
+
+{% comment %} 
+  Load data directly (render snippet variables don't persist to parent scope)
+{% endcomment %}
+{% assign itinerary = product.metafields.wetu.itinerary_metaobject.value %}
+{% assign legs = itinerary.legs.value %}
+
+{% comment %} 
+  Load linked accommodation products from metafield
+  Type: list.product_reference - returns actual product objects
+{% endcomment %}
+{% assign accommodation_products = product.metafields.wetu_itinerary.accommodations.value %}
+
+{% comment %} 
+  Simplified approach: Just display accommodation products directly
+  The product reference list already contains the property products we need
+{% endcomment %}
+{% assign unique_properties_string = '' %}
+
+{% if accommodation_products.size > 0 %}
+  {% for acc_product in accommodation_products %}
+    {% comment %} Get PIN ID from the product's own metafield {% endcomment %}
+    {% assign acc_pin_id = acc_product.metafields.wetu.pin_id.value | strip %}
+    {% assign acc_handle = acc_product.handle %}
+    
+    {% comment %} Calculate total nights by finding matching legs {% endcomment %}
+    {% assign total_nights = 0 %}
+    {% assign first_day = 0 %}
+    {% assign last_day = 0 %}
+    {% assign current_day = 1 %}
+    
+    {% for leg in legs %}
+      {% assign leg_type = leg.type.value | default: 'Standard' %}
+      {% assign leg_content_id = leg.content_entity_id.value | strip %}
+      {% assign leg_nights = leg.nights.value | default: 0 %}
+      
+      {% comment %} Match by PIN ID (content_entity_id) - convert both to strings for reliable comparison {% endcomment %}
+      {% assign pin_id_str = acc_pin_id | append: '' %}
+      {% assign leg_id_str = leg_content_id | append: '' %}
+      
+      {% if leg_type != 'Departure' and leg_id_str == pin_id_str %}
+        {% assign total_nights = total_nights | plus: leg_nights %}
+        
+        {% if first_day == 0 %}
+          {% assign first_day = current_day %}
+        {% endif %}
+        
+        {% assign last_day = current_day | plus: leg_nights | minus: 1 %}
+      {% endif %}
+      
+      {% unless leg_type == 'Departure' %}
+        {% assign current_day = current_day | plus: leg_nights %}
+      {% endunless %}
+    {% endfor %}
+    
+    {% comment %} Include all accommodations (even if nights is 0, it's in the itinerary) {% endcomment %}
+    {% assign prop_data = acc_handle | append: '|' | append: total_nights | append: '|' | append: first_day | append: '|' | append: last_day | append: '|' | append: acc_pin_id %}
+    {% if unique_properties_string != '' %}
+      {% assign unique_properties_string = unique_properties_string | append: '|||' %}
+    {% endif %}
+    {% assign unique_properties_string = unique_properties_string | append: prop_data %}
+  {% endfor %}
+{% endif %}
+
+{% comment %} Convert string to array {% endcomment %}
+{% assign unique_properties = unique_properties_string | split: '|||' %}
+
+<section 
+  id="accommodations"
+  class="wetu-accommodations color-{{ section.settings.color_scheme }}"
+  style="
+    --section-padding-top: {{ section.settings.padding_top }}px;
+    --section-padding-bottom: {{ section.settings.padding_bottom }}px;
+    --columns-desktop: {{ section.settings.columns_desktop }};
+  "
+>
+  <div class="page-width">
+    {% comment %} Section Header {% endcomment %}
+    <header class="wetu-accommodations__header">
+      {% if section.settings.subheading != blank %}
+        <span class="wetu-accommodations__subheading">{{ section.settings.subheading }}</span>
+      {% endif %}
+      <h2 class="wetu-accommodations__heading h2">{{ section.settings.heading }}</h2>
+      {% if section.settings.description != blank %}
+        <p class="wetu-accommodations__description">{{ section.settings.description }}</p>
+      {% endif %}
+      
+      {% comment %} Property Count Badge {% endcomment %}
+      <span class="wetu-accommodations__count">
+        {{ unique_properties.size }} {{ unique_properties.size | pluralize: 'Property', 'Properties' }}
+      </span>
+    </header>
+
+    {% if unique_properties.size > 0 %}
+      {% comment %} Grid or Carousel Layout {% endcomment %}
+      <div class="wetu-accommodations__grid wetu-accommodations__grid--{{ section.settings.layout }}"
+           {% if section.settings.layout == 'carousel' %}data-carousel="accommodations"{% endif %}>
+        
+        {% for prop_data in unique_properties %}
+          {% assign prop_parts = prop_data | split: '|' %}
+          {% assign prop_handle = prop_parts[0] %}
+          {% assign prop_nights = prop_parts[1] | plus: 0 %}
+          {% assign prop_first_day = prop_parts[2] | plus: 0 %}
+          {% assign prop_last_day = prop_parts[3] | plus: 0 %}
+          {% assign prop_content_id = prop_parts[4] %}
+          
+          {% assign property = all_products[prop_handle] %}
+          
+          {% render 'wetu-accommodation-gallery-card',
+            property: property,
+            nights: prop_nights,
+            first_day: prop_first_day,
+            last_day: prop_last_day,
+            content_id: prop_content_id,
+            index: forloop.index,
+            show_gallery_button: section.settings.show_gallery_button,
+            show_video_button: section.settings.show_video_button,
+            show_panorama_button: section.settings.show_panorama_button
+          %}
+        {% endfor %}
+      </div>
+      
+      {% comment %} Carousel Navigation (if carousel layout) {% endcomment %}
+      {% if section.settings.layout == 'carousel' and unique_properties.size > 2 %}
+        <div class="wetu-accommodations__carousel-nav">
+          <button type="button" class="carousel-nav__btn carousel-nav__btn--prev" data-carousel-prev aria-label="Previous property">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M15 18l-6-6 6-6"/>
+            </svg>
+          </button>
+          <div class="carousel-nav__dots" data-carousel-dots></div>
+          <button type="button" class="carousel-nav__btn carousel-nav__btn--next" data-carousel-next aria-label="Next property">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 18l6-6-6-6"/>
+            </svg>
+          </button>
+        </div>
+      {% endif %}
+    {% else %}
+      <p class="wetu-accommodations__empty">No accommodations found for this itinerary.</p>
+    {% endif %}
+  </div>
+</section>
+
+{% stylesheet %}
+  .wetu-accommodations {
+    padding-top: var(--section-padding-top);
+    padding-bottom: var(--section-padding-bottom);
+    background: var(--color-background);
+    color: var(--color-foreground);
+  }
+
+  /* Header */
+  .wetu-accommodations__header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+
+  .wetu-accommodations__subheading {
+    display: inline-block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--color-primary);
+    margin-bottom: 12px;
+  }
+
+  .wetu-accommodations__heading {
+    margin: 0 0 12px;
+    color: var(--color-foreground);
+  }
+
+  .wetu-accommodations__description {
+    max-width: 600px;
+    margin: 0 auto 16px;
+    font-size: 1.1rem;
+    color: color-mix(in srgb, var(--color-foreground) 70%, transparent);
+  }
+
+  .wetu-accommodations__count {
+    display: inline-block;
+    padding: 6px 16px;
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    color: var(--color-primary);
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 20px;
+  }
+
+  /* Grid Layout */
+  .wetu-accommodations__grid {
+    display: grid;
+    gap: 24px;
+  }
+
+  .wetu-accommodations__grid--grid {
+    grid-template-columns: 1fr;
+  }
+
+  @media screen and (min-width: 750px) {
+    .wetu-accommodations__grid--grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media screen and (min-width: 1200px) {
+    .wetu-accommodations__grid--grid {
+      grid-template-columns: repeat(var(--columns-desktop), 1fr);
+    }
+  }
+
+  /* Carousel Layout */
+  .wetu-accommodations__grid--carousel {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    gap: 24px;
+    padding-bottom: 16px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .wetu-accommodations__grid--carousel::-webkit-scrollbar {
+    display: none;
+  }
+
+  .wetu-accommodations__grid--carousel > * {
+    flex: 0 0 calc(100% - 32px);
+    scroll-snap-align: center;
+  }
+
+  @media screen and (min-width: 750px) {
+    .wetu-accommodations__grid--carousel > * {
+      flex: 0 0 calc(50% - 24px);
+    }
+  }
+
+  @media screen and (min-width: 1024px) {
+    .wetu-accommodations__grid--carousel > * {
+      flex: 0 0 calc(100% / var(--columns-desktop) - 20px);
+    }
+  }
+
+  /* Carousel Navigation */
+  .wetu-accommodations__carousel-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 24px;
+  }
+
+  .carousel-nav__btn {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--color-foreground) 5%, transparent);
+    border: 1px solid var(--color-border);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--color-foreground);
+  }
+
+  .carousel-nav__btn:hover:not([disabled]) {
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+  }
+
+  .carousel-nav__btn[disabled] {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  .carousel-nav__dots {
+    display: flex;
+    gap: 8px;
+  }
+
+  .carousel-nav__dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--color-foreground) 20%, transparent);
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .carousel-nav__dot.is-active {
+    background: var(--color-primary);
+    transform: scale(1.2);
+  }
+
+  .wetu-accommodations__empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: color-mix(in srgb, var(--color-foreground) 50%, transparent);
+    font-style: italic;
+  }
+{% endstylesheet %}
+
+{% javascript %}
+  document.addEventListener('DOMContentLoaded', () => {
+    const carousel = document.querySelector('[data-carousel="accommodations"]');
+    if (!carousel) return;
+
+    const cards = carousel.querySelectorAll('.wetu-accommodation-card');
+    const prevBtn = document.querySelector('[data-carousel-prev]');
+    const nextBtn = document.querySelector('[data-carousel-next]');
+    const dotsContainer = document.querySelector('[data-carousel-dots]');
+    
+    if (!cards.length) return;
+
+    let currentIndex = 0;
+    const totalCards = cards.length;
+
+    // Create dots
+    if (dotsContainer) {
+      for (let i = 0; i < totalCards; i++) {
+        const dot = document.createElement('button');
+        dot.className = `carousel-nav__dot${i === 0 ? ' is-active' : ''}`;
+        dot.setAttribute('aria-label', `Go to property ${i + 1}`);
+        dot.addEventListener('click', () => goToSlide(i));
+        dotsContainer.appendChild(dot);
+      }
+    }
+
+    function updateUI() {
+      // Update dots
+      if (dotsContainer) {
+        dotsContainer.querySelectorAll('.carousel-nav__dot').forEach((dot, i) => {
+          dot.classList.toggle('is-active', i === currentIndex);
+        });
+      }
+
+      // Update buttons
+      if (prevBtn) prevBtn.disabled = currentIndex === 0;
+      if (nextBtn) nextBtn.disabled = currentIndex === totalCards - 1;
+    }
+
+    function goToSlide(index) {
+      if (index < 0 || index >= totalCards) return;
+      currentIndex = index;
+      cards[index].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      updateUI();
+    }
+
+    // Detect scroll to update current index
+    let scrollTimeout;
+    carousel.addEventListener('scroll', () => {
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        const cardWidth = cards[0].offsetWidth + 24; // gap
+        const newIndex = Math.round(carousel.scrollLeft / cardWidth);
+        if (newIndex !== currentIndex) {
+          currentIndex = Math.max(0, Math.min(newIndex, totalCards - 1));
+          updateUI();
+        }
+      }, 50);
+    }, { passive: true });
+
+    if (prevBtn) prevBtn.addEventListener('click', () => goToSlide(currentIndex - 1));
+    if (nextBtn) nextBtn.addEventListener('click', () => goToSlide(currentIndex + 1));
+
+    updateUI();
+  });
+{% endjavascript %}
+
+{% schema %}
+{
+  "name": "All Accommodations",
+  "tag": "section",
+  "class": "section-wetu-all-accommodations",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-5"
+    },
+    {
+      "type": "header",
+      "content": "Header"
+    },
+    {
+      "type": "text",
+      "id": "subheading",
+      "label": "Subheading",
+      "default": "Your Accommodations"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Where You'll Stay"
+    },
+    {
+      "type": "textarea",
+      "id": "description",
+      "label": "Description"
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "layout",
+      "label": "Layout style",
+      "options": [
+        { "value": "grid", "label": "Grid" },
+        { "value": "carousel", "label": "Carousel" }
+      ],
+      "default": "grid"
+    },
+    {
+      "type": "range",
+      "id": "columns_desktop",
+      "label": "Columns (Desktop)",
+      "min": 1,
+      "max": 3,
+      "step": 1,
+      "default": 2
+    },
+    {
+      "type": "header",
+      "content": "Card Features"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_gallery_button",
+      "label": "Show gallery button",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_video_button",
+      "label": "Show video button",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_panorama_button",
+      "label": "Show 360° tour button",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Spacing"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "Top padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 80
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "Bottom padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 80
+    }
+  ],
+  "presets": [
+    {
+      "name": "All Accommodations"
+    }
+  ]
+}
+{% endschema %}

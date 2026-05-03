@@ -1,0 +1,26 @@
+{% doc %}
+  Renders a contextual heading with a link to the parent property for Wetu linked products
+  
+  @param {product} product - The product object
+  
+  @example
+  {% render 'wetu-parent-property-link', product: product %}
+{% enddoc %}
+
+{% liquid
+  assign parent_property = product.metafields.wetu_linked_activity.property_product.value
+  assign activity_name = product.metafields.wetu_linked_activity.wetu_item_name.value
+  
+  if parent_property != blank and activity_name != blank
+    echo '<h4 style="margin-bottom: 1rem;">'
+    echo activity_name
+    echo ' at '
+    echo '<a href="'
+    echo parent_property.url
+    echo '" style="text-decoration: underline;">'
+    echo parent_property.title
+    echo '</a>'
+    echo '</h4>'
+  endif
+%}
+

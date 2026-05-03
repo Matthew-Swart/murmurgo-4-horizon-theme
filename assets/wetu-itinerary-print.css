@@ -1,0 +1,840 @@
+/* ============================================================================
+   WETU ITINERARY PRINT STYLESHEET
+   ============================================================================
+   
+   Optimized for browser print to PDF functionality.
+   Produces clean, professional travel documents.
+   
+   Usage: Link this stylesheet with media="print"
+   
+   ============================================================================ */
+
+@media print {
+  
+  /* -------------------------------------------------------------------------
+     BASE RESET
+     ------------------------------------------------------------------------- */
+  
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+  
+  body {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 11pt;
+    line-height: 1.5;
+    color: #1a1a1a;
+    background: #fff !important;
+  }
+  
+  /* -------------------------------------------------------------------------
+     HIDE NON-ESSENTIAL ELEMENTS
+     ------------------------------------------------------------------------- */
+  
+  /* Navigation & UI */
+  header.header,
+  .announcement-bar,
+  .header__nav,
+  footer.footer,
+  .shopify-section-header-sticky,
+  .shopify-section-header,
+  .shopify-section-footer,
+  .shopify-section-announcement-bar,
+  .cart-drawer,
+  .modal,
+  [data-shopify-block-group],
+  .itin-new-hero__view-toggle,
+  .itin-new-hero__scroll-cta,
+  .itin-new-hero__booking,
+  .itin-new-navigator,
+  .itin-new-navigator-sidebar,
+  .itin-new-enquiry,
+  .itin-new-hero__print-btn,
+  button,
+  .itin-lightbox,
+  #fullscreen-gallery,
+  .video-wrapper,
+  video,
+  iframe,
+  .skip-to-content-link,
+  .scroll-to-top,
+  .cookie-consent,
+  .klaviyo-form,
+  .popup,
+  .drawer {
+    display: none !important;
+  }
+  
+  /* Interactive elements */
+  details summary::marker,
+  details summary::-webkit-details-marker {
+    display: none;
+  }
+  
+  /* Force expand all details/accordions */
+  details {
+    display: block !important;
+  }
+  
+  details[open] > summary ~ * {
+    display: block !important;
+  }
+  
+  details > *:not(summary) {
+    display: block !important;
+  }
+  
+  /* -------------------------------------------------------------------------
+     PAGE SETUP
+     ------------------------------------------------------------------------- */
+  
+  @page {
+    size: A4;
+    margin: 20mm 15mm;
+  }
+  
+  @page :first {
+    margin-top: 0;
+  }
+  
+  /* Page breaks */
+  .itin-new-day {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  
+  .itin-new-day__header {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+    break-after: avoid;
+    orphans: 3;
+    widows: 3;
+  }
+  
+  img {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    max-width: 100% !important;
+  }
+  
+  p {
+    orphans: 3;
+    widows: 3;
+  }
+  
+  .itin-new-accom,
+  .itin-travel-brief__panel {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  
+  /* Force page break before major sections */
+  .itin-new-transport,
+  .itin-new-booking,
+  .itin-travel-brief {
+    page-break-before: always;
+    break-before: page;
+  }
+  
+  /* -------------------------------------------------------------------------
+     HERO SECTION - PRINT VERSION
+     ------------------------------------------------------------------------- */
+  
+  .itin-new-hero {
+    position: relative !important;
+    min-height: auto !important;
+    height: auto !important;
+    padding: 40pt 0 !important;
+    background: #fff !important;
+    color: #1a1a1a !important;
+    page-break-after: always;
+    break-after: page;
+  }
+  
+  .itin-new-hero__media {
+    display: none !important;
+  }
+  
+  .itin-new-hero__overlay {
+    display: none !important;
+  }
+  
+  .itin-new-hero__content {
+    position: static !important;
+    padding: 0 !important;
+  }
+  
+  .itin-new-hero__grid {
+    display: block !important;
+  }
+  
+  .itin-new-hero__info {
+    max-width: 100% !important;
+    position: static !important;
+  }
+  
+  .itin-new-hero__info::before {
+    display: none !important;
+  }
+  
+  .itin-new-hero__client-label,
+  .itin-new-hero__client-name {
+    color: #1a1a1a !important;
+    text-shadow: none !important;
+  }
+  
+  .itin-new-hero__client-label {
+    font-size: 10pt;
+    color: #666 !important;
+  }
+  
+  .itin-new-hero__client-name {
+    font-size: 14pt;
+    font-weight: bold;
+    display: block;
+  }
+  
+  .itin-new-hero__client {
+    margin-bottom: 12pt;
+    padding-bottom: 12pt;
+    border-bottom: 1pt solid #ddd;
+  }
+  
+  .itin-new-hero__title {
+    font-size: 28pt !important;
+    color: #1a1a1a !important;
+    text-shadow: none !important;
+    margin-bottom: 12pt;
+    line-height: 1.2;
+  }
+  
+  .itin-new-hero__badges {
+    margin-bottom: 12pt;
+    display: flex;
+    gap: 8pt;
+    flex-wrap: wrap;
+  }
+  
+  .itin-new-hero__badge {
+    background: #f5f5f5 !important;
+    color: #1a1a1a !important;
+    border: 1px solid #ddd !important;
+    text-shadow: none !important;
+    padding: 4pt 8pt;
+    font-size: 9pt;
+    display: inline-flex;
+    align-items: center;
+    gap: 4pt;
+    border-radius: 4pt;
+  }
+  
+  .itin-new-hero__badge svg {
+    width: 12pt;
+    height: 12pt;
+  }
+  
+  .itin-new-hero__tagline {
+    color: #444 !important;
+    text-shadow: none !important;
+    font-style: italic;
+    font-size: 12pt;
+    margin-top: 12pt;
+    display: block !important;
+  }
+  
+  .itin-new-hero__destinations {
+    margin-top: 16pt;
+    display: flex;
+    gap: 6pt;
+    flex-wrap: wrap;
+  }
+  
+  .itin-new-hero__dest-pill {
+    background: #f5f5f5 !important;
+    color: #1a1a1a !important;
+    border: 1px solid #ddd !important;
+    text-shadow: none !important;
+    font-size: 9pt;
+    padding: 3pt 8pt;
+    border-radius: 3pt;
+    display: inline-flex;
+    align-items: center;
+    gap: 4pt;
+  }
+  
+  /* -------------------------------------------------------------------------
+     DAY-BY-DAY SECTION
+     ------------------------------------------------------------------------- */
+  
+  .itin-new-days {
+    background: #fff !important;
+    padding: 0 !important;
+  }
+  
+  .itin-new-day {
+    margin-bottom: 24pt;
+    border-bottom: 1pt solid #ddd;
+    padding-bottom: 16pt;
+  }
+  
+  .itin-new-day:last-child {
+    border-bottom: none;
+  }
+  
+  .itin-new-day__header {
+    background: #f5f5f5 !important;
+    padding: 8pt 12pt;
+    margin-bottom: 12pt;
+    display: flex;
+    align-items: baseline;
+    gap: 12pt;
+  }
+  
+  .itin-new-day__number {
+    font-size: 14pt;
+    font-weight: bold;
+    color: #1a1a1a;
+  }
+  
+  .itin-new-day__date {
+    font-size: 10pt;
+    color: #666;
+  }
+  
+  /* Destination/Accommodation Heroes */
+  .itin-new-dest__hero,
+  .itin-new-accom__hero {
+    height: auto !important;
+    aspect-ratio: 16/9;
+    max-height: 180pt;
+    overflow: hidden;
+    margin-bottom: 12pt;
+  }
+  
+  .itin-new-dest__hero-img,
+  .itin-new-accom__hero-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  .itin-new-dest__hero-overlay,
+  .itin-new-accom__hero-overlay {
+    position: static !important;
+    background: none !important;
+    padding: 8pt 0;
+  }
+  
+  .itin-new-dest__title,
+  .itin-new-accom__title {
+    font-size: 16pt;
+    color: #1a1a1a !important;
+    text-shadow: none !important;
+    margin-bottom: 4pt;
+  }
+  
+  .itin-new-accom__title a {
+    color: #1a1a1a !important;
+    text-decoration: none;
+  }
+  
+  .itin-new-dest__days,
+  .itin-new-accom__badge {
+    background: #f5f5f5 !important;
+    color: #1a1a1a !important;
+    text-shadow: none !important;
+    font-size: 8pt;
+    padding: 2pt 6pt;
+    border-radius: 2pt;
+  }
+  
+  /* Photo Gallery - Print version */
+  .mag-gallery,
+  .itin-new-dest__gallery,
+  .itin-new-accom__gallery,
+  .itin-new-day__gallery,
+  .gallery-grid,
+  .swiper {
+    display: none !important;
+  }
+  
+  /* Show only hero image */
+  .mag-gallery__hero {
+    display: block !important;
+  }
+  
+  /* Narrative */
+  .itin-new-day__narrative {
+    padding: 12pt 0;
+  }
+  
+  .itin-new-day__narrative-content,
+  .itin-new-day__narrative p {
+    font-size: 11pt;
+    line-height: 1.6;
+    max-width: 100% !important;
+    padding: 0 !important;
+    color: #333;
+  }
+  
+  /* Day Description */
+  .itin-new-day__description,
+  .itin-new-day__overview {
+    font-size: 11pt;
+    line-height: 1.6;
+    margin-bottom: 12pt;
+  }
+  
+  /* Activities */
+  .itin-new-day__activities {
+    background: #fafafa !important;
+    padding: 12pt;
+    margin: 12pt 0;
+    border: 1pt solid #eee;
+    border-radius: 4pt;
+  }
+  
+  .itin-new-day__activities-title,
+  .itin-new-day__activities-heading {
+    font-size: 11pt;
+    font-weight: bold;
+    color: #1a1a1a;
+    margin-bottom: 8pt;
+  }
+  
+  .itin-new-day__activity-item,
+  .itin-new-day__activity {
+    background: #fff !important;
+    border-left: 2pt solid #d4a574 !important;
+    padding: 6pt 10pt;
+    margin-bottom: 4pt;
+    font-size: 10pt;
+  }
+  
+  .itin-new-day__activity-badge {
+    background: #d4a574 !important;
+    color: #fff !important;
+    font-size: 7pt;
+    padding: 2pt 4pt;
+    border-radius: 2pt;
+  }
+  
+  /* Accommodation Cards */
+  .itin-new-accom {
+    margin: 16pt 0;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  
+  .itin-new-accom__card {
+    border: 1pt solid #ddd;
+    padding: 12pt;
+    border-radius: 4pt;
+  }
+  
+  .itin-new-accom__details {
+    font-size: 10pt;
+  }
+  
+  /* Meals badges */
+  .itin-new-day__meals,
+  .itin-new-accom__meals {
+    display: flex;
+    gap: 6pt;
+    flex-wrap: wrap;
+    margin: 8pt 0;
+  }
+  
+  .itin-new-day__meal-badge,
+  .meal-badge {
+    background: #f0f0f0 !important;
+    color: #333 !important;
+    font-size: 8pt;
+    padding: 2pt 6pt;
+    border-radius: 2pt;
+  }
+  
+  /* -------------------------------------------------------------------------
+     TRANSPORT SECTION
+     ------------------------------------------------------------------------- */
+  
+  .itin-new-transport {
+    background: #fff !important;
+    padding: 24pt 0;
+  }
+  
+  .itin-new-transport__heading,
+  .itin-new-transport h2 {
+    font-size: 18pt;
+    color: #1a1a1a;
+    margin-bottom: 16pt;
+    border-bottom: 2pt solid #d4a574;
+    padding-bottom: 8pt;
+  }
+  
+  .itin-new-transport__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9pt;
+  }
+  
+  .itin-new-transport__th,
+  .itin-new-transport th {
+    background: #f5f5f5 !important;
+    padding: 8pt;
+    text-align: left;
+    font-weight: bold;
+    border-bottom: 1pt solid #ddd;
+    font-size: 9pt;
+  }
+  
+  .itin-new-transport__td,
+  .itin-new-transport td {
+    padding: 8pt;
+    border-bottom: 1pt solid #eee;
+    vertical-align: top;
+  }
+  
+  .itin-new-transport__day-badge {
+    background: #d4a574 !important;
+    color: #fff !important;
+    padding: 2pt 6pt;
+    border-radius: 3pt;
+    font-size: 8pt;
+    font-weight: bold;
+  }
+  
+  .itin-new-transport__type-badge,
+  .transport-type {
+    background: #f5f5f5 !important;
+    color: #1a1a1a !important;
+    font-size: 8pt;
+    padding: 2pt 6pt;
+    border-radius: 2pt;
+  }
+  
+  .itin-new-transport__maps-link {
+    display: none !important;
+  }
+  
+  /* Directions - expanded for print */
+  .itin-new-transport__directions {
+    border: none !important;
+    margin: 8pt 0;
+  }
+  
+  .itin-new-transport__directions[open] {
+    display: block;
+  }
+  
+  .itin-new-transport__directions-summary {
+    display: none !important;
+  }
+  
+  .itin-new-transport__directions-content {
+    display: block !important;
+    padding: 8pt;
+    background: #fafafa !important;
+    border: 1pt solid #eee;
+    margin-top: 4pt;
+  }
+  
+  .itin-new-transport__directions-list {
+    font-size: 8pt;
+    line-height: 1.4;
+  }
+  
+  .itin-new-transport__step-num {
+    background: #ddd !important;
+    color: #333 !important;
+    font-size: 7pt;
+    min-width: 16pt;
+    height: 16pt;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    margin-right: 6pt;
+  }
+  
+  /* Hide mobile cards in print */
+  .itin-new-transport__cards--mobile {
+    display: none !important;
+  }
+  
+  .itin-new-transport__table-wrapper--desktop,
+  .itin-new-transport__table-wrapper {
+    display: block !important;
+    overflow: visible !important;
+  }
+  
+  /* -------------------------------------------------------------------------
+     BOOKING & INCLUSIONS
+     ------------------------------------------------------------------------- */
+  
+  .itin-new-booking,
+  .itin-new-inclusions {
+    background: #fff !important;
+    padding: 24pt 0;
+  }
+  
+  .itin-new-booking__heading,
+  .itin-new-inclusions__heading,
+  .itin-new-inclusions h2 {
+    font-size: 18pt;
+    color: #1a1a1a;
+    margin-bottom: 16pt;
+    border-bottom: 2pt solid #d4a574;
+    padding-bottom: 8pt;
+  }
+  
+  .itin-new-inclusions__list {
+    columns: 2;
+    column-gap: 24pt;
+    font-size: 10pt;
+  }
+  
+  .itin-new-inclusions__item {
+    break-inside: avoid;
+    margin-bottom: 4pt;
+    padding-left: 16pt;
+    position: relative;
+  }
+  
+  .itin-new-inclusions__item::before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+    color: #d4a574;
+    font-weight: bold;
+  }
+  
+  /* Exclusions */
+  .itin-new-exclusions__list {
+    columns: 2;
+    column-gap: 24pt;
+    font-size: 10pt;
+  }
+  
+  .itin-new-exclusions__item {
+    break-inside: avoid;
+    margin-bottom: 4pt;
+    padding-left: 16pt;
+    position: relative;
+  }
+  
+  .itin-new-exclusions__item::before {
+    content: "✗";
+    position: absolute;
+    left: 0;
+    color: #999;
+  }
+  
+  /* -------------------------------------------------------------------------
+     TRAVEL BRIEF
+     ------------------------------------------------------------------------- */
+  
+  .itin-travel-brief {
+    background: #fff !important;
+    padding: 24pt 0;
+  }
+  
+  .itin-travel-brief__title,
+  .itin-travel-brief h2 {
+    font-size: 18pt;
+    color: #1a1a1a;
+    margin-bottom: 16pt;
+    border-bottom: 2pt solid #d4a574;
+    padding-bottom: 8pt;
+  }
+  
+  .itin-travel-brief__identifier {
+    background: #f5f5f5 !important;
+    padding: 12pt;
+    margin-bottom: 16pt;
+    border: 1pt solid #ddd;
+    border-radius: 4pt;
+  }
+  
+  .itin-travel-brief__identifier-label {
+    font-size: 9pt;
+    color: #666;
+    display: block;
+    margin-bottom: 4pt;
+  }
+  
+  .itin-travel-brief__identifier-code {
+    font-family: 'Courier New', monospace;
+    font-size: 14pt;
+    font-weight: bold;
+    color: #1a1a1a;
+  }
+  
+  .itin-travel-brief__primary-contact {
+    background: #fafafa !important;
+    padding: 12pt;
+    margin-bottom: 16pt;
+    border: 1pt solid #eee;
+    border-radius: 4pt;
+  }
+  
+  .itin-travel-brief__panel {
+    margin-bottom: 16pt;
+    border: 1pt solid #eee;
+    border-radius: 4pt;
+    overflow: hidden;
+  }
+  
+  .itin-travel-brief__panel-header {
+    background: #f5f5f5 !important;
+    padding: 8pt 12pt;
+    font-weight: bold;
+    font-size: 11pt;
+  }
+  
+  .itin-travel-brief__panel-content {
+    display: block !important;
+    padding: 12pt;
+    font-size: 10pt;
+  }
+  
+  /* Terms */
+  .itin-travel-brief__terms-content {
+    font-size: 9pt;
+    line-height: 1.5;
+    columns: 2;
+    column-gap: 24pt;
+  }
+  
+  /* -------------------------------------------------------------------------
+     EMERGENCY CONTACTS
+     ------------------------------------------------------------------------- */
+  
+  .itin-emergency-contacts {
+    background: #fff9f0 !important;
+    border: 1pt solid #f0e0c0;
+    padding: 16pt;
+    margin: 16pt 0;
+    border-radius: 4pt;
+    page-break-inside: avoid;
+  }
+  
+  .itin-emergency-contacts__heading {
+    font-size: 12pt;
+    font-weight: bold;
+    color: #1a1a1a;
+    margin-bottom: 8pt;
+  }
+  
+  .itin-emergency-contacts__list {
+    font-size: 10pt;
+  }
+  
+  /* -------------------------------------------------------------------------
+     LINKS - Show URL after link text
+     ------------------------------------------------------------------------- */
+  
+  a[href^="http"]:after {
+    content: " (" attr(href) ")";
+    font-size: 8pt;
+    color: #666;
+    word-break: break-all;
+  }
+  
+  a[href^="mailto:"]:after {
+    content: " (" attr(href) ")";
+    font-size: 8pt;
+    color: #666;
+  }
+  
+  a[href^="tel:"]:after {
+    content: " (" attr(href) ")";
+    font-size: 8pt;
+    color: #666;
+  }
+  
+  /* Don't show URL for internal links */
+  a[href^="/"]:after,
+  a[href^="#"]:after {
+    content: "";
+  }
+  
+  /* Don't show URL for image links */
+  a:has(img):after {
+    content: "";
+  }
+  
+  /* -------------------------------------------------------------------------
+     MAP SECTION - Print version
+     ------------------------------------------------------------------------- */
+  
+  .itin-new-map,
+  .africa-map-section,
+  .wetu-map {
+    display: none !important;
+  }
+  
+  /* -------------------------------------------------------------------------
+     UTILITY CLASSES
+     ------------------------------------------------------------------------- */
+  
+  .no-print,
+  .hide-print,
+  [data-no-print] {
+    display: none !important;
+  }
+  
+  .print-only {
+    display: block !important;
+  }
+  
+  /* -------------------------------------------------------------------------
+     PAGE WIDTH
+     ------------------------------------------------------------------------- */
+  
+  .page-width {
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+  
+  /* -------------------------------------------------------------------------
+     SECTION SPACING
+     ------------------------------------------------------------------------- */
+  
+  .section-itin-new-hero,
+  .section-itin-new-days,
+  .section-itin-new-transport,
+  .section-itin-travel-brief {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  
+  /* -------------------------------------------------------------------------
+     PRINT HEADER/FOOTER
+     ------------------------------------------------------------------------- */
+  
+  .itin-print-header {
+    display: block !important;
+    text-align: center;
+    padding-bottom: 16pt;
+    margin-bottom: 16pt;
+    border-bottom: 1pt solid #ddd;
+  }
+  
+  .itin-print-footer {
+    display: block !important;
+    text-align: center;
+    font-size: 8pt;
+    color: #999;
+    margin-top: 24pt;
+    padding-top: 12pt;
+    border-top: 1pt solid #eee;
+  }
+  
+}

@@ -1,0 +1,238 @@
+{% liquid
+  assign has_applied_colour_filter = false
+  assign filters_to_check = collection.filters | default: search.filters
+
+  for filter in filters_to_check
+    if filter.type == 'list' and filter.param_name contains 'color' and filter.active_values.size > 0
+      assign has_applied_colour_filter = true
+      break
+    endif
+  endfor
+%}
+
+{% capture children %}
+  {% unless closest.product == blank %}
+    {% comment %} Sale badge removed - never needed {% endcomment %}
+    {% comment %} {% render 'product-card-badges', product: closest.product, settings: settings %} {% endcomment %}
+    
+    {% comment %} Product title overlay - bottom left, white text with padding {% endcomment %}
+    <div class="product-card-title-overlay">
+      <span class="product-card-title-overlay__text">{{ closest.product.title }}</span>
+    </div>
+    
+    {% comment %} Quick add commented out {% endcomment %}
+    {% comment %}
+    {%  if settings.quick_add or settings.mobile_quick_add %}
+      {% render 'quick-add', product: closest.product, section_id: section.id %}
+    {% endif %}
+    {% endcomment %}
+  {% endunless %}
+{% endcapture %}
+
+{% render 'card-gallery', children: children, has_applied_colour_filter: has_applied_colour_filter %}
+
+{% # Title and price for the zoomed out grid view %}
+<div class="product-grid-view-zoom-out--details">
+  {% if closest.product == blank %}
+    <h3 class="h4">{{ 'content.product_card_placeholder' | t }}</h3>
+  {% else %}
+    <h3 class="h4">{{ closest.product.title }}</h3>
+  {% endif %}
+</div>
+
+{% stylesheet %}
+  /* Product title overlay - positioned bottom left on image */
+  .product-card-title-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: var(--padding-md) var(--padding-lg);
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.3) 60%, transparent 100%);
+    z-index: var(--layer-flat);
+    pointer-events: none;
+  }
+
+  .product-card-title-overlay__text {
+    color: #ffffff;
+    font-size: var(--font-size--lg);
+    font-weight: 500;
+    line-height: 1.3;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    display: block;
+    word-break: break-word;
+  }
+
+  /* Responsive adjustments */
+  @media screen and (max-width: 749px) {
+    .product-card-title-overlay {
+      padding: var(--padding-sm) var(--padding-md);
+    }
+    
+    .product-card-title-overlay__text {
+      font-size: var(--font-size--base);
+    }
+  }
+
+  /* Larger cards get larger text */
+  .product-grid[data-product-card-size='extra-large'] .product-card-title-overlay__text {
+    font-size: var(--font-size--xl);
+  }
+
+  .product-grid[data-product-card-size='large'] .product-card-title-overlay__text {
+    font-size: var(--font-size--lg);
+  }
+
+  .product-grid[data-product-card-size='medium'] .product-card-title-overlay__text {
+    font-size: var(--font-size--base);
+  }
+
+  .product-grid[data-product-card-size='small'] .product-card-title-overlay__text {
+    font-size: var(--font-size--sm);
+  }
+
+  /* Hide overlay in zoom-out view since we show title below */
+  [product-grid-view='zoom-out'] .product-card-title-overlay {
+    display: none;
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "t:names.product_image",
+  "tag": null,
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "t:content.resource_reference_product_media"
+    },
+    {
+      "type": "select",
+      "id": "image_ratio",
+      "options": [
+        {
+          "value": "adapt",
+          "label": "t:options.auto"
+        },
+        {
+          "value": "portrait",
+          "label": "t:options.portrait"
+        },
+        {
+          "value": "square",
+          "label": "t:options.square"
+        },
+        {
+          "value": "landscape",
+          "label": "t:options.landscape"
+        }
+      ],
+      "default": "portrait",
+      "label": "t:settings.aspect_ratio",
+      "info": "t:info.aspect_ratio_adjusted"
+    },
+    {
+      "type": "header",
+      "content": "t:content.borders"
+    },
+    {
+      "type": "select",
+      "id": "border",
+      "label": "t:settings.style",
+      "options": [
+        {
+          "value": "none",
+          "label": "t:options.none"
+        },
+        {
+          "value": "solid",
+          "label": "t:options.solid"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "range",
+      "id": "border_width",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "label": "t:settings.thickness",
+      "default": 1,
+      "visible_if": "{{ block.settings.border != 'none' }}"
+    },
+    {
+      "type": "range",
+      "id": "border_opacity",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "%",
+      "label": "t:settings.opacity",
+      "default": 100,
+      "visible_if": "{{ block.settings.border != 'none' }}"
+    },
+    {
+      "type": "range",
+      "id": "border_radius",
+      "label": "t:settings.border_radius",
+      "min": 0,
+      "max": 32,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "header",
+      "content": "t:content.padding"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 50,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 50,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-start",
+      "label": "t:settings.left",
+      "min": 0,
+      "max": 50,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-end",
+      "label": "t:settings.right",
+      "min": 0,
+      "max": 50,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:names.product_card_media",
+      "category": "t:categories.product"
+    }
+  ]
+}
+{% endschema %}

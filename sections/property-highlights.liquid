@@ -1,0 +1,350 @@
+{% liquid
+  assign section_id = section.settings.custom_id | default: section.id
+  assign section_class = 'property-highlights'
+%}
+
+<section
+  id="{{ section_id }}"
+  class="{{ section_class }} section section--{{ section.settings.section_width }} color-{{ section.settings.color_scheme }} spacing-style"
+  style="
+    {% render 'spacing-style', settings: section.settings %}
+    --highlights-gap: {{ section.settings.gap }}px;
+  "
+>
+  <div class="property-highlights__container">
+    {% if section.settings.heading != blank %}
+      <div class="property-highlights__header">
+        <h2 class="property-highlights__title">{{ section.settings.heading }}</h2>
+      </div>
+    {% endif %}
+
+    <div class="property-highlights__content">
+      <div class="property-highlights__main-text">
+        {% if section.settings.description != blank %}
+          <div class="property-highlights__description">
+            {{ section.settings.description }}
+          </div>
+        {% endif %}
+        
+        <div class="property-highlights__details">
+          <p class="property-highlights__summary">
+            {{ 'sections.property_highlights.collection_summary' | t }}
+          </p>
+          
+          <div class="property-highlights__locations-inline">
+            <span class="location-detail">{{ 'sections.property_highlights.masai_mara_detail' | t }}</span>
+            <span class="location-detail">{{ 'sections.property_highlights.naivasha_detail' | t }}</span>
+            <span class="location-detail">{{ 'sections.property_highlights.laikipia_detail' | t }}</span>
+          </div>
+          
+          <p class="property-highlights__experience">
+            {{ 'sections.property_highlights.experience_summary' | t }}
+          </p>
+        </div>
+      </div>
+
+      {% if section.settings.button_text != blank and section.settings.button_url != blank %}
+        <div class="property-highlights__cta">
+          <a href="{{ section.settings.button_url }}" class="property-highlights__button button button--secondary">
+            {{ section.settings.button_text }}
+          </a>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+{% stylesheet %}
+  .property-highlights {
+    --highlights-text-color: rgb(var(--color-foreground));
+    --highlights-bg-color: rgb(var(--color-background));
+    --highlights-accent-color: rgb(var(--color-accent));
+    --highlights-border-color: rgba(var(--color-foreground), 0.08);
+  }
+
+  .property-highlights__container {
+    max-width: 140rem;
+    margin: 0 auto;
+    padding: 0 2rem;
+  }
+
+  .property-highlights__header {
+    margin-bottom: 2.4rem;
+  }
+
+  .property-highlights__title {
+    font-size: clamp(2.4rem, 3.5vw, 4.2rem);
+    font-weight: 300;
+    line-height: 1.15;
+    color: var(--highlights-text-color);
+    margin: 0;
+    letter-spacing: -0.02em;
+  }
+
+  .property-highlights__content {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 4rem;
+    align-items: start;
+  }
+
+  .property-highlights__main-text {
+    max-width: 85rem;
+  }
+
+  .property-highlights__description {
+    font-size: 2rem;
+    line-height: 1.4;
+    color: var(--highlights-text-color);
+    margin-bottom: 2.4rem;
+    font-weight: 300;
+    letter-spacing: -0.01em;
+  }
+
+  .property-highlights__details {
+    font-size: 1.6rem;
+    line-height: 1.6;
+    color: rgba(var(--color-foreground), 0.85);
+  }
+
+  .property-highlights__summary {
+    margin-bottom: 1.6rem;
+    font-weight: 400;
+  }
+
+  .property-highlights__locations-inline {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 1.6rem;
+    font-size: 1.5rem;
+    line-height: 1.5;
+  }
+
+  .location-detail {
+    position: relative;
+    color: rgba(var(--color-foreground), 0.75);
+    font-weight: 400;
+  }
+
+  .location-detail:not(:last-child)::after {
+    content: "•";
+    margin-left: 0.8rem;
+    margin-right: 0.4rem;
+    color: rgba(var(--color-foreground), 0.4);
+  }
+
+  .property-highlights__experience {
+    margin: 0;
+    font-style: italic;
+    color: rgba(var(--color-foreground), 0.8);
+  }
+
+  .property-highlights__cta {
+    align-self: end;
+    text-align: right;
+  }
+
+  .property-highlights__button {
+    padding: 1.2rem 2.4rem;
+    font-size: 1.4rem;
+    text-decoration: none;
+    border-radius: 0.2rem;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 500;
+  }
+
+  /* Desktop 16:9 aspect ratio optimization */
+  @media screen and (min-width: 1200px) {
+    .property-highlights__container {
+      min-height: calc(100vw / 16 * 9 * 0.6); /* Roughly 60% of 16:9 for content */
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    
+    .property-highlights__content {
+      grid-template-columns: 1fr 20rem;
+      gap: 6rem;
+    }
+  }
+
+  /* Tablet */
+  @media screen and (min-width: 750px) and (max-width: 1199px) {
+    .property-highlights__content {
+      grid-template-columns: 1fr;
+      gap: 3rem;
+    }
+    
+    .property-highlights__cta {
+      text-align: left;
+      align-self: start;
+    }
+    
+    .property-highlights__description {
+      font-size: 1.8rem;
+    }
+  }
+
+  /* Mobile */
+  @media screen and (max-width: 749px) {
+    .property-highlights__container {
+      padding: 0 1.6rem;
+    }
+
+    .property-highlights__content {
+      grid-template-columns: 1fr;
+      gap: 2.4rem;
+    }
+
+    .property-highlights__title {
+      font-size: 2.4rem;
+      margin-bottom: 1.6rem;
+    }
+
+    .property-highlights__description {
+      font-size: 1.7rem;
+      margin-bottom: 2rem;
+    }
+
+    .property-highlights__details {
+      font-size: 1.5rem;
+    }
+
+    .property-highlights__locations-inline {
+      flex-direction: column;
+      gap: 0.8rem;
+      font-size: 1.4rem;
+    }
+
+    .location-detail:not(:last-child)::after {
+      display: none;
+    }
+
+    .property-highlights__cta {
+      text-align: left;
+      align-self: start;
+    }
+
+    .property-highlights__button {
+      padding: 1.4rem 2.8rem;
+      font-size: 1.3rem;
+    }
+  }
+
+  /* Large screens - true 16:9 consideration */
+  @media screen and (min-width: 1600px) {
+    .property-highlights__container {
+      max-width: 160rem;
+    }
+    
+    .property-highlights__title {
+      font-size: 4.8rem;
+    }
+    
+    .property-highlights__description {
+      font-size: 2.2rem;
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "t:sections.property_highlights.name",
+  "tag": "section",
+  "class": "property-highlights-section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "t:sections.property_highlights.settings.heading.label",
+      "default": "Kenya Safari Collection"
+    },
+    {
+      "type": "textarea",
+      "id": "description",
+      "label": "t:sections.property_highlights.settings.description.label",
+      "default": "Five distinguished properties positioned across Kenya's most celebrated wilderness areas, each offering privileged access to exceptional wildlife encounters and refined safari experiences."
+    },
+    {
+      "type": "text",
+      "id": "button_text",
+      "label": "t:sections.property_highlights.settings.button_text.label",
+      "default": "View Properties"
+    },
+    {
+      "type": "url",
+      "id": "button_url",
+      "label": "t:sections.property_highlights.settings.button_url.label"
+    },
+    {
+      "type": "header",
+      "content": "t:sections.all.section_style.header"
+    },
+    {
+      "type": "select",
+      "id": "section_width",
+      "label": "t:sections.all.section_width.label",
+      "options": [
+        {
+          "value": "page-width",
+          "label": "t:sections.all.section_width.options.page_width.label"
+        },
+        {
+          "value": "full-width",
+          "label": "t:sections.all.section_width.options.full_width.label"
+        }
+      ],
+      "default": "page-width"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "t:sections.all.color_scheme.label",
+      "default": "scheme-1"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "t:sections.all.padding.padding_top",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 40
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "t:sections.all.padding.padding_bottom",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 40
+    },
+    {
+      "type": "range",
+      "id": "gap",
+      "label": "t:sections.all.gap.label",
+      "min": 16,
+      "max": 80,
+      "step": 4,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "text",
+      "id": "custom_id",
+      "label": "t:sections.all.custom_id.label"
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:sections.property_highlights.presets.property_highlights.name"
+    }
+  ]
+}
+{% endschema %}

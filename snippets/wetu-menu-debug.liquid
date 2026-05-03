@@ -1,0 +1,47 @@
+{% comment %}
+  Debug snippet to test if menus are accessible
+  Add this temporarily to product pages to diagnose menu issues
+{% endcomment %}
+
+<div style="background: #f0f0f0; padding: 20px; margin: 20px; border: 2px solid #333;">
+  <h3>Wetu Menu Debug Information</h3>
+  
+  <h4>Product Information:</h4>
+  <ul>
+    <li>Product Type: {{ product.type }}</li>
+    <li>Product Handle: {{ product.handle }}</li>
+    <li>PIN ID: {{ product.metafields.wetu.pin_id }}</li>
+    <li>Menu Handle (wetu_property): {{ product.metafields.wetu_property.menu_handle }}</li>
+  </ul>
+  
+  <h4>Expected Menu Handle:</h4>
+  {% assign expected_handle = 'property-menu-' | append: product.metafields.wetu.pin_id %}
+  <p><strong>{{ expected_handle }}</strong></p>
+  
+  <h4>Menu Existence Test:</h4>
+  {% if linklists[expected_handle] %}
+    <p style="color: green;">✅ Menu EXISTS in linklists!</p>
+    <p>Menu Title: {{ linklists[expected_handle].title }}</p>
+    <p>Menu Links Count: {{ linklists[expected_handle].links.size }}</p>
+    
+    <h4>Menu Items:</h4>
+    <ol>
+      {% for link in linklists[expected_handle].links %}
+        <li>{{ link.title }} → {{ link.url }}</li>
+      {% endfor %}
+    </ol>
+  {% else %}
+    <p style="color: red;">❌ Menu NOT FOUND in linklists</p>
+  {% endif %}
+  
+  <h4>All Available Menus:</h4>
+  <ul>
+    {% for linklist in linklists %}
+      <li>{{ linklist.handle }} ({{ linklist.title }}) - {{ linklist.links.size }} links</li>
+    {% endfor %}
+  </ul>
+  
+  <h4>Selector Output:</h4>
+  {% render 'wetu-dynamic-menu-selector' %}
+  <p>Selected Menu Handle: <strong>{{ selected_menu_handle }}</strong></p>
+</div>

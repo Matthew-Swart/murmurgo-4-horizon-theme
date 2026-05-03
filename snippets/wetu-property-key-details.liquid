@@ -1,0 +1,251 @@
+{% doc %}
+  Wetu Property Key Details
+
+  Displays comprehensive property information including category, location, star rating,
+  facilities, services, check-in/out times, contact information, and activities.
+
+  @param {product} product - The property product (required)
+
+  @example
+  {% render 'wetu-property-key-details', product: product %}
+{% enddoc %}
+
+{% liquid
+  assign category = product.metafields.wetu.category
+  assign star_rating = product.metafields.wetu.star_rating
+  assign area = product.metafields.wetu.area
+  assign region = product.metafields.wetu.region
+  assign country = product.metafields.wetu.country
+  assign room_count = product.metafields.wetu.room_count
+  assign facilities = product.metafields.wetu.property_facilities.value
+  assign room_facilities = product.metafields.wetu.room_facilities.value
+  assign available_services = product.metafields.wetu.available_services.value
+  assign activities_onsite = product.metafields.wetu.activities_onsite.value
+  assign activities_offsite = product.metafields.wetu.activities_offsite.value
+  assign check_in_time = product.metafields.wetu.check_in_time
+  assign check_out_time = product.metafields.wetu.check_out_time
+  assign spoken_languages = product.metafields.wetu.spoken_languages.value
+  assign contact_info = product.metafields.wetu.contact.value
+  
+  assign has_facilities = false
+  if facilities and facilities.size > 0
+    assign has_facilities = true
+  endif
+  
+  assign has_room_facilities = false
+  if room_facilities and room_facilities.size > 0
+    assign has_room_facilities = true
+  endif
+  
+  assign has_services = false
+  if available_services and available_services.size > 0
+    assign has_services = true
+  endif
+  
+  assign has_activities = false
+  if activities_onsite and activities_onsite.size > 0
+    assign has_activities = true
+  endif
+  if activities_offsite and activities_offsite.size > 0
+    assign has_activities = true
+  endif
+%}
+
+<div class="wetu-property-key-details">
+  <div class="wetu-property-key-details__grid">
+    {% if spoken_languages and spoken_languages.size > 0 %}
+      <div class="wetu-property-key-details__section">
+        <h4 class="wetu-property-key-details__subtitle">Languages spoken</h4>
+        <p class="wetu-property-key-details__text">
+          {{ spoken_languages | join: ', ' }}
+        </p>
+      </div>
+    {% endif %}
+    
+    {% if has_facilities %}
+      <div class="wetu-property-key-details__section">
+        <h4 class="wetu-property-key-details__subtitle">Property facilities</h4>
+        <ul class="wetu-property-key-details__list">
+          {% for facility in facilities limit: 10 %}
+            <li class="wetu-property-key-details__list-item">{{ facility }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+    
+    {% if has_room_facilities %}
+      <div class="wetu-property-key-details__section">
+        <h4 class="wetu-property-key-details__subtitle">Room facilities</h4>
+        <ul class="wetu-property-key-details__list">
+          {% for facility in room_facilities limit: 10 %}
+            <li class="wetu-property-key-details__list-item">{{ facility }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+    
+    {% if has_services %}
+      <div class="wetu-property-key-details__section">
+        <h4 class="wetu-property-key-details__subtitle">Available services</h4>
+        <ul class="wetu-property-key-details__list">
+          {% for service in available_services limit: 10 %}
+            <li class="wetu-property-key-details__list-item">{{ service }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+    
+    {% if has_activities %}
+      <div class="wetu-property-key-details__section">
+        <h4 class="wetu-property-key-details__subtitle">Activities</h4>
+        <ul class="wetu-property-key-details__list">
+          {% if activities_onsite and activities_onsite.size > 0 %}
+            {% for activity in activities_onsite limit: 8 %}
+              <li class="wetu-property-key-details__list-item">{{ activity }}</li>
+            {% endfor %}
+          {% endif %}
+          {% if activities_offsite and activities_offsite.size > 0 %}
+            {% for activity in activities_offsite limit: 8 %}
+              <li class="wetu-property-key-details__list-item">{{ activity }}</li>
+            {% endfor %}
+          {% endif %}
+        </ul>
+      </div>
+    {% endif %}
+    
+    {% if contact_info %}
+      {% if contact_info.telephone or contact_info.email %}
+        <div class="wetu-property-key-details__section">
+          <h4 class="wetu-property-key-details__subtitle">Contact</h4>
+          <div class="wetu-property-key-details__content">
+            {% if contact_info.telephone %}
+              <div class="wetu-property-key-details__info-row">
+                <span class="wetu-property-key-details__info-label">Phone</span>
+                <a href="tel:{{ contact_info.telephone | escape }}" class="wetu-property-key-details__link">{{ contact_info.telephone }}</a>
+              </div>
+            {% endif %}
+            {% if contact_info.email %}
+              <div class="wetu-property-key-details__info-row">
+                <span class="wetu-property-key-details__info-label">Email</span>
+                <a href="mailto:{{ contact_info.email | escape }}" class="wetu-property-key-details__link">{{ contact_info.email }}</a>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      {% endif %}
+    {% endif %}
+  </div>
+</div>
+
+{% stylesheet %}
+  .wetu-property-key-details {
+    margin-block-start: 0;
+    margin-block-end: 0;
+    padding: 24px;
+  }
+  
+  .wetu-property-key-details__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--spacing-xl, 40px) var(--spacing-lg, 32px);
+  }
+  
+  @media screen and (max-width: 749px) {
+    .wetu-property-key-details__grid {
+      grid-template-columns: 1fr;
+      gap: var(--spacing-lg, 32px);
+    }
+  }
+  
+  .wetu-property-key-details__section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm, 12px);
+  }
+  
+  .wetu-property-key-details__subtitle {
+    font-size: var(--font-size-xs, 0.75rem);
+    font-weight: 600;
+    margin: 0;
+    color: rgb(var(--color-foreground-rgb) / 0.7);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  
+  .wetu-property-key-details__content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs, 8px);
+  }
+  
+  .wetu-property-key-details__info-row {
+    display: flex;
+    gap: var(--spacing-sm, 12px);
+    font-size: var(--font-size-sm, 0.875rem);
+    line-height: 1.6;
+  }
+  
+  .wetu-property-key-details__info-label {
+    color: rgb(var(--color-foreground-rgb) / 0.6);
+    min-width: 80px;
+    font-weight: 500;
+  }
+  
+  .wetu-property-key-details__info-value {
+    color: var(--color-foreground);
+  }
+  
+  .wetu-property-key-details__info-value--caps {
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  .wetu-property-key-details__stars {
+    display: flex;
+    gap: 2px;
+  }
+  
+  .wetu-star {
+    font-size: 1rem;
+    line-height: 1;
+    color: rgb(var(--color-foreground-rgb) / 0.3);
+  }
+  
+  .wetu-star--filled {
+    color: #d4af37;
+  }
+  
+  .wetu-property-key-details__list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs, 8px);
+  }
+  
+  .wetu-property-key-details__list-item {
+    font-size: var(--font-size-sm, 0.875rem);
+    line-height: 1.6;
+    color: rgb(var(--color-foreground-rgb) / 0.8);
+    position: relative;
+    padding-inline-start: 0;
+  }
+  
+  .wetu-property-key-details__text {
+    font-size: var(--font-size-sm, 0.875rem);
+    line-height: 1.6;
+    color: rgb(var(--color-foreground-rgb) / 0.8);
+    margin: 0;
+  }
+  
+  .wetu-property-key-details__link {
+    color: var(--color-foreground);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  
+  .wetu-property-key-details__link:hover {
+    color: rgb(var(--color-foreground-rgb) / 0.8);
+  }
+{% endstylesheet %}

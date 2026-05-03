@@ -1,0 +1,303 @@
+{% comment %}
+  ============================================================================
+  WETU DESTINATION DETAILS SECTION
+  ============================================================================
+  
+  Renders a destination/accommodation hero with gallery for each leg in the 
+  itinerary. Can be configured to show all legs or a specific leg.
+  
+  Features:
+  - Hero bottom-aligned image with title, days badge, and tagline overlay
+  - 50/50 split: description (left) + masonry gallery (right)
+  - Full-screen vertically scrollable gallery on thumbnail click
+  
+  TEMPLATE: product.wetu-itinerary.json
+  
+  ============================================================================
+{% endcomment %}
+
+{% comment %} Load itinerary data {% endcomment %}
+{% include 'wetu-itinerary-data' %}
+
+{% assign running_day = 1 %}
+{% assign leg_index = 0 %}
+{% assign show_mode = section.settings.show_mode | default: 'all' %}
+{% assign specific_leg = section.settings.specific_leg | default: 1 %}
+{% assign content_source = section.settings.content_source | default: 'destination' %}
+
+<section 
+  id="destination-details-{{ section.id }}"
+  class="wetu-destination-details color-{{ section.settings.color_scheme }}"
+  style="
+    --section-padding-top: {{ section.settings.padding_top }}px;
+    --section-padding-bottom: {{ section.settings.padding_bottom }}px;
+  "
+>
+  {% for leg in wetu_legs %}
+    {% assign leg_type = leg.type.value | default: 'Standard' %}
+    {% assign leg_nights = leg.nights.value | default: 0 %}
+    
+    {% if leg_type != 'Departure' and leg_nights > 0 %}
+      {% assign leg_index = leg_index | plus: 1 %}
+      
+      {% comment %} Check if we should show this leg {% endcomment %}
+      {% assign show_this_leg = false %}
+      {% if show_mode == 'all' %}
+        {% assign show_this_leg = true %}
+      {% elsif show_mode == 'specific' and leg_index == specific_leg %}
+        {% assign show_this_leg = true %}
+      {% endif %}
+      
+      {% if show_this_leg %}
+        {% assign acc_name = leg.accommodation_name.value %}
+        {% assign acc_id = leg.content_entity_id.value %}
+        {% assign dest_id = leg.destination_content_entity_id.value %}
+        
+        {% assign start_day = running_day %}
+        {% assign end_day = running_day | plus: leg_nights | minus: 1 %}
+        
+        {% comment %} Find linked products {% endcomment %}
+        {% assign acc_product = nil %}
+        {% assign dest_product = nil %}
+        
+        {% comment %} Find Accommodation Product {% endcomment %}
+        {% assign pin_index = -1 %}
+        {% assign search_pin = acc_id | append: '' %}
+        {% for check_pin in wetu_pin_ids_array %}
+          {% assign current_pin = check_pin | append: '' %}
+          {% if current_pin == search_pin %}
+            {% assign pin_index = forloop.index0 %}
+            {% break %}
+          {% endif %}
+        {% endfor %}
+        
+        {% if pin_index >= 0 %}
+          {% assign acc_handle = wetu_handles_array[pin_index] %}
+          {% assign acc_product = all_products[acc_handle] %}
+        {% endif %}
+        
+        {% comment %} Find Destination Product {% endcomment %}
+        {% assign dest_index = -1 %}
+        {% assign search_dest = dest_id | append: '' %}
+        {% for check_pin in wetu_pin_ids_array %}
+          {% assign current_pin = check_pin | append: '' %}
+          {% if current_pin == search_dest %}
+            {% assign dest_index = forloop.index0 %}
+            {% break %}
+          {% endif %}
+        {% endfor %}
+        
+        {% if dest_index >= 0 %}
+          {% assign dest_handle = wetu_handles_array[dest_index] %}
+          {% assign dest_product = all_products[dest_handle] %}
+        {% endif %}
+        
+        {% comment %} Determine which product to use based on content_source {% endcomment %}
+        {% assign detail_product = nil %}
+        {% assign fallback_product = nil %}
+        
+        {% case content_source %}
+          {% when 'destination' %}
+            {% assign detail_product = dest_product %}
+            {% assign fallback_product = acc_product %}
+          {% when 'accommodation' %}
+            {% assign detail_product = acc_product %}
+            {% assign fallback_product = dest_product %}
+          {% else %}
+            {% comment %} Auto: prefer destination if available {% endcomment %}
+            {% if dest_product %}
+              {% assign detail_product = dest_product %}
+              {% assign fallback_product = acc_product %}
+            {% else %}
+              {% assign detail_product = acc_product %}
+              {% assign fallback_product = dest_product %}
+            {% endif %}
+        {% endcase %}
+        
+        {% comment %} Get hero image {% endcomment %}
+        {% assign hero_image = nil %}
+        {% if dest_product.featured_image %}
+          {% assign hero_image = dest_product.featured_image %}
+        {% elsif acc_product.featured_image %}
+          {% assign hero_image = acc_product.featured_image %}
+        {% endif %}
+        
+        {% comment %} Get title {% endcomment %}
+        {% assign dest_name = dest_product.title | default: '' %}
+        {% if dest_name == blank %}
+          {% assign dest_name = acc_name %}
+        {% endif %}
+        
+        {% comment %} Build days text {% endcomment %}
+        {% if leg_nights == 1 %}
+          {% assign days_text = '1 Night' %}
+        {% else %}
+          {% assign days_text = leg_nights | append: ' Nights' %}
+        {% endif %}
+        
+        {% comment %} Get tagline from metafields {% endcomment %}
+        {% assign tagline = nil %}
+        {% if content_source == 'destination' or content_source == 'auto' %}
+          {% assign tagline = dest_product.metafields.wetu.tagline.value | default: dest_product.metafields.plekify.tagline.value %}
+        {% endif %}
+        {% if tagline == blank %}
+          {% assign tagline = acc_product.metafields.wetu.tagline.value | default: acc_product.metafields.plekify.tagline.value %}
+        {% endif %}
+        
+        {% comment %} Get gallery images - from destination product when content_source is destination {% endcomment %}
+        {% assign gallery_images = nil %}
+        {% case content_source %}
+          {% when 'destination' %}
+            {% comment %} For destinations, use destination product images {% endcomment %}
+            {% if dest_product and dest_product.images.size > 0 %}
+              {% assign gallery_images = dest_product.images %}
+            {% endif %}
+          {% when 'accommodation' %}
+            {% comment %} For accommodation, use accommodation product images {% endcomment %}
+            {% if acc_product and acc_product.images.size > 0 %}
+              {% assign gallery_images = acc_product.images %}
+            {% endif %}
+          {% else %}
+            {% comment %} Auto mode: prefer destination, fall back to accommodation {% endcomment %}
+            {% if dest_product and dest_product.images.size > 0 %}
+              {% assign gallery_images = dest_product.images %}
+            {% elsif acc_product and acc_product.images.size > 0 %}
+              {% assign gallery_images = acc_product.images %}
+            {% endif %}
+        {% endcase %}
+        
+        {% comment %} Get description {% endcomment %}
+        {% assign description = nil %}
+        {% if content_source == 'destination' %}
+          {% assign description = dest_product.description %}
+        {% elsif content_source == 'accommodation' %}
+          {% assign description = acc_product.description %}
+        {% else %}
+          {% assign description = dest_product.description | default: acc_product.description %}
+        {% endif %}
+        
+        {% render 'wetu-destination-hero-gallery',
+          detail_product: detail_product,
+          fallback_product: fallback_product,
+          hero_image: hero_image,
+          all_images: gallery_images,
+          title: dest_name,
+          days_text: days_text,
+          tagline: tagline,
+          description: description,
+          color_scheme: section.settings.color_scheme,
+          section_id: section.id,
+          leg_index: leg_index
+        %}
+        
+      {% endif %}
+      
+      {% comment %} Update running day {% endcomment %}
+      {% assign running_day = running_day | plus: leg_nights %}
+    {% endif %}
+  {% endfor %}
+</section>
+
+<style>
+  .wetu-destination-details {
+    padding-top: var(--section-padding-top);
+    padding-bottom: var(--section-padding-bottom);
+  }
+  
+  /* Add dividers between legs when showing all */
+  .wetu-destination-details .wetu-dest-detail:not(:first-child) {
+    margin-top: 80px;
+    padding-top: 80px;
+    border-top: 1px solid rgba(var(--color-foreground-rgb), 0.1);
+  }
+  
+  @media (max-width: 749px) {
+    .wetu-destination-details .wetu-dest-detail:not(:first-child) {
+      margin-top: 48px;
+      padding-top: 48px;
+    }
+  }
+</style>
+
+{% schema %}
+{
+  "name": "Destination Details",
+  "tag": "section",
+  "class": "section-destination-details",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-5"
+    },
+    {
+      "type": "header",
+      "content": "Display Options"
+    },
+    {
+      "type": "select",
+      "id": "show_mode",
+      "label": "Show mode",
+      "options": [
+        { "value": "all", "label": "All destinations" },
+        { "value": "specific", "label": "Specific destination" }
+      ],
+      "default": "all",
+      "info": "Choose to show all destinations or a specific one"
+    },
+    {
+      "type": "range",
+      "id": "specific_leg",
+      "label": "Specific leg number",
+      "min": 1,
+      "max": 20,
+      "step": 1,
+      "default": 1,
+      "info": "Only used when 'Show mode' is set to 'Specific destination'"
+    },
+    {
+      "type": "select",
+      "id": "content_source",
+      "label": "Content source",
+      "options": [
+        { "value": "auto", "label": "Auto (prefer destination)" },
+        { "value": "destination", "label": "Destination" },
+        { "value": "accommodation", "label": "Accommodation" }
+      ],
+      "default": "destination",
+      "info": "Choose whether to prioritize destination or accommodation data"
+    },
+    {
+      "type": "header",
+      "content": "Spacing"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "Top padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "Bottom padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 0
+    }
+  ],
+  "presets": [
+    {
+      "name": "Destination Details",
+      "category": "Wetu Itinerary"
+    }
+  ]
+}
+{% endschema %}

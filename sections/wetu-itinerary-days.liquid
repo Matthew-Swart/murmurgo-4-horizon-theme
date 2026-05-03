@@ -1,0 +1,64 @@
+{% comment %}
+  Wetu Itinerary Days Section
+  Displays the day-by-day itinerary
+{% endcomment %}
+{% assign itinerary_data = product.metafields.wetu.itinerary_data.value %}
+{% assign content_map = product.metafields.wetu.itinerary_content.value %}
+
+<div class="wetu-itinerary-days page-width">
+  {% if itinerary_data.legs %}
+    <div class="itinerary-legs">
+      {% for leg in itinerary_data.legs %}
+        {% assign accommodation_id = leg.content_entity_id | downcase %}
+        {% assign accommodation = content_map[accommodation_id] %}
+        
+        <div class="itinerary-leg">
+          <div class="leg-header">
+            <h2>Day {{ leg.sequence | plus: 1 }}</h2>
+            {% if accommodation %}
+              <h3>{{ accommodation.name }}</h3>
+            {% endif %}
+          </div>
+          
+          <div class="leg-content">
+             {% if leg.periods %}
+                {% for period in leg.periods %}
+                   {% if period.notes %}
+                     <div class="day-notes">{{ period.notes }}</div>
+                   {% endif %}
+                   {% if period.activities %}
+                     <div class="activities">
+                       <h4>Activities</h4>
+                       <ul>
+                       {% for act in period.activities %}
+                         <li>{{ act.name }}</li>
+                       {% endfor %}
+                       </ul>
+                     </div>
+                   {% endif %}
+                {% endfor %}
+             {% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+</div>
+
+<style>
+.wetu-itinerary-days { margin: 4rem auto; }
+.itinerary-leg { margin-bottom: 3rem; border-bottom: 1px solid #eee; padding-bottom: 2rem; }
+.leg-header h2 { color: #888; font-size: 1rem; text-transform: uppercase; letter-spacing: 2px; }
+.leg-header h3 { font-size: 2rem; margin: 0.5rem 0 1rem; }
+.day-notes { line-height: 1.6; margin-bottom: 1rem; }
+</style>
+
+{% schema %}
+{
+  "name": "Itinerary Days",
+  "tag": "section",
+  "class": "section-wetu-itinerary-days",
+  "settings": [],
+  "presets": [{ "name": "Itinerary Days" }]
+}
+{% endschema %}

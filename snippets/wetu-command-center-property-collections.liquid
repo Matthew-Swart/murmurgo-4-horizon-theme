@@ -1,0 +1,22 @@
+{% liquid
+  assign property_product = property_product | default: product
+
+  assign accommodation_collection = property_product.metafields.wetu.accommodation_collection.value
+  assign accommodation_collection = accommodation_collection | default: property_product.metafields.wetu.accommodation_collection_ref.value
+
+  assign activities_collection = property_product.metafields.wetu.activities_collection_ref.value
+  assign activities_collection = activities_collection | default: property_product.metafields.wetu.activities_collection.value
+
+  assign dining_collection = property_product.metafields.wetu.restaurants_collection_ref.value
+  assign dining_collection = dining_collection | default: property_product.metafields.wetu.restaurants_collection.value
+
+  assign spa_collection = property_product.metafields.wetu.spa_collection_ref.value
+  assign spa_collection = spa_collection | default: property_product.metafields.wetu.spa_collection.value
+%}
+
+<div class="wetu-command-center-property-collections">
+  {% render 'wetu-sidebar-child-list-group', collection: accommodation_collection, fallback_heading: 'Accommodation', use_fallback_heading: true, content_type: 'standard', grid_columns: 1, enable_inspector_trigger: true %}
+  {% render 'wetu-sidebar-child-list-group', collection: dining_collection, fallback_heading: 'Dining', use_fallback_heading: true, content_type: 'standard', grid_columns: 1, enable_inspector_trigger: true %}
+  {% render 'wetu-sidebar-child-list-group', collection: spa_collection, fallback_heading: 'Spa', use_fallback_heading: true, content_type: 'standard', grid_columns: 1, enable_inspector_trigger: true %}
+  {% render 'wetu-sidebar-child-list-group', collection: activities_collection, fallback_heading: 'Activities', use_fallback_heading: true, content_type: 'standard', grid_columns: 1, enable_inspector_trigger: true %}
+</div>

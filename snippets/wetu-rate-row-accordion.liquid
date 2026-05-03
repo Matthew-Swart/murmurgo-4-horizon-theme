@@ -1,0 +1,166 @@
+{% doc %}
+  WETU Rate Row for Accordion Display
+  
+  Displays a single rate row optimized for accordion content
+  
+  @param {object} rate - Rate object with currency, amount, dates, conditions, and included items
+  
+  @example
+  {% render 'wetu-rate-row-accordion', rate: rate %}
+{% enddoc %}
+
+<div class="wetu-rate-card">
+  <div class="wetu-rate-card__header">
+    <div class="wetu-rate-card__price">
+      <span class="wetu-rate-card__currency">{{ rate.currency | default: shop.currency }}</span>
+      <span class="wetu-rate-card__amount">{{ rate.rate | round: 0 }}</span>
+    </div>
+    
+    {% if rate.start_date or rate.end_date %}
+      <div class="wetu-rate-card__dates">
+        {% if rate.start_date %}
+          <time datetime="{{ rate.start_date }}">{{ rate.start_date | date: '%b %d, %Y' }}</time>
+        {% endif %}
+        {% if rate.start_date and rate.end_date %}
+          <span class="wetu-rate-card__separator">→</span>
+        {% endif %}
+        {% if rate.end_date %}
+          <time datetime="{{ rate.end_date }}">{{ rate.end_date | date: '%b %d, %Y' }}</time>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+  
+  {% if rate.included or rate.conditions %}
+    <div class="wetu-rate-card__details">
+      {% if rate.included %}
+        <div class="wetu-rate-card__included">
+          <svg class="wetu-rate-card__icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M13.334 4L6 11.334L2.667 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span>{{ rate.included }}</span>
+        </div>
+      {% endif %}
+      
+      {% if rate.conditions %}
+        <div class="wetu-rate-card__conditions">
+          <svg class="wetu-rate-card__icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="2"/>
+            <path d="M8 8V11M8 5v.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <span>{{ rate.conditions }}</span>
+        </div>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
+
+{% stylesheet %}
+  .wetu-rate-card {
+    padding: 16px;
+    background: rgba(var(--color-foreground), 0.03);
+    border: 1px solid rgba(var(--color-foreground), 0.08);
+    border-radius: 6px;
+    transition: all 0.2s ease;
+  }
+
+  .wetu-rate-card:hover {
+    background: rgba(var(--color-foreground), 0.05);
+    border-color: rgba(var(--color-foreground), 0.12);
+  }
+
+  .wetu-rate-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+
+  .wetu-rate-card__price {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+
+  .wetu-rate-card__currency {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: rgba(var(--color-foreground), 0.7);
+    text-transform: uppercase;
+  }
+
+  .wetu-rate-card__amount {
+    font-family: var(--font-heading--family);
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: rgb(var(--color-foreground));
+    line-height: 1;
+  }
+
+  .wetu-rate-card__dates {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.875rem;
+    color: rgba(var(--color-foreground), 0.7);
+    flex-wrap: wrap;
+  }
+
+  .wetu-rate-card__separator {
+    color: rgba(var(--color-foreground), 0.4);
+  }
+
+  .wetu-rate-card__details {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(var(--color-foreground), 0.08);
+  }
+
+  .wetu-rate-card__included,
+  .wetu-rate-card__conditions {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+
+  .wetu-rate-card__included {
+    color: rgba(var(--color-foreground), 0.8);
+  }
+
+  .wetu-rate-card__conditions {
+    color: rgba(var(--color-foreground), 0.7);
+  }
+
+  .wetu-rate-card__icon {
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .wetu-rate-card__included .wetu-rate-card__icon {
+    color: rgb(var(--color-foreground));
+  }
+
+  .wetu-rate-card__conditions .wetu-rate-card__icon {
+    color: rgba(var(--color-foreground), 0.6);
+  }
+
+  @media screen and (max-width: 749px) {
+    .wetu-rate-card {
+      padding: 14px;
+    }
+
+    .wetu-rate-card__amount {
+      font-size: 1.375rem;
+    }
+
+    .wetu-rate-card__header {
+      gap: 12px;
+    }
+  }
+{% endstylesheet %}

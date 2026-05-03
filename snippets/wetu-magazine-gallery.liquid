@@ -1,0 +1,255 @@
+{% comment %}
+  Magazine-Style Photo Gallery
+  
+  Usage:
+    {% render 'wetu-magazine-gallery', 
+       images: product.images,
+       title: product.title,
+       limit: 5,
+       layout: 'hero-grid',
+       gallery_id: 'unique-id'
+    %}
+  
+  Layouts:
+    - 'hero-grid': Large hero + 4-image grid (default)
+    - 'duo': Two equal images side by side
+    - 'trio': Three images (1 large, 2 small)
+{% endcomment %}
+
+{%- liquid
+  assign gallery_images = images | default: product.images
+  assign gallery_limit = limit | default: 5
+  assign gallery_layout = layout | default: 'hero-grid'
+  assign gallery_title = title | default: 'Gallery'
+  assign unique_id = gallery_id | default: 'now' | date: '%s'
+-%}
+
+{% if gallery_images.size > 0 %}
+<div class="mag-gallery mag-gallery--{{ gallery_layout }}" 
+     data-gallery-id="{{ unique_id }}"
+     data-gallery-title="{{ gallery_title | escape }}">
+  
+  {% case gallery_layout %}
+  
+  {% when 'hero-grid' %}
+    <div class="mag-gallery__hero">
+      <button class="mag-gallery__img-btn" 
+              data-gallery-open="{{ unique_id }}" 
+              data-gallery-index="0"
+              aria-label="View {{ gallery_title }} gallery">
+        <img 
+          src="{{ gallery_images[0] | image_url: width: 1600 }}"
+          srcset="{{ gallery_images[0] | image_url: width: 800 }} 800w,
+                  {{ gallery_images[0] | image_url: width: 1200 }} 1200w,
+                  {{ gallery_images[0] | image_url: width: 1600 }} 1600w,
+                  {{ gallery_images[0] | image_url: width: 2000 }} 2000w"
+          sizes="100vw"
+          alt="{{ gallery_images[0].alt | default: gallery_title }}"
+          loading="lazy"
+          class="mag-gallery__img"
+        >
+        <span class="mag-gallery__count">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>
+          </svg>
+          {{ gallery_images.size }}
+        </span>
+      </button>
+    </div>
+    {% if gallery_images.size > 1 %}
+      <div class="mag-gallery__grid">
+        {% for image in gallery_images offset: 1 limit: 4 %}
+          <button class="mag-gallery__img-btn" 
+                  data-gallery-open="{{ unique_id }}" 
+                  data-gallery-index="{{ forloop.index }}">
+            <img 
+              src="{{ image | image_url: width: 600 }}"
+              srcset="{{ image | image_url: width: 400 }} 400w,
+                      {{ image | image_url: width: 600 }} 600w"
+              sizes="(max-width: 768px) 50vw, 25vw"
+              alt="{{ image.alt | default: gallery_title }}"
+              loading="lazy"
+              class="mag-gallery__img"
+            >
+            {% if forloop.last and gallery_images.size > 5 %}
+              <span class="mag-gallery__more">+{{ gallery_images.size | minus: 5 }}</span>
+            {% endif %}
+          </button>
+        {% endfor %}
+      </div>
+    {% endif %}
+  
+  {% when 'duo' %}
+    <div class="mag-gallery__duo">
+      {% for image in gallery_images limit: 2 %}
+        <button class="mag-gallery__img-btn" 
+                data-gallery-open="{{ unique_id }}" 
+                data-gallery-index="{{ forloop.index0 }}">
+          <img 
+            src="{{ image | image_url: width: 1000 }}"
+            sizes="50vw"
+            alt="{{ image.alt | default: gallery_title }}"
+            loading="lazy"
+            class="mag-gallery__img"
+          >
+        </button>
+      {% endfor %}
+    </div>
+  
+  {% when 'trio' %}
+    <div class="mag-gallery__trio">
+      {% for image in gallery_images limit: 3 %}
+        <button class="mag-gallery__img-btn mag-gallery__img-btn--{{ forloop.index }}" 
+                data-gallery-open="{{ unique_id }}" 
+                data-gallery-index="{{ forloop.index0 }}">
+          <img 
+            src="{{ image | image_url: width: 1000 }}"
+            alt="{{ image.alt | default: gallery_title }}"
+            loading="lazy"
+            class="mag-gallery__img"
+          >
+        </button>
+      {% endfor %}
+    </div>
+  
+  {% endcase %}
+  
+  {%- comment -%} Store all image URLs for fullscreen gallery {%- endcomment -%}
+  <script type="application/json" data-gallery-images="{{ unique_id }}">
+    [
+      {% for image in gallery_images %}
+        {
+          "src": "{{ image | image_url: width: 2400 }}",
+          "srcset": "{{ image | image_url: width: 1200 }} 1200w, {{ image | image_url: width: 1800 }} 1800w, {{ image | image_url: width: 2400 }} 2400w",
+          "alt": {{ image.alt | default: gallery_title | json }}
+        }{% unless forloop.last %},{% endunless %}
+      {% endfor %}
+    ]
+  </script>
+</div>
+{% endif %}
+
+<style>
+.mag-gallery {
+  width: 100%;
+}
+
+.mag-gallery__img-btn {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.mag-gallery__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 0;
+  transition: transform 0.4s ease;
+}
+
+.mag-gallery__img-btn:hover .mag-gallery__img {
+  transform: scale(1.02);
+}
+
+.mag-gallery--hero-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mag-gallery__hero {
+  width: 100%;
+  aspect-ratio: 16/9;
+}
+
+.mag-gallery__hero .mag-gallery__img-btn {
+  height: 100%;
+}
+
+.mag-gallery__grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+}
+
+.mag-gallery__grid .mag-gallery__img-btn {
+  aspect-ratio: 4/3;
+}
+
+.mag-gallery__count {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 6px;
+}
+
+.mag-gallery__more {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.mag-gallery__duo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+}
+
+.mag-gallery__duo .mag-gallery__img-btn {
+  aspect-ratio: 3/2;
+}
+
+.mag-gallery__trio {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 2px;
+}
+
+.mag-gallery__trio .mag-gallery__img-btn--1 {
+  grid-row: 1 / -1;
+  aspect-ratio: auto;
+}
+
+.mag-gallery__trio .mag-gallery__img-btn--2,
+.mag-gallery__trio .mag-gallery__img-btn--3 {
+  aspect-ratio: 4/3;
+}
+
+@media (max-width: 767px) {
+  .mag-gallery__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .mag-gallery__duo,
+  .mag-gallery__trio {
+    grid-template-columns: 1fr;
+  }
+  
+  .mag-gallery__trio .mag-gallery__img-btn--1 {
+    grid-row: auto;
+    aspect-ratio: 16/9;
+  }
+}
+</style>

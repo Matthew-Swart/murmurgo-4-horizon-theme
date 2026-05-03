@@ -1,0 +1,217 @@
+{% comment %}
+  Single Property Navigation Menu - Simplified
+  @param {product} property - The main property product
+  No dropdowns - just smart links to products or collections
+{% endcomment %}
+
+{% liquid
+  # Get collections from property metafields with null checks
+  assign accommodation_collection = property.metafields.wetu.accommodation_collection.value
+  assign dining_collection = property.metafields.wetu.restaurants_collection.value
+  assign activities_collection = property.metafields.wetu.activities_collection_ref.value
+  assign spa_collection = property.metafields.wetu.spa_collection.value
+
+  # Get products for each category (with null checks)
+  assign accommodation_products = blank
+  assign dining_products = blank
+  assign activities_products = blank
+  assign spa_products = blank
+
+  if accommodation_collection != blank
+    assign accommodation_products = accommodation_collection.products
+  endif
+
+  if dining_collection != blank
+    assign dining_products = dining_collection.products
+  endif
+
+  if activities_collection != blank
+    assign activities_products = activities_collection.products
+  endif
+
+  if spa_collection != blank
+    assign spa_products = spa_collection.products
+  endif
+
+  # Panorama behavior remains collection/product based
+  assign panorama_products = blank
+  assign panorama_count = 0
+  if collections.panoramas or collections['3d-views']
+    if collections.panoramas
+      assign panorama_products = collections.panoramas.products
+    else
+      assign panorama_products = collections['3d-views'].products
+    endif
+  endif
+  if panorama_products != blank
+    for panorama in panorama_products
+      if panorama.metafields.wetu.property_id == property.id or panorama.product_type == 'Panorama'
+        assign panorama_count = panorama_count | plus: 1
+      endif
+    endfor
+  endif
+
+  # Video/document data from property metafields (migration-safe)
+  assign video_refs = property.metafields.wetu.videos.value
+  assign document_refs = property.metafields.wetu.documents.value
+
+  assign videos_collection_ref = property.metafields.wetu.videos_collection_ref.value
+  assign videos_collection_ref = videos_collection_ref | default: property.metafields.wetu.videos_collection.value
+
+  assign documents_collection_ref = property.metafields.wetu.documents_collection_ref.value
+  assign documents_collection_ref = documents_collection_ref | default: property.metafields.wetu.documents_collection.value
+
+  assign video_count = 0
+  if video_refs != blank
+    for video_ref in video_refs
+      assign video_count = video_count | plus: 1
+    endfor
+  endif
+  if video_count == 0 and videos_collection_ref != blank
+    assign video_count = videos_collection_ref.products_count | default: 0
+  endif
+
+  assign document_count = 0
+  if document_refs != blank
+    for document_ref in document_refs
+      assign document_count = document_count | plus: 1
+    endfor
+  endif
+  if document_count == 0 and documents_collection_ref != blank
+    assign document_count = documents_collection_ref.products_count | default: 0
+  endif
+
+  # Count products in standard collection categories
+  assign accommodation_count = 0
+  assign dining_count = 0
+  assign activities_count = 0
+  assign spa_count = 0
+
+  if accommodation_products != blank
+    assign accommodation_count = accommodation_products.size
+  endif
+
+  if dining_products != blank
+    assign dining_count = dining_products.size
+  endif
+
+  if activities_products != blank
+    assign activities_count = activities_products.size
+  endif
+
+  if spa_products != blank
+    assign spa_count = spa_products.size
+  endif
+
+  assign video_collection_url = '/collections/all-property-videos'
+  assign documents_collection_url = '/collections/all-property-documents'
+  if property != blank and property.handle != blank
+    assign video_collection_url = '/collections/' | append: property.handle | append: '-videos'
+    assign documents_collection_url = '/collections/' | append: property.handle | append: '-documents'
+  endif
+-%}
+
+{%- comment -%} Property Name - Links to property product {%- endcomment -%}
+<li class="menu-list__list-item" role="presentation">
+  <a href="{{ property.url }}" class="menu-list__link">
+    <span class="menu-list__link-title">{{ property.title }}</span>
+  </a>
+</li>
+
+{%- comment -%} Accommodation {%- endcomment -%}
+{% if accommodation_count > 0 %}
+  <li class="menu-list__list-item" role="presentation">
+    {% if accommodation_count == 1 %}
+      <a href="{{ accommodation_products.first.url }}" class="menu-list__link">
+        <span class="menu-list__link-title">Accommodation</span>
+      </a>
+    {% else %}
+      <a href="{{ accommodation_collection.url }}" class="menu-list__link">
+        <span class="menu-list__link-title">Accommodation</span>
+      </a>
+    {% endif %}
+  </li>
+{% endif %}
+
+{%- comment -%} Dining {%- endcomment -%}
+{% if dining_count > 0 %}
+  <li class="menu-list__list-item" role="presentation">
+    {% if dining_count == 1 %}
+      <a href="{{ dining_products.first.url }}" class="menu-list__link">
+        <span class="menu-list__link-title">Dining</span>
+      </a>
+    {% else %}
+      <a href="{{ dining_collection.url }}" class="menu-list__link">
+        <span class="menu-list__link-title">Dining</span>
+      </a>
+    {% endif %}
+  </li>
+{% endif %}
+
+{%- comment -%} Activities {%- endcomment -%}
+{% if activities_count > 0 %}
+  <li class="menu-list__list-item" role="presentation">
+    {% if activities_count == 1 %}
+      <a href="{{ activities_products.first.url }}" class="menu-list__link">
+        <span class="menu-list__link-title">Activities</span>
+      </a>
+    {% else %}
+      <a href="{{ activities_collection.url }}" class="menu-list__link">
+        <span class="menu-list__link-title">Activities</span>
+      </a>
+    {% endif %}
+  </li>
+{% endif %}
+
+{%- comment -%} Spa {%- endcomment -%}
+{% if spa_count > 0 %}
+  <li class="menu-list__list-item" role="presentation">
+    {% if spa_count == 1 %}
+      <a href="{{ spa_products.first.url }}" class="menu-list__link">
+        <span class="menu-list__link-title">Spa</span>
+      </a>
+    {% else %}
+      <a href="{{ spa_collection.url }}" class="menu-list__link">
+        <span class="menu-list__link-title">Spa</span>
+      </a>
+    {% endif %}
+  </li>
+{% endif %}
+
+{%- comment -%} Videos {%- endcomment -%}
+{% if video_count > 0 %}
+  <li class="menu-list__list-item" role="presentation">
+    <a href="{{ video_collection_url }}" class="menu-list__link">
+      <span class="menu-list__link-title">Videos</span>
+    </a>
+  </li>
+{% endif %}
+
+{%- comment -%} 3D View {%- endcomment -%}
+{% if panorama_count > 0 %}
+  <li class="menu-list__list-item" role="presentation">
+    {% if panorama_count == 1 %}
+      {% for panorama in panorama_products %}
+        {% if panorama.metafields.wetu.property_id == property.id or panorama.product_type == 'Panorama' %}
+          <a href="{{ panorama.url }}" class="menu-list__link" target="_blank">
+            <span class="menu-list__link-title">3D View</span>
+          </a>
+          {% break %}
+        {% endif %}
+      {% endfor %}
+    {% else %}
+      <a href="/collections/panoramas" class="menu-list__link" target="_blank">
+        <span class="menu-list__link-title">3D View</span>
+      </a>
+    {% endif %}
+  </li>
+{% endif %}
+
+{%- comment -%} Rates & Info (Documents) {%- endcomment -%}
+{% if document_count > 0 %}
+  <li class="menu-list__list-item" role="presentation">
+    <a href="{{ documents_collection_url }}" class="menu-list__link">
+      <span class="menu-list__link-title">Rates & Info</span>
+    </a>
+  </li>
+{% endif %}

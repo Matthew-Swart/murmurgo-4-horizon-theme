@@ -1,0 +1,58 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "v8_hero": {
+      "type": "plekify-v8-hero",
+      "settings": {
+        "eyebrow": "For inbound DMCs and tour operators · Built on Shopify",
+        "headline": "Design. Present. Transact.",
+        "headline_italic": "On your own domain.",
+        "subheadline": "You spend months building the relationship, designing the itinerary, earning the client's trust. Then you send them to someone else's website to pay.",
+        "subheadline_secondary": "Plekify closes that gap with two capabilities. Itinerary commerce turns your Wetu itineraries into bookable Shopify products. Accommodation booking connects your PMS to a checkout guests complete without leaving your site. One infrastructure, built for operators already running Wetu and Tourplan.",
+        "show_video_cta": true,
+        "video_cta_text": "Watch the 60-second logic reveal"
+      }
+    },
+    "v8_content": {
+      "type": "plekify-v8-content",
+      "settings": {}
+    },
+    "v8_accommodation": {
+      "type": "plekify-v8-accommodation",
+      "settings": {}
+    },
+    "v8_demo_frame": {
+      "type": "plekify-v8-demo-frame",
+      "settings": {}
+    },
+    "v8_bridge": {
+      "type": "plekify-v8-bridge",
+      "settings": {}
+    },
+    "v8_property_frame": {
+      "type": "plekify-v8-property-frame",
+      "settings": {}
+    },
+    "v8_platform": {
+      "type": "plekify-v8-platform",
+      "settings": {}
+    }
+  },
+  "order": [
+    "v8_hero",
+    "v8_content",
+    "v8_accommodation",
+    "v8_demo_frame",
+    "v8_bridge",
+    "v8_property_frame",
+    "v8_platform"
+  ]
+}

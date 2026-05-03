@@ -1,0 +1,37 @@
+{% comment %}
+  claim-badge.liquid
+  Verified-by-owner badge.
+{% endcomment %}
+{% include 'murmurgo-resolve-place' %}
+
+<section class="murmurgo-claim-badge page-width" data-section-id="{{ section.id }}">
+  {% if m_place_claim == 'verified' %}
+    <div class="claim-badge claim-badge--verified">
+      <span class="claim-badge__icon">✓</span>
+      <span class="claim-badge__text">Verified by owner</span>
+    </div>
+  {% elsif m_place_claim == 'pending' %}
+    <div class="claim-badge claim-badge--pending">
+      <span class="claim-badge__text">Claim pending verification</span>
+    </div>
+  {% elsif m_place_claim == 'unclaimed' %}
+    <div class="claim-badge claim-badge--unclaimed">
+      <a href="/pages/claim-your-property?place={{ m_place_slug }}" class="claim-badge__link">
+        Claim your property
+      </a>
+    </div>
+  {% endif %}
+</section>
+
+{% schema %}
+{
+  "name": "Claim Badge",
+  "class": "section-claim-badge",
+  "settings": [],
+  "presets": [
+    {
+      "name": "Claim Badge"
+    }
+  ]
+}
+{% endschema %}

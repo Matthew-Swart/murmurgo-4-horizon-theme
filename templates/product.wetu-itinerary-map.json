@@ -1,0 +1,32 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "fullscreen-map": {
+      "type": "wetu-fullscreen-map-v2",
+      "settings": {
+        "map_style_light": "outdoors-v12",
+        "map_style_dark": "dark-v11",
+        "show_language": true,
+        "show_country": false,
+        "show_activities": true,
+        "show_route_details": true,
+        "show_google_maps_links": true,
+        "animate_on_navigation": true,
+        "route_color_driving": "#10b981",
+        "route_color_flight": "#8b5cf6",
+        "route_color_transfer": "#f59e0b"
+      }
+    }
+  },
+  "order": [
+    "fullscreen-map"
+  ]
+}

@@ -1,0 +1,238 @@
+<section
+  id="plekify-steps-{{ section.id }}"
+  class="plekify-steps"
+  data-section-id="{{ section.id }}"
+>
+  <div class="plekify-steps__container">
+    <header class="plekify-steps__header">
+      <span class="plekify-steps__overline">{{ section.settings.overline }}</span>
+      <h2 class="plekify-steps__heading">{{ section.settings.heading }}</h2>
+      <hr class="plekify-steps__divider">
+    </header>
+
+    <div class="plekify-steps__grid">
+      {% for block in section.blocks %}
+        <div
+          class="plekify-steps__step plekify-steps__step--reveal"
+          {{ block.shopify_attributes }}
+          style="--step-delay: {{ forloop.index0 | times: 150 }}ms;"
+        >
+          <span class="plekify-steps__number">{{ block.settings.step_number }}</span>
+          <h3 class="plekify-steps__title">{{ block.settings.title }}</h3>
+          <p class="plekify-steps__description">{{ block.settings.description }}</p>
+        </div>
+
+        {% unless forloop.last %}
+          <div class="plekify-steps__connector" aria-hidden="true"></div>
+        {% endunless %}
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{% stylesheet %}
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;600&display=swap');
+
+.plekify-steps {
+  background-color: #F5F2ED;
+  padding-block: 96px;
+  padding-inline: 24px;
+}
+
+.plekify-steps__container {
+  max-inline-size: 1200px;
+  margin-inline: auto;
+}
+
+/* Header */
+.plekify-steps__header {
+  text-align: center;
+  margin-block-end: 64px;
+}
+
+.plekify-steps__overline {
+  display: block;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #C9A96E;
+  margin-block-end: 16px;
+}
+
+.plekify-steps__heading {
+  font-family: 'DM Serif Display', serif;
+  font-size: 44px;
+  font-weight: 400;
+  line-height: 1.15;
+  color: #1A1A1A;
+  margin: 0;
+}
+
+.plekify-steps__divider {
+  border: none;
+  border-block-start: 1px solid #D5D0C8;
+  inline-size: 64px;
+  margin-block-start: 32px;
+  margin-inline: auto;
+}
+
+/* Grid */
+.plekify-steps__grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1fr;
+  align-items: start;
+  gap: 0;
+}
+
+/* Step */
+.plekify-steps__step {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.plekify-steps__number {
+  font-family: 'DM Serif Display', serif;
+  font-size: 48px;
+  font-weight: 400;
+  color: #C9A96E;
+  line-height: 1;
+  margin-block-end: 20px;
+}
+
+.plekify-steps__title {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 22px;
+  text-transform: uppercase;
+  color: #1A1A1A;
+  margin: 0;
+  margin-block-end: 16px;
+}
+
+.plekify-steps__description {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 1.65;
+  color: #4A4A4A;
+  max-inline-size: 320px;
+  margin: 0;
+}
+
+/* Connector — horizontal dashed line */
+.plekify-steps__connector {
+  align-self: center;
+  inline-size: 48px;
+  border-block-start: 1px dashed #D5D0C8;
+  margin-block-end: 40px;
+}
+
+/* Mobile */
+@media screen and (max-width: 749px) {
+  .plekify-steps {
+    padding-block: 48px;
+  }
+
+  .plekify-steps__heading {
+    font-size: 28px;
+  }
+
+  .plekify-steps__grid {
+    grid-template-columns: 1fr;
+    gap: 0;
+    justify-items: center;
+  }
+
+  .plekify-steps__connector {
+    inline-size: 0;
+    block-size: 40px;
+    border-block-start: none;
+    border-inline-start: 1px dashed #D5D0C8;
+    margin-block: 8px;
+  }
+}
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Plekify How It Works",
+  "tag": "section",
+  "class": "plekify-how-it-works-section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "overline",
+      "label": "Overline",
+      "default": "HOW IT WORKS"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Three steps. Your content does the rest."
+    }
+  ],
+  "blocks": [
+    {
+      "type": "step",
+      "name": "Process Step",
+      "settings": [
+        {
+          "type": "text",
+          "id": "step_number",
+          "label": "Step Number",
+          "default": "1"
+        },
+        {
+          "type": "text",
+          "id": "title",
+          "label": "Step Title",
+          "default": "Step Title"
+        },
+        {
+          "type": "textarea",
+          "id": "description",
+          "label": "Step Description",
+          "default": "Step description goes here."
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Plekify How It Works",
+      "category": "Plekify",
+      "blocks": [
+        {
+          "type": "step",
+          "settings": {
+            "step_number": "1",
+            "title": "Connect",
+            "description": "We sync your Wetu content — properties, rooms, activities, restaurants, itineraries, images, videos, 360° tours — and your ResRequest availability and pricing. Your existing workflows remain unchanged."
+          }
+        },
+        {
+          "type": "step",
+          "settings": {
+            "step_number": "2",
+            "title": "Transform",
+            "description": "A single two-week itinerary expands into up to 120 individual Shopify products. Every accommodation, room type, activity, restaurant, spa treatment, and transfer becomes its own SEO-rich page with structured data, meta tags, and imagery — all on your domain."
+          }
+        },
+        {
+          "type": "step",
+          "settings": {
+            "step_number": "3",
+            "title": "Transact",
+            "description": "Guests browse, select, and pay on your branded website. Checkout completes through Shopify. Payment settles directly to your bank account via Peach Payments or your preferred gateway. Every booking creates both a Shopify order and a reservation in your operational system."
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,955 @@
+{% comment %}
+  ============================================================================
+  WETU ACCOMMODATION HERO SNIPPET
+  ============================================================================
+  
+  Full hero section for accommodation on arrival day (first visit).
+  Displays hero image, gallery, description, and related collections.
+  
+  USAGE:
+    {% render 'wetu-accommodation-hero',
+      accommodation_product: acc_product,
+      accommodation_name: 'Hoodia Desert Lodge',
+      nights: 2,
+      check_in_date: '01 Jan 2024',
+      check_out_date: '03 Jan 2024',
+      room_basis: 'FullyInclusive',
+      drinks_basis: 'DrinksExclPremium',
+      day_number: 1,
+      itinerary_description: period.notes,
+      color_scheme: 'scheme-5'
+    %}
+  
+  ============================================================================
+{% endcomment %}
+
+{%- liquid
+  assign color_scheme = color_scheme | default: 'scheme-5'
+  assign unique_id = 'acc-hero-' | append: accommodation_name | handleize | append: '-' | append: day_number
+  
+  # Get star rating
+  assign star_rating = accommodation_product.metafields.wetu.star_rating.value | plus: 0
+  
+  # Get Location
+  assign location_dest = accommodation_product.metafields.travel.location.value.destination.value
+  assign location_country = accommodation_product.metafields.travel.location.value.country.value
+  assign location_text = ''
+  if location_dest != blank
+    assign location_text = location_dest
+  endif
+  if location_country != blank
+    if location_text != blank
+      assign location_text = location_text | append: ', ' | append: location_country
+    else
+      assign location_text = location_country
+    endif
+  endif
+  
+  # Get Key Details
+  assign suggested_visitor_types = accommodation_product.metafields.wetu.suggested_visitor_types.value
+  assign special_interests = accommodation_product.metafields.wetu.special_interests.value
+  assign spoken_languages = accommodation_product.metafields.wetu.spoken_languages.value
+  assign available_services = accommodation_product.metafields.wetu.available_services.value
+  
+  # Collect images
+  assign all_images = accommodation_product.images
+  assign hero_image = all_images[0] | default: accommodation_product.featured_image
+  
+  # Get description
+  assign description = nil
+  assign description_is_richtext = false
+  assign richtext_content = nil
+  
+  if itinerary_description != blank
+    if itinerary_description.value.type == 'root' or itinerary_description.value.children
+      assign description_is_richtext = true
+      assign richtext_content = itinerary_description.value
+    elsif itinerary_description.type == 'root' or itinerary_description.children
+      assign description_is_richtext = true
+      assign richtext_content = itinerary_description.value
+    elsif itinerary_description contains '"type"=>"root"'
+      assign temp_desc = itinerary_description | replace: '"type"=>"root", "children"=>[{', '' | replace: '"type"=>"paragraph", "children"=>[{', '' | replace: '"type"=>"text", "value"=>"', '' | replace: '"}]}]}', '' | replace: '&nbsp;', ' ' | replace: '&', '&'
+      if temp_desc != itinerary_description and temp_desc != blank
+        assign description = temp_desc
+      endif
+    else
+      assign description = itinerary_description
+    endif
+  endif
+  
+  if description == blank and description_is_richtext == false
+    assign description = accommodation_product.description | strip_html
+  endif
+  
+  # Format meal basis display
+  case room_basis
+    when 'BedAndBreakfast'
+      assign meal_display = 'Bed & Breakfast'
+    when 'FullyInclusive'
+      assign meal_display = 'Fully Inclusive'
+    when 'DinnerBedAndBreakfast'
+      assign meal_display = 'Dinner, Bed & Breakfast'
+    when 'DinnerBedBreakfastLunchAndActivities'
+      assign meal_display = 'All Meals & Activities'
+    when 'HalfBoard'
+      assign meal_display = 'Half Board'
+    when 'FullBoard'
+      assign meal_display = 'Full Board'
+    when 'SelfCatering'
+      assign meal_display = 'Self Catering'
+    when 'RoomOnly'
+      assign meal_display = 'Room Only'
+    when 'AllInclusive'
+      assign meal_display = 'All Inclusive'
+    else
+      assign meal_display = room_basis | replace: '_', ' ' | replace: 'And', ' & '
+  endcase
+  
+  # Format drinks basis
+  case drinks_basis
+    when 'DrinksExclPremium'
+      assign drinks_display = 'Drinks Excl. Premium'
+    when 'DrinksIncluded'
+      assign drinks_display = 'Drinks Included'
+    when 'DrinksExcluded'
+      assign drinks_display = 'Drinks Excluded'
+    when 'LocalDrinksIncluded'
+      assign drinks_display = 'Local Drinks Included'
+    else
+      assign drinks_display = drinks_basis | replace: '_', ' '
+  endcase
+
+  # Related Collections
+  assign accom_collection = accommodation_product.metafields.wetu.accommodation_collection.value
+  assign activities_collection = accommodation_product.metafields.wetu.activities_collection_ref.value
+  assign videos = accommodation_product.metafields.wetu.videos.value
+-%}
+
+<style>
+  /* ============================================
+     ACCOMMODATION HERO STYLES
+     ============================================ */
+  
+  .wetu-acc-hero {
+    --hero-gap: 2px;
+    --content-padding-desktop: 32px;
+    --content-padding-mobile: 24px;
+    width: 100%;
+  }
+  
+  /* --- Hero Section --- */
+  .wetu-acc-hero__hero {
+    position: relative;
+    width: 100%;
+    min-height: 55vh;
+    overflow: hidden;
+  }
+  
+  .wetu-acc-hero__hero-image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  .wetu-acc-hero__hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: none;
+  }
+  
+  .wetu-acc-hero__hero-content {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: var(--content-padding-desktop);
+  }
+  
+  .wetu-acc-hero__label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.7);
+  }
+  
+  .wetu-acc-hero__label svg {
+    width: 16px;
+    height: 16px;
+    stroke: currentColor;
+    fill: none;
+  }
+  
+  .wetu-acc-hero__title-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  
+  .wetu-acc-hero__title {
+    font-size: clamp(1.75rem, 4vw, 3rem);
+    font-weight: 300;
+    letter-spacing: -0.02em;
+    color: #fff;
+    margin: 0;
+    line-height: 1.1;
+  }
+  
+  .wetu-acc-hero__title a {
+    color: inherit;
+    text-decoration: none;
+  }
+  
+  .wetu-acc-hero__stars {
+    display: flex;
+    gap: 2px;
+    color: #fbbf24;
+  }
+  
+  .wetu-acc-hero__stars svg {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .wetu-acc-hero__badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 4px;
+  }
+  
+  .wetu-acc-hero__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #fff;
+  }
+  
+  .wetu-acc-hero__badge svg {
+    width: 14px;
+    height: 14px;
+    stroke: currentColor;
+    fill: none;
+  }
+  
+  /* --- Grid Section --- */
+  .wetu-acc-hero__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--hero-gap);
+    width: 100%;
+    margin-top: 2px;
+  }
+  
+  .wetu-acc-hero__gallery-side {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--hero-gap);
+    align-content: start;
+  }
+  
+  .wetu-acc-hero__content-side {
+    padding: var(--content-padding-desktop);
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+  }
+  
+  .wetu-acc-hero__description {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: rgba(var(--color-foreground), 0.85);
+  }
+  
+  .wetu-acc-hero__detail-block h4 {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: rgba(var(--color-foreground), 0.6);
+    margin: 0 0 12px;
+  }
+  
+  .wetu-acc-hero__detail-block p {
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: var(--color-foreground);
+  }
+  
+  .wetu-acc-hero__service-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .wetu-acc-hero__service-list li {
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: var(--color-foreground);
+  }
+  
+  /* --- Gallery Items --- */
+  .wetu-acc-hero__gallery-item {
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    border-radius: 0;
+    aspect-ratio: 16/9;
+  }
+  
+  .wetu-acc-hero__gallery-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+  }
+  
+  .wetu-acc-hero__gallery-item:hover img {
+    transform: scale(1.05);
+  }
+  
+  .wetu-acc-hero__gallery-item::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0);
+    transition: background 0.3s ease;
+  }
+  
+  .wetu-acc-hero__gallery-item:hover::after {
+    background: rgba(0, 0, 0, 0.1);
+  }
+  
+  /* --- Collection Sections --- */
+  .wetu-acc-collection {
+    width: 100%;
+    margin-top: 32px;
+  }
+  
+  .wetu-acc-collection__header {
+    margin-bottom: 16px;
+  }
+  
+  .wetu-acc-collection__title {
+    font-size: 1.25rem;
+    font-weight: 500;
+    margin: 0;
+    color: inherit;
+  }
+  
+  .wetu-acc-collection__grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2px;
+    width: 100%;
+  }
+  
+  .wetu-acc-collection__item {
+    position: relative;
+    aspect-ratio: 16/9;
+    overflow: hidden;
+    display: block;
+    text-decoration: none;
+  }
+  
+  .wetu-acc-collection__image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+  }
+  
+  .wetu-acc-collection__item:hover .wetu-acc-collection__image {
+    transform: scale(1.05);
+  }
+  
+  .wetu-acc-collection__overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 20px;
+    background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+    color: #fff;
+  }
+  
+  .wetu-acc-collection__item-title {
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin: 0;
+    color: #fff;
+  }
+  
+  .wetu-acc-collection__video-icon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 48px;
+    height: 48px;
+    background: rgba(255,255,255,0.9);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+  }
+  
+  .wetu-acc-collection__video-icon svg {
+    width: 20px;
+    height: 20px;
+    fill: #000;
+    margin-left: 2px;
+  }
+  
+  /* --- Fullscreen Gallery --- */
+  .wetu-acc-hero__fullscreen {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0, 0, 0, 1);
+    display: none;
+    flex-direction: column;
+    overflow-y: auto;
+    padding: 0;
+  }
+  
+  .wetu-acc-hero__fullscreen.is-active {
+    display: flex;
+  }
+  
+  .wetu-acc-hero__fullscreen-close {
+    position: fixed;
+    top: 30px;
+    right: 30px;
+    width: 50px;
+    height: 50px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    transition: background 0.2s ease;
+    backdrop-filter: blur(4px);
+  }
+  
+  .wetu-acc-hero__fullscreen-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+  
+  .wetu-acc-hero__fullscreen-close svg {
+    width: 24px;
+    height: 24px;
+    stroke: #fff;
+    stroke-width: 2;
+  }
+  
+  .wetu-acc-hero__fullscreen-images {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .wetu-acc-hero__fullscreen-image {
+    width: 100%;
+    position: relative;
+    margin: 0;
+    padding: 0;
+    line-height: 0;
+  }
+  
+  .wetu-acc-hero__fullscreen-image img {
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: contain;
+  }
+  
+  /* --- Responsive --- */
+  @media screen and (max-width: 900px) {
+    .wetu-acc-hero__hero {
+      min-height: 45vh;
+    }
+    
+    .wetu-acc-hero__hero-content {
+      padding: var(--content-padding-mobile);
+    }
+    
+    .wetu-acc-hero__grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .wetu-acc-hero__content-side {
+      padding: var(--content-padding-mobile);
+      order: -1;
+    }
+    
+    .wetu-acc-collection__grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+</style>
+
+<div class="wetu-acc-hero color-{{ color_scheme }}" id="{{ unique_id }}">
+  
+  {%- comment -%} HERO SECTION {%- endcomment -%}
+  <div class="wetu-acc-hero__hero">
+    {%- if hero_image -%}
+      <img 
+        class="wetu-acc-hero__hero-image"
+        src="{{ hero_image | image_url: width: 1920 }}"
+        alt="{{ accommodation_name }}"
+        loading="lazy"
+        width="1920"
+        height="1080"
+      >
+    {%- else -%}
+      <div class="wetu-acc-hero__hero-image" style="background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);"></div>
+    {%- endif -%}
+    
+    <div class="wetu-acc-hero__hero-overlay"></div>
+    
+    <div class="wetu-acc-hero__hero-content">
+      <span class="wetu-acc-hero__label">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M3 21V7a2 2 0 012-2h14a2 2 0 012 2v14M3 21h18M3 10h18M7 21v-4a2 2 0 012-2h6a2 2 0 012 2v4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Your accommodation in {{ location_text | default: accommodation_name }}
+      </span>
+      
+      <div class="wetu-acc-hero__title-row">
+        <h2 class="wetu-acc-hero__title">
+          {%- if accommodation_product -%}
+            <a href="{{ accommodation_product.url }}" target="_blank">{{ accommodation_name }}</a>
+          {%- else -%}
+            {{ accommodation_name }}
+          {%- endif -%}
+        </h2>
+        
+        {%- if star_rating > 0 -%}
+          <div class="wetu-acc-hero__stars" aria-label="{{ star_rating }} star rating">
+            {%- for i in (1..5) -%}
+              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="{% if i <= star_rating %}currentColor{% else %}none{% endif %}" stroke="currentColor" stroke-width="1.5">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+              </svg>
+            {%- endfor -%}
+          </div>
+        {%- endif -%}
+      </div>
+
+      <div class="wetu-acc-hero__badges">
+        {%- if nights -%}
+          <span class="wetu-acc-hero__badge">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            {{ nights }} Night{% if nights != 1 %}s{% endif %}
+            {% if check_in_date and check_out_date %}
+              <span style="opacity: 0.8; margin-left: 6px; font-weight: 400; font-size: 0.9em;">({{ check_in_date }} - {{ check_out_date }})</span>
+            {% endif %}
+          </span>
+        {%- endif -%}
+        
+        {%- if meal_display != blank -%}
+          <span class="wetu-acc-hero__badge">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8zM6 1v3M10 1v3M14 1v3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            {{ meal_display }}
+          </span>
+        {%- endif -%}
+      </div>
+    </div>
+  </div>
+  
+  {%- comment -%} GRID GALLERY + CONTENT {%- endcomment -%}
+  <div class="wetu-acc-hero__grid">
+    
+    {%- comment -%} Gallery Side (Left) {%- endcomment -%}
+    <div class="wetu-acc-hero__gallery-side">
+      {%- if all_images.size > 0 -%}
+        {%- for img in all_images -%}
+          <div 
+            class="wetu-acc-hero__gallery-item"
+            data-fullscreen-trigger="{{ unique_id }}"
+            data-image-index="{{ forloop.index | minus: 1 }}"
+          >
+            <img 
+              src="{{ img | image_url: width: 800 }}"
+              alt="{{ accommodation_name }} - Image {{ forloop.index }}"
+              loading="lazy"
+            >
+          </div>
+        {%- endfor -%}
+      {%- endif -%}
+    </div>
+    
+    {%- comment -%} Content Side (Right) {%- endcomment -%}
+    <div class="wetu-acc-hero__content-side">
+      {%- if description != blank or description_is_richtext -%}
+        <div class="wetu-acc-hero__description">
+          {%- if description_is_richtext and richtext_content -%}
+            {%- for child in richtext_content.children -%}
+              {%- if child.type == 'paragraph' -%}
+                <p>
+                  {%- for text_node in child.children -%}
+                    {{ text_node.value | replace: '&nbsp;', ' ' | replace: '&', '&' }}
+                  {%- endfor -%}
+                </p>
+              {%- endif -%}
+            {%- endfor -%}
+          {%- elsif description != blank -%}
+            {{ description | newline_to_br }}
+          {%- endif -%}
+        </div>
+      {%- endif -%}
+      
+      {%- comment -%} Perfect For {%- endcomment -%}
+      {% if suggested_visitor_types.size > 0 or special_interests.size > 0 %}
+         <div class="wetu-acc-hero__detail-block">
+            <h4>Perfect for</h4>
+            <p>
+            {% if suggested_visitor_types.size > 0 %}
+              {{ suggested_visitor_types | join: ', ' }}
+            {% else %}
+              {{ special_interests | join: ', ' }}
+            {% endif %}
+            </p>
+         </div>
+       {% endif %}
+
+       {%- comment -%} Languages {%- endcomment -%}
+       {% if spoken_languages.size > 0 %}
+         <div class="wetu-acc-hero__detail-block">
+            <h4>Languages spoken</h4>
+            <p>{{ spoken_languages | join: ', ' }}</p>
+         </div>
+       {% endif %}
+
+       {%- comment -%} Services {%- endcomment -%}
+       {% if available_services.size > 0 %}
+         <div class="wetu-acc-hero__detail-block">
+            <h4>Available services</h4>
+            <ul class="wetu-acc-hero__service-list">
+               {% for service in available_services limit: 8 %}
+                 <li>{{ service }}</li>
+               {% endfor %}
+            </ul>
+         </div>
+       {% endif %}
+
+       {%- comment -%} Inclusions & Exclusions {%- endcomment -%}
+       {%- comment -%} Inclusions & Exclusions {%- endcomment -%}
+       {% if included != blank %}
+         <div class="wetu-acc-hero__detail-block">
+            <h4 style="color: #16a34a;">Included</h4>
+            <div class="rte" style="font-size: 0.95rem; line-height: 1.5; color: var(--color-foreground);">
+              {%- assign included_obj = included.value | default: included -%}
+              
+              {%- if included_obj contains '"type"=>"root"' -%}
+                {%- comment -%} Handle Stringified Hash {%- endcomment -%}
+                <ul style="padding-left: 1.2em; margin: 0;">
+                  {%- assign parts = included_obj | split: '"value"=>"' -%}
+                  {%- for part in parts offset: 1 -%}
+                    {%- assign val = part | split: '"' | first -%}
+                    <li style="margin-bottom: 4px;">{{ val }}</li>
+                  {%- endfor -%}
+                </ul>
+              {%- elsif included_obj.type == 'root' or included_obj.children -%}
+                {%- for child in included_obj.children -%}
+                  {%- if child.type == 'paragraph' -%}
+                    <p>{% for text_node in child.children %}{{ text_node.value | replace: '&nbsp;', ' ' | replace: '&', '&' }}{% endfor %}</p>
+                  {%- elsif child.type == 'list' -%}
+                    <ul style="padding-left: 1.2em; margin: 0;">
+                      {%- for list_item in child.children -%}
+                        <li style="margin-bottom: 4px;">
+                          {%- for item_child in list_item.children -%}
+                            {%- if item_child.type == 'paragraph' -%}
+                              {%- for text_node in item_child.children -%}{{ text_node.value }}{%- endfor -%}
+                            {%- else -%}
+                              {{ item_child.value }}
+                            {%- endif -%}
+                          {%- endfor -%}
+                        </li>
+                      {%- endfor -%}
+                    </ul>
+                  {%- endif -%}
+                {%- endfor -%}
+              {%- else -%}
+                {{ included }}
+              {%- endif -%}
+            </div>
+         </div>
+       {% endif %}
+
+       {% if excluded != blank %}
+         <div class="wetu-acc-hero__detail-block">
+            <h4 style="color: #dc2626;">Excluded</h4>
+            <div class="rte" style="font-size: 0.95rem; line-height: 1.5; color: var(--color-foreground);">
+              {%- assign excluded_obj = excluded.value | default: excluded -%}
+              
+              {%- if excluded_obj contains '"type"=>"root"' -%}
+                {%- comment -%} Handle Stringified Hash {%- endcomment -%}
+                <ul style="padding-left: 1.2em; margin: 0;">
+                  {%- assign parts = excluded_obj | split: '"value"=>"' -%}
+                  {%- for part in parts offset: 1 -%}
+                    {%- assign val = part | split: '"' | first -%}
+                    <li style="margin-bottom: 4px;">{{ val }}</li>
+                  {%- endfor -%}
+                </ul>
+              {%- elsif excluded_obj.type == 'root' or excluded_obj.children -%}
+                {%- for child in excluded_obj.children -%}
+                  {%- if child.type == 'paragraph' -%}
+                    <p>{% for text_node in child.children %}{{ text_node.value | replace: '&nbsp;', ' ' | replace: '&', '&' }}{% endfor %}</p>
+                  {%- elsif child.type == 'list' -%}
+                    <ul style="padding-left: 1.2em; margin: 0;">
+                      {%- for list_item in child.children -%}
+                        <li style="margin-bottom: 4px;">
+                          {%- for item_child in list_item.children -%}
+                            {%- if item_child.type == 'paragraph' -%}
+                              {%- for text_node in item_child.children -%}{{ text_node.value }}{%- endfor -%}
+                            {%- else -%}
+                              {{ item_child.value }}
+                            {%- endif -%}
+                          {%- endfor -%}
+                        </li>
+                      {%- endfor -%}
+                    </ul>
+                  {%- endif -%}
+                {%- endfor -%}
+              {%- else -%}
+                {{ excluded }}
+              {%- endif -%}
+            </div>
+         </div>
+       {% endif %}
+
+      {%- comment -%} RELATED COLLECTIONS {%- endcomment -%}
+      
+      {% comment %} ACCOMMODATION / ROOMS {% endcomment %}
+      {%- if accom_collection != blank and accom_collection.products_count > 0 -%}
+        <div class="wetu-acc-collection">
+          <div class="wetu-acc-collection__header">
+            <h3 class="wetu-acc-collection__title">Accommodation at {{ accommodation_name }}</h3>
+          </div>
+          <div class="wetu-acc-collection__grid">
+            {%- for product in accom_collection.products limit: 6 -%}
+              <a href="{{ product.url }}" class="wetu-acc-collection__item" target="_blank">
+                {%- if product.featured_image -%}
+                  <img 
+                    src="{{ product.featured_image | image_url: width: 800 }}" 
+                    alt="{{ product.title }}"
+                    loading="lazy"
+                    class="wetu-acc-collection__image"
+                  >
+                {%- endif -%}
+                <div class="wetu-acc-collection__overlay">
+                  <h4 class="wetu-acc-collection__item-title">{{ product.title }}</h4>
+                </div>
+              </a>
+            {%- endfor -%}
+          </div>
+        </div>
+      {%- endif -%}
+      
+      {% comment %} ACTIVITIES {% endcomment %}
+      {%- if activities_collection != blank and activities_collection.products_count > 0 -%}
+        <div class="wetu-acc-collection">
+          <div class="wetu-acc-collection__header">
+            <h3 class="wetu-acc-collection__title">Activities at {{ accommodation_name }}</h3>
+          </div>
+          <div class="wetu-acc-collection__grid">
+            {%- for product in activities_collection.products limit: 6 -%}
+              <a href="{{ product.url }}" class="wetu-acc-collection__item" target="_blank">
+                {%- if product.featured_image -%}
+                  <img 
+                    src="{{ product.featured_image | image_url: width: 800 }}" 
+                    alt="{{ product.title }}"
+                    loading="lazy"
+                    class="wetu-acc-collection__image"
+                  >
+                {%- endif -%}
+                <div class="wetu-acc-collection__overlay">
+                  <h4 class="wetu-acc-collection__item-title">{{ product.title }}</h4>
+                </div>
+              </a>
+            {%- endfor -%}
+          </div>
+        </div>
+      {%- endif -%}
+      
+      {% comment %} VIDEOS {% endcomment %}
+      {%- if videos != blank and videos.size > 0 -%}
+        <div class="wetu-acc-collection">
+          <div class="wetu-acc-collection__header">
+            <h3 class="wetu-acc-collection__title">Videos for {{ accommodation_name }}</h3>
+          </div>
+          <div class="wetu-acc-collection__grid">
+            {%- for video in videos limit: 6 -%}
+              {%- assign video_url = video.url | default: video.video_url -%}
+              {%- assign video_thumb = video.thumbnail | default: video.image -%}
+              {%- assign video_title = video.title | default: video.name -%}
+              
+              {%- assign youtube_thumb = nil -%}
+              {%- if video_url contains 'youtube.com' or video_url contains 'youtu.be' -%}
+                {%- if video_url contains 'watch?v=' -%}
+                  {%- assign youtube_id = video_url | split: 'watch?v=' | last | split: '&' | first -%}
+                {%- elsif video_url contains 'youtu.be/' -%}
+                  {%- assign youtube_id = video_url | split: 'youtu.be/' | last | split: '?' | first -%}
+                {%- elsif video_url contains '/embed/' -%}
+                  {%- assign youtube_id = video_url | split: '/embed/' | last | split: '?' | first -%}
+                {%- endif -%}
+                {%- if youtube_id != blank -%}
+                  {%- assign youtube_thumb = 'https://img.youtube.com/vi/' | append: youtube_id | append: '/mqdefault.jpg' -%}
+                {%- endif -%}
+              {%- endif -%}
+              
+              {%- assign final_thumb = nil -%}
+              {%- if video_thumb != blank -%}
+                {%- if video_thumb.src -%}
+                  {%- assign final_thumb = video_thumb | image_url: width: 640 -%}
+                {%- else -%}
+                  {%- assign final_thumb = video_thumb -%}
+                {%- endif -%}
+              {%- elsif youtube_thumb -%}
+                {%- assign final_thumb = youtube_thumb -%}
+              {%- endif -%}
+              
+              <a href="{{ video_url }}" class="wetu-acc-collection__item" target="_blank" rel="noopener">
+                <div class="wetu-acc-collection__video-icon">
+                  <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <polygon points="5,3 19,12 5,21"/>
+                  </svg>
+                </div>
+                {%- if final_thumb -%}
+                  <img 
+                    src="{{ final_thumb }}"
+                    alt="{{ video_title }}"
+                    loading="lazy"
+                    class="wetu-acc-collection__image"
+                  >
+                {%- else -%}
+                   <div class="wetu-acc-collection__image" style="background: linear-gradient(135deg, #1a1a2e 0%, #2d2d44 100%);"></div>
+                {%- endif -%}
+                <div class="wetu-acc-collection__overlay">
+                  <h4 class="wetu-acc-collection__item-title">{{ video_title }}</h4>
+                </div>
+              </a>
+            {%- endfor -%}
+          </div>
+        </div>
+      {%- endif -%}
+    </div>
+  </div>
+  
+  {%- comment -%} FULLSCREEN GALLERY {%- endcomment -%}
+  <div class="wetu-acc-hero__fullscreen" id="{{ unique_id }}-fullscreen" aria-hidden="true">
+    <button class="wetu-acc-hero__fullscreen-close" aria-label="Close gallery">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M18 6L6 18M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    
+    <div class="wetu-acc-hero__fullscreen-images">
+      {%- for img in all_images -%}
+        <div class="wetu-acc-hero__fullscreen-image" data-index="{{ forloop.index0 }}">
+          <img 
+            src="{{ img | image_url: width: 2000 }}"
+            alt="{{ accommodation_name }} - Image {{ forloop.index }}"
+            loading="lazy"
+          >
+        </div>
+      {%- endfor -%}
+    </div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    const heroId = '{{ unique_id }}';
+    const container = document.getElementById(heroId);
+    if (!container) return;
+    
+    const fullscreen = document.getElementById(heroId + '-fullscreen');
+    const closeBtn = fullscreen?.querySelector('.wetu-acc-hero__fullscreen-close');
+    const triggers = container.querySelectorAll('[data-fullscreen-trigger="{{ unique_id }}"]');
+    const imagesContainer = fullscreen?.querySelector('.wetu-acc-hero__fullscreen-images');
+    
+    function openGallery(scrollToIndex) {
+      if (!fullscreen) return;
+      fullscreen.classList.add('is-active');
+      fullscreen.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+      
+      if (scrollToIndex !== undefined && imagesContainer) {
+        const images = imagesContainer.querySelectorAll('.wetu-acc-hero__fullscreen-image');
+        if (images[scrollToIndex]) {
+           images[scrollToIndex].scrollIntoView();
+        }
+      }
+    }
+    
+    function closeGallery() {
+      if (!fullscreen) return;
+      fullscreen.classList.remove('is-active');
+      fullscreen.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+    }
+    
+    triggers.forEach(trigger => {
+      trigger.addEventListener('click', () => {
+        const index = parseInt(trigger.dataset.imageIndex, 10);
+        openGallery(index);
+      });
+    });
+    
+    if (closeBtn) {
+      closeBtn.addEventListener('click', closeGallery);
+    }
+    
+    // Close when clicking an image (as requested)
+    if (imagesContainer) {
+       imagesContainer.addEventListener('click', function(e) {
+          if (e.target.tagName === 'IMG' || e.target.classList.contains('wetu-acc-hero__fullscreen-image')) {
+             closeGallery();
+          }
+       });
+    }
+    
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && fullscreen?.classList.contains('is-active')) {
+        closeGallery();
+      }
+    });
+    
+    fullscreen?.addEventListener('click', (e) => {
+      if (e.target === fullscreen) {
+        closeGallery();
+      }
+    });
+  })();
+</script>

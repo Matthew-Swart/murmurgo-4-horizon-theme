@@ -1,0 +1,363 @@
+{% comment %}
+  Wetu Product Map Section
+  Displays a 16:9 aspect ratio map on product pages
+  Centers on the current product's location with popup open
+  Fully mobile responsive
+  
+  DATA SOURCES:
+  - product.metafields.travel.location (metaobject) - Location data with lat/lng
+  - product.featured_image - Property image
+  - product.title - Property name
+  - product.url - Property URL
+{% endcomment %}
+
+<style>
+  #shopify-section-{{ section.id }} {
+    width: 100%;
+  }
+</style>
+
+{%- comment -%} Get location data from product metafields {%- endcomment -%}
+{%- assign location = product.metafields.travel.location.value -%}
+
+{%- if location and location.latitude and location.longitude -%}
+  {%- assign latitude = location.latitude.value | times: 1.0 -%}
+  {%- assign longitude = location.longitude.value | times: 1.0 -%}
+  {%- assign destination = location.destination.value | default: product.title -%}
+  {%- assign country = location.country.value | default: '' -%}
+  
+  {%- comment -%} Build property object (capture single object, parse it, then wrap in array) {%- endcomment -%}
+  {%- assign property_name = product.title -%}
+  {%- assign property_url = product.url -%}
+  {%- assign property_image = '' -%}
+  
+  {%- if product.featured_image -%}
+    {%- assign property_image = product.featured_image | image_url: width: 800 -%}
+  {%- endif -%}
+  
+  {%- comment -%} Build property object as a simple Liquid object (not JSON string) {%- endcomment -%}
+  {%- comment -%} Since parse_json doesn't work, we'll pass the raw JSON string to the snippet {%- endcomment -%}
+  {%- comment -%} and let JavaScript handle the parsing {%- endcomment -%}
+  
+  {%- if section.settings.show_debug -%}
+    <div style="padding: 20px; background: #f0f0f0; border: 2px solid #ccc; margin: 20px; font-family: monospace; font-size: 12px;">
+      <h3>DEBUG: Product Map Data (Passing to JS)</h3>
+      <p><strong>Product:</strong> {{ product.title }}</p>
+      <p><strong>Latitude:</strong> {{ latitude }}</p>
+      <p><strong>Longitude:</strong> {{ longitude }}</p>
+      <p><strong>Destination:</strong> {{ destination }}</p>
+      <p><strong>Country:</strong> {{ country }}</p>
+    </div>
+  {%- endif -%}
+  
+  {%- comment -%} Render map with inline JSON that JavaScript will parse {%- endcomment -%}
+  <div class="wetu-property-map-wrapper" style="position: relative; width: 100%; padding-bottom: 56.25%;">
+    <div class="wetu-property-map" id="map-{{ section.id }}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></div>
+  </div>
+
+  <script src='https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.js'></script>
+  <link href='https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.css' rel='stylesheet' />
+
+  <script>
+  (function() {
+    const mapId = 'map-{{ section.id }}';
+    const mapContainer = document.getElementById(mapId);
+    
+    if (!mapContainer || typeof mapboxgl === 'undefined') {
+      console.error('Map container or Mapbox GL not found');
+      return;
+    }
+    
+    mapboxgl.accessToken = '{{ settings.mapbox_access_token | default: "{{ MAPBOX_ACCESS_TOKEN }}" }}';
+    
+    // Build properties array directly in JavaScript
+    const properties = [{
+      id: "{{ product.id }}",
+      name: "{{ property_name | escape }}",
+      handle: "{{ product.handle }}",
+      url: "{{ property_url }}",
+      image: "{{ property_image }}",
+      latitude: {{ latitude }},
+      longitude: {{ longitude }},
+      destination: "{{ destination | escape }}",
+      country: "{{ country | escape }}"
+    }];
+    
+    console.log('Product map properties:', properties);
+    
+    if (properties.length === 0 || !properties[0].latitude || !properties[0].longitude) {
+      console.error('No valid property data');
+      return;
+    }
+    
+    const property = properties[0];
+    
+    const map = new mapboxgl.Map({
+      container: mapId,
+      style: 'mapbox://styles/mapbox/{{ section.settings.map_style }}',
+      center: [property.longitude, property.latitude],
+      zoom: 13
+    });
+    
+    map.on('load', () => {
+      // Add geojson source for white dot marker
+      map.addSource('property', {
+        type: 'geojson',
+        data: {
+          type: 'FeatureCollection',
+          features: [{
+            type: 'Feature',
+            geometry: {
+              type: 'Point',
+              coordinates: [property.longitude, property.latitude]
+            },
+            properties: { id: property.id }
+          }]
+        }
+      });
+      
+      // Add white dot marker layer
+      map.addLayer({
+        id: 'position-dot',
+        type: 'circle',
+        source: 'property',
+        paint: {
+          'circle-radius': 6,
+          'circle-color': '#ffffff',
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#333333',
+          'circle-opacity': 1
+        }
+      });
+      
+      // Create popup with exact styling from map page
+      const popupContent = `
+        <div class="popup-wrapper">
+          <div class="popup-pointer"></div>
+          <div class="popup-image-container" onclick="window.location.href='${property.url}'">
+            <img src="${property.image}" alt="${property.name}">
+            <div class="popup-overlay">
+              <div class="popup-title">${property.name}</div>
+              <div class="popup-location">${property.destination}${property.country ? ', ' + property.country : ''}</div>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      const popup = new mapboxgl.Popup({
+        offset: [15, 0],
+        closeButton: false,
+        closeOnClick: false,
+        closeOnMove: false,
+        className: 'property-popup',
+        anchor: 'left'
+      })
+      .setLngLat([property.longitude, property.latitude])
+      .setHTML(popupContent)
+      .addTo(map);
+      
+      // Fit bounds with padding for popup
+      map.fitBounds(
+        [[property.longitude, property.latitude], [property.longitude, property.latitude]],
+        {
+          padding: { top: 100, bottom: 100, left: 100, right: 400 },
+          maxZoom: 13
+        }
+      );
+    });
+    
+    // Add navigation control
+    map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+  })();
+  </script>
+  
+  <style>
+  /* Mapbox popup base styles */
+  .mapboxgl-popup {
+    max-width: none !important;
+  }
+  .mapboxgl-popup-content {
+    padding: 0;
+    overflow: visible;
+    background: transparent;
+    box-shadow: none;
+  }
+  .mapboxgl-popup-tip {
+    display: none;
+  }
+
+  /* Desktop expanded popup */
+  .popup-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex-direction: row;
+    gap: 0;
+  }
+  .popup-pointer {
+    width: 0;
+    height: 0;
+    border-top: 10px solid transparent;
+    border-bottom: 10px solid transparent;
+    border-right: 15px solid white;
+    flex-shrink: 0;
+    margin-left: 8px;
+    margin-right: 0;
+  }
+  .popup-image-container {
+    position: relative;
+    width: 280px;
+    height: 157.5px;
+    cursor: pointer;
+    overflow: hidden;
+    border: 2px solid white;
+    background: white;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  }
+  .popup-image-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .popup-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%);
+    padding: 12px;
+  }
+  .popup-title {
+    color: white;
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 4px 0;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  }
+  .popup-location {
+    color: white;
+    font-size: 12px;
+    margin: 0;
+    opacity: 0.95;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  }
+  </style>
+  
+{%- else -%}
+  {%- comment -%} Fallback: Try wetu.location metafield {%- endcomment -%}
+  {%- assign wetu_location = product.metafields.wetu.location -%}
+  
+  {%- if wetu_location and wetu_location.latitude and wetu_location.longitude -%}
+    {%- assign latitude = wetu_location.latitude | times: 1.0 -%}
+    {%- assign longitude = wetu_location.longitude | times: 1.0 -%}
+    {%- assign destination = wetu_location.destination | default: product.title -%}
+    {%- assign country = wetu_location.country | default: '' -%}
+    
+    {%- assign property_name = product.title -%}
+    {%- assign property_url = product.url -%}
+    {%- assign property_image = '' -%}
+    
+    {%- if product.featured_image -%}
+      {%- assign property_image = product.featured_image | image_url: width: 800 -%}
+    {%- endif -%}
+    
+    {%- capture property_json -%}
+      [{
+        "id": "{{ product.id }}",
+        "name": "{{ property_name | escape }}",
+        "handle": "{{ product.handle }}",
+        "url": "{{ property_url }}",
+        "image": "{{ property_image }}",
+        "latitude": {{ latitude }},
+        "longitude": {{ longitude }},
+        "destination": "{{ destination | escape }}",
+        "country": "{{ country | escape }}"
+      }]
+    {%- endcapture -%}
+    
+    {%- assign properties = property_json | parse_json -%}
+    
+    {%- render 'wetu-property-map',
+      properties: properties,
+      map_style: section.settings.map_style,
+      aspect_ratio: '16:9',
+      scope: 'single',
+      show_popups: true
+    -%}
+  {%- else -%}
+    {%- comment -%} No location data available {%- endcomment -%}
+    {%- if section.settings.show_error_message -%}
+      <div style="padding: 60px 20px; text-align: center; background: #f7f7f7; border: 1px solid #ddd;">
+        <p style="color: #666; margin: 0; font-size: 14px;">
+          <strong>Location data not available for this property.</strong>
+        </p>
+        <p style="color: #999; margin: 10px 0 0 0; font-size: 12px;">
+          Please add location coordinates to the product metafields.
+        </p>
+      </div>
+    {%- endif -%}
+  {%- endif -%}
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Product Location Map",
+  "tag": "section",
+  "class": "wetu-product-map-section",
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "Displays a 16:9 aspect ratio map showing the current product's location. The map will be centered on the property with its popup open."
+    },
+    {
+      "type": "select",
+      "id": "map_style",
+      "label": "Map Style",
+      "options": [
+        {
+          "value": "satellite-streets-v12",
+          "label": "Satellite with Streets"
+        },
+        {
+          "value": "streets-v12",
+          "label": "Streets"
+        },
+        {
+          "value": "outdoors-v12",
+          "label": "Outdoors"
+        },
+        {
+          "value": "light-v11",
+          "label": "Light"
+        },
+        {
+          "value": "dark-v11",
+          "label": "Dark"
+        }
+      ],
+      "default": "satellite-streets-v12"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_error_message",
+      "label": "Show Error Message",
+      "info": "Display a message when location data is not available",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "show_debug",
+      "label": "Show Debug Info",
+      "info": "Display debug information to see what data is available",
+      "default": false
+    }
+  ],
+  "presets": [
+    {
+      "name": "Product Location Map"
+    }
+  ]
+}
+{% endschema %}
+

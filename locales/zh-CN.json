@@ -1,0 +1,600 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin language editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "accessibility": {
+    "account": "账户",
+    "cart": "购物车",
+    "cart_count": "购物车中商品总数",
+    "close_dialog": "关闭对话框",
+    "country_region": "国家/地区",
+    "country_results_count": "{{ count }} 个结果",
+    "decrease_quantity": "减少数量",
+    "discount": "应用折扣码",
+    "discount_menu": "折扣码",
+    "discount_applied": "已应用折扣码：{{ code }}",
+    "filters": "筛选条件",
+    "filter_count": {
+      "one": "已应用 {{ count }} 个筛选条件",
+      "other": "已应用 {{ count }} 个筛选条件"
+    },
+    "increase_quantity": "增加数量",
+    "inventory_status": "库存状态",
+    "localization_region_and_language": "地区和语言选择器",
+    "menu": "菜单",
+    "nested_product": "{{ parent_title }} 的 {{ product_title }}",
+    "new_window": "在新窗口中打开。",
+    "quantity": "数量",
+    "pause_video": "暂停视频",
+    "play_model": "播放 3D 模型",
+    "play_video": "播放视频",
+    "loading_product_recommendations": "正在加载商品推荐",
+    "rating": "此商品的评分为 5 分中的 {{ rating }} 分",
+    "remove_item": "移除 {{ title}}",
+    "reset_search": "重置搜索",
+    "scroll_to": "滚动到 {{ title }}",
+    "search_results_count": "为“{{ query }}”找到 {{ count }} 个搜索结果",
+    "search_results_no_results": "未找到与“{{ query }}”相关的结果",
+    "skip_to_product_info": "跳至商品信息",
+    "skip_to_results_list": "跳至结果列表",
+    "skip_to_text": "跳至内容",
+    "slide_status": "幻灯片 {{ index }} / {{ length }}",
+    "slideshow_next": "下一张幻灯片",
+    "slideshow_pause": "暂停幻灯片播放",
+    "slideshow_play": "播放幻灯片",
+    "slideshow_previous": "上一张幻灯片",
+    "unit_price": "单价",
+    "find_country": "查找国家/地区"
+  },
+  "actions": {
+    "add": "添加",
+    "add_to_cart": "添加到购物车",
+    "added": "已添加",
+    "apply": "应用",
+    "back": "返回",
+    "choose": "选择",
+    "clear": "清除",
+    "clear_all": "清除所有",
+    "close": "关闭",
+    "open": "打开",
+    "continue_shopping": "继续购物",
+    "enter_password": "输入密码",
+    "log_in_html": "已有账户？<a href=\"{{ link }}\">登录</a>以更快结账。",
+    "log_in": "登录",
+    "log_out": "退出登录",
+    "open_image_in_full_screen": "全屏查看图片",
+    "remove": "移除",
+    "remove_discount": "移除折扣 {{ code }}",
+    "show_all_options": "显示所有选项",
+    "see_items": {
+      "one": "查看 {{ count }} 件商品",
+      "other": "查看 {{ count }} 件商品"
+    },
+    "show_filters": "筛选",
+    "show_less": "显示更少",
+    "show_more": "显示更多",
+    "sign_in_options": "其他登录选项",
+    "view_in_your_space": "在您的空间中查看",
+    "view_all": "查看全部",
+    "more": "更多",
+    "zoom": "缩放",
+    "close_dialog": "关闭对话框",
+    "reset": "重置",
+    "enter_using_password": "使用密码进入",
+    "sign_up": "注册",
+    "submit": "提交",
+    "view_store_information": "查看商店信息",
+    "sort": "排序"
+  },
+  "blocks": {
+    "contact_form": {
+      "name": "姓名",
+      "email": "电子邮件",
+      "phone": "电话",
+      "comment": "评论",
+      "post_success": "感谢您的联系。我们会尽快回复您。",
+      "error_heading": "请调整以下内容："
+    },
+    "email_signup": {
+      "label": "电子邮件",
+      "placeholder": "电子邮件地址",
+      "success": "感谢您的订阅！"
+    },
+    "filter": "筛选",
+    "load_video": "加载视频：{{ description }}",
+    "sold_out": "已售罄",
+    "payment_methods": "支付方式"
+  },
+  "blogs": {
+    "article": {
+      "comments_heading": {
+        "one": "{{ count }} 条评论",
+        "other": "{{ count }} 条评论"
+      },
+      "comment_author_separator": "•"
+    },
+    "comment_form": {
+      "email": "电子邮件",
+      "error": "评论发布失败，请解决以下问题：",
+      "heading": "发表评论",
+      "message": "消息",
+      "moderated": "请注意，评论需经审核后方可发布。",
+      "name": "姓名",
+      "post": "发布评论",
+      "success_moderated": "评论已发布，等待审核",
+      "success": "评论已发布"
+    }
+  },
+  "content": {
+    "discount": "折扣",
+    "account_title": "账户",
+    "terms_and_policies": "条款和政策",
+    "account_title_personalized": "您好，{{ first_name }}",
+    "account_orders": "订单",
+    "account_profile": "个人资料",
+    "blog_details_separator": "|",
+    "cart_estimated_total": "预计总计",
+    "cart_title": "购物车",
+    "cart_subtotal": "小计",
+    "cart_total": "购物车总计",
+    "checkout": "结账",
+    "collection_placeholder": "产品系列标题",
+    "discount_code": "折扣码",
+    "shipping_discount_error": "运费折扣将在添加地址后于结账时显示",
+    "discount_code_error": "折扣码无法应用于您的购物车",
+    "discounts": "折扣",
+    "duties_and_taxes_included": "含关税和税费。",
+    "duties_and_taxes_included_shipping_at_checkout_with_policy_html": "含关税和税费。折扣和<a href=\"{{ link }}\">运费</a>将在结账时计算。",
+    "duties_and_taxes_included_shipping_at_checkout_with_policy_without_discounts_html": "含关税和税费。运费将在结账时计算。",
+    "duties_and_taxes_included_shipping_at_checkout_without_policy": "含关税和税费。折扣和运费将在结账时计算。",
+    "duties_and_taxes_included_shipping_at_checkout_without_policy_without_discounts": "含关税和税费。运费将在结账时计算。",
+    "duties_included": "含关税。",
+    "duties_included_taxes_at_checkout_shipping_at_checkout_with_policy_html": "含关税。税费、折扣和<a href=\"{{ link }}\">运费</a>将在结账时计算。",
+    "duties_included_taxes_at_checkout_shipping_at_checkout_with_policy_without_discounts_html": "含关税。运费将在结账时计算。",
+    "duties_included_taxes_at_checkout_shipping_at_checkout_without_policy": "含关税。税费、折扣和运费将在结账时计算。",
+    "duties_included_taxes_at_checkout_shipping_at_checkout_without_policy_without_discounts": "含关税。运费将在结账时计算。",
+    "featured_products": "特色产品",
+    "filters": "筛选条件",
+    "grid_view": {
+      "default_view": "默认",
+      "grid_fieldset": "列网格",
+      "single_item": "单个",
+      "zoom_out": "缩小"
+    },
+    "inventory_low_stock_show_count": {
+      "one": "仅剩 {{ count }} 件",
+      "other": "仅剩 {{ count }} 件"
+    },
+    "inventory_low_stock": "库存不足",
+    "inventory_in_stock": "有货",
+    "inventory_out_of_stock": "缺货",
+    "item_count": {
+      "one": "{{ count }} 件商品",
+      "other": "{{ count }} 件商品"
+    },
+    "language": "语言",
+    "localization_region_and_language": "地区和语言",
+    "no_products_found": "未找到产品。",
+    "no_results_found": "未找到结果",
+    "page_placeholder_title": "页面标题",
+    "page_placeholder_content": "选择一个页面以显示其内容。",
+    "pagination": {
+      "nav_label": "分页导航",
+      "previous": "上一页",
+      "next": "下一页",
+      "page": "第 {{ page }} 页"
+    },
+    "pickup_available_at_html": "可在 <b>{{ location }}</b> 提货",
+    "pickup_available_in": "可提货，{{ pickup_time }}",
+    "pickup_not_available": "目前无法提货",
+    "pickup_ready_in": "{{ pickup_time }}",
+    "powered_by": "本商店由",
+    "price": "价格",
+    "price_compare_at": "原价",
+    "price_from": "从 {{ price }} 起",
+    "price_regular": "原价",
+    "price_sale": "促销价",
+    "price_filter_html": "最高价格为 {{ price }}",
+    "product_image": "商品图片",
+    "product_information": "商品信息",
+    "product_total": "商品总计",
+    "product_badge_sold_out": "已售罄",
+    "product_badge_sale": "促销",
+    "product_card_placeholder": "商品标题",
+    "placeholder_image": "占位图片",
+    "quantity": "数量",
+    "recently_viewed_products": "最近浏览",
+    "reviews": "评论",
+    "read_more": "阅读更多...",
+    "search_input_label": "搜索",
+    "search_input_placeholder": "搜索",
+    "search": "搜索",
+    "search_results": "搜索结果",
+    "search_results_label": "搜索结果",
+    "search_results_no_results": "未找到“{{ terms }}”的任何结果。请尝试其他搜索。",
+    "search_results_no_results_check_spelling": "未找到“{{ terms }}”的任何结果。请检查拼写或使用其他词语或短语。",
+    "search_results_resource_articles": "博客文章",
+    "search_results_resource_collections": "产品系列",
+    "search_results_resource_pages": "页面",
+    "search_results_resource_products": "商品",
+    "search_results_resource_products_count": {
+      "one": "{{ count }} 件商品",
+      "other": "{{ count }} 件商品"
+    },
+    "search_results_resource_queries": "搜索建议",
+    "search_results_view_all": "查看全部",
+    "search_results_view_all_button": "查看全部",
+    "seller_note": "特别说明",
+    "shipping_policy": "运费在结账时计算。",
+    "shipping_policy_html": "<a href=\"{{ link }}\">运费</a>在结账时计算。",
+    "store_owner_link_html": "您是商店所有者吗？<a href=\"{{ link }}\">在此登录</a>",
+    "taxes_at_checkout_shipping_at_checkout_with_policy_html": "税费、折扣和<a href=\"{{ link }}\">运费</a>在结账时计算。",
+    "taxes_at_checkout_shipping_at_checkout_with_policy_without_discounts_html": "税费和<a href=\"{{ link }}\">运费</a>在结账时计算。",
+    "taxes_at_checkout_shipping_at_checkout_without_policy": "税费、折扣和运费在结账时计算。",
+    "taxes_at_checkout_shipping_at_checkout_without_policy_without_discounts": "税费和运费在结账时计算。",
+    "taxes_included": "含税。",
+    "taxes_included_shipping_at_checkout_with_policy_html": "含税。折扣和<a href=\"{{ link }}\">运费</a>在结账时计算。",
+    "taxes_included_shipping_at_checkout_with_policy_without_discounts_html": "含税。运费在结账时计算。",
+    "taxes_included_shipping_at_checkout_without_policy": "含税。折扣和运费在结账时计算。",
+    "taxes_included_shipping_at_checkout_without_policy_without_discounts": "含税。运费在结账时计算。",
+    "unavailable": "不可用",
+    "use_fewer_filters_html": "尝试使用更少的筛选条件，或<a class=\"{{ class }}\" href=\"{{ link }}\">清除所有筛选条件</a>。",
+    "view_more_details": "查看更多详情",
+    "your_cart_is_empty": "您的购物车为空",
+    "product_count": "商品数量",
+    "errors": "错误",
+    "wrong_password": "密码错误",
+    "recipient_form_send_to": "发送至",
+    "recipient_form_email_label": "收件人邮箱",
+    "recipient_form_email_label_my_email": "我的邮箱",
+    "recipient_form_email_address": "收件人邮箱地址",
+    "recipient_form_name_label": "收件人姓名（可选）",
+    "recipient_form_message": "留言（可选）",
+    "recipient_form_characters_used": "已使用 {{ used_chars }}/{{ max_chars }} 个字符",
+    "recipient_form_send_on": "YYYY-MM-DD",
+    "recipient_form_send_on_label": "发送日期（可选）",
+    "recipient_form_fields_visible": "收件人表单字段现已可见",
+    "recipient_form_fields_hidden": "收件人表单字段现已隐藏",
+    "recipient_form_error": "表单提交时发生错误",
+    "product_custom_property_character_count": "已使用 {{ used_chars }}/{{ max_chars }} 个字符"
+  },
+  "fields": {
+    "separator": "至"
+  },
+  "gift_cards": {
+    "issued": {
+      "how_to_use_gift_card": "在线使用礼品卡代码或在店内使用二维码",
+      "title": "这是您在 {{ shop }} 的 {{ value }} 礼品卡余额！",
+      "subtext": "您的礼品卡",
+      "shop_link": "访问在线商店",
+      "add_to_apple_wallet": "添加到 Apple 钱包",
+      "qr_image_alt": "二维码 — 扫描以兑换礼品卡",
+      "copy_code": "复制礼品卡代码",
+      "expiration_date": "有效期至 {{ expires_on }}",
+      "copy_code_success": "代码复制成功",
+      "expired": "已过期"
+    }
+  },
+  "placeholders": {
+    "password": "密码",
+    "search": "搜索",
+    "product_title": "商品标题",
+    "collection_title": "产品系列标题",
+    "blog_posts": "博客文章",
+    "blog_post_title": "标题",
+    "blog_post_author": "作者",
+    "blog_post_date": "日期",
+    "blog_post_description": "您的博客文章内容摘要"
+  },
+  "products": {
+    "product": {
+      "add_to_cart": "添加到购物车",
+      "adding_to_cart": "正在添加...",
+      "added_to_cart": "已添加到购物车",
+      "add_to_cart_error": "添加到购物车出错",
+      "quantity_error_max": "此商品最多可购买 {{ maximum }} 件",
+      "sold_out": "已售罄",
+      "unavailable": "不可用",
+      "quantity": "数量",
+      "quantity_increments": "增量为 {{ increment }}",
+      "quantity_minimum": "最小数量为 {{ minimum }}",
+      "quantity_maximum": "最大数量为 {{ maximum }}",
+      "in_cart": "在购物车中",
+      "from": "起",
+      "per_person_sharing": "每人共享",
+      "single": "单人",
+      "per_room": "每间房",
+      "per_night": "每晚"
+    },
+    "general": {
+      "no_video": "此产品无可用视频。"
+    }
+  },
+  "general": {
+    "redirecting": "正在重定向至住宿..."
+  },
+  "collections": {
+    "no_products": "目前无可用住宿。"
+  },
+  "travel_search": {
+    "title": "寻找您的完美住宿",
+    "subtitle": "按地点、日期和住客搜索住宿",
+    "placeholder": "您要去哪里？",
+    "dates_label": "旅行日期",
+    "check_in": "入住",
+    "check_out": "退房",
+    "guests": "住客",
+    "search_button": "搜索住宿",
+    "searching": "正在搜索...",
+    "no_results": "未找到住宿或地点",
+    "error": "发生错误。请重试。",
+    "destinations": "目的地",
+    "properties": "住宿",
+    "select_checkin": "选择您的入住日期",
+    "select_checkout": "选择您的退房日期",
+    "hover_for_nights": "将鼠标悬停在日期上以查看晚数",
+    "one_night": "1 晚",
+    "nights_count": "{{ count }} 晚",
+    "guest_options": {
+      "one_adult": "1 位成人，1 间房",
+      "two_adults": "2 位成人，1 间房",
+      "three_adults": "3 位成人，1 间房",
+      "four_adults_one": "4 位成人，1 间房",
+      "four_adults_two": "4 位成人，2 间房",
+      "six_adults_two": "6 位成人，2 间房",
+      "six_adults_three": "6 位成人，3 间房"
+    }
+  },
+  "wetu": {
+    "property": {
+      "total_rooms": "总房间数",
+      "perfect_for": "最适合",
+      "key_details": "主要详情",
+      "property_facilities": "住宿设施",
+      "available_services": "可用服务",
+      "check_times": "入住与退房",
+      "check_in": "入住时间",
+      "check_out": "退房时间",
+      "languages_spoken": "可讲语言",
+      "contact": "联系方式",
+      "telephone": "电话",
+      "email": "电子邮件"
+    },
+    "accommodation": {
+      "room": "房间",
+      "occupancy": "入住人数",
+      "guests_count": "{{ count }} 位客人",
+      "adults_children": "{{ adults }} 位成人，{{ children }} 位儿童",
+      "bed_configuration": "床位配置",
+      "meal_plan": "膳食计划",
+      "key_details": "客房详情",
+      "room_amenities": "客房设施",
+      "special_features": "特色设施",
+      "room_features": "客房特色",
+      "view": "景观",
+      "has_balcony": "私人阳台",
+      "has_jacuzzi": "私人按摩浴缸",
+      "property": "物业",
+      "view_property": "查看 {{ property }} 详情"
+    },
+    "rates": {
+      "title": "价格与定价",
+      "from": "起",
+      "to": "至",
+      "view_details": "查看详细价格和可用性",
+      "view_full_details": "查看完整详情",
+      "special_offers": "特别优惠",
+      "valid_from": "有效期从",
+      "valid_to": "有效期至",
+      "valid_dates": "有效日期",
+      "terms_conditions": "条款与条件",
+      "per_person_sharing": "每人共享",
+      "single_occupancy": "单人入住",
+      "per_room": "每间客房",
+      "pricing": "定价",
+      "seasonal_pricing": "季节性价格",
+      "room_rates": "客房价格",
+      "included": "包含",
+      "conditions": "条件",
+      "amenities": "设施",
+      "rates": "价格",
+      "items": "项目"
+    },
+    "pricing": {
+      "title": "价格与特别优惠",
+      "from": "从",
+      "range_note": "价格范围从每人每晚 {{ min }} 到 {{ max }}，具体取决于住宿类型和季节。",
+      "special_offers": "特别优惠",
+      "current_offers": "当前特别优惠",
+      "all_accommodation_rates": "所有住宿选择和季节性价格",
+      "accommodation_options": "住宿选择与季节性价格",
+      "valid_dates": "有效期：",
+      "terms_conditions": "条款与条件",
+      "accommodation_rates": "住宿价格",
+      "per_unit_night": "每单位每晚",
+      "per_person_night": "每人每晚",
+      "per_person_sharing": "每人每晚（共享）",
+      "view_rates": "查看季节性价格",
+      "notice_title": "重要价格信息",
+      "notice_text": "所有价格均视供应情况而定，并可能随时更改，恕不另行通知。可能需要额外支付保育费和交通费。请联系我们，获取根据您的具体旅行日期和要求量身定制的详细报价。",
+      "seasonal_rates": "季节性价格",
+      "rates_intro": "所有价格均按季节时间顺序显示。选择一个时段以查看详细价格和条件。",
+      "rate_periods": "价格时段",
+      "rate_includes": "价格包含",
+      "available_offers": "可用特惠",
+      "view_details": "查看详情"
+    },
+    "videos": {
+      "heading": "相关视频"
+    },
+    "documents": {
+      "heading": "文档与资源",
+      "opens_new_window": "在新窗口中打开PDF",
+      "other": "其他文档"
+    }
+  },
+  "sections": {
+    "collection": {
+      "empty": "此系列中未找到商品。",
+      "view_all": "查看全部"
+    },
+    "property_highlights": {
+      "name": "物业亮点",
+      "collection_summary": "我们的系列包含五处精心策划的物业，每处都战略性地位于肯尼亚最著名的野生动物目的地，提供无与伦比的便利，并总共提供68间布置典雅的住宿。",
+      "masai_mara_detail": "马赛马拉生态系统内的三处物业，包括我们成立于1972年的旗舰店Governors' Camp",
+      "naivasha_detail": "位于奈瓦沙湖畔的Loldia House，提供多样的景观和活动",
+      "laikipia_detail": "位于莱基皮亚高原的Governors' Mugie House，提供独家进入肯尼亚北部荒野的通道",
+      "experience_summary": "从传奇的动物大迁徙到亲密的野生动物邂逅、文化沉浸和保护倡议，每处物业都提供经过五十年运营精炼的真实狩猎体验。",
+      "settings": {
+        "heading": {
+          "label": "标题"
+        },
+        "description": {
+          "label": "描述"
+        },
+        "button_text": {
+          "label": "按钮文本"
+        },
+        "button_url": {
+          "label": "按钮网址"
+        }
+      },
+      "presets": {
+        "property_highlights": {
+          "name": "物业亮点"
+        }
+      }
+    },
+    "property_collection_highlights": {
+      "properties": "物业",
+      "accommodations": "住宿",
+      "activities": "活动",
+      "dining": "用餐场所",
+      "wellness": "健康养生",
+      "room_types": "房型",
+      "dining_venues": "用餐",
+      "spa": "水疗",
+      "geography_intro": "位于不同区域：",
+      "view_property": "查看物业",
+      "view_all_properties": "查看所有物业",
+      "no_properties": "暂无物业"
+    },
+    "group_highlights": {
+      "unique_properties": "独特物业",
+      "luxury_spaces": "豪华帐篷、套房与小屋",
+      "iconic_destinations": "标志性目的地",
+      "explore": "探索",
+      "view_collection": "查看系列"
+    }
+  },
+  "plekify_homepage": {
+    "hero": {
+      "title": "旅游行业的 Shopify",
+      "subtitle": "在 CAPE TOWN 创建",
+      "tagline": "使用 Shopify 电子商务平台和 Plekify App 改造您的旅游业务。"
+    },
+    "intro": {
+      "paragraph_1": "Plekify 将您现有的旅游系统（如 ResRequest 或 Wetu）与世界领先的电子商务平台 Shopify 的强大功能集成在一起。",
+      "paragraph_2": "Plekify 使用您现有预订平台的信息，自动创建和更新您自己域名下的定制 Shopify 商店，专为旅游而设计。"
+    },
+    "features": {
+      "own_data": {
+        "title": "拥有您的预订，拥有您的数据",
+        "description": "在您的域名上捕获每一次直接预订，包括付款。保留对您自己的客户数据的独家访问权，以便进行个性化的再营销，同时与您现有的 PMS 系统无缝集成。结果：通过减少佣金和回头客来提高利润。"
+      },
+      "multilanguage": {
+        "title": "轻松实现多语言覆盖",
+        "description": "覆盖多达 20 种语言的全球旅行者，包括英语、德语、法语、荷兰语、意大利语、西班牙语、葡萄牙语和普通话。Shopify 的内置工具可处理翻译、SEO 和本地化货币——非常适合针对国际市场的高端野生动物园和精品酒店。"
+      },
+      "addons": {
+        "title": "通过附加组件和额外服务销售更多",
+        "description": "提供超越客房的精选体验：水疗护理、狩猎之旅、接送服务、品酒等。客人在结账时添加额外服务，使平均订单价值提高 20-30%。"
+      },
+      "marketing": {
+        "title": "强大的内置营销功能",
+        "description_1": "以个性化的方式重新激活并与您之前的客户沟通。",
+        "description_2": "通过 Klaviyo 集成来细分和自动化电子邮件。",
+        "description_3": "恢复废弃的购物车，发送住宿后评论，并运行忠诚度计划。",
+        "description_4": "从一个仪表板跟踪跨渠道的活动——您的网站、Instagram、Google。"
+      },
+      "financial": {
+        "title": "财务清晰度和可扩展性",
+        "description_1": "连接到 Peach Payments 等网关，以便直接结算到您的银行账户。",
+        "description_2": "轻松连接到现代 ERP 平台，例如 Acumatica Cloud ERP 或 Oracle Netsuite。",
+        "description_3": "AirBnB 可以轻松地将会计连接到 QuickBooks 或 Xero。"
+      },
+      "delight": {
+        "title": "享受日常使用",
+        "description": "为非技术用户提供直观的可用性、实时分析和 24/7 支持。Shopify 是一种乐趣——快速、可靠且设计精美。"
+      }
+    },
+    "founder": {
+      "title": "由旅游创新先驱创立",
+      "description": "Plekify 由 Matthew Swart 创建，他于 1999 年共同创立了 SafariNow.com，南非首屈一指的旅游预订平台。阅读他的旅程。",
+      "quote": "我在 2025 年创建了 Plekify，因为我相信 Shopify 现在是任何地方旅游业最明智的选择——可扩展、安全且专为盈利而构建。"
+    },
+    "prototypes": {
+      "heading": "原型网站",
+      "royal": {
+        "title": "The Royal Portfolio",
+        "description": "探索一系列独特的设计灵感酒店、豪华野生动物园旅馆和私人别墅，在南非最具标志性的目的地提供定制体验。",
+        "prototype_for": "theroyalportfolio.com 的原型",
+        "password": "密码 plekify",
+        "button": "查看 The Royal Portfolio"
+      },
+      "matetsi": {
+        "title": "Matetsi Victoria Falls",
+        "description": "屡获殊荣的豪华野生动物园度假胜地，位于维多利亚瀑布联合国教科文组织遗址附近 15 公里的私人赞比西河沿岸",
+        "prototype_for": "matetsivictoriafalls.com 的原型",
+        "password": "密码 plekify",
+        "button": "查看 Matetsi Victoria Falls"
+      },
+      "governors": {
+        "title": "Governors' Camp Collection",
+        "description": "自 1972 年以来，在马拉河沿岸，完全沉浸在主要观赏野生动物区域的中心地带，成为终极野生动物园体验的先驱。",
+        "prototype_for": "governorscamp.com 的原型",
+        "password": "密码 plekify",
+        "button": "查看 The Governors' Collection"
+      },
+      "fundu": {
+        "title": "Fundu Lagoon",
+        "description": "在奔巴岛上享受赤脚奢华，那里有原始的海滩和世界一流的潜水，冒险在等着您！",
+        "prototype_for": "fundulagoon.com 的原型",
+        "password": "密码 plekify",
+        "button": "查看 Fundu Lagoon"
+      }
+    },
+    "plekify_definition": {
+      "word": "ple·ki·fy",
+      "pronunciation": "/ˈplɛkɪˌfaɪ/",
+      "part_of_speech": "动词",
+      "forms": "(plekified, plekifying)",
+      "definition": "将高端旅游预订与电子商务功能无缝集成；将分散的旅馆预订系统转换为统一的、域内的 Shopify 体验。",
+      "etymology": "来自南非语 plek（地点）+ -ify（使成为），字面意思是“使可放置”或“使地点可在 Shopify 上预订”。",
+      "usage_heading": "用法示例：",
+      "usage_1": "“我们上个季度 plekified 了我们所有的野生动物园旅馆。”",
+      "usage_2": "“自从 plekifying 以来，酒店网站的预订量大幅增长”",
+      "related_forms": "plekification（名词），plekifiable（形容词）",
+      "synonyms": "简化、集成、优化（旅游预订）",
+      "antonyms": "碎片化、断开连接、复杂化"
+    },
+    "chatgpt": {
+      "title": "ChatGPT 和 AI 就绪。",
+      "description": "Plekify 网站直接与 ChatGPT 集成。观看并聆听以获取详细信息..."
+    },
+    "contact": {
+      "title": "立即开始",
+      "description": "通过与创始人 Matthew Swart 的直接咨询，可以获得定制的实施方案。",
+      "email_heading": "电子邮件",
+      "email_address": "hello@plekify.com",
+      "whatsapp_heading": "WhatsApp",
+      "whatsapp_number": "+27 60 937 4204"
+    }
+  }
+}

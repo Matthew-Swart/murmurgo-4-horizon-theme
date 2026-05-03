@@ -1,0 +1,130 @@
+{% comment %}
+  WETU Rate Row Snippet
+  
+  Renders a single rate row with price, dates, and conditions
+  
+  @param {object} rate - Rate object with currency, rate, type, dates, included, conditions
+{% endcomment %}
+
+<div class="wetu-rate-row">
+  <div class="wetu-rate-row__primary">
+    <div class="wetu-rate-row__price">
+      <span class="wetu-rate-row__currency">{{ rate.currency.value | default: 'USD' }}</span>
+      <span class="wetu-rate-row__amount">{{ rate.rate.value | round: 0 }}</span>
+      {% if rate.type.value %}
+        <span class="wetu-rate-row__type">{{ rate.type.value }}</span>
+      {% endif %}
+    </div>
+    {% if rate.start.value or rate.end.value %}
+      <div class="wetu-rate-row__dates">
+        {% if rate.start.value %}
+          {{ rate.start.value | date: '%b %d, %Y' }}
+        {% endif %}
+        {% if rate.end.value %}
+          - {{ rate.end.value | date: '%b %d, %Y' }}
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+  {% if rate.conditions.value or rate.included.value %}
+    <div class="wetu-rate-row__details">
+      {% if rate.included.value %}
+        <div class="wetu-rate-row__included">
+          <strong>{{ 'wetu.rates.included' | t | default: 'Included' }}:</strong> {{ rate.included.value }}
+        </div>
+      {% endif %}
+      {% if rate.conditions.value %}
+        <div class="wetu-rate-row__conditions">
+          <strong>{{ 'wetu.rates.conditions' | t | default: 'Conditions' }}:</strong> {{ rate.conditions.value }}
+        </div>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
+
+{% stylesheet %}
+  .wetu-rate-row {
+    padding: 24px;
+    background: rgba(var(--color-foreground), 0.02);
+    border: 1px solid rgba(var(--color-foreground), 0.08);
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .wetu-rate-row__primary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .wetu-rate-row__price {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .wetu-rate-row__currency {
+    font-size: 1rem;
+    font-weight: 500;
+    color: rgba(var(--color-foreground), 0.7);
+  }
+
+  .wetu-rate-row__amount {
+    font-size: 2rem;
+    font-weight: 700;
+    color: rgb(var(--color-foreground));
+    line-height: 1;
+  }
+
+  .wetu-rate-row__type {
+    font-size: 0.875rem;
+    padding: 4px 8px;
+    background: rgba(var(--color-foreground), 0.08);
+    border-radius: 4px;
+    color: rgba(var(--color-foreground), 0.8);
+  }
+
+  .wetu-rate-row__label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: rgba(var(--color-foreground), 0.6);
+    margin-right: 4px;
+  }
+
+  .wetu-rate-row__dates {
+    font-size: 0.9375rem;
+    color: rgba(var(--color-foreground), 0.6);
+    font-weight: 500;
+  }
+
+  .wetu-rate-row__details {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(var(--color-foreground), 0.08);
+    font-size: 0.9375rem;
+    line-height: 1.5;
+  }
+
+  .wetu-rate-row__included,
+  .wetu-rate-row__conditions {
+    color: rgba(var(--color-foreground), 0.7);
+  }
+
+  .wetu-rate-row__included strong,
+  .wetu-rate-row__conditions strong {
+    color: rgb(var(--color-foreground));
+    font-weight: 600;
+  }
+
+  @media screen and (max-width: 749px) {
+    .wetu-rate-row__amount {
+      font-size: 1.5rem;
+    }
+  }
+{% endstylesheet %}

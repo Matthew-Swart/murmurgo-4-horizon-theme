@@ -1,0 +1,128 @@
+{% doc %}
+  WETU Pricing Summary Snippet
+  
+  Extracts the most relevant pricing information from WETU products
+  for display in compact contexts like overlays.
+  
+  @param {product} product - The product object (required)
+  @param {string} [format] - Output format: 'short' or 'detailed' (default: 'short')
+  
+  Outputs variables:
+  - wetu_has_pricing: boolean
+  - wetu_currency: string
+  - wetu_min_rate: number
+  - wetu_max_rate: number
+  - wetu_rate_context: string (e.g., "per night", "for 2 people")
+  
+  @example
+  {% render 'wetu-pricing-summary', product: product, format: 'short' %}
+{% enddoc %}
+
+{%- comment -%}
+  Wetu Pricing Summary Variables
+  Sets pricing variables from WETU room/property data stored in metaobjects
+  
+  Returns:
+  - wetu_has_pricing: {Boolean} Whether pricing data exists
+  - wetu_min_rate: {Number} Minimum rate
+  - wetu_max_rate: {Number} Maximum rate  
+  - wetu_currency: {String} Currency code (e.g., 'ZAR')
+  - wetu_rate_context: {String} Rate description (e.g., 'per unit per night')
+  - wetu_occupancy_info: {String} Occupancy type description
+{%- endcomment -%}
+
+{%- liquid
+  assign wetu_has_pricing = false
+  assign wetu_min_rate = nil
+  assign wetu_max_rate = nil
+  assign wetu_currency = 'ZAR'
+  assign wetu_rate_context = ''
+  assign wetu_occupancy_info = ''
+-%}
+
+{%- if product -%}
+  {%- liquid
+    comment Get rate tiers from metaobjects
+    endcomment
+    assign rate_tiers = product.metafields.wetu_room.aggregated_rate_tiers.value
+    
+    comment If no room rate tiers, check property-level rate tiers
+    endcomment
+    if rate_tiers == blank
+      assign rate_tiers = product.metafields.wetu.rate_tiers.value
+    endif
+    
+    comment Process rate tiers - must iterate directly as MetaobjectListDrop doesn't support .size
+    endcomment
+    if rate_tiers != blank
+      assign lowest_rate = nil
+      assign highest_rate = nil
+      assign first_rate_type = ''
+      assign first_currency = ''
+      assign tier_count = 0
+      
+      for tier in rate_tiers
+        assign tier_count = tier_count | plus: 1
+        
+        comment Access metaobject fields directly
+        endcomment
+        assign tier_amount = tier.rate_amount
+        assign tier_currency = tier.currency  
+        assign tier_type = tier.rate_type
+        
+        comment Store first currency and rate type found
+        endcomment
+        if first_currency == blank and tier_currency != blank
+          assign first_currency = tier_currency
+        endif
+        
+        if first_rate_type == blank and tier_type != blank
+          assign first_rate_type = tier_type
+        endif
+        
+        comment Track min and max rates
+        endcomment
+        if tier_amount != blank
+          if lowest_rate == nil or tier_amount < lowest_rate
+            assign lowest_rate = tier_amount
+          endif
+          
+          if highest_rate == nil or tier_amount > highest_rate
+            assign highest_rate = tier_amount
+          endif
+        endif
+      endfor
+      
+      comment Only set pricing if we found actual data
+      endcomment
+      if tier_count > 0 and lowest_rate != nil
+        assign wetu_has_pricing = true
+        assign wetu_min_rate = lowest_rate
+        assign wetu_max_rate = highest_rate
+        
+        if first_currency != blank
+          assign wetu_currency = first_currency
+        endif
+        
+        comment Set rate context based on rate type
+        endcomment
+        case first_rate_type
+          when 'per_person_sharing'
+            assign wetu_rate_context = 'per person per night'
+            assign wetu_occupancy_info = 'per person sharing'
+          when 'single'
+            assign wetu_rate_context = 'per person per night'
+            assign wetu_occupancy_info = 'single occupancy'
+          when 'room'
+            assign wetu_rate_context = 'per unit per night'
+            assign wetu_occupancy_info = 'per room'
+          when 'unit'
+            assign wetu_rate_context = 'per unit per night'
+            assign wetu_occupancy_info = 'per unit'
+          else
+            assign wetu_rate_context = 'per night'
+        endcase
+      endif
+    endif
+  -%}
+{%- endif -%}

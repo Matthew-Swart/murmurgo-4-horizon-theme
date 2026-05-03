@@ -1,0 +1,1609 @@
+{% comment %}
+  Wetu Itinerary Interactive Map Section
+  An immersive Mapbox-powered visualization of the itinerary journey
+  Features: Property markers, route lines (driving/flights), airport icons, mobile sidebar
+  Uses Horizon theme color schemes for consistent styling
+{% endcomment %}
+
+{% assign mapbox_token = '{{ MAPBOX_ACCESS_TOKEN }}' %}
+
+{%- comment -%} 
+  Access the itinerary metaobject through product metafield reference 
+  For metaobject_reference fields, use .value to get the referenced metaobject
+  For list.metaobject_reference fields on metaobjects, use .value to get the array
+{%- endcomment -%}
+{% assign itinerary_metaobject = product.metafields.wetu.itinerary_metaobject.value %}
+{% assign itinerary_identifier = product.metafields.wetu.itinerary_identifier %}
+{% assign itinerary_days = product.metafields.wetu.itinerary_days %}
+
+{%- comment -%} Access legs and routes through .value since they are list.metaobject_reference fields {%- endcomment -%}
+{% assign legs_array = itinerary_metaobject.legs.value %}
+{% assign routes_array = itinerary_metaobject.routes.value %}
+
+{%- comment -%} Map style configuration {%- endcomment -%}
+{% assign map_style = section.settings.map_style | default: 'outdoors-v12' %}
+
+<div class="section-background color-{{ section.settings.color_scheme }}"></div>
+<section class="itinerary-map-section color-{{ section.settings.color_scheme }}" id="itinerary-map-section" data-map-style="{{ map_style }}">
+  <!-- Map Container -->
+  <div class="itinerary-map-container">
+    <div id="itinerary-map" class="itinerary-map"></div>
+    
+    <!-- Map Controls Overlay -->
+    <div class="map-controls">
+      <button class="map-control-btn" id="map-fit-bounds" title="Fit all locations">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+        </svg>
+      </button>
+      <button class="map-control-btn" id="map-toggle-routes" title="Toggle routes">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+        </svg>
+      </button>
+    </div>
+    
+    <!-- Journey Timeline Sidebar -->
+    <div class="journey-sidebar" id="journey-sidebar">
+      <div class="sidebar-header">
+        <h3>Your Journey</h3>
+        <span class="journey-stats">{{ itinerary_days }} Days</span>
+        <button class="sidebar-toggle" id="sidebar-toggle">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 18l-6-6 6-6"/>
+          </svg>
+        </button>
+      </div>
+      <div class="sidebar-content" id="sidebar-content">
+        <!-- Populated by JavaScript -->
+      </div>
+    </div>
+    
+    <!-- Property Detail Panel (Mobile & Desktop) -->
+    <div class="property-panel" id="property-panel">
+      <button class="panel-close" id="panel-close">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+      <div class="panel-content" id="panel-content">
+        <!-- Populated by JavaScript when a marker is clicked -->
+      </div>
+    </div>
+    
+    <!-- Route Info Tooltip -->
+    <div class="route-tooltip" id="route-tooltip">
+      <div class="route-tooltip-content"></div>
+    </div>
+  </div>
+  
+  <!-- Map Legend -->
+  <div class="map-legend">
+    <div class="legend-item">
+      <span class="legend-marker accommodation"></span>
+      <span>Accommodation</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-marker airport"></span>
+      <span>Airport</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-line driving"></span>
+      <span>Self-Drive</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-line flight"></span>
+      <span>Flight</span>
+    </div>
+  </div>
+</section>
+
+{%- comment -%} Build JSON data from Liquid metaobjects {%- endcomment -%}
+<script type="application/json" id="itinerary-legs-data">
+{% if legs_array and legs_array.size > 0 %}
+[
+  {%- assign leg_output_count = 0 -%}
+  {%- assign itinerary_day = 1 -%}
+  {%- for leg in legs_array -%}
+    {%- assign leg_type = leg.type.value | default: "Standard" -%}
+    {%- assign leg_nights = leg.nights.value | default: 0 -%}
+    {%- if leg_type != "Departure" and leg_nights > 0 -%}
+      {%- if leg_output_count > 0 -%},{%- endif -%}
+    {
+      "leg_id": {{ leg.leg_id.value | json }},
+      "sequence": {{ leg.sequence.value | default: 0 | json }},
+      "name": {{ leg.accommodation_name.value | json }},
+      "content_entity_id": {{ leg.content_entity_id.value | json }},
+      "destination_id": {{ leg.destination_content_entity_id.value | json }},
+      "nights": {{ leg_nights }},
+      "type": {{ leg_type | json }},
+      "check_in": {{ leg.check_in_time.value | json }},
+      "check_out": {{ leg.check_out_time.value | json }},
+      "itinerary_start_day": {{ itinerary_day }},
+      "itinerary_end_day": {{ itinerary_day | plus: leg_nights | minus: 1 }},
+      "periods": [
+        {%- assign periods_array = leg.periods.value -%}
+        {%- assign period_day = itinerary_day -%}
+        {%- for period in periods_array -%}
+        {%- assign period_days = period.days.value | default: 1 -%}
+        {
+          "day_label": {{ period.day_label.value | json }},
+          "days": {{ period_days }},
+          "room_basis": {{ period.room_basis.value | json }},
+          "notes": {{ period.notes.value | json }},
+          "included": {{ period.included.value | json }},
+          "excluded": {{ period.excluded.value | json }},
+          "itinerary_day_start": {{ period_day }},
+          "itinerary_day_end": {{ period_day | plus: period_days | minus: 1 }},
+          "activities": [
+            {%- assign activities_array = period.activities.value -%}
+            {%- for activity in activities_array -%}
+            {
+              "name": {{ activity.name.value | json }},
+              "type": {{ activity.type.value | json }},
+              "description": {{ activity.description.value | json }},
+              "is_highlight": {{ activity.is_highlight.value | json }},
+              "time_slot": {{ activity.time_slot.value | json }},
+              "content_entity_id": {{ activity.content_entity_id.value | json }},
+              "source": "formal"
+            }{% unless forloop.last %},{% endunless %}
+            {%- endfor -%}
+          ]
+        }{% unless forloop.last %},{% endunless %}
+        {%- assign period_day = period_day | plus: period_days -%}
+        {%- endfor -%}
+      ]
+    }
+    {%- assign leg_output_count = leg_output_count | plus: 1 -%}
+    {%- assign itinerary_day = itinerary_day | plus: leg_nights -%}
+    {%- endif -%}
+  {%- endfor -%}
+]
+{% else %}
+[]
+{% endif %}
+</script>
+
+<script type="application/json" id="itinerary-routes-data">
+{% if routes_array and routes_array.size > 0 %}
+[
+  {%- for route in routes_array -%}
+  {
+    "label": {{ route.route_label.value | json }},
+    "mode": {{ route.mode.value | json }},
+    "type": {{ route.type.value | json }},
+    "start_location": {{ route.start_location.value | json }},
+    "end_location": {{ route.end_location.value | json }},
+    "start_entity_id": {{ route.start_content_entity_id.value | json }},
+    "end_entity_id": {{ route.end_content_entity_id.value | json }},
+    "start_leg_id": {{ route.start_leg_id.value | json }},
+    "end_leg_id": {{ route.end_leg_id.value | json }},
+    "start_day": {{ route.start_day.value | default: 0 }},
+    "end_day": {{ route.end_day.value | default: 0 }},
+    "duration": {{ route.duration.value | json }},
+    "distance": {{ route.distance.value | json }},
+    "directions": {{ route.directions.value | json }},
+    "points": {{ route.points.value | json }},
+    "agency": {{ route.agency.value | json }},
+    "vehicle": {{ route.vehicle.value | json }}
+  }{% unless forloop.last %},{% endunless %}
+  {%- endfor -%}
+]
+{% else %}
+[]
+{% endif %}
+</script>
+
+<!-- Mapbox GL JS -->
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+
+<style>
+/* ====================================
+   Map Section Layout - Uses Theme Color Scheme
+   ==================================== */
+
+.itinerary-map-section {
+  position: relative;
+  width: 100%;
+  background: var(--color-background);
+}
+
+.itinerary-map-container {
+  position: relative;
+  width: 100%;
+  height: 80vh;
+  min-height: 500px;
+  max-height: 900px;
+}
+
+.itinerary-map {
+  width: 100%;
+  height: 100%;
+}
+
+/* ====================================
+   Map Controls
+   ==================================== */
+
+.map-controls {
+  position: absolute;
+  bottom: 120px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 10;
+}
+
+.map-control-btn {
+  width: 40px;
+  height: 40px;
+  background: var(--color-background);
+  border: 1px solid var(--color-primary);
+  border-radius: 8px;
+  color: var(--color-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(8px);
+  opacity: 0.95;
+}
+
+.map-control-btn:hover {
+  background: var(--color-primary);
+  color: var(--color-background);
+  transform: scale(1.05);
+}
+
+.map-control-btn.active {
+  background: var(--color-primary);
+  color: var(--color-background);
+}
+
+/* ====================================
+   Journey Sidebar
+   ==================================== */
+
+.journey-sidebar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 320px;
+  height: 100%;
+  background: var(--color-background);
+  backdrop-filter: blur(12px);
+  border-right: 1px solid var(--color-border);
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s ease;
+  opacity: 0.98;
+}
+
+.journey-sidebar.collapsed {
+  transform: translateX(-280px);
+}
+
+.sidebar-header {
+  padding: 20px;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.sidebar-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--color-foreground);
+  font-weight: 500;
+  flex: 1;
+}
+
+.journey-stats {
+  font-size: 0.85rem;
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+  padding: 4px 10px;
+  border-radius: 12px;
+}
+
+.sidebar-toggle {
+  width: 36px;
+  height: 36px;
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.sidebar-toggle:hover {
+  background: color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+
+.journey-sidebar.collapsed .sidebar-toggle svg {
+  transform: rotate(180deg);
+}
+
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+/* Timeline Items */
+.timeline-item {
+  position: relative;
+  padding-left: 28px;
+  padding-bottom: 24px;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.timeline-item:hover {
+  opacity: 0.9;
+}
+
+.timeline-item:last-child {
+  padding-bottom: 0;
+}
+
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 24px;
+  bottom: 0;
+  width: 2px;
+  background: var(--color-border);
+}
+
+.timeline-item:last-child::before {
+  display: none;
+}
+
+.timeline-marker {
+  position: absolute;
+  left: 0;
+  top: 4px;
+  width: 18px;
+  height: 18px;
+  background: var(--color-primary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-background);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-primary) 40%, transparent);
+}
+
+.timeline-content {
+  background: color-mix(in srgb, var(--color-foreground) 3%, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 14px;
+  transition: all 0.2s ease;
+}
+
+.timeline-item:hover .timeline-content,
+.timeline-item.active .timeline-content {
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  border-color: var(--color-primary);
+}
+
+.timeline-item.active .timeline-marker {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 30%, transparent);
+}
+
+.timeline-days {
+  font-size: 0.7rem;
+  color: var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.timeline-name {
+  font-size: 0.95rem;
+  color: var(--color-foreground);
+  font-weight: 500;
+  margin-bottom: 4px;
+  line-height: 1.3;
+}
+
+.timeline-nights {
+  font-size: 0.8rem;
+  color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+}
+
+.timeline-activities-count {
+  color: var(--color-primary);
+  font-weight: 500;
+  margin-left: 4px;
+}
+
+/* ====================================
+   Property Panel
+   ==================================== */
+
+.property-panel {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--color-background);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid var(--color-border);
+  transform: translateY(100%);
+  transition: transform 0.3s ease;
+  z-index: 20;
+  max-height: 60%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.property-panel.open {
+  transform: translateY(0);
+}
+
+.panel-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
+  background: color-mix(in srgb, var(--color-foreground) 10%, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  color: var(--color-foreground);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  z-index: 5;
+}
+
+.panel-close:hover {
+  background: color-mix(in srgb, var(--color-foreground) 20%, transparent);
+}
+
+.panel-content {
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.panel-header {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.panel-image {
+  width: 120px;
+  height: 80px;
+  border-radius: 12px;
+  object-fit: cover;
+  background: color-mix(in srgb, var(--color-foreground) 10%, transparent);
+  flex-shrink: 0;
+}
+
+.panel-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.panel-title {
+  font-size: 1.25rem;
+  color: var(--color-foreground);
+  font-weight: 500;
+  margin: 0 0 8px;
+  line-height: 1.3;
+}
+
+.panel-subtitle {
+  font-size: 0.9rem;
+  color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+  margin: 0;
+}
+
+.panel-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.panel-detail {
+  background: color-mix(in srgb, var(--color-foreground) 5%, transparent);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.panel-detail-label {
+  font-size: 0.75rem;
+  color: var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.panel-detail-value {
+  font-size: 0.95rem;
+  color: var(--color-foreground);
+}
+
+.panel-activities {
+  border-top: 1px solid var(--color-border);
+  padding-top: 16px;
+}
+
+.panel-activities h4 {
+  font-size: 0.9rem;
+  color: var(--color-primary);
+  margin: 0 0 12px;
+  font-weight: 500;
+}
+
+.activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.activity-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: color-mix(in srgb, var(--color-foreground) 3%, transparent);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: color-mix(in srgb, var(--color-foreground) 80%, transparent);
+}
+
+.activity-icon {
+  width: 24px;
+  height: 24px;
+  background: color-mix(in srgb, var(--color-primary) 20%, transparent);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+/* ====================================
+   Activity Day Groups
+   ==================================== */
+
+.activity-list-by-day {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.activity-day-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.activity-day-label {
+  font-size: 0.75rem;
+  color: var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.activity-day-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.activity-item--text {
+  opacity: 0.85;
+}
+
+.activity-item--text .activity-icon {
+  background: color-mix(in srgb, var(--color-foreground) 10%, transparent);
+  color: var(--color-primary);
+}
+
+.activity-name {
+  flex: 1;
+}
+
+.activity-type {
+  font-size: 0.7rem;
+  color: color-mix(in srgb, var(--color-foreground) 50%, transparent);
+  background: color-mix(in srgb, var(--color-foreground) 5%, transparent);
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+/* ====================================
+   Map Markers
+   ==================================== */
+
+.mapbox-marker {
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.mapbox-marker:hover {
+  transform: scale(1.1);
+  z-index: 10 !important;
+}
+
+.marker-inner {
+  width: 36px;
+  height: 36px;
+  background: var(--color-background);
+  border: 3px solid var(--color-primary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-primary);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+}
+
+.marker-active .marker-inner {
+  background: var(--color-primary);
+  color: var(--color-background);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 30%, transparent), 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* ====================================
+   Airport Markers
+   ==================================== */
+
+.mapbox-airport-marker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.mapbox-airport-marker:hover {
+  transform: scale(1.1);
+  z-index: 5;
+}
+
+.airport-marker-inner {
+  width: 28px;
+  height: 28px;
+  background: linear-gradient(135deg, #4a9eff 0%, #1e5aaa 100%);
+  border: 2px solid #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.airport-label {
+  margin-top: 4px;
+  padding: 2px 6px;
+  background: var(--color-background);
+  border-radius: 4px;
+  font-size: 10px;
+  color: var(--color-foreground);
+  white-space: nowrap;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.9;
+}
+
+/* ====================================
+   Map Legend
+   ==================================== */
+
+.map-legend {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  padding: 16px;
+  background: var(--color-background);
+  border-top: 1px solid var(--color-border);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: color-mix(in srgb, var(--color-foreground) 70%, transparent);
+}
+
+.legend-marker {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+}
+
+.legend-marker.accommodation {
+  background: var(--color-background);
+  border: 2px solid var(--color-primary);
+}
+
+.legend-marker.airport {
+  background: linear-gradient(135deg, #4a9eff 0%, #1e5aaa 100%);
+  border: 2px solid #fff;
+}
+
+.legend-line {
+  width: 24px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.legend-line.driving {
+  background: linear-gradient(90deg, #4a9eff, #1e88e5);
+}
+
+.legend-line.flight {
+  background: var(--color-primary);
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--color-primary) 0px,
+    var(--color-primary) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+}
+
+/* ====================================
+   Mobile Responsive
+   ==================================== */
+
+@media (max-width: 768px) {
+  .itinerary-map-container {
+    height: 70vh;
+    min-height: 400px;
+  }
+  
+  .journey-sidebar {
+    width: 100%;
+    height: auto;
+    max-height: 50%;
+    top: auto;
+    bottom: 0;
+    border-right: none;
+    border-top: 1px solid var(--color-border);
+    transform: translateY(calc(100% - 60px));
+  }
+  
+  .journey-sidebar.expanded {
+    transform: translateY(0);
+  }
+  
+  .journey-sidebar.collapsed {
+    transform: translateY(calc(100% - 60px));
+  }
+  
+  .sidebar-toggle svg {
+    transform: rotate(-90deg);
+  }
+  
+  .journey-sidebar.expanded .sidebar-toggle svg {
+    transform: rotate(90deg);
+  }
+  
+  .map-controls {
+    bottom: 180px;
+  }
+  
+  .map-legend {
+    flex-wrap: wrap;
+    gap: 12px 20px;
+  }
+  
+  .property-panel {
+    max-height: 70%;
+  }
+  
+  .panel-header {
+    flex-direction: column;
+  }
+  
+  .panel-image {
+    width: 100%;
+    height: 160px;
+  }
+}
+</style>
+
+<script>
+(function() {
+  mapboxgl.accessToken = '{{ mapbox_token }}';
+
+  const itineraryIdentifier = '{{ itinerary_identifier }}';
+  const itineraryDays = parseInt('{{ itinerary_days }}') || 0;
+  
+  // Get map style from section settings
+  const mapSection = document.getElementById('itinerary-map-section');
+  const mapStyleId = mapSection?.dataset.mapStyle || 'outdoors-v12';
+  const mapStyle = `mapbox://styles/mapbox/${mapStyleId}`;
+
+  // Parse JSON data from Liquid
+  let legsData = [];
+  let routesData = [];
+  const contentData = {};
+  const markers = [];
+  const airportMarkers = [];
+  let routesVisible = true;
+
+  // DOM elements
+  const mapContainer = document.getElementById('itinerary-map');
+  const sidebar = document.getElementById('journey-sidebar');
+  const sidebarContent = document.getElementById('sidebar-content');
+  const sidebarToggle = document.getElementById('sidebar-toggle');
+  const propertyPanel = document.getElementById('property-panel');
+  const panelContent = document.getElementById('panel-content');
+  const panelClose = document.getElementById('panel-close');
+  const fitBoundsBtn = document.getElementById('map-fit-bounds');
+  const toggleRoutesBtn = document.getElementById('map-toggle-routes');
+
+  // Parse JSON data
+  try {
+    const legsEl = document.getElementById('itinerary-legs-data');
+    const routesEl = document.getElementById('itinerary-routes-data');
+    
+    if (legsEl) legsData = JSON.parse(legsEl.textContent) || [];
+    if (routesEl) routesData = JSON.parse(routesEl.textContent) || [];
+  } catch (e) {
+    console.error('Error parsing itinerary data:', e);
+  }
+  
+  // Filter out empty legs
+  legsData = legsData.filter(leg => leg && leg.name && leg.name !== 'Unknown');
+  
+  // Helper: Parse Wetu points string to coordinates array
+  function parseWetuPoints(pointsString) {
+    if (!pointsString) return [];
+    const coords = [];
+    const parts = pointsString.split(';');
+    for (let i = 0; i < parts.length - 1; i += 2) {
+      const lat = parseFloat(parts[i]);
+      const lng = parseFloat(parts[i + 1]);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        coords.push([lng, lat]);
+      }
+    }
+    return coords;
+  }
+
+  // Build content data from routes (extract coordinates)
+  routesData.forEach(route => {
+    if (route.points) {
+      const coords = parseWetuPoints(route.points);
+      if (coords.length >= 2) {
+        // Start location
+        if (route.start_entity_id) {
+          contentData[String(route.start_entity_id)] = {
+            name: route.start_location,
+            position: {
+              latitude: coords[0][1],
+              longitude: coords[0][0]
+            }
+          };
+        }
+        // End location
+        if (route.end_entity_id) {
+          contentData[String(route.end_entity_id)] = {
+            name: route.end_location,
+            position: {
+              latitude: coords[coords.length - 1][1],
+              longitude: coords[coords.length - 1][0]
+            }
+          };
+        }
+      }
+    }
+  });
+  
+  console.log('Loaded legs:', legsData.length, 'routes:', routesData.length, 'content:', Object.keys(contentData).length);
+  console.log('Map style:', mapStyleId);
+  
+  if (legsData.length === 0 && routesData.length === 0) {
+    console.warn('No itinerary data available for map');
+    return;
+  }
+  
+  // Initialize Map with selected style
+  const map = new mapboxgl.Map({
+    container: 'itinerary-map',
+    style: mapStyle,
+    center: [25, -25],
+    zoom: 4,
+    pitch: 0,
+    bearing: 0
+  });
+
+  // Extract activities from included text field
+  function extractIncludedActivities(includedText, existingActivityNames) {
+    if (!includedText) return [];
+    
+    const activities = [];
+    const existingNamesLower = new Set(existingActivityNames.map(n => n.toLowerCase().trim()));
+    
+    // Remove HTML/rich text JSON structure and extract plain text
+    let plainText = includedText;
+    if (typeof includedText === 'object' && includedText.children) {
+      // Handle Shopify rich text JSON format
+      plainText = extractTextFromRichText(includedText);
+    } else if (typeof includedText === 'string') {
+      // Try to parse if it's a JSON string
+      try {
+        const parsed = JSON.parse(includedText);
+        if (parsed.children) {
+          plainText = extractTextFromRichText(parsed);
+        }
+      } catch (e) {
+        // Not JSON, use as-is
+        plainText = includedText;
+      }
+    }
+    
+    // Split by common delimiters - sentence endings, line breaks, "and", bullet points
+    const items = plainText
+      .replace(/<[^>]*>/g, ' ') // Remove HTML tags
+      .split(/(?:\s*[•·\-\*]\s*|\s{2,}|(?<=[a-z])\s+(?=[A-Z]))/g) // Split on bullets, multiple spaces, or camelCase-like patterns
+      .map(item => item.trim())
+      .filter(item => item.length > 3 && item.length < 100);
+    
+    items.forEach(item => {
+      // Clean up and skip if already exists
+      const cleanName = item.replace(/^[\s\-•·\*]+|[\s\-•·\*]+$/g, '').trim();
+      if (cleanName && !existingNamesLower.has(cleanName.toLowerCase())) {
+        activities.push({
+          name: cleanName,
+          type: 'Included',
+          source: 'text',
+          is_highlight: false
+        });
+        existingNamesLower.add(cleanName.toLowerCase());
+      }
+    });
+    
+    return activities;
+  }
+  
+  // Extract plain text from Shopify rich text JSON
+  function extractTextFromRichText(node) {
+    if (!node) return '';
+    if (typeof node === 'string') return node;
+    if (node.value) return node.value;
+    if (node.children) {
+      return node.children.map(child => extractTextFromRichText(child)).join(' ');
+    }
+    return '';
+  }
+  
+  // Get all activities for a leg, including text-based ones, distributed by day
+  function getAllActivitiesForLeg(leg) {
+    const allActivities = [];
+    const activityNamesByDay = new Map(); // Track which activities are on which day
+    
+    if (!leg.periods) return { byDay: new Map(), all: [] };
+    
+    leg.periods.forEach(period => {
+      const periodDayStart = period.itinerary_day_start || leg.itinerary_start_day || 1;
+      const periodDays = period.days || 1;
+      
+      // Collect formal activities
+      const formalActivities = (period.activities || []).filter(a => a.name);
+      
+      // Collect activities from included text
+      const existingNames = formalActivities.map(a => a.name);
+      const textActivities = extractIncludedActivities(period.included, existingNames);
+      
+      // Combine all activities for this period
+      const periodActivities = [...formalActivities, ...textActivities];
+      
+      // Distribute activities across the days of this period (1 per day)
+      periodActivities.forEach((activity, idx) => {
+        const dayOffset = Math.min(idx, periodDays - 1);
+        const activityDay = periodDayStart + dayOffset;
+        
+        if (!activityNamesByDay.has(activityDay)) {
+          activityNamesByDay.set(activityDay, []);
+        }
+        
+        activityNamesByDay.get(activityDay).push({
+          ...activity,
+          assignedDay: activityDay,
+          dayLabel: `Day ${activityDay}`
+        });
+        
+        allActivities.push({
+          ...activity,
+          assignedDay: activityDay,
+          dayLabel: `Day ${activityDay}`
+        });
+      });
+    });
+    
+    return { byDay: activityNamesByDay, all: allActivities };
+  }
+
+  // Build sidebar timeline
+  function buildSidebar() {
+    let html = '';
+    legsData.forEach((leg, index) => {
+      const dayStart = leg.itinerary_start_day || 1;
+      const dayEnd = leg.itinerary_end_day || dayStart;
+      const dayRange = dayStart === dayEnd ? `Day ${dayStart}` : `Days ${dayStart}-${dayEnd}`;
+      
+      // Get activities for this leg
+      const { all: activities } = getAllActivitiesForLeg(leg);
+      const activityCount = activities.length;
+      
+      html += `
+        <div class="timeline-item" data-leg-index="${index}" data-entity-id="${leg.content_entity_id}">
+          <div class="timeline-marker">${index + 1}</div>
+          <div class="timeline-content">
+            <div class="timeline-days">${dayRange}</div>
+            <div class="timeline-name">${leg.name || 'Unknown'}</div>
+            <div class="timeline-nights">
+              ${leg.nights} Night${leg.nights !== 1 ? 's' : ''}
+              ${activityCount > 0 ? `<span class="timeline-activities-count">• ${activityCount} ${activityCount === 1 ? 'Activity' : 'Activities'}</span>` : ''}
+            </div>
+          </div>
+        </div>
+      `;
+    });
+    sidebarContent.innerHTML = html;
+
+    // Add click handlers
+    document.querySelectorAll('.timeline-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const index = parseInt(item.dataset.legIndex);
+        selectLeg(index);
+      });
+    });
+  }
+
+  // Select a leg
+  function selectLeg(index) {
+    // Update timeline
+    document.querySelectorAll('.timeline-item').forEach((item, i) => {
+      item.classList.toggle('active', i === index);
+    });
+
+    // Update marker
+    markers.forEach((m, i) => {
+      m.element.classList.toggle('marker-active', i === index);
+    });
+
+    // Fly to location
+    if (markers[index]) {
+      map.flyTo({
+        center: markers[index].coords,
+        zoom: 10,
+        duration: 1000
+      });
+    }
+
+    // Open property panel
+    const leg = legsData[index];
+    if (leg) {
+      openPropertyPanel(leg, index);
+    }
+  }
+
+  // Open property panel
+  function openPropertyPanel(leg, index) {
+    const { byDay: activitiesByDay, all: allActivities } = getAllActivitiesForLeg(leg);
+    
+    let activitiesHtml = '';
+    if (allActivities.length > 0) {
+      // Sort days and build HTML
+      const sortedDays = Array.from(activitiesByDay.keys()).sort((a, b) => a - b);
+      
+      let dayActivitiesHtml = '';
+      sortedDays.forEach(day => {
+        const dayActivities = activitiesByDay.get(day);
+        if (dayActivities && dayActivities.length > 0) {
+          dayActivitiesHtml += `
+            <div class="activity-day-group">
+              <div class="activity-day-label">Day ${day}</div>
+              <div class="activity-day-items">
+                ${dayActivities.map(act => `
+                  <div class="activity-item ${act.source === 'text' ? 'activity-item--text' : 'activity-item--formal'}">
+                    <span class="activity-icon">${act.source === 'text' ? '✦' : '🎯'}</span>
+                    <span class="activity-name">${act.name}</span>
+                    ${act.type && act.type !== 'Included' ? `<span class="activity-type">${act.type}</span>` : ''}
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        }
+      });
+      
+      activitiesHtml = `
+        <div class="panel-activities">
+          <h4>Activities & Experiences</h4>
+          <div class="activity-list-by-day">
+            ${dayActivitiesHtml}
+          </div>
+        </div>
+      `;
+    }
+
+    const dayStart = leg.itinerary_start_day || 1;
+    const dayEnd = leg.itinerary_end_day || dayStart;
+    const dayRange = dayStart === dayEnd ? `Day ${dayStart}` : `Days ${dayStart} - ${dayEnd}`;
+
+    panelContent.innerHTML = `
+      <div class="panel-header">
+        <div class="panel-info">
+          <h3 class="panel-title">${leg.name || 'Unknown'}</h3>
+          <p class="panel-subtitle">${dayRange}</p>
+        </div>
+      </div>
+      <div class="panel-details">
+        <div class="panel-detail">
+          <div class="panel-detail-label">Duration</div>
+          <div class="panel-detail-value">${leg.nights} Night${leg.nights !== 1 ? 's' : ''}</div>
+        </div>
+        <div class="panel-detail">
+          <div class="panel-detail-label">Check-in</div>
+          <div class="panel-detail-value">${leg.check_in || '14:00'}</div>
+        </div>
+        <div class="panel-detail">
+          <div class="panel-detail-label">Check-out</div>
+          <div class="panel-detail-value">${leg.check_out || '10:00'}</div>
+        </div>
+        ${leg.periods?.[0]?.room_basis ? `
+        <div class="panel-detail">
+          <div class="panel-detail-label">Meal Plan</div>
+          <div class="panel-detail-value">${leg.periods[0].room_basis}</div>
+        </div>
+        ` : ''}
+      </div>
+      ${activitiesHtml}
+    `;
+    propertyPanel.classList.add('open');
+  }
+
+  // Add accommodation markers
+  function addMarkers() {
+    const bounds = new mapboxgl.LngLatBounds();
+    let hasValidBounds = false;
+
+    legsData.forEach((leg, index) => {
+      const entityId = String(leg.content_entity_id);
+      const content = contentData[entityId];
+      
+      if (!content || !content.position) {
+        console.log(`No position for leg ${index}:`, leg.name, 'entity:', entityId);
+        return;
+      }
+      
+      const lng = parseFloat(content.position.longitude);
+      const lat = parseFloat(content.position.latitude);
+      
+      if (isNaN(lng) || isNaN(lat)) return;
+      
+      // Create marker element
+      const el = document.createElement('div');
+      el.className = 'mapbox-marker';
+      el.innerHTML = `<div class="marker-inner">${index + 1}</div>`;
+      
+      // Add click handler
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        selectLeg(index);
+      });
+      
+      // Create and add marker
+      const marker = new mapboxgl.Marker(el)
+        .setLngLat([lng, lat])
+        .addTo(map);
+      
+      // Extend bounds
+      bounds.extend([lng, lat]);
+      hasValidBounds = true;
+      
+      // Store marker reference
+      markers.push({
+        marker,
+        element: el,
+        entityId: String(leg.content_entity_id),
+        legId: String(leg.leg_id),
+        sequence: leg.sequence,
+        name: leg.name,
+        coords: [lng, lat]
+      });
+    });
+
+    // Fit bounds
+    if (hasValidBounds) {
+      map.fitBounds(bounds, {
+        padding: { top: 100, bottom: 100, left: 350, right: 50 },
+        maxZoom: 10,
+        duration: 1000
+      });
+    }
+  }
+  
+  // Add airport markers from flight routes
+  function addAirportMarkers() {
+    const airportEntityIds = new Set();
+    
+    // Collect unique airport entity IDs from flight routes
+    routesData.forEach(route => {
+      const isFlight = route.mode === 'ScheduledFlight' || route.mode === 'CharterFlight' || 
+                       route.mode === 'Flight' || (route.mode && route.mode.toLowerCase().includes('flight'));
+      if (isFlight) {
+        if (route.start_entity_id) airportEntityIds.add(String(route.start_entity_id));
+        if (route.end_entity_id) airportEntityIds.add(String(route.end_entity_id));
+      }
+    });
+    
+    console.log('Airport entity IDs found:', Array.from(airportEntityIds));
+    
+    // Create airport markers
+    airportEntityIds.forEach(entityId => {
+      const content = contentData[entityId];
+      if (!content || !content.position) {
+        console.log('No position data for airport:', entityId);
+        return;
+      }
+      
+      const lng = parseFloat(content.position.longitude);
+      const lat = parseFloat(content.position.latitude);
+      
+      if (isNaN(lng) || isNaN(lat)) return;
+      
+      // Create airport marker element
+      const el = document.createElement('div');
+      el.className = 'mapbox-airport-marker';
+      el.innerHTML = `
+        <div class="airport-marker-inner">✈</div>
+        <div class="airport-label">${content.name || 'Airport'}</div>
+      `;
+      
+      // Create and add marker
+      const marker = new mapboxgl.Marker(el)
+        .setLngLat([lng, lat])
+        .addTo(map);
+      
+      airportMarkers.push({
+        marker,
+        element: el,
+        entityId,
+        name: content.name,
+        coords: [lng, lat]
+      });
+      
+      console.log('Added airport marker:', content.name, 'at', [lng, lat]);
+    });
+  }
+
+  // Create flight arc between two points
+  function createFlightArc(start, end, numPoints = 50) {
+    const coordinates = [];
+    const maxAltitude = 0.15; // Arc height factor
+    
+    for (let i = 0; i <= numPoints; i++) {
+      const t = i / numPoints;
+      
+      // Linear interpolation
+      const lng = start[0] + (end[0] - start[0]) * t;
+      const lat = start[1] + (end[1] - start[1]) * t;
+      
+      // Add arc (parabolic curve in lat)
+      const arc = Math.sin(t * Math.PI) * maxAltitude;
+      const distance = Math.sqrt(Math.pow(end[0] - start[0], 2) + Math.pow(end[1] - start[1], 2));
+      const adjustedArc = arc * distance;
+      
+      coordinates.push([lng, lat + adjustedArc]);
+    }
+    
+    return coordinates;
+  }
+
+  // Convert any CSS color to hex format for Mapbox
+  function cssColorToHex(cssColor) {
+    if (!cssColor || cssColor === 'transparent') return '#4a9eff';
+    
+    // If already hex, return as-is
+    if (cssColor.startsWith('#')) return cssColor;
+    
+    // Create a temporary element to compute the color
+    const temp = document.createElement('div');
+    temp.style.color = cssColor;
+    document.body.appendChild(temp);
+    const computed = getComputedStyle(temp).color;
+    document.body.removeChild(temp);
+    
+    // Parse rgb/rgba values
+    const match = computed.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    if (match) {
+      const r = parseInt(match[1]).toString(16).padStart(2, '0');
+      const g = parseInt(match[2]).toString(16).padStart(2, '0');
+      const b = parseInt(match[3]).toString(16).padStart(2, '0');
+      return `#${r}${g}${b}`;
+    }
+    
+    return '#4a9eff'; // Default fallback
+  }
+  
+  // Get computed primary color from CSS as hex
+  function getPrimaryColor() {
+    const section = document.querySelector('.itinerary-map-section');
+    if (section) {
+      const style = getComputedStyle(section);
+      const colorValue = style.getPropertyValue('--color-primary').trim();
+      return cssColorToHex(colorValue);
+    }
+    return '#4a9eff';
+  }
+
+  // Add route lines to map
+  function addRoutes() {
+    const primaryColor = getPrimaryColor();
+    
+    routesData.forEach((route, index) => {
+      // Parse points
+      let coordinates = parseWetuPoints(route.points);
+      
+      const isFlight = route.mode === 'ScheduledFlight' || route.mode === 'CharterFlight' || 
+                       route.mode === 'Flight' || (route.mode && route.mode.toLowerCase().includes('flight'));
+      
+      // If no points or it's a flight, handle specially
+      if (coordinates.length < 2 || isFlight) {
+        let startCoords = null;
+        let endCoords = null;
+        
+        // For flights, use airport entity IDs from contentData
+        if (isFlight) {
+          console.log(`Processing flight route ${index}:`, route.label);
+          console.log('  Start entity:', route.start_entity_id, '→', contentData[String(route.start_entity_id)]?.name);
+          console.log('  End entity:', route.end_entity_id, '→', contentData[String(route.end_entity_id)]?.name);
+          
+          // Get airport coordinates from contentData
+          const startAirport = contentData[String(route.start_entity_id)];
+          const endAirport = contentData[String(route.end_entity_id)];
+          
+          if (startAirport?.position) {
+            startCoords = [
+              parseFloat(startAirport.position.longitude),
+              parseFloat(startAirport.position.latitude)
+            ];
+          }
+          if (endAirport?.position) {
+            endCoords = [
+              parseFloat(endAirport.position.longitude),
+              parseFloat(endAirport.position.latitude)
+            ];
+          }
+          
+          console.log('  Using airport coords:', startCoords, '→', endCoords);
+        } else {
+          // For non-flights without points, try to find markers
+          const startMarker = markers.find(m => String(m.entityId) === String(route.start_entity_id));
+          const endMarker = markers.find(m => String(m.entityId) === String(route.end_entity_id));
+          
+          if (startMarker) startCoords = startMarker.coords;
+          if (endMarker) endCoords = endMarker.coords;
+        }
+        
+        if (startCoords && endCoords) {
+          if (isFlight) {
+            coordinates = createFlightArc(startCoords, endCoords);
+            console.log('  Created flight arc with', coordinates.length, 'points');
+          } else {
+            coordinates = [startCoords, endCoords];
+          }
+        } else {
+          console.log(`Skipping route ${index} - missing coordinates:`, route.label);
+          return;
+        }
+      }
+      
+      if (coordinates.length < 2) {
+        console.log(`Skipping route ${index} - not enough points:`, route.label);
+        return;
+      }
+
+      const sourceId = `route-${index}`;
+      const layerId = `route-layer-${index}`;
+
+      // Determine route style
+      let lineColor = '#4a9eff';
+      let lineWidth = 3;
+      let dashArray = null;
+
+      if (isFlight) {
+        lineColor = primaryColor;
+        dashArray = [4, 4];
+        lineWidth = 2;
+        console.log(`Adding flight route ${index}:`, route.label);
+      } else if (route.mode === 'Transfer') {
+        lineColor = '#9c27b0';
+        dashArray = [2, 2];
+      }
+
+      // Add source
+      map.addSource(sourceId, {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          properties: {
+            label: route.label,
+            mode: route.mode,
+            duration: route.duration,
+            distance: route.distance
+          },
+          geometry: {
+            type: 'LineString',
+            coordinates: coordinates
+          }
+        }
+      });
+
+      // Add layer
+      const layerConfig = {
+        id: layerId,
+        type: 'line',
+        source: sourceId,
+        layout: {
+          'line-join': 'round',
+          'line-cap': 'round'
+        },
+        paint: {
+          'line-color': lineColor,
+          'line-width': lineWidth,
+          'line-opacity': 0.8
+        }
+      };
+
+      if (dashArray) {
+        layerConfig.paint['line-dasharray'] = dashArray;
+      }
+
+      map.addLayer(layerConfig);
+    });
+  }
+
+  // Sidebar toggle
+  sidebarToggle?.addEventListener('click', () => {
+    sidebar.classList.toggle('collapsed');
+    sidebar.classList.toggle('expanded');
+  });
+
+  // Panel close
+  panelClose?.addEventListener('click', () => {
+    propertyPanel.classList.remove('open');
+    markers.forEach(m => m.element.classList.remove('marker-active'));
+    document.querySelectorAll('.timeline-item').forEach(item => item.classList.remove('active'));
+  });
+
+  // Fit bounds button
+  fitBoundsBtn?.addEventListener('click', () => {
+    if (markers.length > 0) {
+      const bounds = new mapboxgl.LngLatBounds();
+      markers.forEach(m => bounds.extend(m.coords));
+      map.fitBounds(bounds, {
+        padding: { top: 100, bottom: 100, left: 350, right: 50 },
+        maxZoom: 10,
+        duration: 1000
+      });
+    }
+  });
+
+  // Toggle routes button
+  toggleRoutesBtn?.addEventListener('click', () => {
+    routesVisible = !routesVisible;
+    toggleRoutesBtn.classList.toggle('active', !routesVisible);
+    
+    routesData.forEach((_, index) => {
+      const layerId = `route-layer-${index}`;
+      if (map.getLayer(layerId)) {
+        map.setLayoutProperty(layerId, 'visibility', routesVisible ? 'visible' : 'none');
+      }
+    });
+  });
+
+  // Initialize map
+  map.on('load', () => {
+    // Add navigation controls
+    map.addControl(new mapboxgl.NavigationControl({ showCompass: true }), 'top-right');
+    
+    // Build UI
+    buildSidebar();
+    addAirportMarkers();
+    addMarkers();
+    addRoutes();
+  });
+})();
+</script>
+
+{% schema %}
+{
+  "name": "Itinerary Map",
+  "tag": "section",
+  "class": "section-wetu-itinerary-map",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "select",
+      "id": "map_style",
+      "label": "Map style",
+      "options": [
+        {
+          "value": "outdoors-v12",
+          "label": "Outdoors"
+        },
+        {
+          "value": "satellite-streets-v12",
+          "label": "Satellite with Streets"
+        },
+        {
+          "value": "satellite-v9",
+          "label": "Satellite"
+        },
+        {
+          "value": "streets-v12",
+          "label": "Streets"
+        },
+        {
+          "value": "light-v11",
+          "label": "Light"
+        },
+        {
+          "value": "dark-v11",
+          "label": "Dark"
+        },
+        {
+          "value": "navigation-day-v1",
+          "label": "Navigation Day"
+        },
+        {
+          "value": "navigation-night-v1",
+          "label": "Navigation Night"
+        }
+      ],
+      "default": "outdoors-v12"
+    }
+  ],
+  "presets": [{ "name": "Itinerary Map" }]
+}
+{% endschema %}

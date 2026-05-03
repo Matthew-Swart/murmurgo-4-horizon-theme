@@ -1,0 +1,961 @@
+{% comment %}
+  ============================================================================
+  WETU ITINERARY NEW BOOKING
+  ============================================================================
+  
+  Booking section with:
+  - What's Included / Not Included
+  - Tour operator info
+  - Trust badges
+  - Dynamic price calculator
+  - Book Now CTA
+  
+  ============================================================================
+{% endcomment %}
+
+{% include 'wetu-itinerary-data' %}
+
+{%- liquid
+  assign pricing_includes = wetu_itinerary.pricing_includes.value
+  assign pricing_excludes = wetu_itinerary.pricing_excludes.value
+  
+  # Get contacts
+  assign contacts = wetu_itinerary.contacts.value
+  assign operator_name = ''
+  assign operator_email = ''
+  assign operator_phone = ''
+  assign contact_name = ''
+  
+  if contacts != blank
+    for contact in contacts
+      if operator_name == blank
+        assign operator_name = contact.company.value | default: contact.name.value
+        assign operator_email = contact.email.value
+        assign operator_phone = contact.phone.value
+        assign contact_name = contact.name.value
+      endif
+    endfor
+  endif
+  
+  assign selected_variant = product.selected_or_first_available_variant
+  assign base_price = selected_variant.price
+
+  assign scheduled_departures = wetu_itinerary.scheduled_departures.value | default: wetu_itinerary.scheduled_departures
+  assign has_scheduled_departures = false
+  if scheduled_departures != blank and scheduled_departures.size > 0
+    assign has_scheduled_departures = true
+  endif
+
+  assign scheduled_departure = nil
+  if has_scheduled_departures
+    assign scheduled_departure = scheduled_departures | first
+  endif
+
+  assign scheduled_price_type = ''
+  assign scheduled_price_mode = ''
+  if scheduled_departure
+    assign scheduled_price_type = scheduled_departure.price_type.value | default: scheduled_departure.price_type | default: ''
+    assign scheduled_price_mode = scheduled_departure.price_mode.value | default: scheduled_departure.price_mode | default: ''
+  endif
+
+  assign effective_price_type = 'per_person_sharing'
+  if section.settings.use_scheduled_departure_pricing and scheduled_price_type != blank
+    assign normalized_price_type = scheduled_price_type | downcase
+    if normalized_price_type contains 'pergroup' or normalized_price_type contains 'per group'
+      assign effective_price_type = 'per_group'
+    elsif normalized_price_type contains 'perpersonsharing' or normalized_price_type contains 'per person'
+      assign effective_price_type = 'per_person_sharing'
+    endif
+  elsif section.settings.fallback_price_type == 'per_group'
+    assign effective_price_type = 'per_group'
+  endif
+
+  assign is_per_group_pricing = false
+  if effective_price_type == 'per_group'
+    assign is_per_group_pricing = true
+  endif
+
+  assign price_mode_label = 'From'
+  if section.settings.use_scheduled_departure_pricing and scheduled_price_mode != blank
+    assign price_mode_label = scheduled_price_mode
+  endif
+
+  assign price_unit_label = 'per person sharing'
+  assign seasonal_unit_label = 'pp sharing'
+  assign confirmation_note = 'Prices per person sharing. Instant confirmation.'
+  assign default_guest_count = 2
+  assign default_total_price = base_price | times: 2
+  if is_per_group_pricing
+    assign price_unit_label = 'per group'
+    assign seasonal_unit_label = 'per group'
+    assign confirmation_note = 'Prices are quoted per group. Instant confirmation.'
+    assign default_guest_count = 1
+    assign default_total_price = base_price
+  endif
+
+  assign formatted_price = base_price | money_without_trailing_zeros
+  assign formatted_default_total = default_total_price | money_without_trailing_zeros
+-%}
+
+<section 
+  class="itin-new-booking color-{{ section.settings.color_scheme }}" 
+  id="booking"
+  aria-labelledby="booking-heading"
+>
+  <div class="page-width">
+    {% comment %} Header {% endcomment %}
+    <header class="itin-new-booking__header">
+      <h2 id="booking-heading" class="itin-new-booking__title">{{ section.settings.heading }}</h2>
+      {% if section.settings.subheading != blank %}
+        <p class="itin-new-booking__subtitle">{{ section.settings.subheading }}</p>
+      {% endif %}
+    </header>
+    
+    <div class="itin-new-booking__grid">
+      {% comment %} Left Column - Info {% endcomment %}
+      <div class="itin-new-booking__info">
+        
+        {% comment %} Seasonal Pricing Teaser {% endcomment %}
+        <div class="itin-new-booking__seasonal">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          <h3 class="itin-new-booking__seasonal-title">Seasonal Pricing</h3>
+          <p class="itin-new-booking__seasonal-note">{{ price_mode_label }} {{ formatted_price }} {{ seasonal_unit_label }}</p>
+        </div>
+        
+        <div class="itin-new-booking__lists">
+          {% comment %} Included {% endcomment %}
+          {% if section.settings.show_includes and pricing_includes != blank %}
+            <div class="itin-new-booking__list-section">
+              <h3 class="itin-new-booking__list-title">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                What's Included
+              </h3>
+              <ul class="itin-new-booking__list itin-new-booking__list--included">
+                {% assign includes_lines = pricing_includes | strip_html | split: '
+' %}
+                {% for line in includes_lines %}
+                  {% assign clean_line = line | strip %}
+                  {% if clean_line != blank %}
+                    <li>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                      {{ clean_line }}
+                    </li>
+                  {% endif %}
+                {% endfor %}
+              </ul>
+            </div>
+          {% endif %}
+          
+          {% comment %} Excluded {% endcomment %}
+          {% if section.settings.show_excludes and pricing_excludes != blank %}
+            <div class="itin-new-booking__list-section">
+              <h3 class="itin-new-booking__list-title">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+                Not Included
+              </h3>
+              <ul class="itin-new-booking__list itin-new-booking__list--excluded">
+                {% assign excludes_lines = pricing_excludes | strip_html | split: '
+' %}
+                {% for line in excludes_lines %}
+                  {% assign clean_line = line | strip %}
+                  {% if clean_line != blank %}
+                    <li>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                      </svg>
+                      {{ clean_line }}
+                    </li>
+                  {% endif %}
+                {% endfor %}
+              </ul>
+            </div>
+          {% endif %}
+        </div>
+        
+        {% comment %} Tour Operator {% endcomment %}
+        {% if section.settings.show_operator and operator_name != blank %}
+          <div class="itin-new-booking__operator">
+            <h3 class="itin-new-booking__list-title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+              Tour Operator
+            </h3>
+            <div class="itin-new-booking__operator-card">
+              <h4 class="itin-new-booking__operator-name">{{ operator_name }}</h4>
+              {% if contact_name != blank and contact_name != operator_name %}
+                <div class="itin-new-booking__operator-contact">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                    <circle cx="12" cy="7" r="4"/>
+                  </svg>
+                  {{ contact_name }}
+                </div>
+              {% endif %}
+              {% if operator_email != blank %}
+                <div class="itin-new-booking__operator-contact">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                    <polyline points="22,6 12,13 2,6"/>
+                  </svg>
+                  <a href="mailto:{{ operator_email }}">{{ operator_email }}</a>
+                </div>
+              {% endif %}
+              {% if operator_phone != blank %}
+                <div class="itin-new-booking__operator-contact">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                  </svg>
+                  <a href="tel:{{ operator_phone | replace: ' ', '' }}">{{ operator_phone }}</a>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        {% endif %}
+        
+        {% comment %} Trust Badges {% endcomment %}
+        {% if section.settings.show_trust_badges %}
+          <div class="itin-new-booking__trust">
+            <div class="itin-new-booking__trust-badge">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+              <span>Secure Payment</span>
+            </div>
+            <div class="itin-new-booking__trust-badge">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              <span>Instant Confirmation</span>
+            </div>
+            <div class="itin-new-booking__trust-badge">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+              </svg>
+              <span>24/7 Support</span>
+            </div>
+          </div>
+        {% endif %}
+        
+      </div>
+      
+      {% comment %} Right Column - Calculator {% endcomment %}
+      <div class="itin-new-booking__calc-wrapper">
+        <div
+          class="itin-new-booking__calc"
+          data-booking-calc
+          data-itinerary-booking-widget
+          data-base-price="{{ base_price }}"
+          data-price-type="{{ effective_price_type }}"
+          data-default-guests="{{ default_guest_count }}"
+          data-product-variants='{{ product.variants | json | escape }}'
+          data-selected-variant-id="{{ selected_variant.id }}"
+          data-currency="{{ shop.currency }}"
+          data-locale="{{ request.locale.iso_code | default: 'en-US' }}"
+        >
+          {% comment %} Price Display {% endcomment %}
+          <div class="itin-new-booking__price-section">
+            <div class="itin-new-booking__price-main">
+              <span class="itin-new-booking__price-label">{{ price_mode_label }}</span>
+              <span class="itin-new-booking__price-value">{{ formatted_price }}</span>
+              <span class="itin-new-booking__price-per">{{ price_unit_label }}</span>
+            </div>
+            <div class="itin-new-booking__price-total">
+              <span class="itin-new-booking__total-value" data-calc-total>{{ formatted_default_total }}</span>
+              {% if is_per_group_pricing %}
+                <span class="itin-new-booking__total-label">total per group</span>
+              {% else %}
+                <span class="itin-new-booking__total-label">total for <span data-calc-guest-count>{{ default_guest_count }}</span> guests</span>
+              {% endif %}
+            </div>
+          </div>
+
+          {% comment %} Guest Selector {% endcomment %}
+          {% unless is_per_group_pricing %}
+            <div class="itin-new-booking__guests">
+              <div class="itin-new-booking__guests-label">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+                <span>Guests</span>
+              </div>
+              <div class="itin-new-booking__guests-controls">
+                <button type="button" class="itin-new-booking__guest-btn" data-calc-decrease aria-label="Decrease guests">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                </button>
+                <input type="number" class="itin-new-booking__guest-input" value="{{ default_guest_count }}" min="1" max="20" data-calc-input aria-label="Number of guests">
+                <button type="button" class="itin-new-booking__guest-btn" data-calc-increase aria-label="Increase guests">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          {% endunless %}
+          
+          {% comment %} Book Now {% endcomment %}
+          <button type="button" class="itin-new-booking__book-btn" data-add-to-cart>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="9" cy="21" r="1"/>
+              <circle cx="20" cy="21" r="1"/>
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+            </svg>
+            <span>Book Now</span>
+          </button>
+          
+          {% comment %} Customize Link {% endcomment %}
+          <a href="#enquiry" class="itin-new-booking__customize-link">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+            Customize This Trip
+          </a>
+          
+          {% comment %} Note {% endcomment %}
+          <p class="itin-new-booking__note">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            {{ confirmation_note }}
+          </p>
+          
+          {% comment %} Contact Experts {% endcomment %}
+          <div class="itin-new-booking__contact-cta">
+            <p>Have questions or need a custom itinerary?</p>
+            <a href="{{ section.settings.contact_page | default: '/pages/contact' }}" class="itin-new-booking__contact-link">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+              Contact Our Travel Experts
+            </a>
+          </div>
+          
+        </div>
+      </div>
+      
+    </div>
+  </div>
+</section>
+
+<style>
+/* ============================================
+   BOOKING STYLES
+   ============================================ */
+
+.itin-new-booking {
+  padding: 60px 0;
+}
+
+.itin-new-booking__header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.itin-new-booking__title {
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-weight: 700;
+  margin: 0 0 12px;
+}
+
+.itin-new-booking__subtitle {
+  font-size: 1rem;
+  color: rgba(var(--color-foreground), 0.7);
+  margin: 0;
+}
+
+.itin-new-booking__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 40px;
+}
+
+@media (min-width: 1024px) {
+  .itin-new-booking__grid {
+    grid-template-columns: 1fr 400px;
+    gap: 60px;
+  }
+}
+
+/* Info Column */
+.itin-new-booking__seasonal {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+  background: rgba(var(--color-foreground), 0.03);
+  border-radius: 12px;
+  margin-bottom: 32px;
+}
+
+.itin-new-booking__seasonal-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.itin-new-booking__seasonal-note {
+  font-size: 0.875rem;
+  color: var(--color-primary, #d4a574);
+  margin: 0 0 0 auto;
+  font-weight: 600;
+}
+
+.itin-new-booking__lists {
+  display: grid;
+  gap: 32px;
+  margin-bottom: 32px;
+}
+
+@media (min-width: 600px) {
+  .itin-new-booking__lists {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.itin-new-booking__list-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 16px;
+}
+
+.itin-new-booking__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.itin-new-booking__list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 0;
+  font-size: 0.9375rem;
+  color: rgba(var(--color-foreground), 0.8);
+}
+
+.itin-new-booking__list li svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+.itin-new-booking__list--included li svg {
+  color: #22c55e;
+}
+
+.itin-new-booking__list--excluded li svg {
+  color: #ef4444;
+}
+
+/* Operator */
+.itin-new-booking__operator {
+  margin-bottom: 32px;
+}
+
+.itin-new-booking__operator-card {
+  padding: 20px;
+  background: rgba(var(--color-foreground), 0.03);
+  border-radius: 12px;
+}
+
+.itin-new-booking__operator-name {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0 0 12px;
+}
+
+.itin-new-booking__operator-contact {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  color: rgba(var(--color-foreground), 0.7);
+  margin-top: 8px;
+}
+
+.itin-new-booking__operator-contact a {
+  color: var(--color-primary, #d4a574);
+  text-decoration: none;
+}
+
+.itin-new-booking__operator-contact a:hover {
+  text-decoration: underline;
+}
+
+/* Trust */
+.itin-new-booking__trust {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.itin-new-booking__trust-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8125rem;
+  color: rgba(var(--color-foreground), 0.7);
+}
+
+/* Calculator */
+.itin-new-booking__calc-wrapper {
+  position: relative;
+}
+
+@media (min-width: 1024px) {
+  .itin-new-booking__calc {
+    position: sticky;
+    top: calc(var(--header-height, 60px) + 80px);
+  }
+}
+
+.itin-new-booking__calc {
+  padding: 28px;
+  background: rgba(var(--color-foreground), 0.03);
+  border: 1px solid rgba(var(--color-foreground), 0.08);
+  border-radius: 16px;
+}
+
+.itin-new-booking__price-section {
+  margin-bottom: 24px;
+}
+
+.itin-new-booking__price-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.itin-new-booking__price-label {
+  font-size: 0.875rem;
+  color: rgba(var(--color-foreground), 0.6);
+}
+
+.itin-new-booking__price-value {
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.itin-new-booking__price-per {
+  font-size: 0.8125rem;
+  color: rgba(var(--color-foreground), 0.5);
+}
+
+.itin-new-booking__price-total {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 12px 16px;
+  background: rgba(var(--color-foreground), 0.03);
+  border-radius: 8px;
+}
+
+.itin-new-booking__total-value {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-primary, #d4a574);
+}
+
+.itin-new-booking__total-label {
+  font-size: 0.8125rem;
+  color: rgba(var(--color-foreground), 0.6);
+}
+
+/* Guests */
+.itin-new-booking__guests {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+  border-top: 1px solid rgba(var(--color-foreground), 0.1);
+  border-bottom: 1px solid rgba(var(--color-foreground), 0.1);
+  margin-bottom: 24px;
+}
+
+.itin-new-booking__guests-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+
+.itin-new-booking__guests-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.itin-new-booking__guest-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: rgba(var(--color-foreground), 0.05);
+  border: 1px solid rgba(var(--color-foreground), 0.1);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.itin-new-booking__guest-btn:hover {
+  background: rgba(var(--color-foreground), 0.1);
+}
+
+.itin-new-booking__guest-input {
+  width: 50px;
+  padding: 8px;
+  font-size: 1.125rem;
+  font-weight: 600;
+  text-align: center;
+  background: transparent;
+  border: none;
+  -moz-appearance: textfield;
+}
+
+.itin-new-booking__guest-input::-webkit-outer-spin-button,
+.itin-new-booking__guest-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+}
+
+/* Book Button */
+.itin-new-booking__book-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 18px 24px;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: var(--color-background, #fff);
+  background: var(--color-primary, #d4a574);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.itin-new-booking__book-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+}
+
+.itin-new-booking__customize-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px;
+  margin-top: 12px;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: rgba(var(--color-foreground), 0.8);
+  background: transparent;
+  border: 1px solid rgba(var(--color-foreground), 0.15);
+  border-radius: 10px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.itin-new-booking__customize-link:hover {
+  background: rgba(var(--color-foreground), 0.03);
+  border-color: rgba(var(--color-foreground), 0.25);
+}
+
+.itin-new-booking__note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 16px 0 0;
+  font-size: 0.75rem;
+  color: rgba(var(--color-foreground), 0.5);
+}
+
+.itin-new-booking__contact-cta {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(var(--color-foreground), 0.1);
+  text-align: center;
+}
+
+.itin-new-booking__contact-cta p {
+  font-size: 0.875rem;
+  color: rgba(var(--color-foreground), 0.6);
+  margin: 0 0 12px;
+}
+
+.itin-new-booking__contact-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--color-primary, #d4a574);
+  text-decoration: none;
+}
+
+.itin-new-booking__contact-link:hover {
+  text-decoration: underline;
+}
+</style>
+
+<script>
+(function() {
+  'use strict';
+  
+  function initBookingCalc() {
+    var section = document.querySelector('.itin-new-booking');
+    if (!section) return;
+    
+    var calc = section.querySelector('[data-booking-calc]');
+    if (!calc) return;
+
+    var priceType = (calc.dataset.priceType || 'per_person_sharing').toLowerCase();
+    var isPerGroup = priceType === 'per_group';
+    var defaultGuests = parseInt(calc.dataset.defaultGuests, 10) || (isPerGroup ? 1 : 2);
+
+    if (!isPerGroup && window.wetuItineraryBooking && typeof window.wetuItineraryBooking.initWidget === 'function') {
+      window.wetuItineraryBooking.initWidget({
+        root: section,
+        widgetSelector: '[data-itinerary-booking-widget]',
+        guestInputSelector: '[data-calc-input]',
+        decreaseSelector: '[data-calc-decrease]',
+        increaseSelector: '[data-calc-increase]',
+        priceValueSelector: '.itin-new-booking__price-value',
+        totalValueSelector: '[data-calc-total]',
+        guestCountSelector: '[data-calc-guest-count]',
+        priceTotalSelector: '.itin-new-booking__price-total',
+        bookButtonSelector: '[data-add-to-cart]'
+      });
+      return;
+    }
+
+    var basePrice = parseInt(calc.dataset.basePrice, 10) || 0;
+    var input = calc.querySelector('[data-calc-input]');
+    var totalEl = calc.querySelector('[data-calc-total]');
+    var countEl = calc.querySelector('[data-calc-guest-count]');
+    var decrease = calc.querySelector('[data-calc-decrease]');
+    var increase = calc.querySelector('[data-calc-increase]');
+    var bookButton = calc.querySelector('[data-add-to-cart]');
+
+    if (!bookButton) return;
+
+    var selectedVariantId = parseInt(calc.dataset.selectedVariantId, 10);
+    var currency = calc.dataset.currency || 'USD';
+    var locale = calc.dataset.locale || 'en-US';
+
+    function formatCurrency(cents) {
+      return new Intl.NumberFormat(locale, {
+        style: 'currency',
+        currency: currency,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      }).format((Number(cents) || 0) / 100);
+    }
+
+    function updateTotal() {
+      var guests = isPerGroup ? 1 : (parseInt(input && input.value, 10) || defaultGuests);
+      guests = Math.max(1, Math.min(20, guests));
+      if (input) {
+        input.value = guests;
+      }
+
+      if (totalEl) {
+        totalEl.textContent = formatCurrency(isPerGroup ? basePrice : basePrice * guests);
+      }
+
+      if (countEl) {
+        countEl.textContent = guests;
+      }
+    }
+
+    if (!isPerGroup && input && decrease) {
+      decrease.addEventListener('click', function() {
+        input.value = (parseInt(input.value, 10) || defaultGuests) - 1;
+        updateTotal();
+      });
+    }
+
+    if (!isPerGroup && input && increase) {
+      increase.addEventListener('click', function() {
+        input.value = (parseInt(input.value, 10) || defaultGuests) + 1;
+        updateTotal();
+      });
+    }
+
+    if (!isPerGroup && input) {
+      input.addEventListener('change', updateTotal);
+    }
+
+    bookButton.addEventListener('click', async function() {
+      if (!selectedVariantId) return;
+
+      var quantity = isPerGroup ? 1 : Math.max(1, parseInt(input && input.value, 10) || 1);
+      var label = bookButton.querySelector('span');
+      var originalLabel = label ? label.textContent : 'Book Now';
+
+      bookButton.disabled = true;
+      if (label) {
+        label.textContent = 'Processing...';
+      }
+
+      try {
+        var response = await fetch('/cart/add.js', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json'
+          },
+          body: JSON.stringify({
+            items: [
+              {
+                id: selectedVariantId,
+                quantity: quantity
+              }
+            ]
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error('Add to cart failed with status ' + response.status);
+        }
+
+        window.location.href = '/checkout';
+      } catch (error) {
+        console.error('Book now fallback checkout failed:', error);
+        bookButton.disabled = false;
+        if (label) {
+          label.textContent = originalLabel;
+        }
+        alert('Unable to start checkout right now. Please try again.');
+      }
+    });
+
+    updateTotal();
+  }
+  
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initBookingCalc);
+  } else {
+    initBookingCalc();
+  }
+})();
+</script>
+
+{% schema %}
+{
+  "name": "Itinerary New Booking",
+  "tag": "section",
+  "class": "section-itin-new-booking",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Book Your Journey"
+    },
+    {
+      "type": "textarea",
+      "id": "subheading",
+      "label": "Subheading",
+      "default": "Ready to start your adventure? Reserve your spot today."
+    },
+    {
+      "type": "checkbox",
+      "id": "use_scheduled_departure_pricing",
+      "label": "Use scheduled departure pricing metadata",
+      "default": true
+    },
+    {
+      "type": "select",
+      "id": "fallback_price_type",
+      "label": "Fallback price type",
+      "default": "auto",
+      "options": [
+        {
+          "value": "auto",
+          "label": "Auto (Per Person Sharing)"
+        },
+        {
+          "value": "per_person_sharing",
+          "label": "Per Person Sharing"
+        },
+        {
+          "value": "per_group",
+          "label": "Per Group"
+        }
+      ]
+    },
+    {
+      "type": "checkbox",
+      "id": "show_includes",
+      "label": "Show What's Included",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_excludes",
+      "label": "Show Not Included",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_operator",
+      "label": "Show tour operator",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_trust_badges",
+      "label": "Show trust badges",
+      "default": true
+    },
+    {
+      "type": "url",
+      "id": "contact_page",
+      "label": "Contact page URL"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Itinerary New Booking"
+    }
+  ]
+}
+{% endschema %}

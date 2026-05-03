@@ -1,0 +1,143 @@
+/*
+  Travel Search color-scheme overrides.
+  Ensures the app block remains readable and interactive in Horizon scheme-5 sections.
+*/
+
+:where(
+  .color-scheme-5 .travel-search-main-wrapper,
+  .travel-search-main-wrapper.color-scheme-5,
+  .color-scheme-5 .travel-search-wrapper,
+  .travel-search-wrapper.color-scheme-5,
+  .color-scheme-5 [class*='plekify-travel-search'],
+  [class*='plekify-travel-search'].color-scheme-5
+) {
+  --travel-search-scheme5-surface: #30343d;
+  --travel-search-scheme5-surface-hover: #363a44;
+  --travel-search-scheme5-border: #484c57;
+  --travel-search-scheme5-divider: rgba(255, 255, 255, 0.18);
+  --travel-search-scheme5-text: #f0f0f2;
+  --travel-search-scheme5-muted-text: rgba(240, 240, 242, 0.65);
+  /* Button default intentionally matches the field hover color for subtle differentiation. */
+  --travel-search-scheme5-button: #363a44;
+  --travel-search-scheme5-button-hover: #3e424d;
+  --travel-search-scheme5-button-text-glow: 0 0 8px rgba(255, 255, 255, 0.7), 0 0 16px rgba(255, 255, 255, 0.45);
+  color: var(--travel-search-scheme5-text) !important;
+}
+
+:where(
+  .color-scheme-5 .travel-search-main-wrapper,
+  .travel-search-main-wrapper.color-scheme-5,
+  .color-scheme-5 .travel-search-wrapper,
+  .travel-search-wrapper.color-scheme-5,
+  .color-scheme-5 [class*='plekify-travel-search'],
+  [class*='plekify-travel-search'].color-scheme-5
+) .search-form-grid {
+  border-top-color: var(--travel-search-scheme5-divider) !important;
+  border-bottom-color: var(--travel-search-scheme5-divider) !important;
+}
+
+:where(
+  .color-scheme-5 .travel-search-main-wrapper,
+  .travel-search-main-wrapper.color-scheme-5,
+  .color-scheme-5 .travel-search-wrapper,
+  .travel-search-wrapper.color-scheme-5,
+  .color-scheme-5 [class*='plekify-travel-search'],
+  [class*='plekify-travel-search'].color-scheme-5
+) :is(.search-field, .dates-field, .date-input-group, .guests-field, .guest-selector, .guests-dropdown, .date-inputs-container) {
+  background-color: var(--travel-search-scheme5-surface) !important;
+  border-color: var(--travel-search-scheme5-border) !important;
+  color: var(--travel-search-scheme5-text) !important;
+}
+
+:where(
+  .color-scheme-5 .travel-search-main-wrapper,
+  .travel-search-main-wrapper.color-scheme-5,
+  .color-scheme-5 .travel-search-wrapper,
+  .travel-search-wrapper.color-scheme-5,
+  .color-scheme-5 [class*='plekify-travel-search'],
+  [class*='plekify-travel-search'].color-scheme-5
+) :is(input, select, textarea, option, button, .search-input, .date-input, .search-field-label, .field-label, .selected-value, .guests-display, .button-text-base) {
+  color: var(--travel-search-scheme5-text) !important;
+  border-color: var(--travel-search-scheme5-border) !important;
+}
+
+:where(
+  .color-scheme-5 .travel-search-main-wrapper,
+  .travel-search-main-wrapper.color-scheme-5,
+  .color-scheme-5 .travel-search-wrapper,
+  .travel-search-wrapper.color-scheme-5,
+  .color-scheme-5 [class*='plekify-travel-search'],
+  [class*='plekify-travel-search'].color-scheme-5
+) :is(input, select, textarea)::placeholder {
+  color: var(--travel-search-scheme5-muted-text) !important;
+}
+
+:where(
+  .color-scheme-5 .travel-search-main-wrapper,
+  .travel-search-main-wrapper.color-scheme-5,
+  .color-scheme-5 .travel-search-wrapper,
+  .travel-search-wrapper.color-scheme-5,
+  .color-scheme-5 [class*='plekify-travel-search'],
+  [class*='plekify-travel-search'].color-scheme-5
+) :is(.search-field, .dates-field, .date-input-group, .guests-field, .guest-selector, .guests-dropdown, input, select, textarea, .date-input):hover {
+  background-color: var(--travel-search-scheme5-surface-hover) !important;
+}
+
+:where(
+  .color-scheme-5 .travel-search-main-wrapper,
+  .travel-search-main-wrapper.color-scheme-5,
+  .color-scheme-5 .travel-search-wrapper,
+  .travel-search-wrapper.color-scheme-5,
+  .color-scheme-5 [class*='plekify-travel-search'],
+  [class*='plekify-travel-search'].color-scheme-5
+) :is(.date-input-group:first-child::after, .dates-field::after, .guests-field::after) {
+  background-color: var(--travel-search-scheme5-divider) !important;
+}
+
+:where(
+  .color-scheme-5 .travel-search-main-wrapper,
+  .travel-search-main-wrapper.color-scheme-5,
+  .color-scheme-5 .travel-search-wrapper,
+  .travel-search-wrapper.color-scheme-5,
+  .color-scheme-5 [class*='plekify-travel-search'],
+  [class*='plekify-travel-search'].color-scheme-5
+) :is(.search-field svg, .search-field svg path, .search-field svg polyline, .search-field svg line, .guests-arrow, .guests-arrow path) {
+  color: var(--travel-search-scheme5-text) !important;
+  stroke: var(--travel-search-scheme5-text) !important;
+}
+
+:where(
+  .color-scheme-5 .travel-search-main-wrapper,
+  .travel-search-main-wrapper.color-scheme-5,
+  .color-scheme-5 .travel-search-wrapper,
+  .travel-search-wrapper.color-scheme-5,
+  .color-scheme-5 [class*='plekify-travel-search'],
+  [class*='plekify-travel-search'].color-scheme-5
+) :is(.search-button, [type='submit'].search-button):not(.is-searching) {
+  background-color: var(--travel-search-scheme5-button) !important;
+  color: var(--travel-search-scheme5-text) !important;
+  border-color: var(--travel-search-scheme5-border) !important;
+}
+
+:where(
+  .color-scheme-5 .travel-search-main-wrapper,
+  .travel-search-main-wrapper.color-scheme-5,
+  .color-scheme-5 .travel-search-wrapper,
+  .travel-search-wrapper.color-scheme-5,
+  .color-scheme-5 [class*='plekify-travel-search'],
+  [class*='plekify-travel-search'].color-scheme-5
+) :is(.search-button, [type='submit'].search-button):hover:not(.is-searching) {
+  background-color: var(--travel-search-scheme5-button-hover) !important;
+}
+
+:where(
+  .color-scheme-5 .travel-search-main-wrapper,
+  .travel-search-main-wrapper.color-scheme-5,
+  .color-scheme-5 .travel-search-wrapper,
+  .travel-search-wrapper.color-scheme-5,
+  .color-scheme-5 [class*='plekify-travel-search'],
+  [class*='plekify-travel-search'].color-scheme-5
+) :is(.search-button, [type='submit'].search-button):hover:not(.is-searching) :is(.button-text-base, .button-text-default, .button-text-results) {
+  color: var(--travel-search-scheme5-text) !important;
+  text-shadow: var(--travel-search-scheme5-button-text-glow) !important;
+}

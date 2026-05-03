@@ -1,0 +1,239 @@
+{% comment %}
+  ============================================================================
+  WETU ACCOMMODATION ENRICHED SNIPPET
+  ============================================================================
+  
+  Displays enriched property content - activities, dining, spa from linked
+  collection products. Shows up to max_items per category with 16:9 thumbnails.
+  
+  USAGE:
+    {% render 'wetu-accommodation-enriched',
+      accommodation_product: acc_product,
+      accommodation_name: 'Lodge Name',
+      color_scheme: 'scheme-1',
+      max_items: 4
+    %}
+  
+  ============================================================================
+{% endcomment %}
+
+{%- liquid
+  assign color_scheme = color_scheme | default: 'scheme-1'
+  assign max_items = max_items | default: 4
+  
+  # Get linked collections
+  assign activities_collection = accommodation_product.metafields.wetu.activities_collection_ref.value
+  assign dining_collection = accommodation_product.metafields.wetu.restaurants_collection.value
+  assign spa_collection = accommodation_product.metafields.wetu.spa_collection.value
+  
+  # Check if any content exists
+  assign has_enriched = false
+  assign activities_count = activities_collection.products.size | default: 0
+  assign dining_count = dining_collection.products.size | default: 0
+  assign spa_count = spa_collection.products.size | default: 0
+  
+  if activities_count > 0 or dining_count > 0 or spa_count > 0
+    assign has_enriched = true
+  endif
+-%}
+
+{% if has_enriched %}
+<div class="wetu-enriched color-{{ color_scheme }}">
+  <h4 class="wetu-enriched__title">Also at {{ accommodation_name | truncatewords: 4, '' }}</h4>
+  
+  <div class="wetu-enriched__grid">
+    
+    {% comment %} Activities {% endcomment %}
+    {% if activities_count > 0 %}
+      <div class="wetu-enriched__category">
+        <h5 class="wetu-enriched__category-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
+            <circle cx="12" cy="13" r="3"/>
+          </svg>
+          Activities
+        </h5>
+        <div class="wetu-enriched__items">
+          {% for activity in activities_collection.products limit: max_items %}
+            <a href="{{ activity.url }}" class="wetu-enriched__item" target="_blank" rel="noopener">
+              {% if activity.featured_image %}
+                <img 
+                  src="{{ activity.featured_image | image_url: width: 320, height: 180, crop: 'center' }}"
+                  alt="{{ activity.title | escape }}"
+                  class="wetu-enriched__thumb"
+                  loading="lazy"
+                  width="160"
+                  height="90"
+                >
+              {% else %}
+                <div class="wetu-enriched__thumb wetu-enriched__thumb--placeholder"></div>
+              {% endif %}
+              <span class="wetu-enriched__item-name">{{ activity.title | truncatewords: 6, '...' }}</span>
+            </a>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+    
+    {% comment %} Dining {% endcomment %}
+    {% if dining_count > 0 %}
+      <div class="wetu-enriched__category">
+        <h5 class="wetu-enriched__category-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/>
+            <path d="M7 2v20"/>
+            <path d="M21 15V2l-4 3v7h4l-4 3v8"/>
+          </svg>
+          Dining
+        </h5>
+        <div class="wetu-enriched__items">
+          {% for restaurant in dining_collection.products limit: max_items %}
+            <a href="{{ restaurant.url }}" class="wetu-enriched__item" target="_blank" rel="noopener">
+              {% if restaurant.featured_image %}
+                <img 
+                  src="{{ restaurant.featured_image | image_url: width: 320, height: 180, crop: 'center' }}"
+                  alt="{{ restaurant.title | escape }}"
+                  class="wetu-enriched__thumb"
+                  loading="lazy"
+                  width="160"
+                  height="90"
+                >
+              {% else %}
+                <div class="wetu-enriched__thumb wetu-enriched__thumb--placeholder"></div>
+              {% endif %}
+              <span class="wetu-enriched__item-name">{{ restaurant.title | truncatewords: 6, '...' }}</span>
+            </a>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+    
+    {% comment %} Spa {% endcomment %}
+    {% if spa_count > 0 %}
+      <div class="wetu-enriched__category">
+        <h5 class="wetu-enriched__category-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+          Spa & Wellness
+        </h5>
+        <div class="wetu-enriched__items">
+          {% for spa in spa_collection.products limit: max_items %}
+            <a href="{{ spa.url }}" class="wetu-enriched__item" target="_blank" rel="noopener">
+              {% if spa.featured_image %}
+                <img 
+                  src="{{ spa.featured_image | image_url: width: 320, height: 180, crop: 'center' }}"
+                  alt="{{ spa.title | escape }}"
+                  class="wetu-enriched__thumb"
+                  loading="lazy"
+                  width="160"
+                  height="90"
+                >
+              {% else %}
+                <div class="wetu-enriched__thumb wetu-enriched__thumb--placeholder"></div>
+              {% endif %}
+              <span class="wetu-enriched__item-name">{{ spa.title | truncatewords: 6, '...' }}</span>
+            </a>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+    
+  </div>
+</div>
+
+<style>
+  .wetu-enriched {
+    margin-top: 32px;
+    padding: 24px;
+    background: rgba(var(--color-foreground), 0.02);
+    border-radius: 8px;
+  }
+  
+  .wetu-enriched__title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 20px;
+    color: rgb(var(--color-foreground));
+  }
+  
+  .wetu-enriched__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 24px;
+  }
+  
+  .wetu-enriched__category {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .wetu-enriched__category-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgba(var(--color-foreground), 0.7);
+    margin: 0;
+  }
+  
+  .wetu-enriched__category-title svg {
+    opacity: 0.6;
+  }
+  
+  .wetu-enriched__items {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .wetu-enriched__item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px;
+    background: rgb(var(--color-background));
+    border-radius: 6px;
+    text-decoration: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  
+  .wetu-enriched__item:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+  
+  .wetu-enriched__thumb {
+    width: 64px;
+    height: 36px;
+    object-fit: cover;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+  
+  .wetu-enriched__thumb--placeholder {
+    background: rgba(var(--color-foreground), 0.05);
+  }
+  
+  .wetu-enriched__item-name {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: rgb(var(--color-foreground));
+    line-height: 1.3;
+  }
+  
+  @media (max-width: 749px) {
+    .wetu-enriched {
+      padding: 16px;
+    }
+    
+    .wetu-enriched__grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+{% endif %}

@@ -1,0 +1,607 @@
+{% comment %}
+  ============================================================================
+  WETU ITINERARY STORY HERO
+  ============================================================================
+  
+  Full-screen hero section with booking widget above the fold.
+  Designed for maximum conversion with clear pricing and CTA.
+  
+  Features:
+  - Full-screen cover image or video
+  - Itinerary title, duration, destinations
+  - Booking widget with guest selector
+  - View toggle (Story/Map)
+  - SEO-optimized semantic markup
+  
+  Video Priority:
+  1. wetu.hero_video metafield (file_reference) - if set, displays directly without poster
+  2. Custom video URL from section settings
+  3. Falls back to featured image if no video
+  
+  Note: Video loads directly without poster image to prevent layout shift.
+  
+  ============================================================================
+{% endcomment %}
+
+{% comment %} Load itinerary data {% endcomment %}
+{% include 'wetu-itinerary-data' %}
+
+{% comment %} Hero media - prioritize metafield video, then custom settings {% endcomment %}
+{% assign hero_video_url = nil %}
+{% assign hero_image = nil %}
+{% assign video_poster = nil %}
+{% assign has_video = false %}
+
+{% comment %} 
+  Priority order for video:
+  1. wetu.hero_video metafield (file_reference type)
+  2. Custom video URL from section settings
+{% endcomment %}
+{% assign wetu_video_metafield = product.metafields.wetu.hero_video %}
+{% if wetu_video_metafield != blank and wetu_video_metafield.value != blank %}
+  {% comment %} File reference metafield - access the video sources {% endcomment %}
+  {% assign video_file = wetu_video_metafield.value %}
+  {% if video_file.sources %}
+    {% comment %} It's a video object with sources - get mp4 source {% endcomment %}
+    {% for source in video_file.sources %}
+      {% if source.format == 'mp4' %}
+        {% assign hero_video_url = source.url %}
+        {% break %}
+      {% endif %}
+    {% endfor %}
+    {% comment %} Fallback to first source if no mp4 found {% endcomment %}
+    {% if hero_video_url == blank and video_file.sources.size > 0 %}
+      {% assign hero_video_url = video_file.sources[0].url %}
+    {% endif %}
+    {% comment %} Get video poster from preview_image {% endcomment %}
+    {% if video_file.preview_image %}
+      {% assign video_poster = video_file.preview_image | image_url: width: 1920 %}
+    {% endif %}
+  {% elsif video_file.url %}
+    {% comment %} Generic file with url property {% endcomment %}
+    {% assign hero_video_url = video_file.url %}
+  {% else %}
+    {% comment %} Direct URL or string value {% endcomment %}
+    {% assign hero_video_url = video_file | file_url %}
+  {% endif %}
+  {% if hero_video_url != blank %}
+    {% assign has_video = true %}
+  {% endif %}
+{% elsif section.settings.custom_video_url != blank %}
+  {% assign hero_video_url = section.settings.custom_video_url %}
+  {% assign has_video = true %}
+{% endif %}
+
+{% comment %} Get hero image (used as fallback and video poster) {% endcomment %}
+{% if section.settings.custom_image != blank %}
+  {% assign hero_image = section.settings.custom_image %}
+{% else %}
+  {% assign hero_image = product.featured_image %}
+{% endif %}
+
+{% comment %} Use hero image as poster if no video preview available {% endcomment %}
+{% if video_poster == blank and hero_image %}
+  {% assign video_poster = hero_image | image_url: width: 1920 %}
+{% endif %}
+
+{% comment %} Client info from itinerary metafields {% endcomment %}
+{% assign wetu_itinerary = product.metafields.wetu %}
+{% assign client_name = wetu_itinerary.client_name.value %}
+{% assign reference_number = wetu_itinerary.reference_number.value %}
+{% assign start_date_raw = wetu_itinerary.start_date.value %}
+
+{% comment %} Section height from settings {% endcomment %}
+{% assign section_height = section.settings.section_height | default: 100 %}
+
+{% comment %} Extract key information {% endcomment %}
+{% assign itinerary_title = product.title %}
+{% assign total_days = wetu_total_days | default: product.metafields.wetu.itinerary_days.value | default: 0 %}
+{% assign total_nights = wetu_total_nights | default: 0 %}
+{% if total_nights == 0 and total_days > 0 %}
+  {% assign total_nights = total_days | minus: 1 %}
+{% endif %}
+
+{% comment %} Build destination list from legs {% endcomment %}
+{% assign destination_names = '' %}
+{% assign destination_count = 0 %}
+{% for leg in wetu_legs %}
+  {% assign leg_type = leg.type.value | default: 'Standard' %}
+  {% if leg_type != 'Departure' %}
+    {% assign dest_id = leg.destination_content_entity_id.value %}
+    {% assign acc_name = leg.accommodation_name.value %}
+    
+    {% comment %} Find destination product for this leg {% endcomment %}
+    {% for dest_product in wetu_destination_products %}
+      {% assign dest_pin_id = dest_product.metafields.wetu.pin_id.value %}
+      {% if dest_pin_id == dest_id %}
+        {% assign dest_name = dest_product.title %}
+        {% unless destination_names contains dest_name %}
+          {% if destination_names != '' %}
+            {% assign destination_names = destination_names | append: '|||' %}
+          {% endif %}
+          {% assign destination_names = destination_names | append: dest_name %}
+          {% assign destination_count = destination_count | plus: 1 %}
+        {% endunless %}
+        {% break %}
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+{% endfor %}
+{% assign destinations_array = destination_names | split: '|||' %}
+
+{% comment %} Count accommodations {% endcomment %}
+{% assign accommodation_count = 0 %}
+{% for leg in wetu_legs %}
+  {% assign leg_type = leg.type.value | default: 'Standard' %}
+  {% assign leg_nights = leg.nights.value | default: 0 %}
+  {% if leg_type != 'Departure' and leg_nights > 0 %}
+    {% assign accommodation_count = accommodation_count | plus: 1 %}
+  {% endif %}
+{% endfor %}
+
+<section
+  class="itinerary-story-hero color-{{ section.settings.color_scheme }}"
+  id="hero"
+  aria-label="Itinerary overview"
+  itemscope
+  itemtype="https://schema.org/Product"
+  style="--section-height: {{ section_height }}vh;"
+>
+  {% comment %} Background Media - Video takes priority, no poster to prevent layout shift {% endcomment %}
+  <div class="itinerary-story-hero__media">
+    {% if has_video %}
+      <video 
+        class="itinerary-story-hero__video"
+        autoplay 
+        muted 
+        loop 
+        playsinline
+        preload="auto"
+        {% if video_poster != blank %}poster="{{ video_poster }}"{% endif %}
+      >
+        <source src="{{ hero_video_url }}" type="video/mp4">
+      </video>
+    {% elsif hero_image %}
+      <img 
+        class="itinerary-story-hero__image"
+        src="{{ hero_image | image_url: width: 1920 }}"
+        srcset="{{ hero_image | image_url: width: 640 }} 640w,
+                {{ hero_image | image_url: width: 1024 }} 1024w,
+                {{ hero_image | image_url: width: 1920 }} 1920w"
+        sizes="100vw"
+        alt="{{ itinerary_title }}"
+        loading="eager"
+        fetchpriority="high"
+        itemprop="image"
+      >
+    {% else %}
+      <div class="itinerary-story-hero__placeholder"></div>
+    {% endif %}
+    
+    {% comment %} Gradient Overlay {% endcomment %}
+    <div class="itinerary-story-hero__overlay"></div>
+  </div>
+
+
+
+  {% comment %} Content Container {% endcomment %}
+  <div class="itinerary-story-hero__content page-width">
+    <div class="itinerary-story-hero__grid">
+      
+      {% comment %} Left: Title & Info {% endcomment %}
+      <div class="itinerary-story-hero__info">
+        {% comment %} Client personalization (if available) {% endcomment %}
+        {% if client_name != blank or reference_number != blank or start_date_raw != blank %}
+          <div class="itinerary-story-hero__client-info">
+            {% if client_name != blank %}
+              <span class="itinerary-story-hero__client-label">Prepared for</span>
+              <span class="itinerary-story-hero__client-name">{{ client_name }}</span>
+            {% endif %}
+            {% if reference_number != blank %}
+              <span class="itinerary-story-hero__reference">{{ reference_number }}</span>
+            {% endif %}
+            {% if start_date_raw != blank %}
+              {% assign start_ts = start_date_raw | date: '%s' | plus: 0 %}
+              {% assign days_offset = total_days | minus: 1 | times: 86400 %}
+              {% assign end_ts = start_ts | plus: days_offset %}
+              <span class="itinerary-story-hero__dates">
+                {{ start_ts | date: '%B %e' }} — {{ end_ts | date: '%B %e, %Y' }}
+              </span>
+            {% endif %}
+          </div>
+        {% endif %}
+
+        {% comment %} Duration Badge {% endcomment %}
+        <div class="itinerary-story-hero__badges">
+          <span class="itinerary-story-hero__badge itinerary-story-hero__badge--duration">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+            {{ total_days }} Days / {{ total_nights }} Nights
+          </span>
+          {% if accommodation_count > 0 %}
+            <span class="itinerary-story-hero__badge">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                <polyline points="9 22 9 12 15 12 15 22"/>
+              </svg>
+              {{ accommodation_count }} {% if accommodation_count == 1 %}Lodge{% else %}Lodges{% endif %}
+            </span>
+          {% endif %}
+        </div>
+
+        {% comment %} Title (H1 for SEO) {% endcomment %}
+        <h1 class="itinerary-story-hero__title" itemprop="name">
+          {{ itinerary_title }}
+        </h1>
+
+        {% comment %} Destinations Pills {% endcomment %}
+        {% if destinations_array.size > 0 %}
+          <div class="itinerary-story-hero__destinations">
+            {% for dest in destinations_array limit: 5 %}
+              <span class="itinerary-story-hero__destination-pill">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                  <circle cx="12" cy="12" r="4"/>
+                </svg>
+                {{ dest }}
+              </span>
+            {% endfor %}
+            {% if destinations_array.size > 5 %}
+              <span class="itinerary-story-hero__destination-pill itinerary-story-hero__destination-pill--more">
+                +{{ destinations_array.size | minus: 5 }} more
+              </span>
+            {% endif %}
+          </div>
+        {% endif %}
+
+        {% comment %} Tagline (for SEO) {% endcomment %}
+        {% assign tagline = product.metafields.wetu.tagline.value %}
+        {% if tagline != blank %}
+          <p class="itinerary-story-hero__description" itemprop="description">
+            {{ tagline }}
+          </p>
+        {% endif %}
+
+        {% comment %} Scroll Indicator {% endcomment %}
+        <a href="#journey" class="itinerary-story-hero__scroll-cta">
+          <span>Explore Journey</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 5v14M5 12l7 7 7-7"/>
+          </svg>
+        </a>
+      </div>
+
+      {% comment %} Right: Booking Widget {% endcomment %}
+      <div class="itinerary-story-hero__booking">
+        {% render 'wetu-itinerary-booking-widget', 
+          product: product, 
+          variant: 'hero',
+          show_guests: true,
+          show_customize: section.settings.show_customize_link
+        %}
+      </div>
+
+    </div>
+  </div>
+
+  {% comment %} SEO: Hidden structured data {% endcomment %}
+  <meta itemprop="sku" content="{{ product.handle }}">
+  {% if product.variants.first.price > 0 %}
+    <div itemprop="offers" itemscope itemtype="https://schema.org/Offer" style="display:none;">
+      <meta itemprop="price" content="{{ product.variants.first.price | divided_by: 100.0 }}">
+      <meta itemprop="priceCurrency" content="{{ shop.currency }}">
+      <meta itemprop="availability" content="https://schema.org/InStock">
+      <meta itemprop="url" content="{{ shop.url }}{{ product.url }}">
+    </div>
+  {% endif %}
+</section>
+
+<style>
+/* ====================================
+   Itinerary Story Hero
+   ==================================== */
+
+.itinerary-story-hero {
+  position: relative;
+  min-height: var(--section-height, 100vh);
+  min-height: var(--section-height, 100dvh);
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+  background: #1a1a2e;
+}
+
+/* Background Media */
+.itinerary-story-hero__media {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.itinerary-story-hero__video,
+.itinerary-story-hero__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.itinerary-story-hero__placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #1a1a2e 0%, #2d2d44 50%, #1a1a2e 100%);
+}
+
+.itinerary-story-hero__overlay {
+  display: none;
+}
+
+/* Content */
+.itinerary-story-hero__content {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  padding-top: 120px;
+  padding-bottom: 48px;
+}
+
+.itinerary-story-hero__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 32px;
+  align-items: end;
+}
+
+@media (min-width: 1024px) {
+  .itinerary-story-hero__grid {
+    grid-template-columns: 1fr 420px;
+    gap: 48px;
+  }
+  
+  .itinerary-story-hero__content {
+    padding-bottom: 40px;
+  }
+}
+
+/* Info Column */
+.itinerary-story-hero__info {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Client Info */
+.itinerary-story-hero__client-info {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 16px;
+  font-size: 0.9375rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.itinerary-story-hero__client-label {
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.itinerary-story-hero__client-name {
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.itinerary-story-hero__reference {
+  font-size: 0.8125rem;
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.itinerary-story-hero__dates {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Badges */
+.itinerary-story-hero__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.itinerary-story-hero__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.itinerary-story-hero__badge--duration {
+  background: var(--color-primary, #d4a574);
+  color: var(--color-background, #1a1a2e);
+}
+
+/* Title */
+.itinerary-story-hero__title {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.15;
+  margin: 0;
+  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Destinations */
+.itinerary-story-hero__destinations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.itinerary-story-hero__destination-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 0.8125rem;
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 16px;
+}
+
+.itinerary-story-hero__destination-pill--more {
+  font-style: italic;
+  opacity: 0.8;
+}
+
+/* Description */
+.itinerary-story-hero__description {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.75);
+  margin: 0;
+  max-width: 600px;
+}
+
+/* Scroll CTA */
+.itinerary-story-hero__scroll-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 12px 0;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.itinerary-story-hero__scroll-cta:hover {
+  color: #fff;
+}
+
+.itinerary-story-hero__scroll-cta svg {
+  animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(6px);
+  }
+  60% {
+    transform: translateY(3px);
+  }
+}
+
+/* Booking Column */
+.itinerary-story-hero__booking {
+  position: relative;
+}
+
+/* Mobile adjustments */
+@media (max-width: 1023px) {
+  .itinerary-story-hero {
+    align-items: flex-end;
+    min-height: auto;
+    padding-top: calc(var(--header-height, 60px) + 40px);
+  }
+  
+  .itinerary-story-hero__content {
+    padding-bottom: 32px;
+  }
+  
+  .itinerary-story-hero__title {
+    font-size: 1.75rem;
+  }
+  
+  .itinerary-story-hero__description {
+    display: none; /* Hide on mobile to prioritize booking */
+  }
+  
+  .itinerary-story-hero__scroll-cta {
+    display: none;
+  }
+}
+
+/* Short hero for returning to booking */
+@media (min-height: 800px) {
+  .itinerary-story-hero__content {
+    padding-bottom: 64px;
+  }
+}
+</style>
+
+{% schema %}
+{
+  "name": "Itinerary Story Hero",
+  "tag": "section",
+  "class": "section-itinerary-story-hero",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-5"
+    },
+    {
+      "type": "header",
+      "content": "Hero Media"
+    },
+    {
+      "type": "image_picker",
+      "id": "custom_image",
+      "label": "Custom hero image",
+      "info": "Override the automatic product image with a custom selection"
+    },
+    {
+      "type": "text",
+      "id": "custom_video_url",
+      "label": "Custom video URL",
+      "info": "Fallback video URL. Priority: 1) wetu.hero_video metafield, 2) this URL"
+    },
+    {
+      "type": "range",
+      "id": "section_height",
+      "min": 50,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "label": "Section height",
+      "default": 100,
+      "info": "Height of the hero section as a percentage of viewport"
+    },
+    {
+      "type": "header",
+      "content": "Content"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_customize_link",
+      "label": "Show 'Customize This Trip' link",
+      "default": true
+    }
+  ],
+  "presets": [
+    {
+      "name": "Itinerary Story Hero"
+    }
+  ]
+}
+{% endschema %}

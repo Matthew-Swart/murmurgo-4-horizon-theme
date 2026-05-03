@@ -1,0 +1,225 @@
+{% comment %}
+  Full-Width Product Video Section
+  
+  Displays the product's video media at full viewport width.
+  Video auto-plays (muted) with controls, centered on the page.
+  No product information displayed - just the video.
+{% endcomment %}
+
+{% liquid
+  assign product = product | default: all_products[section.settings.product]
+  
+  if product == blank
+    assign product = all_products.first
+  endif
+  
+  assign has_video = false
+  assign video_embed_url = nil
+  assign video_title = product.title
+  
+  comment Get video metaobject from product
+  Videos are stored in metaobjects and referenced via wetu.videos metafield
+  MetaobjectListDrop doesn't have a size property, so we iterate directly
+  endcomment
+  assign videos = product.metafields.wetu.videos.value
+  
+  if videos != blank
+    comment Iterate through videos to get the first one
+    endcomment
+    for video_metaobject in videos limit: 1
+      comment Access metaobject fields
+      endcomment
+      assign video_embed_url = video_metaobject.embed_url.value
+      assign video_title_meta = video_metaobject.title.value | default: video_metaobject.label.value
+      
+      if video_title_meta != blank
+        assign video_title = video_title_meta
+      endif
+      
+      comment If we found a video URL, add HD quality, autoplay, muted, and controls parameters
+      endcomment
+      if video_embed_url != blank
+        assign has_video = true
+        
+        comment Add parameters for YouTube and Vimeo: HD 1080p, autoplay, muted, controls
+        endcomment
+        if video_embed_url contains 'youtube.com' or video_embed_url contains 'youtu.be'
+          if video_embed_url contains '?'
+            assign video_embed_url = video_embed_url | append: '&vq=hd1080&hd=1&autoplay=1&mute=1&controls=1'
+          else
+            assign video_embed_url = video_embed_url | append: '?vq=hd1080&hd=1&autoplay=1&mute=1&controls=1'
+          endif
+        elsif video_embed_url contains 'vimeo.com'
+          if video_embed_url contains '?'
+            assign video_embed_url = video_embed_url | append: '&quality=1080p&autoplay=1&muted=1&controls=1'
+          else
+            assign video_embed_url = video_embed_url | append: '?quality=1080p&autoplay=1&muted=1&controls=1'
+          endif
+        endif
+      endif
+    endfor
+  endif
+%}
+
+<div class="product-video-fullwidth section-background color-{{ section.settings.color_scheme }}"></div>
+<div
+  class="product-video-fullwidth-wrapper spacing-style"
+  style="{% render 'spacing-style', settings: section.settings %}"
+>
+  {% if has_video %}
+    {% comment %} Full-width video container - centered {% endcomment %}
+    <div class="product-video-fullwidth__video-container">
+      {% comment %} YouTube or Vimeo embedded video with autoplay, muted, and controls {% endcomment %}
+      <div class="product-video-fullwidth__iframe-wrapper">
+        <iframe
+          src="{{ video_embed_url }}"
+          title="{{ video_title | escape }}"
+          frameborder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowfullscreen
+          loading="eager"
+          class="product-video-fullwidth__iframe"
+        ></iframe>
+      </div>
+    </div>
+  {% else %}
+    {% comment %} Fallback if no video {% endcomment %}
+    <div class="page-width">
+      <div class="product-video-fullwidth__no-video">
+        <p>{{ 'products.general.no_video' | t }}</p>
+      </div>
+    </div>
+  {% endif %}
+</div>
+
+{% stylesheet %}
+  .product-video-fullwidth-wrapper {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #000;
+    padding: 0;
+    margin: 0;
+    position: relative;
+    z-index: 1;
+  }
+  
+  .product-video-fullwidth__video-container {
+    width: 100%;
+    max-width: 100vw;
+    margin: 0 auto;
+    padding: 0;
+    background-color: #000;
+  }
+  
+  /* For external videos (YouTube/Vimeo) - maintain 16:9 aspect ratio */
+  .product-video-fullwidth__iframe-wrapper {
+    position: relative;
+    width: 100%;
+    padding-bottom: 56.25%; /* 16:9 aspect ratio */
+    height: 0;
+    overflow: hidden;
+    background-color: #000;
+  }
+  
+  .product-video-fullwidth__iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+  
+  /* Fallback message styling */
+  .product-video-fullwidth__no-video {
+    padding: 80px 20px;
+    text-align: center;
+    color: #fff;
+  }
+  
+  .product-video-fullwidth__no-video p {
+    font-size: 1.125rem;
+    color: #fff;
+  }
+  
+  /* Mobile responsive adjustments */
+  @media screen and (max-width: 749px) {
+    .product-video-fullwidth-wrapper {
+      min-height: auto;
+      padding: 20px 0;
+    }
+    
+    .product-video-fullwidth__no-video {
+      padding: 40px 20px;
+    }
+    
+    .product-video-fullwidth__no-video p {
+      font-size: 1rem;
+    }
+  }
+  
+  /* Ensure full-width on all screen sizes */
+  @media screen and (min-width: 750px) {
+    .product-video-fullwidth-wrapper {
+      margin-top: 0;
+    }
+  }
+  
+  /* Ensure header stays on top of video */
+  header-component {
+    position: relative;
+    z-index: 10;
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Product Video Full Width",
+  "tag": "section",
+  "class": "product-video-fullwidth-section",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "label": "Padding top",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "label": "Padding bottom",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 48
+    }
+  ],
+  "presets": [
+    {
+      "name": "Product Video Full Width"
+    }
+  ],
+  "enabled_on": {
+    "templates": ["product"]
+  }
+}
+{% endschema %}
+

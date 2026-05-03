@@ -1,0 +1,81 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "hero": {
+      "type": "wetu-itinerary-new-hero",
+      "settings": {
+        "color_scheme": "scheme-5",
+        "section_height": 85,
+        "use_natural_media_ratio": true,
+        "show_destination_pills": true,
+        "show_booking_widget": false,
+        "show_view_toggle": false,
+        "show_print_button": true
+      }
+    },
+    "single_day_timeline": {
+      "type": "wetu-itinerary-chronological-days",
+      "settings": {
+        "color_scheme": "scheme-5"
+      }
+    },
+    "booking": {
+      "type": "wetu-itinerary-new-booking",
+      "settings": {
+        "color_scheme": "scheme-1",
+        "heading": "Book This Day Tour",
+        "subheading": "Choose a scheduled departure and reserve your experience.",
+        "use_scheduled_departure_pricing": true,
+        "fallback_price_type": "auto",
+        "show_includes": true,
+        "show_excludes": true,
+        "show_operator": true,
+        "show_trust_badges": true
+      }
+    },
+    "travel_brief": {
+      "type": "wetu-itinerary-new-travel-brief",
+      "settings": {
+        "color_scheme": "scheme-1",
+        "show_identifier": true,
+        "show_party_details": false,
+        "show_primary_contact": true,
+        "show_contacts": true,
+        "promote_special_interests": true,
+        "show_special_interests": true,
+        "show_checkin_times": false,
+        "use_table_layout": true,
+        "show_additional_info": true,
+        "show_duration_string": true,
+        "show_departure_locations": true,
+        "show_departure_times": true,
+        "show_returns": true,
+        "show_spoken_languages": true,
+        "show_terms": true
+      }
+    },
+    "enquiry": {
+      "type": "wetu-itinerary-new-enquiry",
+      "settings": {
+        "color_scheme": "scheme-1",
+        "heading": "Make an Enquiry",
+        "subheading": "Get in touch with our travel experts for a personalized quote"
+      }
+    }
+  },
+  "order": [
+    "hero",
+    "single_day_timeline",
+    "booking",
+    "travel_brief",
+    "enquiry"
+  ]
+}

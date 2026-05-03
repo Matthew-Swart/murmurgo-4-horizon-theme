@@ -1,0 +1,365 @@
+<section class="plekify-hero" id="plekify-hero">
+  <div class="plekify-hero__media">
+    {%- if section.settings.hero_image != blank -%}
+      {{ section.settings.hero_image | image_url: width: 3840 | image_tag: widths: '832, 1200, 1600, 1920, 2560, 3840', sizes: '100vw', loading: 'eager', fetchpriority: 'high', class: 'plekify-hero__bg-image' }}
+    {%- endif -%}
+    <div class="plekify-hero__overlay"></div>
+  </div>
+
+  <div class="plekify-hero__content">
+    {%- if section.settings.overline != blank -%}
+      <span class="plekify-hero__overline">{{ section.settings.overline }}</span>
+    {%- endif -%}
+
+    <h1 class="plekify-hero__headline">{{ section.settings.headline }}</h1>
+
+    {%- if section.settings.subheadline != blank -%}
+      <p class="plekify-hero__subheadline">{{ section.settings.subheadline }}</p>
+    {%- endif -%}
+
+    <div class="plekify-hero__actions">
+      {%- if section.settings.cta_text != blank -%}
+        <a href="{{ section.settings.cta_url }}" class="plekify-hero__cta-primary">{{ section.settings.cta_text }}</a>
+      {%- endif -%}
+      {%- if section.settings.secondary_text != blank -%}
+        <a href="{{ section.settings.secondary_url }}" class="plekify-hero__cta-secondary">{{ section.settings.secondary_text }} →</a>
+      {%- endif -%}
+    </div>
+
+    {%- if section.settings.credibility != blank -%}
+      <p class="plekify-hero__credibility">{{ section.settings.credibility }}</p>
+    {%- endif -%}
+  </div>
+
+  {%- if section.settings.show_scroll_indicator -%}
+    <div class="plekify-hero__scroll-indicator" aria-hidden="true">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="6 9 12 15 18 9"></polyline>
+      </svg>
+    </div>
+  {%- endif -%}
+</section>
+
+{% style %}
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+{% endstyle %}
+
+{% stylesheet %}
+  .plekify-hero {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: flex-start;
+    height: 100dvh;
+    min-height: 600px;
+    background-color: #121212;
+    overflow: hidden;
+    padding-block-end: 128px;
+    padding-inline: 64px;
+  }
+
+  /* ── Background media ─────────────────────────────── */
+
+  .plekify-hero__media {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+  }
+
+  .plekify-hero__bg-image {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .plekify-hero__overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to top,
+      rgba(18, 18, 18, 0.95) 0%,
+      rgba(18, 18, 18, 0.6) 40%,
+      rgba(18, 18, 18, 0.3) 70%,
+      rgba(18, 18, 18, 0.1) 100%
+    );
+  }
+
+  /* ── Content ──────────────────────────────────────── */
+
+  .plekify-hero__content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 24px;
+    max-width: 780px;
+    opacity: 0;
+    transform: translateY(32px);
+    transition: opacity 0.8s ease, transform 0.8s ease;
+  }
+
+  .plekify-hero__content.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .plekify-hero__overline {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 12px;
+    color: #C9A96E;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    line-height: 1;
+  }
+
+  .plekify-hero__headline {
+    font-family: 'DM Serif Display', serif;
+    font-weight: 400;
+    font-size: 64px;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: #FFFFFF;
+    margin: 0;
+  }
+
+  .plekify-hero__subheadline {
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+    font-size: 18px;
+    line-height: 1.7;
+    color: #8E8E8E;
+    max-width: 680px;
+    margin: 0;
+  }
+
+  /* ── Actions ──────────────────────────────────────── */
+
+  .plekify-hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 32px;
+    margin-block-start: 8px;
+  }
+
+  .plekify-hero__cta-primary {
+    display: inline-block;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #121212;
+    background-color: #C9A96E;
+    padding: 16px 40px;
+    border-radius: 4px;
+    text-decoration: none;
+    transition: background-color 0.25s ease, transform 0.25s ease;
+  }
+
+  .plekify-hero__cta-primary:hover {
+    background-color: #D4B87A;
+    transform: translateY(-1px);
+  }
+
+  .plekify-hero__cta-secondary {
+    display: inline-flex;
+    align-items: center;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    color: #C9A96E;
+    text-decoration: none;
+    transition: transform 0.25s ease;
+  }
+
+  .plekify-hero__cta-secondary:hover {
+    transform: translateX(4px);
+  }
+
+  /* ── Credibility ──────────────────────────────────── */
+
+  .plekify-hero__credibility {
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+    font-size: 13px;
+    color: #8E8E8E;
+    margin: 0;
+    margin-block-start: 8px;
+  }
+
+  /* ── Scroll indicator ─────────────────────────────── */
+
+  .plekify-hero__scroll-indicator {
+    position: absolute;
+    inset-block-end: 32px;
+    inset-inline-start: 50%;
+    transform: translateX(-50%);
+    z-index: 1;
+    color: #8E8E8E;
+    animation: plekify-bounce 2s ease-in-out infinite;
+  }
+
+  @keyframes plekify-bounce {
+    0%, 100% {
+      transform: translateX(-50%) translateY(0);
+    }
+    50% {
+      transform: translateX(-50%) translateY(8px);
+    }
+  }
+
+  /* ── Responsive ───────────────────────────────────── */
+
+  @media screen and (max-width: 749px) {
+    .plekify-hero {
+      justify-content: center;
+      align-items: center;
+      padding-block: 96px 80px;
+      padding-inline: 24px;
+      text-align: center;
+    }
+
+    .plekify-hero__content {
+      align-items: center;
+    }
+
+    .plekify-hero__headline {
+      font-size: 36px;
+    }
+
+    .plekify-hero__subheadline {
+      font-size: 16px;
+    }
+
+    .plekify-hero__actions {
+      justify-content: center;
+    }
+  }
+
+  /* ── Reduced motion ───────────────────────────────── */
+
+  @media (prefers-reduced-motion: reduce) {
+    .plekify-hero__content {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+
+    .plekify-hero__scroll-indicator {
+      animation: none;
+    }
+
+    .plekify-hero__cta-primary,
+    .plekify-hero__cta-secondary {
+      transition: none;
+    }
+  }
+{% endstylesheet %}
+
+{% javascript %}
+  (function () {
+    var hero = document.getElementById('plekify-hero');
+    if (!hero) return;
+
+    var content = hero.querySelector('.plekify-hero__content');
+    if (!content) return;
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      content.classList.add('is-visible');
+      return;
+    }
+
+    var observer = new IntersectionObserver(
+      function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            content.classList.add('is-visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.15 }
+    );
+
+    observer.observe(hero);
+  })();
+{% endjavascript %}
+
+{% schema %}
+{
+  "name": "Plekify Hero",
+  "tag": "section",
+  "class": "plekify-hero-section",
+  "settings": [
+    {
+      "type": "image_picker",
+      "id": "hero_image",
+      "label": "Background image"
+    },
+    {
+      "type": "text",
+      "id": "overline",
+      "label": "Overline text",
+      "default": "Shopify for Travel"
+    },
+    {
+      "type": "text",
+      "id": "headline",
+      "label": "Headline",
+      "default": "Your Wetu Content, Now Commerce-Ready on Shopify."
+    },
+    {
+      "type": "textarea",
+      "id": "subheadline",
+      "label": "Subheadline",
+      "default": "Plekify transforms the itineraries, properties, and rich media you already publish through Wetu into fully transactional Shopify products — with checkout, pricing, deep navigation, and first-party guest data on your own domain."
+    },
+    {
+      "type": "text",
+      "id": "cta_text",
+      "label": "Primary CTA text",
+      "default": "See It Live →"
+    },
+    {
+      "type": "url",
+      "id": "cta_url",
+      "label": "Primary CTA link"
+    },
+    {
+      "type": "text",
+      "id": "secondary_text",
+      "label": "Secondary link text",
+      "default": "Talk to Matt"
+    },
+    {
+      "type": "url",
+      "id": "secondary_url",
+      "label": "Secondary link URL"
+    },
+    {
+      "type": "text",
+      "id": "credibility",
+      "label": "Credibility line",
+      "default": "From the founder of SafariNow.com · R320m booking value · 150 employees · 18 years in African travel tech"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_scroll_indicator",
+      "label": "Show scroll indicator",
+      "default": true
+    }
+  ],
+  "presets": [
+    {
+      "name": "Plekify Hero",
+      "category": "Plekify"
+    }
+  ]
+}
+{% endschema %}

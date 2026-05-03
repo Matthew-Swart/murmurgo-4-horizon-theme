@@ -1,0 +1,430 @@
+{% style %}
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Inter:wght@300;400;500&family=IBM+Plex+Mono:wght@300;400&display=swap');
+{% endstyle %}
+
+<div class="plekify-v8-fw">
+
+<!-- ═══ SECTION 6: ACCOMMODATION BOOKING ═══════════════════ -->
+<section id="bookings" class="v8-band v8-band--accom">
+  <div class="v8-contain">
+    <div class="v8-accom-divider"></div>
+    <span class="v8-annot">A distinct capability</span>
+    <h2 class="v8-sh v8-sh--accom">Accommodation Booking</h2>
+    <p class="v8-body v8-prose" style="margin-top:.6rem">Properties already run a property management system. Plekify connects to it via API — live availability, real-time pricing, and checkout happen on the property's own website, while the reservation is created in the existing PMS automatically. The guest never leaves the operator's domain.</p>
+
+    <div class="v8-hl" style="margin-top:1.25rem">
+      <p class="v8-body"><strong class="v8-hl__label">The handoff problem:</strong> Most properties direct guests to a third-party booking engine to complete a reservation. That moment — when the guest leaves the operator's website — breaks the brand experience and means the guest's contact details are captured by another platform, not yours. Plekify eliminates the handoff without changing how the PMS runs.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ BOOKING JOURNEY COMPARISON ═════════════════════════ -->
+<section id="booking-comparison" class="v8-band v8-band--alt">
+  <div class="v8-contain">
+    <span class="v8-annot">How the guest booking journey compares</span>
+    <h2 class="v8-sh">The moment the guest leaves your website<br><em>is the moment your brand loses control.</em></h2>
+    <p class="v8-body v8-prose" style="margin-top:.5rem">Every booking engine in common use today — RoomRaccoon, NightsBridge — forces the guest off the property's website at the exact point of highest intent: when they click "Book Now." A new browser tab opens. The URL changes to someone else's domain. The property's design, trust signals, and brand context disappear. The guest's contact details are now captured by a third-party platform, not by you.</p>
+    <p class="v8-body v8-prose" style="margin-top:.5rem">We tested all three systems under identical conditions — 2 adults, 1 night, same date range — measuring every click from homepage to payment page. The difference is not incremental.</p>
+  </div>
+  <div class="v8-contain--wide">
+    <div class="v8-bj-grid">
+      <!-- ROOMRACCOON -->
+      <div class="v8-bj">
+        <div class="v8-bj__head">
+          <div class="v8-bj__name">RoomRaccoon</div>
+          <div class="v8-bj__type">Third-party booking engine</div>
+        </div>
+        <div class="v8-bj__body">
+          <div class="v8-bj__metric">
+            <span class="v8-bj__num">10–12</span>
+            <span class="v8-bj__label">clicks to payment</span>
+          </div>
+          <div class="v8-bj__metric">
+            <span class="v8-bj__num">2</span>
+            <span class="v8-bj__label">domain handoffs</span>
+          </div>
+          <div class="v8-bj__metric">
+            <span class="v8-bj__num">~15</span>
+            <span class="v8-bj__label">form fields</span>
+          </div>
+          <div class="v8-bj__metric">
+            <span class="v8-bj__num">5</span>
+            <span class="v8-bj__label">screens</span>
+          </div>
+          <ul class="v8-bj__notes">
+            <li>Opens new tab — guest leaves property brand</li>
+            <li>Full postal address required before payment</li>
+            <li>Separate payment gateway (Peach Payments iframe)</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- NIGHTSBRIDGE -->
+      <div class="v8-bj">
+        <div class="v8-bj__head">
+          <div class="v8-bj__name">NightsBridge</div>
+          <div class="v8-bj__type">Third-party booking engine</div>
+        </div>
+        <div class="v8-bj__body">
+          <div class="v8-bj__metric">
+            <span class="v8-bj__num">7–10</span>
+            <span class="v8-bj__label">clicks to payment</span>
+          </div>
+          <div class="v8-bj__metric">
+            <span class="v8-bj__num">1</span>
+            <span class="v8-bj__label">domain handoff</span>
+          </div>
+          <div class="v8-bj__metric">
+            <span class="v8-bj__num">~9</span>
+            <span class="v8-bj__label">form fields</span>
+          </div>
+          <div class="v8-bj__metric">
+            <span class="v8-bj__num">1</span>
+            <span class="v8-bj__label">long-scroll page</span>
+          </div>
+          <ul class="v8-bj__notes">
+            <li>Opens new tab — guest leaves property brand</li>
+            <li>Double-entry email required</li>
+            <li>Raw credit card fields — no accelerated checkout</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- PLEKIFY -->
+      <div class="v8-bj v8-bj--feat">
+        <div class="v8-bj__head">
+          <div class="v8-bj__name">Plekify on Shopify</div>
+          <div class="v8-bj__type">On-domain commerce</div>
+        </div>
+        <div class="v8-bj__body">
+          <div class="v8-bj__metric">
+            <span class="v8-bj__num v8-bj__num--feat">3–4</span>
+            <span class="v8-bj__label">clicks to payment</span>
+          </div>
+          <div class="v8-bj__metric">
+            <span class="v8-bj__num v8-bj__num--feat">0</span>
+            <span class="v8-bj__label">domain handoffs</span>
+          </div>
+          <div class="v8-bj__metric">
+            <span class="v8-bj__num v8-bj__num--feat">~7</span>
+            <span class="v8-bj__label">form fields</span>
+          </div>
+          <div class="v8-bj__metric">
+            <span class="v8-bj__num v8-bj__num--feat">2</span>
+            <span class="v8-bj__label">screens</span>
+          </div>
+          <ul class="v8-bj__notes">
+            <li>Guest never leaves the operator's domain</li>
+            <li>Shop Pay, Apple Pay, Google Pay — one-tap checkout</li>
+            <li>PCI DSS Level 1 via Shopify — operator never touches card data</li>
+            <li>Provisional reservation created before checkout loads</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="v8-contain">
+    <div class="v8-hl" style="margin-top:1.5rem">
+      <p class="v8-body"><strong class="v8-hl__label">The architectural difference:</strong> RoomRaccoon and NightsBridge treat a reservation as a multi-step form on a third-party domain — 10 to 12 clicks, 2 domain handoffs, a full postal address before payment. NightsBridge collects raw credit card details in basic form fields; some properties cannot accept cards at all. Plekify treats booking as a commerce transaction — search, select, pay — in 3 to 4 clicks, with zero domain handoffs. A provisional reservation is created in the PMS before the checkout page even loads. Payment is handled by Shopify Checkout at PCI DSS Level 1 — the same infrastructure used by millions of merchants globally, with Shop Pay, Apple Pay, and Google Pay available to more than 100 million users.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ PMS INTEGRATION STATUS ═════════════════════════════ -->
+<section class="v8-band">
+  <div class="v8-contain">
+    <span class="v8-annot">Live and roadmap integrations</span>
+    <p class="v8-body" style="margin-top:.3rem">ResRequest is live today, serving 400+ properties across 14 African countries. NightsBridge and additional PMS systems are on the integration roadmap. The architecture connects to any PMS with an open API.</p>
+    <ul class="v8-flist">
+      <li>ResRequest — live now</li>
+      <li>NightsBridge — integration roadmap</li>
+      <li>Further PMS integrations coming</li>
+      <li>OTA &amp; channel management unchanged</li>
+      <li>Guest data lands in your Shopify CRM</li>
+    </ul>
+  </div>
+</section>
+
+</div>
+
+{% stylesheet %}
+
+/* ═══════════════════════════════════════════════════════════
+   V8 ACCOMMODATION — Section 6
+   ═══════════════════════════════════════════════════════════ */
+
+.plekify-v8-fw {
+  font-family: 'Inter', sans-serif;
+  font-weight: 300;
+  color: #1a1a1a;
+  background: #fff;
+}
+
+/* ── CONTAINMENT ───────────────────────────────────────── */
+
+.plekify-v8-fw .v8-contain {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.plekify-v8-fw .v8-contain--wide {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.plekify-v8-fw .v8-prose {
+  max-width: 640px;
+}
+
+/* ── SHARED TYPOGRAPHY ──────────────────────────────────── */
+
+.plekify-v8-fw h2.v8-sh {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 300;
+  font-size: clamp(24px, 3.2vw, 36px);
+  line-height: 1.12;
+  color: #111;
+  margin-bottom: .4rem;
+}
+.plekify-v8-fw h2.v8-sh em { font-style: italic; color: #555; }
+
+.plekify-v8-fw .v8-body { font-size: 13.5px; line-height: 1.8; color: #444; font-weight: 300; }
+.plekify-v8-fw .v8-sm { font-size: 12px; line-height: 1.7; color: #666; }
+
+.plekify-v8-fw .v8-annot {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: #888;
+  font-weight: 400;
+  margin-bottom: .5rem;
+  display: block;
+}
+
+/* ── BANDS ──────────────────────────────────────────────── */
+
+.plekify-v8-fw .v8-band {
+  padding: 3rem 0;
+  border-bottom: 1px solid #eee;
+}
+
+.plekify-v8-fw .v8-band--alt {
+  background: #f9f9f9;
+  border-bottom: none;
+}
+
+/* ── ACCOMMODATION SECTION DIVIDER ─────────────────────── */
+
+.plekify-v8-fw .v8-band--accom {
+  border-top: 3px solid #111;
+  padding-top: 2.5rem;
+}
+
+.plekify-v8-fw .v8-accom-divider {
+  width: 48px;
+  height: 2px;
+  background: #999;
+  margin-bottom: 1.25rem;
+}
+
+.plekify-v8-fw h2.v8-sh.v8-sh--accom {
+  font-size: clamp(28px, 3.8vw, 42px);
+  letter-spacing: -.01em;
+  margin-bottom: .2rem;
+}
+
+/* ── HIGHLIGHT BOX ──────────────────────────────────────── */
+
+.plekify-v8-fw .v8-hl {
+  background: #f7f7f7;
+  border-left: 2px solid #ccc;
+  padding: .9rem 1.2rem;
+  margin-top: .85rem;
+}
+
+.plekify-v8-fw .v8-hl__label {
+  font-weight: 400;
+  color: #333;
+}
+
+/* ── FEATURE LIST ──────────────────────────────────────── */
+
+.plekify-v8-fw .v8-flist {
+  list-style: none;
+  padding: 0;
+  margin-top: .7rem;
+}
+
+.plekify-v8-fw .v8-flist li {
+  font-size: 12px;
+  color: #555;
+  font-weight: 300;
+  padding: .25rem 0 .25rem 1rem;
+  letter-spacing: .01em;
+  position: relative;
+}
+
+.plekify-v8-fw .v8-flist li:before {
+  content: '—';
+  position: absolute;
+  left: 0;
+  color: #aaa;
+  font-size: 11px;
+}
+
+/* ── BOOKING JOURNEY COMPARISON ────────────────────────── */
+
+.plekify-v8-fw .v8-bj-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.plekify-v8-fw .v8-bj {
+  border: 1px solid #ddd;
+  border-radius: 1px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.plekify-v8-fw .v8-bj--feat {
+  border-color: #999;
+}
+
+.plekify-v8-fw .v8-bj__head {
+  background: #f2f2f2;
+  padding: 1rem 1.15rem .85rem;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.plekify-v8-fw .v8-bj--feat .v8-bj__head {
+  background: #f7f7f7;
+  border-bottom-color: #ddd;
+}
+
+.plekify-v8-fw .v8-bj__name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 18px;
+  font-weight: 300;
+  color: #111;
+  line-height: 1.2;
+}
+
+.plekify-v8-fw .v8-bj__type {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 8.5px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: #888;
+  font-weight: 400;
+  margin-top: .3rem;
+}
+
+.plekify-v8-fw .v8-bj__body {
+  padding: 1rem 1.15rem 1.15rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.plekify-v8-fw .v8-bj__metric {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: .35rem 0;
+  border-bottom: .5px solid #eee;
+}
+
+.plekify-v8-fw .v8-bj__metric:last-of-type {
+  border-bottom: none;
+}
+
+.plekify-v8-fw .v8-bj__num {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px;
+  font-weight: 300;
+  color: #444;
+  min-width: 48px;
+}
+
+.plekify-v8-fw .v8-bj__num--feat {
+  color: #111;
+  font-weight: 400;
+}
+
+.plekify-v8-fw .v8-bj__label {
+  font-size: 11px;
+  color: #777;
+  font-weight: 300;
+  text-align: right;
+  letter-spacing: .01em;
+}
+
+.plekify-v8-fw .v8-bj__notes {
+  list-style: none;
+  padding: 0;
+  margin-top: .85rem;
+  padding-top: .75rem;
+  border-top: 1px solid #e8e8e8;
+  flex: 1;
+}
+
+.plekify-v8-fw .v8-bj__notes li {
+  font-size: 11px;
+  color: #555;
+  font-weight: 300;
+  padding: .2rem 0 .2rem 1rem;
+  position: relative;
+  line-height: 1.55;
+}
+
+.plekify-v8-fw .v8-bj__notes li:before {
+  content: '—';
+  position: absolute;
+  left: 0;
+  color: #bbb;
+  font-size: 10px;
+}
+
+.plekify-v8-fw .v8-bj--feat .v8-bj__notes li {
+  color: #333;
+}
+
+/* ── RESPONSIVE ─────────────────────────────────────────── */
+
+@media (max-width: 720px) {
+  .plekify-v8-fw .v8-contain,
+  .plekify-v8-fw .v8-contain--wide {
+    padding: 0 1.25rem;
+  }
+  .plekify-v8-fw .v8-band {
+    padding: 2rem 0;
+  }
+  .plekify-v8-fw .v8-bj-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+}
+
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Plekify V8 Accommodation",
+  "tag": "section",
+  "class": "plekify-v8-accommodation-section",
+  "limit": 1,
+  "settings": [],
+  "presets": [
+    {
+      "name": "Plekify V8 Accommodation",
+      "category": "Plekify"
+    }
+  ]
+}
+{% endschema %}

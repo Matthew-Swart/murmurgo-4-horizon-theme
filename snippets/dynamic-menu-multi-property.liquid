@@ -1,0 +1,166 @@
+{% comment %}
+  Multi-Property Navigation Menu - Simplified
+  No dropdowns - just links to all-property collections
+{% endcomment %}
+
+{% liquid
+  # Define collection handles for all-property collections
+  assign all_accommodation_handle = 'all-property-accommodation'
+  assign all_dining_handle = 'all-property-dining'
+  assign all_activities_handle = 'all-property-activities'
+  assign all_spa_handle = 'all-property-spa'
+  assign all_videos_handle = 'all-property-videos'
+  assign all_panoramas_handle = 'all-property-panoramas'
+  assign all_documents_handle = 'all-property-documents'
+
+  # Check which categories have content across all properties
+  assign has_accommodation = false
+  assign has_dining = false
+  assign has_activities = false
+  assign has_spa = false
+  assign has_videos = false
+  assign has_panoramas = false
+  assign has_documents = false
+
+  # Check property-linked content availability
+  for product in collections.all.products limit: 200
+    assign joined_tags = product.tags | join: '|'
+    assign tag_string = '|' | append: joined_tags | append: '|'
+
+    if tag_string contains '|wetu-property|'
+      assign accommodation_col = product.metafields.wetu.accommodation_collection.value
+      assign restaurants_col = product.metafields.wetu.restaurants_collection.value
+      assign activities_col = product.metafields.wetu.activities_collection_ref.value
+      assign spa_col = product.metafields.wetu.spa_collection.value
+
+      if accommodation_col != blank and accommodation_col.products.size > 0
+        assign has_accommodation = true
+      endif
+      if restaurants_col != blank and restaurants_col.products.size > 0
+        assign has_dining = true
+      endif
+      if activities_col != blank and activities_col.products.size > 0
+        assign has_activities = true
+      endif
+      if spa_col != blank and spa_col.products.size > 0
+        assign has_spa = true
+      endif
+
+      assign property_video_refs = product.metafields.wetu.videos.value
+      assign property_document_refs = product.metafields.wetu.documents.value
+      assign property_videos_collection_ref = product.metafields.wetu.videos_collection_ref.value
+      assign property_documents_collection_ref = product.metafields.wetu.documents_collection_ref.value
+
+      if property_video_refs != blank
+        assign has_videos = true
+      elsif property_videos_collection_ref != blank and property_videos_collection_ref.products_count > 0
+        assign has_videos = true
+      endif
+
+      if property_document_refs != blank
+        assign has_documents = true
+      elsif property_documents_collection_ref != blank and property_documents_collection_ref.products_count > 0
+        assign has_documents = true
+      endif
+    endif
+  endfor
+
+  # Panorama behavior remains product-based
+  assign all_panoramas = collections.all.products | where: 'product_type', 'Panorama'
+  if all_panoramas.size > 0
+    assign has_panoramas = true
+  endif
+
+  # Preserve existing all-property collection behavior
+  if has_videos == false and collections[all_videos_handle] and collections[all_videos_handle].products_count > 0
+    assign has_videos = true
+  endif
+  if has_documents == false and collections[all_documents_handle] and collections[all_documents_handle].products_count > 0
+    assign has_documents = true
+  endif
+
+  # Global all-property fallback via metaobjects when all-property collections are empty
+  if has_videos == false
+    for global_video in shop.metaobjects.travel_video.values limit: 1
+      assign has_videos = true
+      break
+    endfor
+  endif
+
+  if has_documents == false
+    for global_document in shop.metaobjects.travel_document.values limit: 1
+      assign has_documents = true
+      break
+    endfor
+  endif
+-%}
+
+{%- comment -%} Store Name - Links to homepage {%- endcomment -%}
+<li class="menu-list__list-item" role="presentation">
+  <a href="/" class="menu-list__link">
+    <span class="menu-list__link-title">{{ shop.name }}</span>
+  </a>
+</li>
+
+{%- comment -%} Accommodation {%- endcomment -%}
+{% if has_accommodation %}
+  <li class="menu-list__list-item" role="presentation">
+    <a href="/collections/{{ all_accommodation_handle }}" class="menu-list__link">
+      <span class="menu-list__link-title">Accommodation</span>
+    </a>
+  </li>
+{% endif %}
+
+{%- comment -%} Dining {%- endcomment -%}
+{% if has_dining %}
+  <li class="menu-list__list-item" role="presentation">
+    <a href="/collections/{{ all_dining_handle }}" class="menu-list__link">
+      <span class="menu-list__link-title">Dining</span>
+    </a>
+  </li>
+{% endif %}
+
+{%- comment -%} Activities {%- endcomment -%}
+{% if has_activities %}
+  <li class="menu-list__list-item" role="presentation">
+    <a href="/collections/{{ all_activities_handle }}" class="menu-list__link">
+      <span class="menu-list__link-title">Activities</span>
+    </a>
+  </li>
+{% endif %}
+
+{%- comment -%} Spa {%- endcomment -%}
+{% if has_spa %}
+  <li class="menu-list__list-item" role="presentation">
+    <a href="/collections/{{ all_spa_handle }}" class="menu-list__link">
+      <span class="menu-list__link-title">Spa</span>
+    </a>
+  </li>
+{% endif %}
+
+{%- comment -%} Videos {%- endcomment -%}
+{% if has_videos %}
+  <li class="menu-list__list-item" role="presentation">
+    <a href="/collections/{{ all_videos_handle }}" class="menu-list__link">
+      <span class="menu-list__link-title">Videos</span>
+    </a>
+  </li>
+{% endif %}
+
+{%- comment -%} 3D Views {%- endcomment -%}
+{% if has_panoramas %}
+  <li class="menu-list__list-item" role="presentation">
+    <a href="/collections/{{ all_panoramas_handle }}" class="menu-list__link" target="_blank">
+      <span class="menu-list__link-title">3D Views</span>
+    </a>
+  </li>
+{% endif %}
+
+{%- comment -%} Documents {%- endcomment -%}
+{% if has_documents %}
+  <li class="menu-list__list-item" role="presentation">
+    <a href="/collections/{{ all_documents_handle }}" class="menu-list__link">
+      <span class="menu-list__link-title">Documents</span>
+    </a>
+  </li>
+{% endif %}

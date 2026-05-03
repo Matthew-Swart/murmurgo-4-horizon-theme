@@ -1,0 +1,54 @@
+{% comment %}
+  Debug Property Detection
+  Shows what properties and data are being detected
+{% endcomment %}
+
+{% render 'get-property-products' %}
+
+<div style="background: #f5f5f5; padding: 20px; margin: 20px; border: 2px solid #333;">
+  <h2>Property Detection Debug</h2>
+  
+  <p><strong>Property Count:</strong> {{ property_count }}</p>
+  <p><strong>Is Single Property:</strong> {{ is_single_property }}</p>
+  
+  {% if is_single_property %}
+    <h3>Main Property:</h3>
+    <p>Title: {{ main_property.title }}</p>
+    <p>Handle: {{ main_property.handle }}</p>
+    <p>Product Type: {{ main_property.product_type }}</p>
+    
+    <h4>Collections:</h4>
+    <ul>
+      <li>Accommodation: {{ main_property.metafields.wetu.accommodation_collection.value.title }} ({{ main_property.metafields.wetu.accommodation_collection.value.products.size }} products)</li>
+      <li>Dining: {{ main_property.metafields.wetu.restaurants_collection.value.title }} ({{ main_property.metafields.wetu.restaurants_collection.value.products.size }} products)</li>
+      <li>Activities: {{ main_property.metafields.wetu.activities_collection_ref.value.title }} ({{ main_property.metafields.wetu.activities_collection_ref.value.products.size }} products)</li>
+      <li>Spa: {{ main_property.metafields.wetu.spa_collection.value.title }} ({{ main_property.metafields.wetu.spa_collection.value.products.size }} products)</li>
+    </ul>
+  {% else %}
+    <h3>All Properties:</h3>
+    <ul>
+      {% for prop in property_products %}
+        {% if prop.available %}
+          <li>
+            {{ prop.title }} ({{ prop.handle }}) - Type: {{ prop.product_type }}
+            <ul>
+              <li>Accommodation: {{ prop.metafields.wetu.accommodation_collection.value.products.size | default: 0 }}</li>
+              <li>Dining: {{ prop.metafields.wetu.restaurants_collection.value.products.size | default: 0 }}</li>
+            </ul>
+          </li>
+        {% endif %}
+      {% endfor %}
+    </ul>
+  {% endif %}
+  
+  <h3>Available Collections:</h3>
+  <ul>
+    {% if collections.properties %}
+      <li>collections.properties exists ({{ collections.properties.products.size }} products)</li>
+    {% endif %}
+    {% if collections['all-properties'] %}
+      <li>collections.all-properties exists ({{ collections['all-properties'].products.size }} products)</li>
+    {% endif %}
+    <li>Total products in collections.all: {{ collections.all.products_count }}</li>
+  </ul>
+</div>

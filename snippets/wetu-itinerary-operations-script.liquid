@@ -1,0 +1,1306 @@
+{% javascript %}
+(() => {
+  const ROOT_SELECTOR = '.itin-ops[data-section-id]';
+  const GROUP_LABELS = {
+    adult: 'Adults',
+    child: 'Children',
+    infant: 'Infants',
+    other: 'Other travellers',
+  };
+
+  const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
+
+  const text = (value) => String(value ?? '').replace(/\s+/g, ' ').trim();
+
+  const escapeHtml = (value) =>
+    String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
+  const stripHtml = (value) => {
+    const raw = String(value ?? '');
+    if (!raw) return '';
+    if (typeof DOMParser === 'function' && /<[^>]+>/.test(raw)) {
+      const doc = new DOMParser().parseFromString(`<div>${raw}</div>`, 'text/html');
+      return text(doc.body.textContent || '');
+    }
+    return text(raw);
+  };
+
+  const unwrap = (value) => {
+    if (value && typeof value === 'object' && hasOwn(value, 'value')) {
+      return unwrap(value.value);
+    }
+    return value;
+  };
+
+  const normalizeKey = (key) => text(key).toLowerCase().replace(/[\s_-]+/g, '');
+
+  const readKey = (obj, key) => {
+    if (!obj || typeof obj !== 'object') return undefined;
+    if (hasOwn(obj, key)) return unwrap(obj[key]);
+    const needle = normalizeKey(key);
+    for (const candidate of Object.keys(obj)) {
+      if (normalizeKey(candidate) === needle) {
+        return unwrap(obj[candidate]);
+      }
+    }
+    return undefined;
+  };
+
+  const isPresent = (value) => {
+    if (value === null || value === undefined) return false;
+    if (typeof value === 'number') return Number.isFinite(value);
+    if (typeof value === 'boolean') return true;
+    if (Array.isArray(value)) return value.length > 0;
+    if (typeof value === 'object') return Object.keys(value).length > 0;
+    return text(value) !== '';
+  };
+
+  const pick = (obj, keys, fallback = null) => {
+    for (const key of keys) {
+      const value = readKey(obj, key);
+      if (isPresent(value)) return value;
+    }
+    return fallback;
+  };
+
+  const pickNumber = (obj, keys, fallback = Number.NaN) => {
+    const value = pick(obj, keys, fallback);
+    const parsed = Number.parseFloat(String(value ?? '').replace(/[^0-9.-]/g, ''));
+    return Number.isFinite(parsed) ? parsed : fallback;
+  };
+
+  const toArray = (value) => {
+    const unwrapped = unwrap(value);
+    if (Array.isArray(unwrapped)) return unwrapped;
+    if (unwrapped === null || unwrapped === undefined) return [];
+    if (typeof unwrapped === 'string') {
+      const raw = unwrapped.trim();
+      if (!raw) return [];
+      if (raw.startsWith('[') && raw.endsWith(']')) {
+        try {
+          const parsed = JSON.parse(raw);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch (_error) {
+          return [];
+        }
+      }
+      return [raw];
+    }
+    return [unwrapped];
+  };
+
+  const splitList = (value) => {
+    if (Array.isArray(value)) {
+      return value.map((entry) => stripHtml(entry)).filter(Boolean);
+    }
+    const raw = String(unwrap(value) ?? '').trim();
+    if (!raw) return [];
+    if (/^(\[).*(\])$/s.test(raw)) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed.map((entry) => stripHtml(entry)).filter(Boolean);
+      } catch (_error) {}
+    }
+    if (/<li[\s>]/i.test(raw) && typeof DOMParser === 'function') {
+      const doc = new DOMParser().parseFromString(`<div>${raw}</div>`, 'text/html');
+      const items = Array.from(doc.querySelectorAll('li'))
+        .map((item) => stripHtml(item.textContent))
+        .filter(Boolean);
+      if (items.length) return items;
+    }
+    return raw
+      .split(/\r?\n|\|/g)
+      .map((entry) => stripHtml(entry))
+      .filter(Boolean);
+  };
+
+  const parseDate = (value) => {
+    const raw = text(value);
+    if (!raw) return null;
+    const asDate = new Date(raw);
+    return Number.isNaN(asDate.getTime()) ? null : asDate;
+  };
+
+  const addDays = (date, days) => {
+    if (!(date instanceof Date)) return null;
+    const clone = new Date(date.getTime());
+    clone.setUTCDate(clone.getUTCDate() + days);
+    return clone;
+  };
+
+  const formatDate = (value) => {
+    const date = value instanceof Date ? value : parseDate(value);
+    if (!date) return '--';
+    return date.toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
+      timeZone: 'UTC',
+    });
+  };
+
+  const formatDateTime = (dateValue, timeValue) => {
+    const date = parseDate(dateValue);
+    const fallbackTime = text(timeValue);
+    if (!date) return fallbackTime || '--';
+    const time = fallbackTime || date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
+    return `${formatDate(date)} ${time}`;
+  };
+
+  const dedupeStrings = (items) => {
+    const seen = new Set();
+    return items
+      .map((item) => text(item))
+      .filter(Boolean)
+      .filter((item) => {
+        const key = item.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  };
+
+  const dedupeBy = (items, selector) => {
+    const seen = new Set();
+    return items.filter((item) => {
+      const key = selector(item);
+      if (!key) return false;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
+
+  const detectDayOffset = (items, keys) => {
+    let hasZero = false;
+    for (const item of items) {
+      for (const key of keys) {
+        const value = pickNumber(item, [key], Number.NaN);
+        if (Number.isFinite(value) && value === 0) {
+          hasZero = true;
+          break;
+        }
+      }
+      if (hasZero) break;
+    }
+    return hasZero ? 1 : 0;
+  };
+
+  const normalizeTravellerType = (value) => {
+    const raw = text(value).toLowerCase();
+    if (!raw) return 'other';
+    if (raw.includes('adult')) return 'adult';
+    if (raw.includes('child')) return 'child';
+    if (raw.includes('infant') || raw.includes('baby')) return 'infant';
+    return 'other';
+  };
+
+  const buildTravellerName = (traveller) => {
+    const direct = text(
+      pick(traveller, [
+        'name',
+        'full_name',
+        'fullName',
+        'traveller_name',
+        'traveler_name',
+        'guest_name',
+      ])
+    );
+    if (direct) return direct;
+    const title = text(pick(traveller, ['title', 'Title']));
+    const firstName = text(pick(traveller, ['first_name', 'firstName', 'given_name', 'givenName']));
+    const lastName = text(pick(traveller, ['last_name', 'lastName', 'surname']));
+    return text([title, firstName, lastName].filter(Boolean).join(' '));
+  };
+
+  const normalizeTraveller = (traveller, index = 0) => {
+    const type = normalizeTravellerType(
+      pick(traveller, ['type', 'traveller_type', 'traveler_type', 'guest_type', 'category'])
+    );
+    return {
+      type,
+      name: buildTravellerName(traveller) || `Traveller ${index + 1}`,
+      nationality: text(pick(traveller, ['nationality', 'country', 'nationality_code'])),
+      passportNumber: text(pick(traveller, ['passport_number', 'passportNumber', 'passport', 'passport_no'])),
+      dietaryRequirements: text(
+        pick(traveller, ['dietary_requirements', 'dietaryRequirements', 'dietary', 'meal_requirements'])
+      ),
+      medicalNotes: text(pick(traveller, ['medical_notes', 'medicalNotes', 'medical', 'health_notes'])),
+      specialRequests: text(
+        pick(traveller, ['special_requests', 'specialRequests', 'special_request', 'requests'])
+      ),
+      loyaltyPrograms: splitList(
+        pick(traveller, ['loyalty_programs', 'loyaltyPrograms', 'loyalty', 'frequent_flyer_numbers'])
+      ),
+    };
+  };
+
+  const createPlaceholderTravellers = (adults, children, infants) => {
+    const placeholders = [];
+    for (let i = 0; i < adults; i += 1) {
+      placeholders.push({
+        type: 'adult',
+        name: `Adult ${i + 1}`,
+        nationality: '',
+        passportNumber: '',
+        dietaryRequirements: '',
+        medicalNotes: '',
+        specialRequests: '',
+        loyaltyPrograms: [],
+      });
+    }
+    for (let i = 0; i < children; i += 1) {
+      placeholders.push({
+        type: 'child',
+        name: `Child ${i + 1}`,
+        nationality: '',
+        passportNumber: '',
+        dietaryRequirements: '',
+        medicalNotes: '',
+        specialRequests: '',
+        loyaltyPrograms: [],
+      });
+    }
+    for (let i = 0; i < infants; i += 1) {
+      placeholders.push({
+        type: 'infant',
+        name: `Infant ${i + 1}`,
+        nationality: '',
+        passportNumber: '',
+        dietaryRequirements: '',
+        medicalNotes: '',
+        specialRequests: '',
+        loyaltyPrograms: [],
+      });
+    }
+    return placeholders;
+  };
+
+  const normalizeRoute = (route) => {
+    const contacts = dedupeStrings([
+      pick(route, ['contact_name', 'contactName']),
+      pick(route, ['contact_numbers', 'contactNumbers', 'contact_number', 'contactNumber']),
+      pick(route, ['contact_alternative_numbers', 'contactAlternativeNumbers']),
+      pick(route, ['contact_email', 'contactEmail']),
+      pick(route, ['agency', 'Agency']),
+      pick(route, ['vehicle', 'Vehicle']),
+    ]);
+    return {
+      mode: text(pick(route, ['mode', 'Mode'])) || 'Route',
+      type: text(pick(route, ['type', 'Type', 'variant', 'Variant'])),
+      startDate: text(pick(route, ['start', 'Start'])),
+      startTime: text(pick(route, ['start_time', 'startTime', 'departure_time', 'departureTime'])),
+      endDate: text(pick(route, ['end', 'End'])),
+      endTime: text(pick(route, ['end_time', 'endTime', 'arrival_time', 'arrivalTime'])),
+      flightCode: text(
+        pick(route, ['flight_code', 'flightCode', 'flight_number', 'flightNumber', 'ticket_class'])
+      ),
+      terminals: text(
+        [pick(route, ['start_terminal', 'startTerminal']), pick(route, ['end_terminal', 'endTerminal'])]
+          .filter(Boolean)
+          .join(' -> ')
+      ),
+      reference: text(
+        pick(route, ['reference_codes', 'referenceCodes', 'reference', 'booking_reference', 'bookingReference'])
+      ),
+      contacts,
+      meetingInstructions: stripHtml(
+        pick(route, ['meeting_instructions', 'meetingInstructions', 'directions', 'description', 'notes'])
+      ),
+    };
+  };
+
+  const normalizeActivity = (activity, kind) => ({
+    kind,
+    name: text(pick(activity, ['name', 'title', 'activity_name', 'activityName'])) || 'Activity',
+    activityType: text(pick(activity, ['type', 'Type'])) || kind,
+    startTime: text(pick(activity, ['start_time', 'startTime', 'time', 'Time'])),
+    endTime: text(pick(activity, ['end_time', 'endTime'])),
+    duration: text(pick(activity, ['duration', 'Duration'])),
+    reference: text(pick(activity, ['reference', 'reference_code', 'referenceCode'])),
+    contacts: dedupeStrings([
+      pick(activity, ['contact_name', 'contactName']),
+      pick(activity, ['contact_number', 'contactNumber']),
+      pick(activity, ['contact_email', 'contactEmail']),
+      pick(activity, ['company', 'Company']),
+    ]),
+    notes: stripHtml(
+      pick(activity, ['description', 'notes', 'consultant_notes', 'consultantNotes', 'meeting_instructions'])
+    ),
+  });
+
+  const calculateDaysFromLegs = (legs) => {
+    let sum = 0;
+    legs.forEach((leg) => {
+      const periods = toArray(pick(leg, ['periods', 'Periods']));
+      if (periods.length) {
+        periods.forEach((period) => {
+          const days = Math.max(1, pickNumber(period, ['days', 'Days'], 1));
+          sum += days;
+        });
+      } else {
+        sum += Math.max(1, pickNumber(leg, ['nights', 'Nights'], 1));
+      }
+    });
+    return sum;
+  };
+
+  const calculateReferencedDays = (legs, routes) => {
+    const dayValues = [];
+    legs.forEach((leg) => {
+      toArray(pick(leg, ['periods', 'Periods'])).forEach((period) => {
+        dayValues.push(
+          pickNumber(period, ['itinerary_start_day', 'itineraryStartDay', 'start_day', 'startDay'], Number.NaN)
+        );
+        dayValues.push(
+          pickNumber(period, ['itinerary_end_day', 'itineraryEndDay', 'end_day', 'endDay'], Number.NaN)
+        );
+      });
+    });
+    routes.forEach((route) => {
+      dayValues.push(pickNumber(route, ['start_day', 'startDay', 'day', 'Day'], Number.NaN));
+      dayValues.push(pickNumber(route, ['end_day', 'endDay'], Number.NaN));
+    });
+    const numeric = dayValues.filter((value) => Number.isFinite(value));
+    if (!numeric.length) return 0;
+    const max = Math.max(...numeric);
+    const hasZero = numeric.some((value) => value === 0);
+    return hasZero ? max + 1 : max;
+  };
+
+  const extractPricing = (data) => {
+    const pricingNode = pick(data, ['pricing', 'Pricing'], {}) || {};
+    const financialTermsNode = pick(pricingNode, ['financial_terms', 'financialTerms', 'FinancialTerms'], {});
+
+    const phases = toArray(
+      pick(pricingNode, [
+        'phases',
+        'Phases',
+        'pricing_phases',
+        'pricingPhases',
+        'phase_breakdown',
+        'phaseBreakdown',
+      ])
+    ).map((phase, index) => ({
+      name: text(pick(phase, ['name', 'title', 'phase', 'label'])) || `Phase ${index + 1}`,
+      from: text(pick(phase, ['from', 'start_date', 'startDate'])),
+      to: text(pick(phase, ['to', 'end_date', 'endDate'])),
+      amountPerPerson: text(
+        pick(phase, ['amount_per_person', 'amountPerPerson', 'per_person', 'perPerson'])
+      ),
+      total: text(pick(phase, ['total', 'amount', 'value'])),
+      currency: text(pick(phase, ['currency', 'Currency'])),
+      notes: stripHtml(pick(phase, ['notes', 'description', 'comment'])),
+      lineItems: toArray(pick(phase, ['line_items', 'lineItems', 'items'])),
+    }));
+
+    const phaseLineItems = phases.flatMap((phase) =>
+      phase.lineItems.map((item) => ({
+        phase: phase.name,
+        item: text(pick(item, ['name', 'title', 'description', 'item'])),
+        quantity: text(pick(item, ['quantity', 'qty', 'units'])),
+        unitPrice: text(pick(item, ['unit_price', 'unitPrice', 'rate'])),
+        total: text(pick(item, ['total', 'amount', 'value'])),
+        notes: stripHtml(pick(item, ['notes', 'description'])),
+      }))
+    );
+
+    const directLineItems = toArray(
+      pick(pricingNode, ['line_items', 'lineItems', 'items', 'LineItems'])
+    ).map((item) => ({
+      phase: text(pick(item, ['phase', 'phase_name', 'phaseName'])),
+      item: text(pick(item, ['name', 'title', 'description', 'item'])),
+      quantity: text(pick(item, ['quantity', 'qty', 'units'])),
+      unitPrice: text(pick(item, ['unit_price', 'unitPrice', 'rate'])),
+      total: text(pick(item, ['total', 'amount', 'value'])),
+      notes: stripHtml(pick(item, ['notes', 'description'])),
+    }));
+
+    const paymentSchedule = toArray(
+      pick(financialTermsNode, ['payment_schedule', 'paymentSchedule']) ||
+        pick(pricingNode, ['payment_schedule', 'paymentSchedule']) ||
+        pick(data, ['payment_schedule', 'paymentSchedule'])
+    ).map((entry) => ({
+      dueDate: text(pick(entry, ['due_date', 'dueDate', 'date'])),
+      description: stripHtml(pick(entry, ['description', 'label', 'name'])),
+      percentage: text(pick(entry, ['percentage', 'percent'])),
+      amount: text(pick(entry, ['amount', 'value'])),
+      status: text(pick(entry, ['status', 'state'])),
+    }));
+
+    const financialTermsText = stripHtml(
+      pick(pricingNode, ['financial_terms', 'financialTerms', 'terms_and_conditions', 'termsAndConditions']) ||
+        pick(data, ['terms_and_conditions', 'termsAndConditions', 'financial_terms', 'financialTerms'])
+    );
+
+    return {
+      summary: text(pick(pricingNode, ['text', 'Text', 'summary', 'price_text', 'priceText']) || pick(data, ['price', 'Price'])),
+      includes: splitList(
+        pick(pricingNode, ['price_includes', 'priceIncludes', 'includes', 'Includes']) ||
+          pick(data, ['price_includes', 'priceIncludes', 'includes', 'Includes'])
+      ),
+      excludes: splitList(
+        pick(pricingNode, ['price_excludes', 'priceExcludes', 'excludes', 'Excludes']) ||
+          pick(data, ['price_excludes', 'priceExcludes', 'excludes', 'Excludes'])
+      ),
+      phases,
+      lineItems: [...phaseLineItems, ...directLineItems],
+      paymentSchedule,
+      financialTerms: splitList(financialTermsText),
+    };
+  };
+
+  const buildModel = (data, root) => {
+    const legs = toArray(pick(data, ['legs', 'Legs']));
+    const routes = [
+      ...toArray(pick(data, ['routes', 'Routes'])),
+      ...toArray(pick(data, ['travel_arrangements', 'travelArrangements', 'TravelArrangements'])),
+      ...toArray(pick(data, ['car_hire', 'carHire', 'CarHire'])),
+    ];
+    const contacts = toArray(pick(data, ['contacts', 'Contacts', 'consultants', 'Consultants']));
+    const primaryContact = contacts[0] || {};
+    const startDate = parseDate(pick(data, ['start_date', 'startDate', 'StartDate']));
+    const totalDays = Math.max(
+      1,
+      pickNumber(data, ['days', 'Days', 'total_days', 'totalDays'], 0),
+      calculateDaysFromLegs(legs),
+      calculateReferencedDays(legs, routes)
+    );
+    const endDate = addDays(startDate, totalDays - 1);
+
+    let travellers = toArray(pick(data, ['travellers', 'travelers', 'Travellers', 'Travelers', 'guests', 'Guests']))
+      .map((entry, index) => normalizeTraveller(entry, index))
+      .filter((entry) => text(entry.name));
+
+    if (!travellers.length) {
+      const adults = Math.max(
+        0,
+        pickNumber(data, ['travellers_adult', 'travelers_adult', 'adults', 'adult_count', 'adultCount'], 0)
+      );
+      const children = Math.max(
+        0,
+        pickNumber(data, ['travellers_children', 'travelers_children', 'children', 'child_count', 'childCount'], 0)
+      );
+      const infants = Math.max(
+        0,
+        pickNumber(data, ['travellers_infant', 'travelers_infant', 'infants', 'infant_count', 'infantCount'], 0)
+      );
+      travellers = createPlaceholderTravellers(adults, children, infants);
+    }
+
+    const days = Array.from({ length: totalDays }, (_entry, index) => ({
+      dayNumber: index + 1,
+      dateLabel: startDate ? formatDate(addDays(startDate, index)) : '--',
+      locations: [],
+      accommodations: [],
+      routes: [],
+      activities: [],
+      consultantNotes: [],
+    }));
+    const dayMap = new Map(days.map((day) => [day.dayNumber, day]));
+
+    const allPeriods = legs.flatMap((leg) => toArray(pick(leg, ['periods', 'Periods'])));
+    const periodOffset = detectDayOffset(allPeriods, [
+      'itinerary_start_day',
+      'itineraryStartDay',
+      'itinerary_end_day',
+      'itineraryEndDay',
+      'start_day',
+      'startDay',
+      'end_day',
+      'endDay',
+    ]);
+    const routeOffset = detectDayOffset(routes, ['start_day', 'startDay', 'end_day', 'endDay', 'day', 'Day']);
+
+    const sortedLegs = [...legs].sort(
+      (a, b) => pickNumber(a, ['sequence', 'Sequence'], 0) - pickNumber(b, ['sequence', 'Sequence'], 0)
+    );
+
+    let rollingDay = 1;
+    sortedLegs.forEach((leg, legIndex) => {
+      const legLabel = `Leg ${String(legIndex + 1).padStart(2, '0')}`;
+      const legName = text(
+        pick(leg, [
+          'name',
+          'title',
+          'accommodation_name',
+          'accommodationName',
+          'property_name',
+          'propertyName',
+        ])
+      ) || legLabel;
+      const location = text(
+        pick(leg, ['location', 'destination', 'destination_name', 'destinationName', 'region', 'area'])
+      );
+      const checkIn = text(pick(leg, ['check_in_time', 'checkInTime', 'checkin_time', 'checkinTime']));
+      const checkOut = text(pick(leg, ['check_out_time', 'checkOutTime', 'checkout_time', 'checkoutTime']));
+      const bookingReference = text(pick(leg, ['booking_reference', 'bookingReference', 'reference']));
+      const legConsultantNote = stripHtml(pick(leg, ['consultant_notes', 'consultantNotes']));
+      let periods = toArray(pick(leg, ['periods', 'Periods']));
+      if (!periods.length) periods = [{}];
+
+      let legCursor = rollingDay;
+      periods.forEach((period) => {
+        const periodDays = Math.max(
+          1,
+          pickNumber(period, ['days', 'Days'], pickNumber(leg, ['nights', 'Nights'], 1))
+        );
+        let startDay = pickNumber(
+          period,
+          ['itinerary_start_day', 'itineraryStartDay', 'start_day', 'startDay'],
+          Number.NaN
+        );
+        let endDay = pickNumber(
+          period,
+          ['itinerary_end_day', 'itineraryEndDay', 'end_day', 'endDay'],
+          Number.NaN
+        );
+        if (Number.isFinite(startDay) && Number.isFinite(endDay)) {
+          startDay += periodOffset;
+          endDay += periodOffset;
+        } else {
+          startDay = legCursor;
+          endDay = legCursor + periodDays - 1;
+        }
+        legCursor = Math.max(legCursor, endDay + 1);
+
+        const periodConsultantNote = stripHtml(pick(period, ['consultant_notes', 'consultantNotes']));
+        const periodRoutes = toArray(pick(period, ['routes', 'Routes'])).map((route) => normalizeRoute(route));
+        const periodActivities = [
+          ...toArray(pick(period, ['activities', 'Activities'])).map((entry) => normalizeActivity(entry, 'activity')),
+          ...toArray(pick(period, ['day_tours', 'dayTours', 'DayTours'])).map((entry) =>
+            normalizeActivity(entry, 'day tour')
+          ),
+          ...toArray(pick(period, ['greetings', 'Greetings'])).map((entry) =>
+            normalizeActivity(entry, 'greeting')
+          ),
+        ];
+
+        for (let dayNumber = startDay; dayNumber <= endDay; dayNumber += 1) {
+          const boundedDay = Math.min(totalDays, Math.max(1, dayNumber));
+          const day = dayMap.get(boundedDay);
+          if (!day) continue;
+          if (location) day.locations.push(location);
+          day.accommodations.push({
+            legLabel,
+            name: legName,
+            checkIn,
+            checkOut,
+            bookingReference,
+          });
+          day.routes.push(...periodRoutes);
+          day.activities.push(...periodActivities);
+          if (periodConsultantNote) {
+            day.consultantNotes.push({ legLabel, note: periodConsultantNote });
+          } else if (legConsultantNote) {
+            day.consultantNotes.push({ legLabel, note: legConsultantNote });
+          }
+        }
+      });
+      rollingDay = Math.max(rollingDay, legCursor);
+    });
+
+    routes.forEach((route) => {
+      const normalized = normalizeRoute(route);
+      let startDay = pickNumber(route, ['start_day', 'startDay', 'day', 'Day'], Number.NaN);
+      let endDay = pickNumber(route, ['end_day', 'endDay'], Number.NaN);
+      if (Number.isFinite(startDay)) {
+        if (!Number.isFinite(endDay)) endDay = startDay;
+        startDay += routeOffset;
+        endDay += routeOffset;
+      } else {
+        startDay = 1;
+        endDay = 1;
+      }
+
+      for (let dayNumber = startDay; dayNumber <= endDay; dayNumber += 1) {
+        const boundedDay = Math.min(totalDays, Math.max(1, dayNumber));
+        const day = dayMap.get(boundedDay);
+        if (!day) continue;
+        day.routes.push(normalized);
+      }
+    });
+
+    days.forEach((day) => {
+      day.locations = dedupeStrings(day.locations);
+      day.accommodations = dedupeBy(
+        day.accommodations,
+        (entry) => text([entry.legLabel, entry.name, entry.checkIn, entry.checkOut, entry.bookingReference].join('|')).toLowerCase()
+      );
+      day.routes = dedupeBy(
+        day.routes,
+        (entry) =>
+          text(
+            [
+              entry.mode,
+              entry.type,
+              entry.startDate,
+              entry.startTime,
+              entry.endDate,
+              entry.endTime,
+              entry.flightCode,
+              entry.terminals,
+              entry.reference,
+            ].join('|')
+          ).toLowerCase()
+      );
+      day.activities = dedupeBy(
+        day.activities,
+        (entry) =>
+          text([entry.kind, entry.name, entry.startTime, entry.endTime, entry.reference, entry.notes].join('|')).toLowerCase()
+      );
+      day.consultantNotes = dedupeBy(
+        day.consultantNotes,
+        (entry) => text([entry.legLabel, entry.note].join('|')).toLowerCase()
+      );
+    });
+
+    const consultantNotes = days.flatMap((day) =>
+      day.consultantNotes.map((entry) => ({
+        dayNumber: day.dayNumber,
+        dayLabel: day.dateLabel,
+        legLabel: entry.legLabel,
+        note: entry.note,
+      }))
+    );
+
+    const journeyDna = pick(data, ['journey_dna', 'journeyDna'], {}) || {};
+    const metadata = pick(data, ['_metadata', 'metadata', 'Metadata'], {}) || {};
+
+    const sourceIdentifiers = [
+      ['Reference number', pick(data, ['reference_number', 'referenceNumber', 'ReferenceNumber'])],
+      ['Identifier', pick(data, ['identifier', 'Identifier'])],
+      ['Identifier key', pick(data, ['identifier_key', 'identifierKey', 'IdentifierKey'])],
+      ['Source itinerary', pick(metadata, ['source_itinerary', 'sourceItinerary'])],
+      ['Product handle', text(root.dataset.productHandle)],
+      ['Product ID', text(root.dataset.productId)],
+    ].filter((entry) => text(entry[1]));
+
+    const wetuIdentifiers = [
+      ['Operator ID', pick(data, ['operator_id', 'operatorId', 'OperatorId'])],
+      ['Operator user ID', pick(data, ['operator_user_id', 'operatorUserId', 'OperatorUserId'])],
+      ['Operator identity ID', pick(data, ['operator_identity_id', 'operatorIdentityId', 'OperatorIdentityId'])],
+      ['Operator theme ID', pick(data, ['operator_theme_id', 'operatorThemeId', 'OperatorThemeId'])],
+      ['Journey DNA identifier', pick(journeyDna, ['identifier', 'Identifier'])],
+      ['Journey DNA source', pick(journeyDna, ['source', 'Source'])],
+      ['Journey DNA version', pick(journeyDna, ['version', 'Version'])],
+    ].filter((entry) => text(entry[1]));
+
+    return {
+      referenceNumber: text(pick(data, ['reference_number', 'referenceNumber', 'ReferenceNumber'])) || '--',
+      journeyType:
+        text(pick(data, ['journey_type', 'journeyType', 'type', 'Type', 'itinerary_type', 'itineraryType'])) || '--',
+      consultantName:
+        text(pick(primaryContact, ['contact_person', 'contactPerson', 'name', 'company', 'company_name'])) || '--',
+      consultantPhone:
+        text(
+          pick(primaryContact, ['telephone', 'phone', 'contact_number', 'contactNumber', 'alternative_telephone'])
+        ) || '--',
+      consultantEmail: text(pick(primaryContact, ['email', 'Email'])) || '--',
+      dateRange:
+        startDate && endDate ? `${formatDate(startDate)} to ${formatDate(endDate)}` : formatDate(startDate),
+      totalDays,
+      travellers,
+      days,
+      consultantNotes,
+      pricing: extractPricing(data),
+      dna: {
+        tags: dedupeStrings([
+          ...splitList(pick(journeyDna, ['tags', 'Tags'])),
+          ...splitList(pick(data, ['tags', 'Tags', 'categories', 'Categories', 'special_interests'])),
+        ]),
+        journeyType: text(
+          pick(journeyDna, ['journey_type', 'journeyType']) ||
+            pick(data, ['journey_type', 'journeyType', 'type', 'Type'])
+        ),
+        sourceIdentifiers,
+        wetuIdentifiers,
+      },
+    };
+  };
+
+  const renderGuestRegistry = (travellers) => {
+    const grouped = {
+      adult: [],
+      child: [],
+      infant: [],
+      other: [],
+    };
+    travellers.forEach((traveller) => {
+      const key = grouped[traveller.type] ? traveller.type : 'other';
+      grouped[key].push(traveller);
+    });
+
+    const sections = Object.keys(grouped)
+      .filter((key) => grouped[key].length > 0)
+      .map((key) => {
+        const list = grouped[key];
+        const rows = list
+          .map(
+            (traveller) => `
+              <tr>
+                <td>${escapeHtml(traveller.name)}</td>
+                <td>${escapeHtml(traveller.type)}</td>
+                <td>${escapeHtml(traveller.nationality || '--')}</td>
+                <td class="itin-ops__mono">${escapeHtml(traveller.passportNumber || '--')}</td>
+                <td>${escapeHtml(traveller.dietaryRequirements || '--')}</td>
+                <td>${escapeHtml(traveller.medicalNotes || '--')}</td>
+                <td>${escapeHtml(traveller.specialRequests || '--')}</td>
+                <td>${escapeHtml(traveller.loyaltyPrograms.join(', ') || '--')}</td>
+              </tr>
+            `
+          )
+          .join('');
+        return `
+          <div class="itin-ops__group">
+            <h3 class="itin-ops__group-title">${escapeHtml(GROUP_LABELS[key])} (${list.length})</h3>
+            <table class="itin-ops__table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Type</th>
+                  <th>Nationality</th>
+                  <th>Passport number</th>
+                  <th>Dietary requirements</th>
+                  <th>Medical notes</th>
+                  <th>Special requests</th>
+                  <th>Loyalty programs</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        `;
+      });
+
+    if (!sections.length) {
+      return '<p class="itin-ops__placeholder">No traveller registry is present in this itinerary JSON.</p>';
+    }
+    return sections.join('');
+  };
+
+  const renderTimeline = (days) =>
+    days
+      .map((day) => {
+        const locations = day.locations.length ? day.locations.join(' | ') : '--';
+
+        const accommodationRows = day.accommodations.length
+          ? day.accommodations
+              .map(
+                (entry) => `
+                  <tr>
+                    <td>${escapeHtml(entry.name)}</td>
+                    <td>${escapeHtml(entry.checkIn || '--')}</td>
+                    <td>${escapeHtml(entry.checkOut || '--')}</td>
+                    <td class="itin-ops__mono">${escapeHtml(entry.bookingReference || '--')}</td>
+                  </tr>
+                `
+              )
+              .join('')
+          : '<tr><td colspan="4">No accommodation record for this day.</td></tr>';
+
+        const routeRows = day.routes.length
+          ? day.routes
+              .map((route) => {
+                const timing = `${formatDateTime(route.startDate, route.startTime)} to ${formatDateTime(route.endDate, route.endTime)}`;
+                return `
+                  <tr>
+                    <td>${escapeHtml(route.mode)}</td>
+                    <td>${escapeHtml(route.type || '--')}</td>
+                    <td>${escapeHtml(timing)}</td>
+                    <td>${escapeHtml(route.flightCode || '--')}</td>
+                    <td>${escapeHtml(route.terminals || '--')}</td>
+                    <td class="itin-ops__mono">${escapeHtml(route.reference || '--')}</td>
+                    <td>${escapeHtml(route.contacts.join(' | ') || '--')}</td>
+                    <td>${escapeHtml(route.meetingInstructions || '--')}</td>
+                  </tr>
+                `;
+              })
+              .join('')
+          : '<tr><td colspan="8">No route logistics linked to this day.</td></tr>';
+
+        const activityRows = day.activities.length
+          ? day.activities
+              .map((activity) => {
+                const timeLine = text([activity.startTime, activity.endTime].filter(Boolean).join(' to ')) || '--';
+                const notes = text([activity.notes, activity.contacts.join(' | ')].filter(Boolean).join(' | '));
+                return `
+                  <tr>
+                    <td>${escapeHtml(timeLine)}</td>
+                    <td>${escapeHtml(activity.name)}</td>
+                    <td>${escapeHtml(activity.activityType)}</td>
+                    <td class="itin-ops__mono">${escapeHtml(activity.reference || '--')}</td>
+                    <td>${escapeHtml(notes || '--')}</td>
+                  </tr>
+                `;
+              })
+              .join('')
+          : '<tr><td colspan="5">No timed activities listed for this day.</td></tr>';
+
+        const consultantNotes = day.consultantNotes.length
+          ? `<ul class="itin-ops__notes">${day.consultantNotes
+              .map((entry) => `<li><strong>${escapeHtml(entry.legLabel)}:</strong> ${escapeHtml(entry.note)}</li>`)
+              .join('')}</ul>`
+          : '<p class="itin-ops__placeholder">No consultant notes captured for this day.</p>';
+
+        return `
+          <article class="itin-ops__day">
+            <header class="itin-ops__day-head">
+              <h3 class="itin-ops__day-title">Day ${String(day.dayNumber).padStart(2, '0')} | ${escapeHtml(day.dateLabel)}</h3>
+              <p class="itin-ops__day-meta">${escapeHtml(locations)}</p>
+            </header>
+
+            <div class="itin-ops__day-block">
+              <p class="itin-ops__day-block-title">Accommodation</p>
+              <table class="itin-ops__table">
+                <thead>
+                  <tr>
+                    <th>Accommodation</th>
+                    <th>Check-in</th>
+                    <th>Check-out</th>
+                    <th>Reference</th>
+                  </tr>
+                </thead>
+                <tbody>${accommodationRows}</tbody>
+              </table>
+            </div>
+
+            <div class="itin-ops__day-block">
+              <p class="itin-ops__day-block-title">Routes and logistics</p>
+              <table class="itin-ops__table">
+                <thead>
+                  <tr>
+                    <th>Mode</th>
+                    <th>Type</th>
+                    <th>Timing</th>
+                    <th>Flight code</th>
+                    <th>Terminals</th>
+                    <th>Reference</th>
+                    <th>Contacts</th>
+                    <th>Meeting instructions</th>
+                  </tr>
+                </thead>
+                <tbody>${routeRows}</tbody>
+              </table>
+            </div>
+
+            <div class="itin-ops__day-block">
+              <p class="itin-ops__day-block-title">Activities</p>
+              <table class="itin-ops__table">
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>Activity</th>
+                    <th>Type</th>
+                    <th>Reference</th>
+                    <th>Notes / contacts</th>
+                  </tr>
+                </thead>
+                <tbody>${activityRows}</tbody>
+              </table>
+            </div>
+
+            <div class="itin-ops__day-block">
+              <p class="itin-ops__day-block-title">Consultant notes</p>
+              ${consultantNotes}
+            </div>
+          </article>
+        `;
+      })
+      .join('');
+
+  const renderConsultantNotes = (entries) => {
+    if (!entries.length) {
+      return '<p class="itin-ops__placeholder">No consultant notes found in legs or day periods.</p>';
+    }
+    const rows = entries
+      .map(
+        (entry) => `
+          <tr>
+            <td>Day ${String(entry.dayNumber).padStart(2, '0')} (${escapeHtml(entry.dayLabel)})</td>
+            <td>${escapeHtml(entry.legLabel)}</td>
+            <td>${escapeHtml(entry.note)}</td>
+          </tr>
+        `
+      )
+      .join('');
+    return `
+      <table class="itin-ops__table">
+        <thead>
+          <tr>
+            <th>Day</th>
+            <th>Leg</th>
+            <th>Note</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+  };
+
+  const renderPricing = (pricing) => {
+    const phaseRows = pricing.phases.length
+      ? pricing.phases
+          .map(
+            (phase) => `
+              <tr>
+                <td>${escapeHtml(phase.name)}</td>
+                <td>${escapeHtml(text([phase.from, phase.to].filter(Boolean).join(' to ')) || '--')}</td>
+                <td>${escapeHtml(phase.amountPerPerson || '--')}</td>
+                <td>${escapeHtml(phase.total || '--')}</td>
+                <td>${escapeHtml(phase.currency || '--')}</td>
+                <td>${escapeHtml(phase.notes || '--')}</td>
+              </tr>
+            `
+          )
+          .join('')
+      : '<tr><td colspan="6">No phase breakdown found.</td></tr>';
+
+    const itemRows = pricing.lineItems.length
+      ? pricing.lineItems
+          .map(
+            (item) => `
+              <tr>
+                <td>${escapeHtml(item.phase || '--')}</td>
+                <td>${escapeHtml(item.item || '--')}</td>
+                <td>${escapeHtml(item.quantity || '--')}</td>
+                <td>${escapeHtml(item.unitPrice || '--')}</td>
+                <td>${escapeHtml(item.total || '--')}</td>
+                <td>${escapeHtml(item.notes || '--')}</td>
+              </tr>
+            `
+          )
+          .join('')
+      : '<tr><td colspan="6">No line-item pricing found.</td></tr>';
+
+    const scheduleRows = pricing.paymentSchedule.length
+      ? pricing.paymentSchedule
+          .map(
+            (entry) => `
+              <tr>
+                <td>${escapeHtml(entry.dueDate || '--')}</td>
+                <td>${escapeHtml(entry.description || '--')}</td>
+                <td>${escapeHtml(entry.percentage || '--')}</td>
+                <td>${escapeHtml(entry.amount || '--')}</td>
+                <td>${escapeHtml(entry.status || '--')}</td>
+              </tr>
+            `
+          )
+          .join('')
+      : '<tr><td colspan="5">No payment schedule found.</td></tr>';
+
+    const includes = pricing.includes.length
+      ? `<ul class="itin-ops__summary-list">${pricing.includes.map((entry) => `<li>${escapeHtml(entry)}</li>`).join('')}</ul>`
+      : '<p class="itin-ops__placeholder">No include list supplied.</p>';
+    const excludes = pricing.excludes.length
+      ? `<ul class="itin-ops__summary-list">${pricing.excludes.map((entry) => `<li>${escapeHtml(entry)}</li>`).join('')}</ul>`
+      : '<p class="itin-ops__placeholder">No exclude list supplied.</p>';
+    const terms = pricing.financialTerms.length
+      ? `<ul class="itin-ops__summary-list">${pricing.financialTerms.map((entry) => `<li>${escapeHtml(entry)}</li>`).join('')}</ul>`
+      : '<p class="itin-ops__placeholder">No financial terms captured.</p>';
+
+    return `
+      <div class="itin-ops__group">
+        <h3 class="itin-ops__group-title">Summary</h3>
+        <p>${escapeHtml(pricing.summary || 'No pricing summary supplied.')}</p>
+      </div>
+
+      <div class="itin-ops__group">
+        <h3 class="itin-ops__group-title">Phases</h3>
+        <table class="itin-ops__table">
+          <thead>
+            <tr>
+              <th>Phase</th>
+              <th>Date range</th>
+              <th>Per person</th>
+              <th>Total</th>
+              <th>Currency</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>${phaseRows}</tbody>
+        </table>
+      </div>
+
+      <div class="itin-ops__group">
+        <h3 class="itin-ops__group-title">Line items</h3>
+        <table class="itin-ops__table">
+          <thead>
+            <tr>
+              <th>Phase</th>
+              <th>Item</th>
+              <th>Qty</th>
+              <th>Unit price</th>
+              <th>Total</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>${itemRows}</tbody>
+        </table>
+      </div>
+
+      <div class="itin-ops__group">
+        <h3 class="itin-ops__group-title">Payment schedule</h3>
+        <table class="itin-ops__table">
+          <thead>
+            <tr>
+              <th>Due date</th>
+              <th>Description</th>
+              <th>Percent</th>
+              <th>Amount</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>${scheduleRows}</tbody>
+        </table>
+      </div>
+
+      <div class="itin-ops__group">
+        <h3 class="itin-ops__group-title">Includes</h3>
+        ${includes}
+      </div>
+
+      <div class="itin-ops__group">
+        <h3 class="itin-ops__group-title">Excludes</h3>
+        ${excludes}
+      </div>
+
+      <div class="itin-ops__group">
+        <h3 class="itin-ops__group-title">Financial terms</h3>
+        ${terms}
+      </div>
+    `;
+  };
+
+  const renderJourneyDna = (dna) => {
+    const tags = dna.tags.length
+      ? `<ul class="itin-ops__tags">${dna.tags.map((tag) => `<li class="itin-ops__tag">${escapeHtml(tag)}</li>`).join('')}</ul>`
+      : '<p class="itin-ops__placeholder">No tags found.</p>';
+
+    const sourceRows = dna.sourceIdentifiers.length
+      ? dna.sourceIdentifiers
+          .map(
+            (entry) => `
+              <tr>
+                <th>${escapeHtml(entry[0])}</th>
+                <td class="itin-ops__mono">${escapeHtml(text(entry[1]))}</td>
+              </tr>
+            `
+          )
+          .join('')
+      : '<tr><th>Source</th><td>Not supplied</td></tr>';
+
+    const wetuRows = dna.wetuIdentifiers.length
+      ? dna.wetuIdentifiers
+          .map(
+            (entry) => `
+              <tr>
+                <th>${escapeHtml(entry[0])}</th>
+                <td class="itin-ops__mono">${escapeHtml(text(entry[1]))}</td>
+              </tr>
+            `
+          )
+          .join('')
+      : '<tr><th>WETU ID</th><td>Not supplied</td></tr>';
+
+    return `
+      <div class="itin-ops__group">
+        <h3 class="itin-ops__group-title">Tags and journey type</h3>
+        <p><strong>Journey type:</strong> ${escapeHtml(dna.journeyType || '--')}</p>
+        ${tags}
+      </div>
+
+      <div class="itin-ops__group">
+        <h3 class="itin-ops__group-title">Source identifiers</h3>
+        <table class="itin-ops__table">
+          <tbody>${sourceRows}</tbody>
+        </table>
+      </div>
+
+      <div class="itin-ops__group">
+        <h3 class="itin-ops__group-title">WETU identifiers</h3>
+        <table class="itin-ops__table">
+          <tbody>${wetuRows}</tbody>
+        </table>
+      </div>
+    `;
+  };
+
+  const setTextContent = (root, selector, value) => {
+    const node = root.querySelector(selector);
+    if (node) node.textContent = text(value) || '--';
+  };
+
+  const setStatus = (root, state, message) => {
+    const node = root.querySelector('[data-ops-status]');
+    if (!node) return;
+    node.dataset.state = state;
+    node.textContent = text(message);
+  };
+
+  const parseJsonLoose = (raw) => {
+    const clean = String(raw ?? '').replace(/^\uFEFF/, '').trim();
+    if (!clean) return null;
+    try {
+      return JSON.parse(clean);
+    } catch (_error) {}
+    if (typeof DOMParser === 'function') {
+      const doc = new DOMParser().parseFromString(clean, 'text/html');
+      const pre = doc.querySelector('pre');
+      if (pre) {
+        try {
+          return JSON.parse((pre.textContent || '').trim());
+        } catch (_error) {}
+      }
+    }
+    return null;
+  };
+
+  const fetchItineraryJson = async (url) => {
+    const target = text(url);
+    if (!target) return null;
+    const response = await fetch(target, { credentials: 'omit' });
+    if (!response.ok) {
+      throw new Error(`Failed request (${response.status}) for ${target}`);
+    }
+    const payload = parseJsonLoose(await response.text());
+    if (!payload || typeof payload !== 'object') {
+      throw new Error(`Invalid JSON payload at ${target}`);
+    }
+    if (payload.itinerary && typeof payload.itinerary === 'object') {
+      return payload.itinerary;
+    }
+    return payload;
+  };
+
+  const renderModel = (root, model, sourceLabel) => {
+    setTextContent(root, '[data-ops-reference-number]', model.referenceNumber);
+    setTextContent(root, '[data-ops-journey-type]', model.journeyType);
+    setTextContent(root, '[data-ops-consultant-name]', model.consultantName);
+    setTextContent(root, '[data-ops-consultant-phone]', model.consultantPhone);
+    setTextContent(root, '[data-ops-consultant-email]', model.consultantEmail);
+    setTextContent(root, '[data-ops-date-range]', model.dateRange || '--');
+    setTextContent(root, '[data-ops-total-days]', `${model.totalDays}`);
+    setTextContent(
+      root,
+      '[data-ops-header-meta]',
+      `Loaded from ${sourceLabel} | ${model.totalDays} days | ${model.travellers.length} travellers`
+    );
+
+    const guestRegistry = root.querySelector('[data-ops-guest-registry]');
+    if (guestRegistry) guestRegistry.innerHTML = renderGuestRegistry(model.travellers);
+
+    const timeline = root.querySelector('[data-ops-timeline]');
+    if (timeline) timeline.innerHTML = renderTimeline(model.days);
+
+    const consultantNotes = root.querySelector('[data-ops-consultant-notes]');
+    if (consultantNotes) consultantNotes.innerHTML = renderConsultantNotes(model.consultantNotes);
+
+    const pricing = root.querySelector('[data-ops-pricing]');
+    if (pricing) pricing.innerHTML = renderPricing(model.pricing);
+
+    const dna = root.querySelector('[data-ops-journey-dna]');
+    if (dna) dna.innerHTML = renderJourneyDna(model.dna);
+  };
+
+  const loadAndRender = async (root) => {
+    const canonicalUrl = text(root.dataset.canonicalJsonUrl);
+    const fallbackUrl = text(root.dataset.fallbackJsonUrl);
+    if (!canonicalUrl && !fallbackUrl) {
+      throw new Error('No canonical or fallback itinerary JSON URL is configured on this product.');
+    }
+
+    const attempts = [];
+    if (canonicalUrl) attempts.push({ label: 'canonical JSON', url: canonicalUrl });
+    if (fallbackUrl) attempts.push({ label: 'fallback JSON', url: fallbackUrl });
+
+    let payload = null;
+    let sourceLabel = '';
+    let errorLog = '';
+
+    for (const attempt of attempts) {
+      try {
+        payload = await fetchItineraryJson(attempt.url);
+        sourceLabel = attempt.label;
+        break;
+      } catch (error) {
+        errorLog += `${attempt.label}: ${error.message} `;
+      }
+    }
+
+    if (!payload) {
+      throw new Error(text(errorLog) || 'Unable to load itinerary JSON.');
+    }
+
+    const model = buildModel(payload, root);
+    renderModel(root, model, sourceLabel);
+  };
+
+  const bindChromeActions = (root) => {
+    const printButton = root.querySelector('[data-ops-print]');
+    if (printButton) {
+      printButton.addEventListener('click', () => {
+        window.print();
+      });
+    }
+
+    const reloadButton = root.querySelector('[data-ops-reload]');
+    if (reloadButton) {
+      reloadButton.addEventListener('click', async () => {
+        try {
+          setStatus(root, 'loading', 'Reloading itinerary data...');
+          await loadAndRender(root);
+          setStatus(root, 'ok', 'Run-sheet loaded successfully.');
+        } catch (error) {
+          setStatus(root, 'error', error.message || 'Unable to reload itinerary data.');
+        }
+      });
+    }
+  };
+
+  const initRoot = async (root) => {
+    if (!(root instanceof HTMLElement)) return;
+    if (root.dataset.opsHydrated === 'true') return;
+    root.dataset.opsHydrated = 'true';
+    bindChromeActions(root);
+    try {
+      setStatus(root, 'loading', 'Loading itinerary data...');
+      await loadAndRender(root);
+      setStatus(root, 'ok', 'Run-sheet loaded successfully.');
+    } catch (error) {
+      setStatus(root, 'error', error.message || 'Unable to load itinerary data.');
+    }
+  };
+
+  const boot = () => {
+    document.querySelectorAll(ROOT_SELECTOR).forEach((root) => {
+      initRoot(root);
+    });
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot, { once: true });
+  } else {
+    boot();
+  }
+
+  document.addEventListener('shopify:section:load', (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    if (target.matches(ROOT_SELECTOR)) {
+      target.dataset.opsHydrated = 'false';
+      initRoot(target);
+      return;
+    }
+    target.querySelectorAll(ROOT_SELECTOR).forEach((root) => {
+      root.dataset.opsHydrated = 'false';
+      initRoot(root);
+    });
+  });
+})();
+{% endjavascript %}

@@ -1,0 +1,642 @@
+{% comment %}
+  WETU Itinerary New Enquiry Section
+  Displays a contact/enquiry form for itinerary inquiries
+{% endcomment %}
+
+{% include 'wetu-itinerary-data' %}
+
+{%- liquid
+  assign color_scheme = section.settings.color_scheme | default: 'scheme-1'
+  assign heading = section.settings.heading
+  assign subheading = section.settings.subheading
+  assign form_action = section.settings.form_action
+
+  # Get operator contact info from WETU data
+  assign operator_name = section.settings.operator_name
+  assign contact_person = section.settings.contact_person
+  assign operator_email = section.settings.operator_email
+  assign operator_phone = section.settings.operator_phone
+
+  # Override with WETU data if available
+  if wetu_itinerary.contacts.size > 0
+    assign primary_contact = wetu_itinerary.contacts | first
+    if primary_contact.company_name != blank
+      assign operator_name = primary_contact.company_name
+    endif
+    if primary_contact.name != blank
+      assign contact_person = primary_contact.name
+    endif
+    if primary_contact.email != blank
+      assign operator_email = primary_contact.email
+    endif
+    if primary_contact.phone != blank
+      assign operator_phone = primary_contact.phone
+    endif
+  endif
+-%}
+
+<div class="itin-new-enquiry color-{{ color_scheme }}">
+  <div class="itin-new-enquiry__container page-width">
+    {%- if heading != blank or subheading != blank -%}
+      <div class="itin-new-enquiry__header">
+        {%- if heading != blank -%}
+          <h2 class="itin-new-enquiry__heading">{{ heading }}</h2>
+        {%- endif -%}
+        {%- if subheading != blank -%}
+          <p class="itin-new-enquiry__subheading">{{ subheading }}</p>
+        {%- endif -%}
+      </div>
+    {%- endif -%}
+
+    <div class="itin-new-enquiry__content">
+      <!-- Left Column: Operator Info -->
+      <div class="itin-new-enquiry__info">
+        <div class="itin-new-enquiry__operator">
+          {%- if operator_name != blank -%}
+            <h3 class="itin-new-enquiry__operator-name">{{ operator_name }}</h3>
+          {%- endif -%}
+
+          <div class="itin-new-enquiry__contact-details">
+            {%- if contact_person != blank -%}
+              <div class="itin-new-enquiry__contact-item">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <span>{{ contact_person }}</span>
+              </div>
+            {%- endif -%}
+
+            {%- if operator_email != blank -%}
+              <div class="itin-new-enquiry__contact-item">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                  <polyline points="22,6 12,13 2,6"></polyline>
+                </svg>
+                <a href="mailto:{{ operator_email }}">{{ operator_email }}</a>
+              </div>
+            {%- endif -%}
+
+            {%- if operator_phone != blank -%}
+              <div class="itin-new-enquiry__contact-item">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                </svg>
+                <a href="tel:{{ operator_phone | remove: ' ' }}">{{ operator_phone }}</a>
+              </div>
+            {%- endif -%}
+          </div>
+        </div>
+
+        <!-- Badges -->
+        <div class="itin-new-enquiry__badges">
+          <div class="itin-new-enquiry__badge">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <div class="itin-new-enquiry__badge-content">
+              <span class="itin-new-enquiry__badge-title">{{ 'wetu.enquiry.quick_response' | t | default: 'Quick Response' }}</span>
+              <span class="itin-new-enquiry__badge-text">{{ 'wetu.enquiry.quick_response_text' | t | default: 'We typically respond within 24 hours' }}</span>
+            </div>
+          </div>
+
+          <div class="itin-new-enquiry__badge">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+              <polyline points="9 12 11 14 15 10"></polyline>
+            </svg>
+            <div class="itin-new-enquiry__badge-content">
+              <span class="itin-new-enquiry__badge-title">{{ 'wetu.enquiry.no_obligation' | t | default: 'No Obligation' }}</span>
+              <span class="itin-new-enquiry__badge-text">{{ 'wetu.enquiry.no_obligation_text' | t | default: 'Free consultation with no commitment required' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Form -->
+      <div class="itin-new-enquiry__form-wrapper">
+        <form 
+          action="{{ form_action }}" 
+          method="post" 
+          class="itin-new-enquiry__form"
+          id="itinerary-enquiry-form"
+        >
+          <!-- Hidden field for product title -->
+          <input type="hidden" name="product_title" value="{{ product.title | escape }}">
+          <input type="hidden" name="product_handle" value="{{ product.handle | escape }}">
+          <input type="hidden" name="itinerary_name" value="{{ wetu_itinerary.name | escape }}">
+
+          <div class="itin-new-enquiry__form-grid">
+            <!-- Name -->
+            <div class="itin-new-enquiry__field itin-new-enquiry__field--full">
+              <label for="enquiry-name" class="itin-new-enquiry__label">
+                {{ 'wetu.enquiry.name' | t | default: 'Full Name' }} <span class="itin-new-enquiry__required">*</span>
+              </label>
+              <input 
+                type="text" 
+                id="enquiry-name" 
+                name="name" 
+                class="itin-new-enquiry__input" 
+                required
+                autocomplete="name"
+                placeholder="{{ 'wetu.enquiry.name_placeholder' | t | default: 'Enter your full name' }}"
+              >
+            </div>
+
+            <!-- Email -->
+            <div class="itin-new-enquiry__field">
+              <label for="enquiry-email" class="itin-new-enquiry__label">
+                {{ 'wetu.enquiry.email' | t | default: 'Email Address' }} <span class="itin-new-enquiry__required">*</span>
+              </label>
+              <input 
+                type="email" 
+                id="enquiry-email" 
+                name="email" 
+                class="itin-new-enquiry__input" 
+                required
+                autocomplete="email"
+                placeholder="{{ 'wetu.enquiry.email_placeholder' | t | default: 'your@email.com' }}"
+              >
+            </div>
+
+            <!-- Telephone -->
+            <div class="itin-new-enquiry__field">
+              <label for="enquiry-phone" class="itin-new-enquiry__label">
+                {{ 'wetu.enquiry.phone' | t | default: 'Telephone' }} <span class="itin-new-enquiry__required">*</span>
+              </label>
+              <input 
+                type="tel" 
+                id="enquiry-phone" 
+                name="phone" 
+                class="itin-new-enquiry__input" 
+                required
+                autocomplete="tel"
+                placeholder="{{ 'wetu.enquiry.phone_placeholder' | t | default: '+1 234 567 8900' }}"
+              >
+            </div>
+
+            <!-- Preferred Contact Method -->
+            <div class="itin-new-enquiry__field itin-new-enquiry__field--full">
+              <fieldset class="itin-new-enquiry__fieldset">
+                <legend class="itin-new-enquiry__label">{{ 'wetu.enquiry.preferred_contact' | t | default: 'Preferred Contact Method' }}</legend>
+                <div class="itin-new-enquiry__radio-group">
+                  <label class="itin-new-enquiry__radio-label">
+                    <input 
+                      type="radio" 
+                      name="preferred_contact" 
+                      value="email" 
+                      class="itin-new-enquiry__radio"
+                      checked
+                    >
+                    <span class="itin-new-enquiry__radio-text">{{ 'wetu.enquiry.contact_email' | t | default: 'Email' }}</span>
+                  </label>
+                  <label class="itin-new-enquiry__radio-label">
+                    <input 
+                      type="radio" 
+                      name="preferred_contact" 
+                      value="phone" 
+                      class="itin-new-enquiry__radio"
+                    >
+                    <span class="itin-new-enquiry__radio-text">{{ 'wetu.enquiry.contact_phone' | t | default: 'Phone' }}</span>
+                  </label>
+                </div>
+              </fieldset>
+            </div>
+
+            <!-- Number of Adults -->
+            <div class="itin-new-enquiry__field">
+              <label for="enquiry-adults" class="itin-new-enquiry__label">
+                {{ 'wetu.enquiry.adults' | t | default: 'Number of Adults' }}
+              </label>
+              <input 
+                type="number" 
+                id="enquiry-adults" 
+                name="adults" 
+                class="itin-new-enquiry__input" 
+                min="1" 
+                max="20" 
+                value="2"
+              >
+            </div>
+
+            <!-- Number of Children -->
+            <div class="itin-new-enquiry__field">
+              <label for="enquiry-children" class="itin-new-enquiry__label">
+                {{ 'wetu.enquiry.children' | t | default: 'Number of Children' }}
+              </label>
+              <input 
+                type="number" 
+                id="enquiry-children" 
+                name="children" 
+                class="itin-new-enquiry__input" 
+                min="0" 
+                max="20" 
+                value="0"
+              >
+            </div>
+
+            <!-- Arrival Date -->
+            <div class="itin-new-enquiry__field">
+              <label for="enquiry-arrival" class="itin-new-enquiry__label">
+                {{ 'wetu.enquiry.arrival_date' | t | default: 'Arrival Date' }}
+              </label>
+              <input 
+                type="date" 
+                id="enquiry-arrival" 
+                name="arrival_date" 
+                class="itin-new-enquiry__input"
+              >
+            </div>
+
+            <!-- Departure Date -->
+            <div class="itin-new-enquiry__field">
+              <label for="enquiry-departure" class="itin-new-enquiry__label">
+                {{ 'wetu.enquiry.departure_date' | t | default: 'Departure Date' }}
+              </label>
+              <input 
+                type="date" 
+                id="enquiry-departure" 
+                name="departure_date" 
+                class="itin-new-enquiry__input"
+              >
+            </div>
+
+            <!-- Message -->
+            <div class="itin-new-enquiry__field itin-new-enquiry__field--full">
+              <label for="enquiry-message" class="itin-new-enquiry__label">
+                {{ 'wetu.enquiry.message' | t | default: 'Message' }}
+              </label>
+              <textarea 
+                id="enquiry-message" 
+                name="message" 
+                class="itin-new-enquiry__textarea" 
+                rows="5"
+                placeholder="{{ 'wetu.enquiry.message_placeholder' | t | default: 'Tell us about your travel plans, special requirements, or any questions you have...' }}"
+              ></textarea>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="itin-new-enquiry__field itin-new-enquiry__field--full">
+              <button type="submit" class="itin-new-enquiry__submit button button--primary">
+                {{ 'wetu.enquiry.submit' | t | default: 'Send Enquiry' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Privacy Note -->
+          <p class="itin-new-enquiry__privacy">
+            {{ 'wetu.enquiry.privacy_note' | t | default: 'By submitting this form, you agree to our privacy policy. Your information will only be used to respond to your enquiry and will not be shared with third parties.' }}
+            {%- if section.settings.privacy_policy_url != blank -%}
+              <a href="{{ section.settings.privacy_policy_url }}" class="itin-new-enquiry__privacy-link">
+                {{ 'wetu.enquiry.privacy_policy' | t | default: 'View Privacy Policy' }}
+              </a>
+            {%- endif -%}
+          </p>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .itin-new-enquiry {
+    padding: 4rem 0;
+  }
+
+  .itin-new-enquiry__container {
+    max-width: var(--page-width);
+    margin: 0 auto;
+    padding: 0 1.5rem;
+  }
+
+  .itin-new-enquiry__header {
+    text-align: center;
+    margin-bottom: 3rem;
+  }
+
+  .itin-new-enquiry__heading {
+    font-size: 2rem;
+    font-weight: 600;
+    margin: 0 0 0.5rem 0;
+    color: rgb(var(--color-foreground));
+  }
+
+  .itin-new-enquiry__subheading {
+    font-size: 1.125rem;
+    color: rgba(var(--color-foreground), 0.7);
+    margin: 0;
+  }
+
+  .itin-new-enquiry__content {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 3rem;
+  }
+
+  @media (min-width: 990px) {
+    .itin-new-enquiry__content {
+      grid-template-columns: 1fr 1.5fr;
+      gap: 4rem;
+    }
+  }
+
+  /* Left Column - Info */
+  .itin-new-enquiry__info {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .itin-new-enquiry__operator {
+    padding: 1.5rem;
+    background: rgba(var(--color-foreground), 0.03);
+    border-radius: 8px;
+  }
+
+  .itin-new-enquiry__operator-name {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0 0 1rem 0;
+    color: rgb(var(--color-foreground));
+  }
+
+  .itin-new-enquiry__contact-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .itin-new-enquiry__contact-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.9375rem;
+    color: rgba(var(--color-foreground), 0.8);
+  }
+
+  .itin-new-enquiry__contact-item svg {
+    flex-shrink: 0;
+    color: rgba(var(--color-foreground), 0.5);
+  }
+
+  .itin-new-enquiry__contact-item a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .itin-new-enquiry__contact-item a:hover {
+    text-decoration: underline;
+  }
+
+  /* Badges */
+  .itin-new-enquiry__badges {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .itin-new-enquiry__badge {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+    background: rgba(var(--color-foreground), 0.03);
+    border-radius: 8px;
+  }
+
+  .itin-new-enquiry__badge svg {
+    flex-shrink: 0;
+    color: rgb(var(--color-button));
+  }
+
+  .itin-new-enquiry__badge-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .itin-new-enquiry__badge-title {
+    font-weight: 600;
+    font-size: 0.9375rem;
+    color: rgb(var(--color-foreground));
+  }
+
+  .itin-new-enquiry__badge-text {
+    font-size: 0.875rem;
+    color: rgba(var(--color-foreground), 0.7);
+  }
+
+  /* Form */
+  .itin-new-enquiry__form-wrapper {
+    background: rgba(var(--color-foreground), 0.02);
+    border: 1px solid rgba(var(--color-foreground), 0.1);
+    border-radius: 12px;
+    padding: 2rem;
+  }
+
+  @media (min-width: 750px) {
+    .itin-new-enquiry__form-wrapper {
+      padding: 2.5rem;
+    }
+  }
+
+  .itin-new-enquiry__form-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+
+  @media (min-width: 750px) {
+    .itin-new-enquiry__form-grid {
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+  }
+
+  .itin-new-enquiry__field--full {
+    grid-column: 1 / -1;
+  }
+
+  .itin-new-enquiry__label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: rgb(var(--color-foreground));
+    margin-bottom: 0.5rem;
+  }
+
+  .itin-new-enquiry__required {
+    color: #dc3545;
+  }
+
+  .itin-new-enquiry__input,
+  .itin-new-enquiry__textarea {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    font-family: inherit;
+    color: rgb(var(--color-foreground));
+    background: rgb(var(--color-background));
+    border: 1px solid rgba(var(--color-foreground), 0.2);
+    border-radius: 6px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .itin-new-enquiry__input:focus,
+  .itin-new-enquiry__textarea:focus {
+    outline: none;
+    border-color: rgb(var(--color-button));
+    box-shadow: 0 0 0 3px rgba(var(--color-button), 0.1);
+  }
+
+  .itin-new-enquiry__input::placeholder,
+  .itin-new-enquiry__textarea::placeholder {
+    color: rgba(var(--color-foreground), 0.4);
+  }
+
+  .itin-new-enquiry__textarea {
+    resize: vertical;
+    min-height: 120px;
+  }
+
+  /* Radio Buttons */
+  .itin-new-enquiry__fieldset {
+    border: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .itin-new-enquiry__radio-group {
+    display: flex;
+    gap: 1.5rem;
+    margin-top: 0.5rem;
+  }
+
+  .itin-new-enquiry__radio-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+  }
+
+  .itin-new-enquiry__radio {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: rgb(var(--color-button));
+  }
+
+  .itin-new-enquiry__radio-text {
+    font-size: 0.9375rem;
+    color: rgb(var(--color-foreground));
+  }
+
+  /* Submit Button */
+  .itin-new-enquiry__submit {
+    width: 100%;
+    padding: 1rem 2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+  }
+
+  .itin-new-enquiry__submit:hover {
+    opacity: 0.9;
+  }
+
+  /* Privacy Note */
+  .itin-new-enquiry__privacy {
+    margin-top: 1.5rem;
+    font-size: 0.8125rem;
+    color: rgba(var(--color-foreground), 0.6);
+    line-height: 1.5;
+  }
+
+  .itin-new-enquiry__privacy-link {
+    color: rgb(var(--color-button));
+    text-decoration: none;
+  }
+
+  .itin-new-enquiry__privacy-link:hover {
+    text-decoration: underline;
+  }
+</style>
+
+{% schema %}
+{
+  "name": "Itinerary Enquiry Form",
+  "tag": "section",
+  "class": "section",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Enquire About This Itinerary"
+    },
+    {
+      "type": "text",
+      "id": "subheading",
+      "label": "Subheading",
+      "default": "Fill out the form below and our travel experts will get back to you"
+    },
+    {
+      "type": "url",
+      "id": "form_action",
+      "label": "Form action URL",
+      "info": "The URL where the form data will be submitted"
+    },
+    {
+      "type": "header",
+      "content": "Operator Information"
+    },
+    {
+      "type": "text",
+      "id": "operator_name",
+      "label": "Operator/Company name",
+      "default": "Travel Company"
+    },
+    {
+      "type": "text",
+      "id": "contact_person",
+      "label": "Contact person",
+      "default": "Travel Consultant"
+    },
+    {
+      "type": "text",
+      "id": "operator_email",
+      "label": "Email address",
+      "default": "info@example.com"
+    },
+    {
+      "type": "text",
+      "id": "operator_phone",
+      "label": "Phone number",
+      "default": "+1 234 567 8900"
+    },
+    {
+      "type": "header",
+      "content": "Privacy Policy"
+    },
+    {
+      "type": "url",
+      "id": "privacy_policy_url",
+      "label": "Privacy policy URL"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Itinerary Enquiry Form",
+      "category": "WETU Itinerary"
+    }
+  ]
+}
+{% endschema %}

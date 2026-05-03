@@ -1,0 +1,22 @@
+{% comment %}
+  murmurgo-meta.liquid
+  Robots, canonical, and preload hints for Murmurgo pages.
+  Include in layout/theme.liquid inside <head>.
+{% endcomment %}
+{% if template == 'page' %}
+  {% assign meta_place = page.metafields.murmurgo.place_ref.value %}
+  {% assign meta_polygon = page.metafields.murmurgo.polygon_ref.value %}
+  {% if meta_place or meta_polygon %}
+    <link rel="canonical" href="{{ shop.url }}{{ page.url }}">
+    <meta name="robots" content="index, follow">
+    {% if meta_place %}
+      {% if meta_place.hero_image_ref.value %}
+        {% assign hero_asset = meta_place.hero_image_ref.value %}
+        <link rel="preload" as="image" href="{{ hero_asset.cdn_url }}">
+      {% endif %}
+      <meta name="description" content="{{ meta_place.ai_snippet | default: meta_place.tagline | default: page.title | escape }}">
+    {% elsif meta_polygon %}
+      <meta name="description" content="Explore {{ meta_polygon.name | escape }} — {{ meta_polygon.tier | replace: '_', ' ' | capitalize }} guide.">
+    {% endif %}
+  {% endif %}
+{% endif %}

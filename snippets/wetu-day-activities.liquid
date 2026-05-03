@@ -1,0 +1,1325 @@
+{% comment %}
+  ============================================================================
+  WETU DAY ACTIVITIES SNIPPET - ENHANCED TIMELINE VIEW
+  ============================================================================
+
+  Displays activities for a day in the itinerary with visual timeline,
+  activity type badges, and responsive grid/carousel layout.
+
+  PARAMETERS:
+  - activities: Array of activity metaobjects
+  - day_number: Day number for context
+  - show_images: Boolean - show image cards (true) or timeline list (false)
+  - color_scheme: Color scheme class (default: 'scheme-5')
+  - activity_map_ids: Array of simple_item_ids for product matching
+  - activity_map_handles: Array of product handles matching activity_map_ids
+
+  ACTIVITY FIELDS (ItineraryActivity):
+  - name: Activity name
+  - type: Included, Recommended, Optional, Information, Destination, Greeting
+  - time_slot: Morning, Afternoon, Evening, FullDay, None
+  - start_time: Specific start time (e.g., "09:00")
+  - end_time: Specific end time (e.g., "11:30")
+  - duration: Duration string when no specific times
+  - content_entity_id: Links to activity product for images/details
+  - simple_item_id: Alternative ID for product matching
+  - description: Activity description
+  - is_highlight: Boolean - featured activity
+
+  ============================================================================
+{% endcomment %}
+
+{% assign show_images = show_images | default: true %}
+{% assign color_scheme = color_scheme | default: 'scheme-5' %}
+
+{% comment %} Early exit if no activities {% endcomment %}
+{% if activities == blank or activities.size == 0 %}
+  {% break %}
+{% endif %}
+
+{% comment %} Generate unique ID {% endcomment %}
+{% assign unique_id = 'day-activities-' | append: day_number | append: '-' | append: 'now' | date: '%s%N' | slice: -6, 6 %}
+
+{% comment %} ================================================================
+   SORT ACTIVITIES CHRONOLOGICALLY
+   Priority: start_time > time_slot > original order
+   ================================================================ {% endcomment %}
+
+{% assign sorted_activities = '' | split: ',' %}
+{% assign timed_activities = '' | split: ',' %}
+{% assign morning_activities = '' | split: ',' %}
+{% assign afternoon_activities = '' | split: ',' %}
+{% assign evening_activities = '' | split: ',' %}
+{% assign fullday_activities = '' | split: ',' %}
+{% assign info_activities = '' | split: ',' %}
+{% assign other_activities = '' | split: ',' %}
+
+{% for activity in activities %}
+  {% assign time_slot = activity.time_slot.value | default: activity.time_slot | default: 'None' %}
+  {% assign activity_type = activity.type.value | default: activity.type | default: 'Included' %}
+  {% assign start_time = activity.start_time.value | default: activity.start_time %}
+
+  {% comment %} Information type activities go to separate group {% endcomment %}
+  {% if activity_type == 'Information' %}
+    {% assign info_activities = info_activities | push: activity %}
+  {% elsif start_time != blank %}
+    {% assign timed_activities = timed_activities | push: activity %}
+  {% else %}
+    {% case time_slot %}
+      {% when 'Morning' %}
+        {% assign morning_activities = morning_activities | push: activity %}
+      {% when 'Afternoon' %}
+        {% assign afternoon_activities = afternoon_activities | push: activity %}
+      {% when 'Evening' %}
+        {% assign evening_activities = evening_activities | push: activity %}
+      {% when 'FullDay', 'Full Day' %}
+        {% assign fullday_activities = fullday_activities | push: activity %}
+      {% else %}
+        {% assign other_activities = other_activities | push: activity %}
+    {% endcase %}
+  {% endif %}
+{% endfor %}
+
+{% comment %} Build sorted array: Full Day → Timed → Morning → Afternoon → Evening → Other → Info {% endcomment %}
+{% for activity in fullday_activities %}
+  {% assign sorted_activities = sorted_activities | push: activity %}
+{% endfor %}
+{% for activity in timed_activities %}
+  {% assign sorted_activities = sorted_activities | push: activity %}
+{% endfor %}
+{% for activity in morning_activities %}
+  {% assign sorted_activities = sorted_activities | push: activity %}
+{% endfor %}
+{% for activity in afternoon_activities %}
+  {% assign sorted_activities = sorted_activities | push: activity %}
+{% endfor %}
+{% for activity in evening_activities %}
+  {% assign sorted_activities = sorted_activities | push: activity %}
+{% endfor %}
+{% for activity in other_activities %}
+  {% assign sorted_activities = sorted_activities | push: activity %}
+{% endfor %}
+
+{% comment %} Count non-info activities for grid sizing {% endcomment %}
+{% assign display_count = sorted_activities.size %}
+
+<div class="wetu-day-activities wetu-day-activities--enhanced color-{{ color_scheme }}" id="{{ unique_id }}" data-activity-count="{{ display_count }}">
+  <header class="day-activities__header">
+    <h4 class="day-activities__title">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+      </svg>
+      Today's Experiences
+    </h4>
+    {% if activities.size > 1 %}
+      <span class="day-activities__count">{{ activities.size }} activities</span>
+    {% endif %}
+  </header>
+
+  {% if show_images %}
+    {% comment %} ===================== TIMELINE CARD VIEW ===================== {% endcomment %}
+    <div class="day-activities__timeline" data-activities-carousel>
+      <div class="activities-timeline__track" data-grid-count="{{ display_count }}">
+        {% for activity in sorted_activities %}
+          {% assign activity_name = activity.name.value | default: activity.name %}
+          {% assign activity_type = activity.type.value | default: activity.type | default: 'Included' %}
+          {% assign activity_description = activity.description.value | default: activity.description %}
+          {% assign content_id = activity.content_entity_id.value | default: activity.content_entity_id %}
+          {% assign is_highlight = activity.is_highlight.value | default: activity.is_highlight %}
+          {% assign duration = activity.duration.value | default: activity.duration %}
+          {% assign start_time = activity.start_time.value | default: activity.start_time %}
+          {% assign end_time = activity.end_time.value | default: activity.end_time %}
+          {% assign time_slot = activity.time_slot.value | default: activity.time_slot | default: 'None' %}
+          {% assign simple_id = activity.simple_item_id.value | default: activity.simple_item_id | append: '' %}
+
+          {% comment %} ----------------------------------------------------------------
+             SMART PRODUCT LINKING
+             1. Check simple_item_id against activity map
+             2. Fallback to content_entity_id (wetu-{id} handle)
+          ---------------------------------------------------------------- {% endcomment %}
+          {% assign activity_product = nil %}
+
+          {% if simple_id != blank and activity_map_ids != blank %}
+            {% for map_id in activity_map_ids %}
+              {% if map_id == simple_id %}
+                {% assign handle = activity_map_handles[forloop.index0] %}
+                {% assign activity_product = all_products[handle] %}
+                {% break %}
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+
+          {% if activity_product == nil and content_id != blank %}
+             {% assign activity_handle = 'wetu-' | append: content_id %}
+             {% assign activity_product = all_products[activity_handle] %}
+          {% endif %}
+
+          {% assign activity_image = activity_product.featured_image %}
+
+          {% comment %} Fallback to metaobject thumbnail {% endcomment %}
+          {% if activity_image == blank %}
+            {% assign activity_image = activity.thumbnail.value | default: activity.thumbnail %}
+          {% endif %}
+
+          {% comment %} Format time display {% endcomment %}
+          {% assign time_display = '' %}
+          {% if start_time != blank and end_time != blank %}
+            {% assign time_display = start_time | append: ' - ' | append: end_time %}
+          {% elsif start_time != blank %}
+            {% assign time_display = start_time %}
+          {% endif %}
+
+          <article class="activity-card{% if is_highlight %} activity-card--highlight{% endif %}"
+                   data-activity-type="{{ activity_type | handleize }}"
+                   data-time-slot="{{ time_slot | handleize }}">
+
+            {% comment %} Timeline connector {% endcomment %}
+            <div class="activity-card__timeline-marker">
+              <div class="timeline-marker__dot"></div>
+              <div class="timeline-marker__line"></div>
+            </div>
+
+            {% comment %} Time/Slot indicator {% endcomment %}
+            <div class="activity-card__time-indicator">
+              {% if time_display != blank %}
+                <span class="time-indicator__time">{{ time_display }}</span>
+              {% else %}
+                {% case time_slot %}
+                  {% when 'Morning' %}
+                    <span class="time-indicator__slot time-indicator__slot--morning">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 18a5 5 0 0 0-10 0"/>
+                        <line x1="12" y1="9" x2="12" y2="2"/>
+                        <line x1="4.22" y1="10.22" x2="5.64" y2="11.64"/>
+                        <line x1="1" y1="18" x2="3" y2="18"/>
+                        <line x1="21" y1="18" x2="23" y2="18"/>
+                        <line x1="18.36" y1="11.64" x2="19.78" y2="10.22"/>
+                      </svg>
+                      Morning
+                    </span>
+                  {% when 'Afternoon' %}
+                    <span class="time-indicator__slot time-indicator__slot--afternoon">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="5"/>
+                        <line x1="12" y1="1" x2="12" y2="3"/>
+                        <line x1="12" y1="21" x2="12" y2="23"/>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                        <line x1="1" y1="12" x2="3" y2="12"/>
+                        <line x1="21" y1="12" x2="23" y2="12"/>
+                      </svg>
+                      Afternoon
+                    </span>
+                  {% when 'Evening' %}
+                    <span class="time-indicator__slot time-indicator__slot--evening">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                      </svg>
+                      Evening
+                    </span>
+                  {% when 'FullDay', 'Full Day' %}
+                    <span class="time-indicator__slot time-indicator__slot--fullday">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                        <line x1="16" y1="2" x2="16" y2="6"/>
+                        <line x1="8" y1="2" x2="8" y2="6"/>
+                        <line x1="3" y1="10" x2="21" y2="10"/>
+                      </svg>
+                      Full Day
+                    </span>
+                  {% else %}
+                    {% if duration != blank %}
+                      <span class="time-indicator__duration">{{ duration }}</span>
+                    {% endif %}
+                {% endcase %}
+              {% endif %}
+
+              {% comment %} Duration badge when we have time but also duration {% endcomment %}
+              {% if time_display != blank and duration != blank %}
+                <span class="time-indicator__duration-badge">{{ duration }}</span>
+              {% endif %}
+            </div>
+
+            {% comment %} Card media {% endcomment %}
+            <div class="activity-card__media">
+              {% if activity_image != blank %}
+                {% if activity_product != blank %}
+                  <a href="{{ activity_product.url }}" class="activity-card__media-link">
+                {% endif %}
+                <img
+                  src="{{ activity_image | image_url: width: 480 }}"
+                  alt="{{ activity_name }}"
+                  loading="lazy"
+                  width="480"
+                  height="360"
+                  class="activity-card__img"
+                >
+                {% if activity_product != blank %}
+                  </a>
+                {% endif %}
+              {% else %}
+                <div class="activity-card__placeholder">
+                  {% case activity_type %}
+                    {% when 'Destination' %}
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                        <circle cx="12" cy="10" r="3"/>
+                      </svg>
+                    {% when 'Greeting' %}
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M18 8.5V3a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v5.5"/>
+                        <path d="M14 8.5V3"/>
+                        <path d="M2 14.5A5.5 5.5 0 0 0 7.5 20h9a5.5 5.5 0 0 0 0-11h-9A5.5 5.5 0 0 0 2 14.5z"/>
+                      </svg>
+                    {% else %}
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                      </svg>
+                  {% endcase %}
+                </div>
+              {% endif %}
+
+              {% comment %} Highlight star badge {% endcomment %}
+              {% if is_highlight %}
+                <span class="activity-card__highlight-badge" title="Highlight Experience">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                  </svg>
+                  Highlight
+                </span>
+              {% endif %}
+            </div>
+
+            {% comment %} Card content {% endcomment %}
+            <div class="activity-card__content">
+              <h5 class="activity-card__name">
+                {% if activity_product != blank %}
+                  <a href="{{ activity_product.url }}">{{ activity_name }}</a>
+                {% else %}
+                  {{ activity_name }}
+                {% endif %}
+              </h5>
+
+              {% if activity_product.metafields.custom.property_tagline != blank %}
+                 <p class="activity-card__tagline">
+                    {{ activity_product.metafields.custom.property_tagline }}
+                 </p>
+              {% endif %}
+
+              {% if activity_description != blank %}
+                <div class="activity-card__description">
+                  {{ activity_description }}
+                </div>
+              {% endif %}
+
+              {% comment %} Activity type badge with icon {% endcomment %}
+              <div class="activity-card__meta">
+                <span class="activity-type-badge activity-type-badge--{{ activity_type | handleize }}">
+                  {% case activity_type %}
+                    {% when 'Included' %}
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                      Included
+                    {% when 'Recommended' %}
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 18h6"/>
+                        <path d="M10 22h4"/>
+                        <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/>
+                      </svg>
+                      Recommended
+                    {% when 'Optional' %}
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                      </svg>
+                      Optional
+                    {% when 'Information' %}
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="16" x2="12" y2="12"/>
+                        <line x1="12" y1="8" x2="12.01" y2="8"/>
+                      </svg>
+                      Info
+                    {% when 'Destination' %}
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                        <circle cx="12" cy="10" r="3"/>
+                      </svg>
+                      Destination
+                    {% when 'Greeting' %}
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 8.5V3a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v5.5"/>
+                        <path d="M14 8.5V3"/>
+                        <path d="M2 14.5A5.5 5.5 0 0 0 7.5 20h9a5.5 5.5 0 0 0 0-11h-9A5.5 5.5 0 0 0 2 14.5z"/>
+                      </svg>
+                      Meet & Greet
+                    {% else %}
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                      {{ activity_type }}
+                  {% endcase %}
+                </span>
+
+                {% if activity_product != blank %}
+                  <a href="{{ activity_product.url }}" class="activity-card__link">
+                    View Details
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="5" y1="12" x2="19" y2="12"/>
+                      <polyline points="12 5 19 12 12 19"/>
+                    </svg>
+                  </a>
+                {% endif %}
+              </div>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+
+      {% comment %} Mobile scroll indicators {% endcomment %}
+      {% if display_count > 2 %}
+        <div class="activities-carousel__nav" aria-hidden="true">
+          <button class="carousel-nav__btn carousel-nav__btn--prev" data-carousel-prev aria-label="Previous activities">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M15 18l-6-6 6-6"/>
+            </svg>
+          </button>
+          <div class="carousel-nav__dots" data-carousel-dots></div>
+          <button class="carousel-nav__btn carousel-nav__btn--next" data-carousel-next aria-label="Next activities">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 18l6-6-6-6"/>
+            </svg>
+          </button>
+        </div>
+      {% endif %}
+    </div>
+
+    {% comment %} Information activities shown separately {% endcomment %}
+    {% if info_activities.size > 0 %}
+      <div class="day-activities__info-section">
+        <h5 class="info-section__title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="16" x2="12" y2="12"/>
+            <line x1="12" y1="8" x2="12.01" y2="8"/>
+          </svg>
+          Good to Know
+        </h5>
+        <ul class="info-section__list">
+          {% for activity in info_activities %}
+            {% assign activity_name = activity.name.value | default: activity.name %}
+            {% assign activity_description = activity.description.value | default: activity.description %}
+            <li class="info-item">
+              <span class="info-item__name">{{ activity_name }}</span>
+              {% if activity_description != blank %}
+                <span class="info-item__desc">{{ activity_description }}</span>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+  {% else %}
+    {% comment %} ===================== LIST VIEW ===================== {% endcomment %}
+    <div class="day-activities__list">
+
+      {% comment %} Full Day Activities {% endcomment %}
+      {% if fullday_activities.size > 0 %}
+        <div class="activities-time-group">
+          <div class="activities-time-group__header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            <span>Full Day</span>
+          </div>
+          <ul class="activities-time-group__list">
+            {% for activity in fullday_activities %}
+              {% render 'wetu-day-activities-item',
+                activity: activity,
+                activity_map_ids: activity_map_ids,
+                activity_map_handles: activity_map_handles
+              %}
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+
+      {% comment %} Timed Activities {% endcomment %}
+      {% if timed_activities.size > 0 %}
+        <div class="activities-time-group">
+          <div class="activities-time-group__header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+            <span>Scheduled</span>
+          </div>
+          <ul class="activities-time-group__list">
+            {% for activity in timed_activities %}
+              {% render 'wetu-day-activities-item',
+                activity: activity,
+                activity_map_ids: activity_map_ids,
+                activity_map_handles: activity_map_handles
+              %}
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+
+      {% comment %} Morning Activities {% endcomment %}
+      {% if morning_activities.size > 0 %}
+        <div class="activities-time-group">
+          <div class="activities-time-group__header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 18a5 5 0 0 0-10 0"/>
+              <line x1="12" y1="9" x2="12" y2="2"/>
+              <line x1="4.22" y1="10.22" x2="5.64" y2="11.64"/>
+              <line x1="1" y1="18" x2="3" y2="18"/>
+              <line x1="21" y1="18" x2="23" y2="18"/>
+              <line x1="18.36" y1="11.64" x2="19.78" y2="10.22"/>
+            </svg>
+            <span>Morning</span>
+          </div>
+          <ul class="activities-time-group__list">
+            {% for activity in morning_activities %}
+              {% render 'wetu-day-activities-item',
+                activity: activity,
+                activity_map_ids: activity_map_ids,
+                activity_map_handles: activity_map_handles
+              %}
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+
+      {% comment %} Afternoon Activities {% endcomment %}
+      {% if afternoon_activities.size > 0 %}
+        <div class="activities-time-group">
+          <div class="activities-time-group__header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="5"/>
+              <line x1="12" y1="1" x2="12" y2="3"/>
+              <line x1="12" y1="21" x2="12" y2="23"/>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+              <line x1="1" y1="12" x2="3" y2="12"/>
+              <line x1="21" y1="12" x2="23" y2="12"/>
+            </svg>
+            <span>Afternoon</span>
+          </div>
+          <ul class="activities-time-group__list">
+            {% for activity in afternoon_activities %}
+              {% render 'wetu-day-activities-item',
+                activity: activity,
+                activity_map_ids: activity_map_ids,
+                activity_map_handles: activity_map_handles
+              %}
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+
+      {% comment %} Evening Activities {% endcomment %}
+      {% if evening_activities.size > 0 %}
+        <div class="activities-time-group">
+          <div class="activities-time-group__header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>
+            <span>Evening</span>
+          </div>
+          <ul class="activities-time-group__list">
+            {% for activity in evening_activities %}
+              {% render 'wetu-day-activities-item',
+                activity: activity,
+                activity_map_ids: activity_map_ids,
+                activity_map_handles: activity_map_handles
+              %}
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+
+      {% comment %} Other Activities {% endcomment %}
+      {% if other_activities.size > 0 %}
+        <div class="activities-time-group">
+          <div class="activities-time-group__header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+            <span>Experiences</span>
+          </div>
+          <ul class="activities-time-group__list">
+            {% for activity in other_activities %}
+              {% render 'wetu-day-activities-item',
+                activity: activity,
+                activity_map_ids: activity_map_ids,
+                activity_map_handles: activity_map_handles
+              %}
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+
+      {% comment %} Information Activities {% endcomment %}
+      {% if info_activities.size > 0 %}
+        <div class="activities-time-group activities-time-group--info">
+          <div class="activities-time-group__header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="16" x2="12" y2="12"/>
+              <line x1="12" y1="8" x2="12.01" y2="8"/>
+            </svg>
+            <span>Good to Know</span>
+          </div>
+          <ul class="activities-time-group__list">
+            {% for activity in info_activities %}
+              {% render 'wetu-day-activities-item',
+                activity: activity,
+                activity_map_ids: activity_map_ids,
+                activity_map_handles: activity_map_handles
+              %}
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+
+    </div>
+  {% endif %}
+</div>
+
+<style>
+  /* ============================================
+     DAY ACTIVITIES - ENHANCED TIMELINE
+     ============================================ */
+
+  .wetu-day-activities--enhanced {
+    --activities-gap: 20px;
+    --card-radius: 16px;
+    --timeline-color: var(--color-primary, #2563eb);
+    --highlight-gold: #f59e0b;
+    --type-included: #16a34a;
+    --type-recommended: #2563eb;
+    --type-optional: #64748b;
+    --type-information: #8b5cf6;
+    --type-destination: #0891b2;
+    --type-greeting: #db2777;
+    padding: 28px;
+    background: color-mix(in srgb, var(--color-foreground) 2%, transparent);
+    border: 1px solid var(--color-border);
+    border-radius: var(--card-radius);
+  }
+
+  .day-activities__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+
+  .day-activities__title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-foreground);
+  }
+
+  .day-activities__title svg {
+    color: var(--timeline-color);
+  }
+
+  .day-activities__count {
+    font-size: 0.8rem;
+    color: color-mix(in srgb, var(--color-foreground) 50%, transparent);
+    font-weight: 500;
+  }
+
+  /* ============================================
+     TIMELINE CARD VIEW
+     ============================================ */
+
+  .day-activities__timeline {
+    position: relative;
+  }
+
+  .activities-timeline__track {
+    display: flex;
+    gap: var(--activities-gap);
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding: 4px 0 16px;
+    scroll-behavior: smooth;
+  }
+
+  .activities-timeline__track::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* ============================================
+     ACTIVITY CARD - ENHANCED
+     ============================================ */
+
+  .activity-card {
+    flex: 0 0 260px;
+    scroll-snap-align: start;
+    display: flex;
+    flex-direction: column;
+    background: var(--color-background);
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+    position: relative;
+  }
+
+  .activity-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px -8px rgba(0,0,0,0.12);
+  }
+
+  /* Highlight Card - Premium Treatment */
+  .activity-card--highlight {
+    border-color: var(--highlight-gold);
+    border-width: 2px;
+    flex: 0 0 300px;
+  }
+
+  .activity-card--highlight::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--highlight-gold), #fbbf24);
+    z-index: 1;
+  }
+
+  /* Timeline Marker (hidden on mobile) */
+  .activity-card__timeline-marker {
+    display: none;
+  }
+
+  /* ============================================
+     TIME INDICATOR
+     ============================================ */
+
+  .activity-card__time-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: color-mix(in srgb, var(--color-foreground) 3%, transparent);
+    border-bottom: 1px solid var(--color-border);
+    min-height: 42px;
+  }
+
+  .time-indicator__time {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--color-foreground);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+  }
+
+  .time-indicator__slot {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 4px 10px;
+    border-radius: 20px;
+  }
+
+  .time-indicator__slot--morning {
+    background: color-mix(in srgb, #fbbf24 15%, transparent);
+    color: #b45309;
+  }
+
+  .time-indicator__slot--afternoon {
+    background: color-mix(in srgb, #f97316 15%, transparent);
+    color: #c2410c;
+  }
+
+  .time-indicator__slot--evening {
+    background: color-mix(in srgb, #6366f1 15%, transparent);
+    color: #4338ca;
+  }
+
+  .time-indicator__slot--fullday {
+    background: color-mix(in srgb, var(--timeline-color) 12%, transparent);
+    color: var(--timeline-color);
+  }
+
+  .time-indicator__duration {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+  }
+
+  .time-indicator__duration-badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: color-mix(in srgb, var(--color-foreground) 50%, transparent);
+    background: color-mix(in srgb, var(--color-foreground) 6%, transparent);
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-left: auto;
+  }
+
+  /* ============================================
+     CARD MEDIA
+     ============================================ */
+
+  .activity-card__media {
+    position: relative;
+    aspect-ratio: 16/10;
+    background: color-mix(in srgb, var(--color-foreground) 5%, transparent);
+    overflow: hidden;
+  }
+
+  .activity-card__media-link {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .activity-card__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+  }
+
+  .activity-card:hover .activity-card__img {
+    transform: scale(1.06);
+  }
+
+  .activity-card__placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: color-mix(in srgb, var(--color-foreground) 20%, transparent);
+  }
+
+  /* Highlight Badge */
+  .activity-card__highlight-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    background: var(--highlight-gold);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    border-radius: 20px;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+  }
+
+  /* ============================================
+     CARD CONTENT
+     ============================================ */
+
+  .activity-card__content {
+    padding: 16px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .activity-card__name {
+    margin: 0 0 6px;
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--color-foreground);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .activity-card--highlight .activity-card__name {
+    font-size: 1.1rem;
+  }
+
+  .activity-card__name a {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.2s ease;
+  }
+
+  .activity-card__name a:hover {
+    color: var(--timeline-color);
+  }
+
+  .activity-card__tagline {
+    font-size: 0.8rem;
+    color: color-mix(in srgb, var(--color-foreground) 65%, transparent);
+    margin: 0 0 8px;
+    line-height: 1.4;
+    font-style: italic;
+  }
+
+  .activity-card__description {
+    font-size: 0.85rem;
+    color: color-mix(in srgb, var(--color-foreground) 75%, transparent);
+    margin: 0 0 14px;
+    line-height: 1.55;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    flex: 1;
+  }
+
+  .activity-card__meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
+  }
+
+  /* ============================================
+     ACTIVITY TYPE BADGES
+     ============================================ */
+
+  .activity-type-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    border-radius: 6px;
+    white-space: nowrap;
+  }
+
+  .activity-type-badge--included {
+    background: color-mix(in srgb, var(--type-included) 12%, transparent);
+    color: var(--type-included);
+  }
+
+  .activity-type-badge--recommended {
+    background: color-mix(in srgb, var(--type-recommended) 12%, transparent);
+    color: var(--type-recommended);
+  }
+
+  .activity-type-badge--optional {
+    background: color-mix(in srgb, var(--type-optional) 12%, transparent);
+    color: var(--type-optional);
+  }
+
+  .activity-type-badge--information {
+    background: color-mix(in srgb, var(--type-information) 12%, transparent);
+    color: var(--type-information);
+  }
+
+  .activity-type-badge--destination {
+    background: color-mix(in srgb, var(--type-destination) 12%, transparent);
+    color: var(--type-destination);
+  }
+
+  .activity-type-badge--greeting {
+    background: color-mix(in srgb, var(--type-greeting) 12%, transparent);
+    color: var(--type-greeting);
+  }
+
+  .activity-card__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--timeline-color);
+    text-decoration: none;
+    transition: gap 0.2s ease;
+  }
+
+  .activity-card__link:hover {
+    gap: 8px;
+  }
+
+  /* ============================================
+     CAROUSEL NAVIGATION
+     ============================================ */
+
+  .activities-carousel__nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 16px;
+  }
+
+  .carousel-nav__btn {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-background);
+    border: 1px solid var(--color-border);
+    border-radius: 50%;
+    color: var(--color-foreground);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .carousel-nav__btn:hover {
+    background: var(--timeline-color);
+    color: white;
+    border-color: var(--timeline-color);
+  }
+
+  .carousel-nav__btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  .carousel-nav__dots {
+    display: flex;
+    gap: 6px;
+  }
+
+  .carousel-nav__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--color-foreground) 20%, transparent);
+    transition: all 0.2s ease;
+  }
+
+  .carousel-nav__dot--active {
+    width: 24px;
+    border-radius: 4px;
+    background: var(--timeline-color);
+  }
+
+  /* ============================================
+     INFO SECTION
+     ============================================ */
+
+  .day-activities__info-section {
+    margin-top: 24px;
+    padding: 16px 20px;
+    background: color-mix(in srgb, var(--type-information) 6%, transparent);
+    border-radius: 12px;
+    border: 1px solid color-mix(in srgb, var(--type-information) 15%, transparent);
+  }
+
+  .info-section__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--type-information);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .info-section__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .info-item__name {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--color-foreground);
+  }
+
+  .info-item__desc {
+    font-size: 0.8rem;
+    color: color-mix(in srgb, var(--color-foreground) 65%, transparent);
+    line-height: 1.5;
+  }
+
+  /* ============================================
+     LIST VIEW STYLES
+     ============================================ */
+
+  .day-activities__list {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .activities-time-group {
+    padding: 0;
+  }
+
+  .activities-time-group--info {
+    padding: 16px;
+    background: color-mix(in srgb, var(--type-information) 5%, transparent);
+    border-radius: 12px;
+    border: 1px solid color-mix(in srgb, var(--type-information) 12%, transparent);
+  }
+
+  .activities-time-group__header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: color-mix(in srgb, var(--color-foreground) 65%, transparent);
+  }
+
+  .activities-time-group__header svg {
+    color: var(--timeline-color);
+  }
+
+  .activities-time-group--info .activities-time-group__header {
+    color: var(--type-information);
+  }
+
+  .activities-time-group--info .activities-time-group__header svg {
+    color: var(--type-information);
+  }
+
+  .activities-time-group__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* ============================================
+     RESPONSIVE - TABLET
+     ============================================ */
+
+  @media screen and (min-width: 600px) {
+    .activity-card {
+      flex: 0 0 280px;
+    }
+
+    .activity-card--highlight {
+      flex: 0 0 320px;
+    }
+  }
+
+  /* ============================================
+     RESPONSIVE - DESKTOP GRID
+     ============================================ */
+
+  @media screen and (min-width: 768px) {
+    .activities-timeline__track {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      overflow-x: visible;
+      gap: 24px;
+    }
+
+    .activity-card,
+    .activity-card--highlight {
+      flex: none;
+    }
+
+    .activities-carousel__nav {
+      display: none;
+    }
+  }
+
+  @media screen and (min-width: 1024px) {
+    .activities-timeline__track {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    /* Dynamic grid columns based on count */
+    .activities-timeline__track[data-grid-count="1"] {
+      grid-template-columns: 1fr;
+      max-width: 400px;
+    }
+
+    .activities-timeline__track[data-grid-count="2"] {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .activities-timeline__track[data-grid-count="3"] {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .activities-timeline__track[data-grid-count="4"] {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+
+  @media screen and (min-width: 1280px) {
+    .activities-timeline__track {
+      grid-template-columns: repeat(4, 1fr);
+    }
+
+    .activities-timeline__track[data-grid-count="1"],
+    .activities-timeline__track[data-grid-count="2"],
+    .activities-timeline__track[data-grid-count="3"],
+    .activities-timeline__track[data-grid-count="4"] {
+      /* Keep as defined above */
+    }
+
+    .activities-timeline__track[data-grid-count="5"],
+    .activities-timeline__track[data-grid-count="6"],
+    .activities-timeline__track[data-grid-count="7"],
+    .activities-timeline__track[data-grid-count="8"] {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+
+  /* ============================================
+     PRINT STYLES
+     ============================================ */
+
+  @media print {
+    .wetu-day-activities--enhanced {
+      break-inside: avoid;
+      padding: 16px;
+    }
+
+    .activities-timeline__track {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .activity-card {
+      break-inside: avoid;
+    }
+
+    .activities-carousel__nav {
+      display: none;
+    }
+  }
+</style>
+
+<script>
+  (function() {
+    const carousels = document.querySelectorAll('[data-activities-carousel]');
+
+    carousels.forEach(carousel => {
+      const track = carousel.querySelector('.activities-timeline__track');
+      const prevBtn = carousel.querySelector('[data-carousel-prev]');
+      const nextBtn = carousel.querySelector('[data-carousel-next]');
+      const dotsContainer = carousel.querySelector('[data-carousel-dots]');
+
+      if (!track) return;
+
+      const cards = track.querySelectorAll('.activity-card');
+      const cardCount = cards.length;
+
+      // Only setup carousel on mobile (when overflow is active)
+      const isCarouselMode = () => window.innerWidth < 768;
+
+      // Create dots
+      if (dotsContainer && cardCount > 0) {
+        for (let i = 0; i < Math.min(cardCount, 8); i++) {
+          const dot = document.createElement('span');
+          dot.className = 'carousel-nav__dot' + (i === 0 ? ' carousel-nav__dot--active' : '');
+          dot.dataset.index = i;
+          dotsContainer.appendChild(dot);
+        }
+      }
+
+      const dots = dotsContainer ? dotsContainer.querySelectorAll('.carousel-nav__dot') : [];
+
+      // Update active dot based on scroll position
+      const updateDots = () => {
+        if (!isCarouselMode() || dots.length === 0) return;
+
+        const scrollLeft = track.scrollLeft;
+        const cardWidth = cards[0]?.offsetWidth || 280;
+        const gap = 20;
+        const activeIndex = Math.round(scrollLeft / (cardWidth + gap));
+
+        dots.forEach((dot, i) => {
+          dot.classList.toggle('carousel-nav__dot--active', i === activeIndex);
+        });
+
+        // Update button states
+        if (prevBtn) prevBtn.disabled = scrollLeft <= 10;
+        if (nextBtn) nextBtn.disabled = scrollLeft >= track.scrollWidth - track.clientWidth - 10;
+      };
+
+      // Scroll by one card
+      const scrollByCard = (direction) => {
+        if (!isCarouselMode()) return;
+
+        const cardWidth = cards[0]?.offsetWidth || 280;
+        const gap = 20;
+        const scrollAmount = (cardWidth + gap) * direction;
+
+        track.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+      };
+
+      // Event listeners
+      if (prevBtn) {
+        prevBtn.addEventListener('click', () => scrollByCard(-1));
+      }
+
+      if (nextBtn) {
+        nextBtn.addEventListener('click', () => scrollByCard(1));
+      }
+
+      // Dot click navigation
+      dots.forEach(dot => {
+        dot.addEventListener('click', () => {
+          const index = parseInt(dot.dataset.index, 10);
+          const cardWidth = cards[0]?.offsetWidth || 280;
+          const gap = 20;
+          track.scrollTo({ left: index * (cardWidth + gap), behavior: 'smooth' });
+        });
+      });
+
+      // Update dots on scroll
+      track.addEventListener('scroll', updateDots, { passive: true });
+
+      // Initial state
+      updateDots();
+
+      // Update on resize
+      window.addEventListener('resize', updateDots, { passive: true });
+    });
+  })();
+</script>

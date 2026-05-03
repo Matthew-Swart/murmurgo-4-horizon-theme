@@ -1,0 +1,253 @@
+{% comment %}
+  Single Property Mobile Drawer Menu
+  @param {product} property - The main property product
+{% endcomment %}
+
+{% liquid
+  assign accommodation_collection = property.metafields.wetu.accommodation_collection.value
+  assign dining_collection = property.metafields.wetu.restaurants_collection.value
+  assign activities_collection = property.metafields.wetu.activities_collection_ref.value
+  assign spa_collection = property.metafields.wetu.spa_collection.value
+
+  assign accommodation_products = accommodation_collection.products
+  assign dining_products = dining_collection.products
+  assign activities_products = activities_collection.products
+  assign spa_products = spa_collection.products
+
+  # Panorama behavior remains unchanged (product-based)
+  assign panorama_products = collections.all.products | where: 'type', 'Panorama' | where: 'metafields.wetu.property_id', property.id
+
+  # Video/document availability now comes from property metafields
+  assign video_refs = property.metafields.wetu.videos.value
+  assign videos_collection_ref = property.metafields.wetu.videos_collection_ref.value
+  assign videos_collection_ref = videos_collection_ref | default: property.metafields.wetu.videos_collection.value
+
+  assign document_refs = property.metafields.wetu.documents.value
+  assign documents_collection_ref = property.metafields.wetu.documents_collection_ref.value
+  assign documents_collection_ref = documents_collection_ref | default: property.metafields.wetu.documents_collection.value
+
+  assign accommodation_count = accommodation_products.size
+  assign dining_count = dining_products.size
+  assign activities_count = activities_products.size
+  assign spa_count = spa_products.size
+  assign panorama_count = panorama_products.size
+
+  assign video_count = 0
+  if video_refs != blank
+    for video_ref in video_refs
+      assign video_count = video_count | plus: 1
+    endfor
+  endif
+  if video_count == 0 and videos_collection_ref != blank
+    assign video_count = videos_collection_ref.products_count | default: 0
+  endif
+
+  assign document_count = 0
+  if document_refs != blank
+    for document_ref in document_refs
+      assign document_count = document_count | plus: 1
+    endfor
+  endif
+  if document_count == 0 and documents_collection_ref != blank
+    assign document_count = documents_collection_ref.products_count | default: 0
+  endif
+
+  assign video_collection_url = '/collections/all-property-videos'
+  assign documents_collection_url = '/collections/all-property-documents'
+  if property != blank and property.handle != blank
+    assign video_collection_url = '/collections/' | append: property.handle | append: '-videos'
+    assign documents_collection_url = '/collections/' | append: property.handle | append: '-documents'
+  endif
+-%}
+
+<ul class="header-drawer__menu-list">
+  {%- comment -%} Property Name {%- endcomment -%}
+  <li class="header-drawer__menu-item">
+    <a href="{{ property.url }}" class="header-drawer__link">
+      {{ property.title }}
+    </a>
+  </li>
+
+  {%- comment -%} Accommodation {%- endcomment -%}
+  {% if accommodation_count > 0 %}
+    <li class="header-drawer__menu-item">
+      {% if accommodation_count == 1 %}
+        <a href="{{ accommodation_products.first.url }}" class="header-drawer__link">
+          Accommodation
+        </a>
+      {% else %}
+        <button
+          class="header-drawer__category-toggle"
+          aria-expanded="false"
+          onclick="this.setAttribute('aria-expanded', this.getAttribute('aria-expanded') === 'false' ? 'true' : 'false'); this.nextElementSibling.hidden = !this.nextElementSibling.hidden;"
+        >
+          <span>Accommodation</span>
+          <span class="header-drawer__toggle-icon">▼</span>
+        </button>
+        <ul class="header-drawer__submenu" hidden>
+          <li class="header-drawer__submenu-item">
+            <a href="{{ accommodation_collection.url }}" class="header-drawer__submenu-link">
+              View All
+            </a>
+          </li>
+          {% for accommodation in accommodation_products %}
+            <li class="header-drawer__submenu-item">
+              <a href="{{ accommodation.url }}" class="header-drawer__submenu-link">
+                {{ accommodation.title }}
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </li>
+  {% endif %}
+
+  {%- comment -%} Dining {%- endcomment -%}
+  {% if dining_count > 0 %}
+    <li class="header-drawer__menu-item">
+      {% if dining_count == 1 %}
+        <a href="{{ dining_products.first.url }}" class="header-drawer__link">
+          Dining
+        </a>
+      {% else %}
+        <button
+          class="header-drawer__category-toggle"
+          aria-expanded="false"
+          onclick="this.setAttribute('aria-expanded', this.getAttribute('aria-expanded') === 'false' ? 'true' : 'false'); this.nextElementSibling.hidden = !this.nextElementSibling.hidden;"
+        >
+          <span>Dining</span>
+          <span class="header-drawer__toggle-icon">▼</span>
+        </button>
+        <ul class="header-drawer__submenu" hidden>
+          <li class="header-drawer__submenu-item">
+            <a href="{{ dining_collection.url }}" class="header-drawer__submenu-link">
+              View All
+            </a>
+          </li>
+          {% for restaurant in dining_products %}
+            <li class="header-drawer__submenu-item">
+              <a href="{{ restaurant.url }}" class="header-drawer__submenu-link">
+                {{ restaurant.title }}
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </li>
+  {% endif %}
+
+  {%- comment -%} Activities {%- endcomment -%}
+  {% if activities_count > 0 %}
+    <li class="header-drawer__menu-item">
+      {% if activities_count == 1 %}
+        <a href="{{ activities_products.first.url }}" class="header-drawer__link">
+          Activities
+        </a>
+      {% else %}
+        <button
+          class="header-drawer__category-toggle"
+          aria-expanded="false"
+          onclick="this.setAttribute('aria-expanded', this.getAttribute('aria-expanded') === 'false' ? 'true' : 'false'); this.nextElementSibling.hidden = !this.nextElementSibling.hidden;"
+        >
+          <span>Activities</span>
+          <span class="header-drawer__toggle-icon">▼</span>
+        </button>
+        <ul class="header-drawer__submenu" hidden>
+          <li class="header-drawer__submenu-item">
+            <a href="{{ activities_collection.url }}" class="header-drawer__submenu-link">
+              View All
+            </a>
+          </li>
+          {% for activity in activities_products %}
+            <li class="header-drawer__submenu-item">
+              <a href="{{ activity.url }}" class="header-drawer__submenu-link">
+                {{ activity.title }}
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </li>
+  {% endif %}
+
+  {%- comment -%} Spa {%- endcomment -%}
+  {% if spa_count > 0 %}
+    <li class="header-drawer__menu-item">
+      {% if spa_count == 1 %}
+        <a href="{{ spa_products.first.url }}" class="header-drawer__link">
+          Spa
+        </a>
+      {% else %}
+        <button
+          class="header-drawer__category-toggle"
+          aria-expanded="false"
+          onclick="this.setAttribute('aria-expanded', this.getAttribute('aria-expanded') === 'false' ? 'true' : 'false'); this.nextElementSibling.hidden = !this.nextElementSibling.hidden;"
+        >
+          <span>Spa</span>
+          <span class="header-drawer__toggle-icon">▼</span>
+        </button>
+        <ul class="header-drawer__submenu" hidden>
+          <li class="header-drawer__submenu-item">
+            <a href="{{ spa_collection.url }}" class="header-drawer__submenu-link">
+              View All
+            </a>
+          </li>
+          {% for spa in spa_products %}
+            <li class="header-drawer__submenu-item">
+              <a href="{{ spa.url }}" class="header-drawer__submenu-link">
+                {{ spa.title }}
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </li>
+  {% endif %}
+
+  {%- comment -%} Videos {%- endcomment -%}
+  {% if video_count > 0 %}
+    <li class="header-drawer__menu-item">
+      <a href="{{ video_collection_url }}" class="header-drawer__link">
+        Videos
+      </a>
+    </li>
+  {% endif %}
+
+  {%- comment -%} 3D View {%- endcomment -%}
+  {% if panorama_count > 0 %}
+    <li class="header-drawer__menu-item">
+      {% if panorama_count == 1 %}
+        <a href="{{ panorama_products.first.url }}" class="header-drawer__link" target="_blank">
+          3D View
+        </a>
+      {% else %}
+        <button
+          class="header-drawer__category-toggle"
+          aria-expanded="false"
+          onclick="this.setAttribute('aria-expanded', this.getAttribute('aria-expanded') === 'false' ? 'true' : 'false'); this.nextElementSibling.hidden = !this.nextElementSibling.hidden;"
+        >
+          <span>3D View</span>
+          <span class="header-drawer__toggle-icon">▼</span>
+        </button>
+        <ul class="header-drawer__submenu" hidden>
+          {% for panorama in panorama_products %}
+            <li class="header-drawer__submenu-item">
+              <a href="{{ panorama.url }}" class="header-drawer__submenu-link" target="_blank">
+                {{ panorama.title }}
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </li>
+  {% endif %}
+
+  {%- comment -%} Rates & Info {%- endcomment -%}
+  {% if document_count > 0 %}
+    <li class="header-drawer__menu-item">
+      <a href="{{ documents_collection_url }}" class="header-drawer__link">
+        Rates & Info
+      </a>
+    </li>
+  {% endif %}
+</ul>

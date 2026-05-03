@@ -1,0 +1,247 @@
+{% doc %}
+  WETU Documents Display Snippet
+  
+  Displays a categorized list of PDF documents associated with a Wetu property or accommodation.
+  Documents are grouped by category with clean card-based design and visual separation.
+  
+  @param {product} product - The product object containing wetu.documents metafield (required)
+  @param {string} heading - Custom heading text (optional, default: from locale)
+  @param {boolean} show_categories - Group documents by category (default: true)
+  @param {string} layout - Display layout: 'list' or 'grid' (default: 'list')
+  @param {string} css_class - Additional CSS classes
+  
+  @example
+  {% render 'wetu-documents-display', 
+    product: product, 
+    layout: 'list',
+    show_categories: true
+  %}
+{% enddoc %}
+
+{% liquid
+  # Parameter validation and defaults
+  assign product = product | default: empty
+  assign heading = heading | default: ''
+  assign show_categories = show_categories | default: true  
+  assign layout = layout | default: 'list'
+  assign css_class = css_class | default: ''
+  
+  # Early return if no product or documents
+  unless product != empty
+    echo '<!-- Error: product parameter required for wetu-documents-display snippet -->'
+    break
+  endunless
+  
+  # Get documents from metafield
+  assign documents = product.metafields.wetu.documents.value
+  
+  # Check if metafield exists (MetaobjectListDrop doesn't support .size reliably)
+  unless documents
+    break
+  endunless
+  
+  # Check if we have any documents by trying to access first
+  assign has_documents = false
+  for doc in documents limit: 1
+    assign has_documents = true
+  endfor
+  
+  unless has_documents
+    break
+  endunless
+  
+  # Set default heading from locale if not provided
+  if heading == blank
+    assign heading = 'wetu.documents.heading' | t
+  endif
+  
+  # Updated categories with proper mapping
+  assign categories = 'Fact Sheet,Activities,Spa,Other / General,Rates,Specials' | split: ','
+  assign categorized_docs = '' | split: ''
+%}
+
+<div class="wetu-documents {{ css_class }}" data-layout="{{ layout }}">
+  {% if heading != blank %}
+    <h2 class="wetu-documents__heading">{{ heading }}</h2>
+  {% endif %}
+  
+  {% if show_categories %}
+    {%- comment -%} Group documents by category {%- endcomment -%}
+    {% for category in categories %}
+      {%- comment -%} Direct field access - document.section from Wetu API {%- endcomment -%}
+      {% assign has_category_docs = false %}
+      
+      {%- comment -%} First pass: check if category has documents {%- endcomment -%}
+      {% for doc in documents %}
+        {% assign doc_section = doc.section | default: 'Other / General' %}
+        {% if doc_section == category %}
+          {% assign has_category_docs = true %}
+          {% break %}
+        {% endif %}
+      {% endfor %}
+      
+      {% if has_category_docs %}
+        <div class="wetu-documents__category">
+          <div class="wetu-documents__category-header">
+            <h3 class="wetu-documents__category-title">{{ category }}</h3>
+          </div>
+          <ul class="wetu-documents__list wetu-documents__list--{{ layout }}">
+            {% for doc in documents %}
+              {% assign doc_section = doc.section | default: 'Other / General' %}
+              {% if doc_section == category %}
+                {% render 'wetu-document-item', 
+                  document: doc, 
+                  layout: layout,
+                  hide_category: true
+                %}
+              {% endif %}
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+    {% endfor %}
+    
+    {%- comment -%} Show uncategorized documents {%- endcomment -%}
+    {% assign has_uncategorized = false %}
+    
+    {%- comment -%} First pass: check if there are uncategorized documents {%- endcomment -%}
+    {% for doc in documents %}
+      {% assign doc_section = doc.section | default: '' %}
+      {% assign found = false %}
+      
+      {% for category in categories %}
+        {% if doc_section == category %}
+          {% assign found = true %}
+          {% break %}
+        {% endif %}
+      {% endfor %}
+      
+      {% unless found %}
+        {% assign has_uncategorized = true %}
+        {% break %}
+      {% endunless %}
+    {% endfor %}
+    
+    {% if has_uncategorized %}
+      <div class="wetu-documents__category">
+        <div class="wetu-documents__category-header">
+          <h3 class="wetu-documents__category-title">{{ 'wetu.documents.other' | t }}</h3>
+        </div>
+        <ul class="wetu-documents__list wetu-documents__list--{{ layout }}">
+          {% for doc in documents %}
+            {% assign doc_section = doc.section | default: '' %}
+            {% assign found = false %}
+            
+            {% for category in categories %}
+              {% if doc_section == category %}
+                {% assign found = true %}
+                {% break %}
+              {% endif %}
+            {% endfor %}
+            
+            {% unless found %}
+              {% render 'wetu-document-item', 
+                document: doc, 
+                layout: layout,
+                hide_category: true
+              %}
+            {% endunless %}
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+    
+  {% else %}
+    {%- comment -%} Display all documents without categorization {%- endcomment -%}
+    <ul class="wetu-documents__list wetu-documents__list--{{ layout }}">
+      {% for doc in documents %}
+        {% render 'wetu-document-item', 
+          document: doc, 
+          layout: layout
+        %}
+      {% endfor %}
+    </ul>
+  {% endif %}
+</div>
+
+{% style %}
+  .wetu-documents {
+    margin: 0;
+  }
+  
+  .wetu-documents__heading {
+    margin: 0 0 2rem 0;
+    padding: 0;
+    font-size: 1.75rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: rgb(var(--color-foreground));
+  }
+  
+  .wetu-documents__category {
+    margin-bottom: 3rem;
+  }
+  
+  .wetu-documents__category:last-child {
+    margin-bottom: 0;
+  }
+  
+  .wetu-documents__category-header {
+    padding: 1rem 1.5rem;
+    background: rgba(var(--color-foreground), 0.08);
+    border: 1px solid rgba(var(--color-foreground), 0.12);
+    border-bottom: none;
+    margin-bottom: 0;
+  }
+  
+  .wetu-documents__category-title {
+    margin: 0;
+    padding: 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: rgb(var(--color-foreground));
+    letter-spacing: -0.01em;
+  }
+  
+  .wetu-documents__list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  
+  .wetu-documents__list--list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .wetu-documents__list--grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+  }
+  
+  @media (max-width: 749px) {
+    .wetu-documents__heading {
+      font-size: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .wetu-documents__category {
+      margin-bottom: 2rem;
+    }
+    
+    .wetu-documents__category-header {
+      padding: 1rem 1.25rem;
+    }
+    
+    .wetu-documents__category-title {
+      font-size: 1rem;
+    }
+    
+    .wetu-documents__list--grid {
+      grid-template-columns: 1fr;
+    }
+  }
+{% endstyle %}

@@ -1,0 +1,480 @@
+
+{%- style -%}
+  .search-hero {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: {{ section.settings.height }}px;
+    background-size: cover;
+    background-position: center;
+    color: {{ section.settings.text_color }};
+  }
+
+  .search-hero__overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #000;
+  }
+
+  .search-hero__content {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    text-align: center;
+  }
+
+  .search-hero__heading {
+    color: {{ section.settings.text_color }};
+    margin-bottom: 2rem;
+    font-size: clamp(2rem, 5vw, 4rem);
+  }
+
+  /* Search Bar Container */
+  .search-hero__container {
+    max-width: 850px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 50px;
+    padding: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  }
+
+  /* Desktop Bar */
+  .search-hero__bar {
+    display: flex;
+    align-items: center;
+    width: 100%;
+  }
+
+  .search-hero__input-group {
+    flex: 1;
+    padding: 0 20px;
+    text-align: left;
+    position: relative;
+  }
+
+  .search-hero__input-group label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 2px;
+  }
+
+  .search-hero__input-group input {
+    border: none;
+    width: 100%;
+    font-size: 1rem;
+    outline: none;
+    background: transparent;
+    padding: 0;
+  }
+
+  .search-hero__input-group .fake-input {
+    color: #888;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+
+  .search-hero__divider {
+    width: 1px;
+    height: 30px;
+    background-color: #ddd;
+  }
+
+  .search-hero__button {
+    background-color: {{ section.settings.button_color }};
+    color: white;
+    border: none;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+
+  .search-hero__button:hover {
+    transform: scale(1.05);
+  }
+
+  /* Dropdown Results */
+  .search-hero__dropdown {
+    position: absolute;
+    top: 120%;
+    left: 0;
+    width: 100%;
+    min-width: 400px;
+    background: white;
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    display: none;
+    z-index: 100;
+  }
+
+  .search-hero__dropdown.open {
+    display: block;
+  }
+
+  .search-group-title {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    color: #888;
+    margin-bottom: 10px;
+    margin-top: 15px;
+  }
+
+  .search-result-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    cursor: pointer;
+    border-radius: 10px;
+    transition: background 0.1s;
+  }
+
+  .search-result-item:hover {
+    background-color: #f5f5f5;
+  }
+
+  .search-result-icon {
+    width: 40px;
+    height: 40px;
+    background-color: #eee;
+    border-radius: 8px;
+    margin-right: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  
+  .search-result-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .search-result-info h4 {
+    margin: 0;
+    font-size: 1rem;
+    color: #333;
+  }
+
+  .search-result-info p {
+    margin: 0;
+    font-size: 0.8rem;
+    color: #666;
+  }
+
+  /* Mobile Styles */
+  .mobile-only { display: none; }
+  
+  @media screen and (max-width: 768px) {
+    .desktop-only { display: none; }
+    .mobile-only { display: flex; }
+    
+    .search-hero__container {
+      border-radius: 30px;
+      padding: 10px 20px;
+      width: 90%;
+    }
+
+    .search-hero__mobile-trigger {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      background: white;
+      cursor: pointer;
+    }
+
+    .search-hero__mobile-trigger svg {
+      margin-right: 15px;
+      width: 20px;
+    }
+
+    .search-hero__mobile-trigger span {
+      font-size: 1rem;
+      color: #333;
+      font-weight: 500;
+    }
+  }
+
+  /* Modal Styles */
+  .search-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: white;
+    z-index: 9999;
+    transform: translateY(100%);
+    transition: transform 0.3s ease-in-out;
+    padding: 20px;
+    overflow-y: auto;
+  }
+
+  .search-modal.open {
+    transform: translateY(0);
+  }
+
+  .search-modal__header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+
+  .search-modal__back {
+    margin-right: 15px;
+    cursor: pointer;
+    font-size: 1.5rem;
+  }
+
+  .search-modal__input {
+    flex: 1;
+    border: none;
+    font-size: 1.2rem;
+    font-weight: bold;
+    outline: none;
+    border-bottom: 2px solid transparent;
+  }
+  
+  .search-modal__input:focus {
+    border-bottom-color: #000;
+  }
+
+  .search-modal__results {
+    margin-top: 20px;
+  }
+{%- endstyle -%}
+
+<div class="search-hero" style="background-image: url('{{ section.settings.image | image_url: width: 2000 }}');">
+  <div class="search-hero__overlay" style="opacity: {{ section.settings.overlay_opacity }}%;"></div>
+  
+  <div class="search-hero__content page-width">
+    {%- if section.settings.heading != blank -%}
+      <h1 class="search-hero__heading">{{ section.settings.heading }}</h1>
+    {%- endif -%}
+
+    <div class="search-hero__container">
+      <!-- Desktop Search -->
+      <div class="search-hero__bar desktop-only">
+        <div class="search-hero__input-group">
+          <label for="Desktop-Search-Input">Where to?</label>
+          <input type="text" id="Desktop-Search-Input" placeholder="Search destinations" autocomplete="off">
+          <div id="Desktop-Results-Dropdown" class="search-hero__dropdown"></div>
+        </div>
+        <div class="search-hero__divider"></div>
+        <div class="search-hero__input-group">
+          <label>Check-in</label>
+          <div class="fake-input">Add dates</div>
+        </div>
+        <div class="search-hero__divider"></div>
+        <div class="search-hero__input-group">
+          <label>Guests</label>
+          <div class="fake-input">Add guests</div>
+        </div>
+        <button class="search-hero__button" onclick="window.location.href='/collections/all'">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Mobile Trigger -->
+      <div class="search-hero__mobile-trigger mobile-only" onclick="openSearchModal()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e00000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <span>Where to?</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Full Screen Modal -->
+<div id="Search-Modal" class="search-modal">
+  <div class="search-modal__header">
+    <div class="search-modal__back" onclick="closeSearchModal()">&times;</div>
+    <input type="text" id="Mobile-Search-Input" class="search-modal__input" placeholder="Where to?" autocomplete="off">
+  </div>
+  <div id="Mobile-Results-Container" class="search-modal__results">
+    <!-- Results populated by JS -->
+    <p class="search-group-title">Popular Destinations</p>
+    <!-- Placeholder or Popular items can go here -->
+  </div>
+</div>
+
+<script>
+  function openSearchModal() {
+    document.getElementById('Search-Modal').classList.add('open');
+    setTimeout(() => document.getElementById('Mobile-Search-Input').focus(), 300);
+  }
+
+  function closeSearchModal() {
+    document.getElementById('Search-Modal').classList.remove('open');
+  }
+
+  // Search Logic
+  document.addEventListener('DOMContentLoaded', function() {
+    const desktopInput = document.getElementById('Desktop-Search-Input');
+    const desktopDropdown = document.getElementById('Desktop-Results-Dropdown');
+    const mobileInput = document.getElementById('Mobile-Search-Input');
+    const mobileResults = document.getElementById('Mobile-Results-Container');
+
+    let debounceTimer;
+
+    function performSearch(query, resultContainer) {
+      if (query.length < 2) {
+        resultContainer.innerHTML = '';
+        resultContainer.classList.remove('open');
+        return;
+      }
+
+      // Show loading state?
+
+      fetch(`/search?view=ajax&q=${encodeURIComponent(query)}`)
+        .then(response => response.json())
+        .then(data => {
+          renderResults(data, resultContainer);
+        })
+        .catch(error => console.error('Error fetching search results:', error));
+    }
+
+    function renderResults(data, container) {
+      let html = '';
+
+      // Destinations Group
+      if (data.results.locations && data.results.locations.length > 0) {
+        html += '<div class="search-group-title">Destinations</div>';
+        data.results.locations.forEach(loc => {
+          html += `
+            <div class="search-result-item" onclick="window.location.href='/collections/all?filter.p.m.wetu.country=${encodeURIComponent(loc.country)}'">
+              <div class="search-result-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+              </div>
+              <div class="search-result-info">
+                <h4>${loc.country}</h4>
+                <p>${loc.display}</p>
+              </div>
+            </div>
+          `;
+        });
+      }
+
+      // Properties Group
+      if (data.results.properties && data.results.properties.length > 0) {
+        html += '<div class="search-group-title">Accommodations</div>';
+        data.results.properties.forEach(prop => {
+          html += `
+            <div class="search-result-item" onclick="window.location.href='${prop.url}'">
+              <div class="search-result-icon">
+                ${prop.image.url ? `<img src="${prop.image.url}" alt="${prop.image.alt}">` : ''}
+              </div>
+              <div class="search-result-info">
+                <h4>${prop.title}</h4>
+                <p>${prop.location.display}</p>
+              </div>
+            </div>
+          `;
+        });
+      }
+
+      if (html === '') {
+        html = '<div class="search-result-item"><p>No results found</p></div>';
+      }
+
+      container.innerHTML = html;
+      container.classList.add('open');
+    }
+
+    // Attach listeners
+    [desktopInput, mobileInput].forEach(input => {
+      if (!input) return;
+      
+      const container = input === desktopInput ? desktopDropdown : mobileResults;
+      
+      input.addEventListener('input', (e) => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          performSearch(e.target.value, container);
+        }, 300);
+      });
+
+      // Hide dropdown when clicking outside
+      if (input === desktopInput) {
+        document.addEventListener('click', (e) => {
+          if (!desktopInput.contains(e.target) && !desktopDropdown.contains(e.target)) {
+            desktopDropdown.classList.remove('open');
+          }
+        });
+      }
+    });
+  });
+</script>
+
+{% schema %}
+{
+  "name": "Search Hero",
+  "settings": [
+    {
+      "type": "image_picker",
+      "id": "image",
+      "label": "Background Image"
+    },
+    {
+      "type": "range",
+      "id": "overlay_opacity",
+      "min": 0,
+      "max": 90,
+      "step": 10,
+      "unit": "%",
+      "label": "Overlay Opacity",
+      "default": 30
+    },
+    {
+      "type": "range",
+      "id": "height",
+      "min": 300,
+      "max": 800,
+      "step": 50,
+      "unit": "px",
+      "label": "Section Height",
+      "default": 500
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Find your next adventure"
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "Text Color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "button_color",
+      "label": "Search Button Color",
+      "default": "#e00000"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Search Hero"
+    }
+  ]
+}
+{% endschema %}

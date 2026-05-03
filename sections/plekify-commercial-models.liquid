@@ -1,0 +1,313 @@
+<section class="plekify-models" id="plekify-models-{{ section.id }}">
+  <div class="plekify-models__container">
+    <div class="plekify-models__header">
+      <span class="plekify-models__overline">{{ section.settings.overline }}</span>
+      <h2 class="plekify-models__heading">{{ section.settings.heading }}</h2>
+      <hr class="plekify-models__divider">
+    </div>
+
+    <div class="plekify-models__grid">
+      {% for block in section.blocks %}
+        <div class="plekify-models__card" {{ block.shopify_attributes }}>
+          <span class="plekify-models__card-overline">{{ block.settings.overline }}</span>
+          <h3 class="plekify-models__card-heading">{{ block.settings.title }}</h3>
+          <p class="plekify-models__card-body">{{ block.settings.description }}</p>
+
+          <hr class="plekify-models__card-divider">
+
+          <div class="plekify-models__card-detail">
+            <span class="plekify-models__card-label">How it works:</span>
+            <p class="plekify-models__card-detail-text">{{ block.settings.how_it_works }}</p>
+          </div>
+
+          <div class="plekify-models__card-detail">
+            <span class="plekify-models__card-ideal-label">Ideal for:</span>
+            <p class="plekify-models__card-detail-text">{{ block.settings.ideal_for }}</p>
+          </div>
+
+          {% if block.settings.cta_text != blank %}
+            <a
+              class="plekify-models__card-cta"
+              {% if block.settings.cta_url != blank %}href="{{ block.settings.cta_url }}"{% endif %}
+            >
+              {{ block.settings.cta_text }}
+            </a>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{% stylesheet %}
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;600;700&display=swap');
+
+.plekify-models {
+  background-color: #121212;
+  padding-block: 96px;
+  padding-inline: 24px;
+}
+
+.plekify-models__container {
+  max-inline-size: 1200px;
+  margin-inline: auto;
+}
+
+.plekify-models__header {
+  text-align: center;
+  margin-block-end: 64px;
+}
+
+.plekify-models__overline {
+  display: block;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #C9A96E;
+  margin-block-end: 16px;
+}
+
+.plekify-models__heading {
+  font-family: 'DM Serif Display', serif;
+  font-size: 44px;
+  font-weight: 400;
+  line-height: 1.15;
+  color: #FFFFFF;
+  margin: 0;
+}
+
+.plekify-models__divider {
+  border: none;
+  border-block-start: 1px solid #2C2C2C;
+  inline-size: 64px;
+  margin-inline: auto;
+  margin-block-start: 32px;
+}
+
+.plekify-models__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+}
+
+.plekify-models__card {
+  background-color: #1C1C1C;
+  border: 1px solid #2C2C2C;
+  border-radius: 8px;
+  padding: 40px;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.plekify-models__card:hover {
+  border-color: #C9A96E;
+}
+
+.plekify-models__card-overline {
+  display: block;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #C9A96E;
+  margin-block-end: 12px;
+}
+
+.plekify-models__card-heading {
+  font-family: 'DM Serif Display', serif;
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 1.2;
+  color: #FFFFFF;
+  margin: 0 0 16px;
+}
+
+.plekify-models__card-body {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 1.6;
+  color: #8E8E8E;
+  margin: 0;
+}
+
+.plekify-models__card-divider {
+  border: none;
+  border-block-start: 1px solid #2C2C2C;
+  inline-size: 100%;
+  margin-block: 24px;
+}
+
+.plekify-models__card-detail {
+  margin-block-end: 20px;
+}
+
+.plekify-models__card-label {
+  display: block;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  color: #FFFFFF;
+  margin-block-end: 6px;
+}
+
+.plekify-models__card-detail-text {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #8E8E8E;
+  margin: 0;
+}
+
+.plekify-models__card-ideal-label {
+  display: block;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #FFFFFF;
+  margin-block-end: 6px;
+}
+
+.plekify-models__card-cta {
+  display: inline-block;
+  margin-block-start: auto;
+  padding-block-start: 24px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  color: #FFFFFF;
+  text-decoration: none;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  padding: 16px 40px;
+  text-align: center;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.plekify-models__card-cta:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+@media screen and (max-width: 749px) {
+  .plekify-models {
+    padding-block: 48px;
+  }
+
+  .plekify-models__heading {
+    font-size: 28px;
+  }
+
+  .plekify-models__grid {
+    grid-template-columns: 1fr;
+  }
+}
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Plekify Commercial Models",
+  "tag": "section",
+  "class": "plekify-models-section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "overline",
+      "label": "Overline",
+      "default": "TWO WAYS TO WORK WITH US"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Choose the model that fits your operation."
+    }
+  ],
+  "blocks": [
+    {
+      "type": "model_card",
+      "name": "Model Card",
+      "settings": [
+        {
+          "type": "text",
+          "id": "overline",
+          "label": "Overline",
+          "default": "Model"
+        },
+        {
+          "type": "text",
+          "id": "title",
+          "label": "Card Title",
+          "default": "Model Title"
+        },
+        {
+          "type": "textarea",
+          "id": "description",
+          "label": "Description",
+          "default": "Model description."
+        },
+        {
+          "type": "textarea",
+          "id": "how_it_works",
+          "label": "How It Works",
+          "default": "How this model works."
+        },
+        {
+          "type": "textarea",
+          "id": "ideal_for",
+          "label": "Ideal For",
+          "default": "Description of ideal customer."
+        },
+        {
+          "type": "text",
+          "id": "cta_text",
+          "label": "CTA Text",
+          "default": "Learn More →"
+        },
+        {
+          "type": "url",
+          "id": "cta_url",
+          "label": "CTA URL"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Plekify Commercial Models",
+      "blocks": [
+        {
+          "type": "model_card",
+          "settings": {
+            "overline": "Model A",
+            "title": "Your Store, Our Engine",
+            "description": "We install Plekify on your Shopify site. Your brand, your domain, your customer data. Full control over design, pricing, and guest relationships.",
+            "how_it_works": "Implementation fee to build your store, then a monthly subscription. Your team manages the storefront. We handle the sync infrastructure.",
+            "ideal_for": "Established DMCs ready to own their direct booking channel — operators who want first-party guest data, marketing automation, and full brand control from day one.",
+            "cta_text": "Talk to Matt about implementation →"
+          }
+        },
+        {
+          "type": "model_card",
+          "settings": {
+            "overline": "Model B",
+            "title": "Zero Risk, Commission Only",
+            "description": "We build and operate the store. You supply the Wetu content. We handle design, hosting, marketing, and checkout. You earn on every completed booking.",
+            "how_it_works": "No upfront cost. No monthly fee. We earn 20% on completed bookings. Affiliate partners who refer guests earn 10%.",
+            "ideal_for": "Operators who want to test direct commerce without committing infrastructure or budget — see the results before investing in your own store.",
+            "cta_text": "Start with zero risk →"
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,76 @@
+{% comment %}
+  WETU PIN Link Snippet
+  
+  Transforms {{PIN:ID|Name}} syntax into product links.
+  
+  USAGE:
+    {% render 'wetu-pin-link', content: day_narrative, pin_ids: wetu_pin_ids_array, handles: wetu_handles_array %}
+  
+  INPUT:
+    {{PIN:12345|Hotel Name}}
+  
+  OUTPUT:
+    <a href="/products/wetu-pin-12345" class="wetu-pin-link">Hotel Name</a>
+  
+  LOOKUP:
+    - Uses pin_ids array and handles array for O(n) lookup
+    - Falls back to /pages/wetu-property-{ID} if not found
+{% endcomment %}
+
+{% assign wetu_pin_content = content %}
+
+{% if wetu_pin_content == blank %}
+  {{ content }}
+{% else %}
+  {% assign wetu_pin_result = '' %}
+  {% assign wetu_pin_remainder = wetu_pin_content %}
+
+  {% assign wetu_pin_parts = wetu_pin_remainder | split: '{{PIN:' %}
+
+  {% for wetu_pin_part in wetu_pin_parts %}
+    {% if forloop.first %}
+      {% assign wetu_pin_result = wetu_pin_result | append: wetu_pin_part %}
+    {% else %}
+      {% assign wetu_pin_after_id = wetu_pin_part | split: '}}' %}
+      {% assign wetu_pin_middle = wetu_pin_after_id[0] %}
+      {% assign wetu_pin_remaining = '' %}
+      {% if wetu_pin_after_id.size > 1 %}
+        {% assign wetu_pin_remaining = wetu_pin_after_id[1] %}
+      {% endif %}
+
+      {% assign wetu_pin_id_name = wetu_pin_middle | split: '|' %}
+      {% assign wetu_pin_id = wetu_pin_id_name[0] %}
+      {% assign wetu_pin_name = wetu_pin_id_name[1] %}
+
+      {% assign wetu_pin_id = wetu_pin_id | strip %}
+      {% assign wetu_pin_name = wetu_pin_name | strip %}
+
+      {% assign wetu_pin_handle = '' %}
+    
+      {% if pin_ids != blank and handles != blank %}
+        {% assign wetu_pin_idx = -1 %}
+        {% for wetu_test_pin in pin_ids %}
+          {% if wetu_test_pin == wetu_pin_id %}
+            {% assign wetu_pin_idx = forloop.index0 %}
+            {% break %}
+          {% endif %}
+        {% endfor %}
+        {% if wetu_pin_idx >= 0 %}
+          {% assign wetu_pin_handle = handles[wetu_pin_idx] %}
+        {% endif %}
+      {% endif %}
+
+      {% if wetu_pin_handle != '' and wetu_pin_handle != nil %}
+        {% assign wetu_pin_linked_url = '/products/' | append: wetu_pin_handle %}
+        {% assign wetu_pin_result = wetu_pin_result | append: '<a href="' | append: wetu_pin_linked_url | append: '" class="wetu-pin-link">' | append: wetu_pin_name | append: '</a>' %}
+      {% else %}
+        {% assign wetu_pin_fallback_url = '/pages/wetu-property-' | append: wetu_pin_id %}
+        {% assign wetu_pin_result = wetu_pin_result | append: '<a href="' | append: wetu_pin_fallback_url | append: '" class="wetu-pin-link">' | append: wetu_pin_name | append: '</a>' %}
+      {% endif %}
+
+      {% assign wetu_pin_result = wetu_pin_result | append: wetu_pin_remaining %}
+    {% endif %}
+  {% endfor %}
+
+  {{ wetu_pin_result }}
+{% endif %}

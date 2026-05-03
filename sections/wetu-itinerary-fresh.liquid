@@ -1,0 +1,1813 @@
+{% comment %}
+  ============================================================================
+  WETU ITINERARY FRESH TEMPLATE
+  ============================================================================
+  
+  A comprehensive, mobile-responsive itinerary display showing:
+  - Client personalization header
+  - Day-by-day chronological journey
+  - Property stays with enriched details (activities, dining, spa)
+  - Inline transfers with Google Maps links
+  - Included/excluded items per property stay
+  
+  Uses Color Scheme 5 (primary) and Color Scheme 1 (variation)
+  ============================================================================
+{% endcomment %}
+
+{% liquid
+  assign color_scheme = section.settings.color_scheme | default: 'scheme-5'
+  assign alt_color_scheme = section.settings.alt_color_scheme | default: 'scheme-1'
+  assign show_client_name = section.settings.show_client_name
+  assign show_reference_number = section.settings.show_reference_number
+  assign show_perfect_for = section.settings.show_perfect_for
+  assign show_enriched = section.settings.show_enriched_products
+  assign show_maps_links = section.settings.show_google_maps_links
+%}
+
+{% comment %} Load itinerary data - using include for shared scope {% endcomment %}
+{% include 'wetu-itinerary-data' %}
+{% include 'wetu-day-by-day-data' %}
+
+{% comment %} Reset tracking for fresh display {% endcomment %}
+{% assign displayed_accommodations = '' %}
+{% assign displayed_destinations = '' %}
+
+{% comment %} Track displayed routes to prevent duplicates {% endcomment %}
+{% assign displayed_routes = '' %}
+
+<div class="itinerary-fresh color-{{ color_scheme }}" data-section-id="{{ section.id }}">
+  
+  {% comment %} ================================================================
+    HEADER SECTION - Client Personalization & Trip Overview
+  ================================================================ {% endcomment %}
+  
+  <header class="itinerary-fresh__header">
+    <div class="header__container page-width">
+      
+      {% comment %} Client Name & Reference {% endcomment %}
+      {% if show_client_name and wetu_itinerary.client_name.value != blank %}
+        <p class="header__client-label">Prepared for</p>
+        <h1 class="header__client-name">{{ wetu_itinerary.client_name.value }}</h1>
+      {% else %}
+        <h1 class="header__title">{{ product.title }}</h1>
+      {% endif %}
+      
+      {% if show_reference_number and wetu_itinerary.reference_number.value != blank %}
+        <p class="header__reference">Reference: {{ wetu_itinerary.reference_number.value }}</p>
+      {% endif %}
+      
+      {% comment %} Trip Summary Stats {% endcomment %}
+      <div class="header__stats">
+        {% if wetu_total_days > 0 %}
+          <div class="stat-item">
+            <span class="stat-value">{{ wetu_total_days }}</span>
+            <span class="stat-label">{{ wetu_total_days | pluralize: 'Day', 'Days' }}</span>
+          </div>
+        {% endif %}
+        
+        {% if wetu_total_nights > 0 %}
+          <div class="stat-item">
+            <span class="stat-value">{{ wetu_total_nights }}</span>
+            <span class="stat-label">{{ wetu_total_nights | pluralize: 'Night', 'Nights' }}</span>
+          </div>
+        {% endif %}
+        
+        {% assign property_count = wetu_accommodation_products.size | default: 0 %}
+        {% if property_count > 0 %}
+          <div class="stat-item">
+            <span class="stat-value">{{ property_count }}</span>
+            <span class="stat-label">{{ property_count | pluralize: 'Property', 'Properties' }}</span>
+          </div>
+        {% endif %}
+        
+        {% assign dest_count = wetu_destination_products.size | default: 0 %}
+        {% if dest_count > 0 %}
+          <div class="stat-item">
+            <span class="stat-value">{{ dest_count }}</span>
+            <span class="stat-label">{{ dest_count | pluralize: 'Destination', 'Destinations' }}</span>
+          </div>
+        {% endif %}
+      </div>
+      
+      {% comment %} Special Interests / Trip Tags {% endcomment %}
+      {% assign special_interests = wetu_itinerary.special_interests.value %}
+      {% if special_interests.size > 0 %}
+        <div class="header__interests">
+          <div class="interests__list">
+            {% for interest in special_interests %}
+              <span class="interest-tag">{{ interest }}</span>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+      
+      {% comment %} Trip Dates {% endcomment %}
+      {% if wetu_itinerary.start_date.value != blank %}
+        {% assign start_date = wetu_itinerary.start_date.value | date: '%B %e, %Y' %}
+        {% assign end_timestamp = wetu_itinerary.start_date.value | date: '%s' | plus: 0 %}
+        {% assign days_to_add = wetu_total_days | minus: 1 | times: 86400 %}
+        {% assign end_timestamp = end_timestamp | plus: days_to_add %}
+        {% assign end_date = end_timestamp | date: '%B %e, %Y' %}
+        <p class="header__dates">{{ start_date }} — {{ end_date }}</p>
+      {% endif %}
+      
+      {% comment %} Trip Summary Description {% endcomment %}
+      {% if wetu_itinerary.summary.value != blank %}
+        {% include 'wetu-render-richtext', content: wetu_itinerary.summary.value, class: 'header__summary' %}
+      {% elsif product.description != blank %}
+        <div class="header__summary">
+          {{ product.description }}
+        </div>
+      {% endif %}
+      
+    </div>
+  </header>
+  
+  {% comment %} ================================================================
+    QUICK NAVIGATION - Property Stops Overview
+  ================================================================ {% endcomment %}
+  
+  <nav class="itinerary-fresh__nav" aria-label="Itinerary navigation">
+    <div class="nav__container page-width">
+      <div class="nav__scroll">
+        {% assign current_day = 1 %}
+        {% for leg in wetu_legs %}
+          {% assign leg_type = leg.type.value | default: 'Standard' %}
+          {% if leg_type != 'Departure' %}
+            {% assign leg_nights = leg.nights.value | default: 0 | plus: 0 %}
+            {% assign acc_pin_id = leg.content_entity_id.value %}
+            {% assign acc_name = leg.accommodation_name.value %}
+            
+            {% comment %} Find linked product {% endcomment %}
+            {% assign acc_product = nil %}
+            {% for check_pin in wetu_pin_ids_array %}
+              {% if check_pin == acc_pin_id %}
+                {% assign acc_handle = wetu_handles_array[forloop.index0] %}
+                {% assign acc_product = all_products[acc_handle] %}
+                {% break %}
+              {% endif %}
+            {% endfor %}
+            
+            <a href="#leg-{{ forloop.index }}" class="nav__item">
+              {% if acc_product.featured_image %}
+                <img 
+                  src="{{ acc_product.featured_image | image_url: width: 80 }}"
+                  alt="{{ acc_name | escape }}"
+                  class="nav__thumb"
+                  loading="lazy"
+                  width="40"
+                  height="40"
+                >
+              {% else %}
+                <div class="nav__thumb nav__thumb--placeholder">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M3 21h18"/><path d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16"/>
+                  </svg>
+                </div>
+              {% endif %}
+              <span class="nav__label">
+                <span class="nav__days">Day {{ current_day }}{% if leg_nights > 1 %}-{{ current_day | plus: leg_nights | minus: 1 }}{% endif %}</span>
+                <span class="nav__name">{{ acc_name | truncatewords: 3, '' }}</span>
+              </span>
+            </a>
+            
+            {% assign current_day = current_day | plus: leg_nights %}
+          {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+  </nav>
+  
+  {% comment %} ================================================================
+    MAIN CONTENT - Day-by-Day Chronological Journey
+  ================================================================ {% endcomment %}
+  
+  <main class="itinerary-fresh__content">
+    <div class="content__container page-width">
+      
+      {% assign running_day = 1 %}
+      {% assign leg_index = 0 %}
+      
+      {% for leg in wetu_legs %}
+        {% assign leg_type = leg.type.value | default: 'Standard' %}
+        {% assign leg_nights = leg.nights.value | default: 0 | plus: 0 %}
+        {% assign leg_sequence = leg.sequence.value | default: forloop.index0 %}
+        {% assign acc_pin_id = leg.content_entity_id.value %}
+        {% assign acc_name = leg.accommodation_name.value %}
+        {% assign periods = leg.periods.value %}
+        
+        {% comment %} Find accommodation product {% endcomment %}
+        {% assign acc_product = nil %}
+        {% assign acc_handle = nil %}
+        {% for check_pin in wetu_pin_ids_array %}
+          {% if check_pin == acc_pin_id %}
+            {% assign acc_handle = wetu_handles_array[forloop.index0] %}
+            {% assign acc_product = all_products[acc_handle] %}
+            {% break %}
+          {% endif %}
+        {% endfor %}
+        
+        
+        
+        {% comment %} Check if first visit to this accommodation {% endcomment %}
+        {% assign acc_first_visit = true %}
+        {% assign acc_check = acc_pin_id | append: ',' %}
+        {% if displayed_accommodations contains acc_check %}
+          {% assign acc_first_visit = false %}
+        {% else %}
+          {% assign displayed_accommodations = displayed_accommodations | append: acc_check %}
+        {% endif %}
+        
+        {% comment %} Find and track destination for this leg {% endcomment %}
+        {% assign dest_pin_id = leg.destination_content_entity_id.value %}
+        {% assign dest_product = nil %}
+        {% assign dest_first_visit = false %}
+
+        {% if dest_pin_id != blank %}
+          {% comment %} Look up destination product using component arrays (pin_id -> handle mapping) {% endcomment %}
+          {% assign search_dest_pin = dest_pin_id | append: '' %}
+          {% for check_pin in wetu_pin_ids_array %}
+            {% assign current_pin = check_pin | append: '' %}
+            {% if current_pin == search_dest_pin %}
+              {% assign dest_handle = wetu_handles_array[forloop.index0] %}
+              {% assign dest_product = all_products[dest_handle] %}
+              {% break %}
+            {% endif %}
+          {% endfor %}
+          
+          {% comment %} Check if first visit to this destination {% endcomment %}
+          {% assign dest_check = dest_pin_id | append: ',' %}
+          {% unless displayed_destinations contains dest_check %}
+            {% assign dest_first_visit = true %}
+            {% assign displayed_destinations = displayed_destinations | append: dest_check %}
+          {% endunless %}
+        {% endif %}
+        
+        {% comment %} Calculate day range for this leg {% endcomment %}
+        {% assign leg_start_day = running_day %}
+        {% if leg_nights > 0 %}
+          {% assign leg_end_day = running_day | plus: leg_nights | minus: 1 %}
+        {% else %}
+          {% assign leg_end_day = running_day %}
+        {% endif %}
+        
+        {% comment %} ============================================================
+          PROPERTY STAY SECTION
+        ============================================================ {% endcomment %}
+        
+        {% if leg_type != 'Departure' %}
+          <section 
+            class="leg-section" 
+            id="leg-{{ forloop.index }}"
+            data-leg-sequence="{{ leg_sequence }}"
+            data-days="{{ leg_start_day }}-{{ leg_end_day }}"
+          >
+            
+            {% comment %} Day Badge {% endcomment %}
+            <div class="leg-section__day-badge">
+              {% if leg_nights > 1 %}
+                Days {{ leg_start_day }}–{{ leg_end_day }}
+              {% else %}
+                Day {{ leg_start_day }}
+              {% endif %}
+              
+              {% if wetu_itinerary.start_date.value != blank %}
+                {% assign day_offset = leg_start_day | minus: 1 | times: 86400 %}
+                {% assign start_ts = wetu_itinerary.start_date.value | date: '%s' | plus: 0 %}
+                {% assign day_ts = start_ts | plus: day_offset %}
+                <span class="leg-section__date">{{ day_ts | date: '%b %e' }}</span>
+              {% endif %}
+            </div>
+            
+            {% comment %} Destination Introduction (first visit only) {% endcomment %}
+            {% if dest_first_visit and dest_product %}
+              <div class="leg-section__destination">
+                <div class="destination__image-wrapper">
+                  {% if dest_product.featured_image %}
+                    <img 
+                      src="{{ dest_product.featured_image | image_url: width: 1200 }}"
+                      srcset="{{ dest_product.featured_image | image_url: width: 600 }} 600w,
+                              {{ dest_product.featured_image | image_url: width: 900 }} 900w,
+                              {{ dest_product.featured_image | image_url: width: 1200 }} 1200w"
+                      sizes="(max-width: 749px) calc(100vw - 32px), (max-width: 1023px) 80vw, 1000px"
+                      alt="{{ dest_product.title | escape }}"
+                      loading="lazy"
+                      class="destination__image"
+                      width="1200"
+                      height="400"
+                    >
+                  {% endif %}
+                  <div class="destination__overlay">
+                    <p class="destination__kicker">Welcome to</p>
+                    <h2 class="destination__title">{{ dest_product.title }}</h2>
+                  </div>
+                </div>
+                {% if dest_product.description != blank %}
+                  <div class="destination__content">
+                    <div class="destination__description">
+                      {{ dest_product.description | strip_html | truncatewords: 60 }}
+                    </div>
+                    <a href="{{ dest_product.url }}" target="_blank" rel="noopener" class="destination__link">
+                      Explore {{ dest_product.title }}
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                        <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                      </svg>
+                    </a>
+                  </div>
+                {% endif %}
+              </div>
+            {% endif %}
+            
+            {% comment %} Property Header Card - Using wetu-accommodation-hero for rich display {% endcomment %}
+            {% if acc_first_visit %}
+              {% assign first_period = periods[0] %}
+              {% assign period_room_basis = first_period.room_basis.value | default: 'BedAndBreakfast' %}
+              {% assign period_drinks_basis = first_period.drinks_basis.value | default: '' %}
+              {% render 'wetu-accommodation-hero',
+                accommodation_product: acc_product,
+                accommodation_name: acc_name,
+                nights: leg_nights,
+                room_basis: period_room_basis,
+                drinks_basis: period_drinks_basis,
+                day_number: leg_start_day,
+                itinerary_description: first_period.notes,
+                color_scheme: alt_color_scheme
+              %}
+            {% else %}
+              {% comment %} Compact card for return visits {% endcomment %}
+              <div class="leg-section__property leg-section__property--compact color-{{ alt_color_scheme }}">
+                <div class="property__info">
+                  <p class="property__type-label">Continuing at</p>
+                  <h2 class="property__name">
+                    {% if acc_product %}
+                      <a href="{{ acc_product.url }}" target="_blank" rel="noopener">{{ acc_name }}</a>
+                    {% else %}
+                      {{ acc_name }}
+                    {% endif %}
+                  </h2>
+                  {% if leg_nights > 0 %}
+                    <span class="property__nights-inline">{{ leg_nights }} {{ leg_nights | pluralize: 'Night', 'Nights' }}</span>
+                  {% endif %}
+                </div>
+              </div>
+            {% endif %}
+            
+            {% comment %} ========================================================
+              INCLUDED & EXCLUDED ITEMS (Per Property Stay)
+            ======================================================== {% endcomment %}
+            
+            {% assign stay_included = '' %}
+            {% assign stay_excluded = '' %}
+            {% for period in periods %}
+              {% if period.included.value != blank %}
+                {% assign stay_included = stay_included | append: period.included.value %}
+              {% endif %}
+              {% if period.excluded.value != blank %}
+                {% assign stay_excluded = stay_excluded | append: period.excluded.value %}
+              {% endif %}
+            {% endfor %}
+            
+            {% if stay_included != blank or stay_excluded != blank %}
+              <div class="leg-section__inclusions">
+                {% if stay_included != blank %}
+                  <div class="inclusions__block inclusions__block--included">
+                    <h4 class="inclusions__title">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                      Included
+                    </h4>
+                    {% include 'wetu-render-richtext', content: stay_included, class: 'inclusions__content' %}
+                  </div>
+                {% endif %}
+                
+                {% if stay_excluded != blank %}
+                  <div class="inclusions__block inclusions__block--excluded">
+                    <h4 class="inclusions__title">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                      </svg>
+                      Not Included
+                    </h4>
+                    {% include 'wetu-render-richtext', content: stay_excluded, class: 'inclusions__content' %}
+                  </div>
+                {% endif %}
+              </div>
+            {% endif %}
+            
+            {% comment %} ========================================================
+              DAY-BY-DAY ACTIVITIES WITHIN THIS LEG
+            ======================================================== {% endcomment %}
+            
+            {% for period in periods %}
+              {% assign period_day = leg_start_day | plus: forloop.index0 %}
+              {% assign period_activities = period.activities.value %}
+              {% assign period_notes = period.notes.value %}
+              {% assign room_basis = period.room_basis.value %}
+              
+              {% if periods.size > 1 or period_activities.size > 0 %}
+                <div class="leg-section__day-detail">
+                  <div class="day-detail__header">
+                    <span class="day-detail__number">Day {{ period_day }}</span>
+                    
+                    {% comment %} Meal Basis {% endcomment %}
+                    {% if room_basis != blank %}
+                      <span class="day-detail__meals">
+                        {% render 'wetu-meal-basis', basis: room_basis %}
+                      </span>
+                    {% endif %}
+                  </div>
+                  
+                  {% comment %} Day-specific notes (if different from property notes) {% endcomment %}
+                  {% if periods.size > 1 and period_notes != blank %}
+                    {% include 'wetu-render-richtext', content: period_notes, class: 'day-detail__notes' %}
+                  {% endif %}
+                  
+                  {% comment %} Activities for this day {% endcomment %}
+                  {% if period_activities.size > 0 %}
+                    <div class="day-detail__activities">
+                      <h5 class="activities__title">Today's Experiences</h5>
+                      <div class="activities__list">
+                        {% for activity in period_activities %}
+                          {% assign activity_pin = activity.content_entity_id.value %}
+                          {% assign activity_name = activity.name.value %}
+                          {% assign activity_type = activity.type.value %}
+                          {% assign activity_time = activity.start_time.value %}
+                          
+                          {% comment %} Find activity product {% endcomment %}
+                          {% assign activity_product = nil %}
+                          {% if activity_pin != blank %}
+                            {% for check_pin in wetu_pin_ids_array %}
+                              {% if check_pin == activity_pin %}
+                                {% assign activity_handle = wetu_handles_array[forloop.index0] %}
+                                {% assign activity_product = all_products[activity_handle] %}
+                                {% break %}
+                              {% endif %}
+                            {% endfor %}
+                          {% endif %}
+                          
+                          <div class="activity-item">
+                            {% if activity_time != blank %}
+                              <span class="activity-item__time">{{ activity_time }}</span>
+                            {% endif %}
+                            
+                            {% if activity_product %}
+                              <a href="{{ activity_product.url }}" target="_blank" rel="noopener" class="activity-item__link">
+                                {{ activity_name }}
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                                  <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                                </svg>
+                              </a>
+                            {% else %}
+                              <span class="activity-item__name">{{ activity_name }}</span>
+                            {% endif %}
+                            
+                            {% if activity_type == 'Included' %}
+                              <span class="activity-item__badge activity-item__badge--included">Included</span>
+                            {% elsif activity_type == 'Optional' %}
+                              <span class="activity-item__badge activity-item__badge--optional">Optional</span>
+                            {% endif %}
+                          </div>
+                        {% endfor %}
+                      </div>
+                    </div>
+                  {% endif %}
+                </div>
+              {% endif %}
+            {% endfor %}
+            
+            {% comment %} ========================================================
+              ENRICHED PROPERTY DETAILS - Activities, Dining, Spa
+            ======================================================== {% endcomment %}
+            
+            {% if show_enriched and acc_product and acc_first_visit %}
+              {% assign activities_collection = acc_product.metafields.wetu.activities_collection_ref.value %}
+              {% assign dining_collection = acc_product.metafields.wetu.restaurants_collection.value %}
+              {% assign spa_collection = acc_product.metafields.wetu.spa_collection.value %}
+              
+              {% assign has_enriched = false %}
+              {% if activities_collection.products.size > 0 or dining_collection.products.size > 0 or spa_collection.products.size > 0 %}
+                {% assign has_enriched = true %}
+              {% endif %}
+              
+              {% if has_enriched %}
+                <div class="leg-section__enriched">
+                  <h4 class="enriched__title">Also at {{ acc_name | truncatewords: 4, '' }}</h4>
+                  
+                  {% comment %} Activities {% endcomment %}
+                  {% if activities_collection.products.size > 0 %}
+                    <div class="enriched__category">
+                      <h5 class="enriched__category-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                        </svg>
+                        Activities & Experiences
+                      </h5>
+                      <div class="enriched__grid">
+                        {% for item in activities_collection.products limit: 4 %}
+                          <a href="{{ item.url }}" target="_blank" rel="noopener" class="enriched-card">
+                            {% if item.featured_image %}
+                              <img 
+                                src="{{ item.featured_image | image_url: width: 200 }}"
+                                alt="{{ item.title | escape }}"
+                                class="enriched-card__image"
+                                loading="lazy"
+                                width="200"
+                                height="150"
+                              >
+                            {% else %}
+                              <div class="enriched-card__image enriched-card__image--placeholder">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                                </svg>
+                              </div>
+                            {% endif %}
+                            <span class="enriched-card__title">{{ item.title }}</span>
+                          </a>
+                        {% endfor %}
+                      </div>
+                    </div>
+                  {% endif %}
+                  
+                  {% comment %} Dining {% endcomment %}
+                  {% if dining_collection.products.size > 0 %}
+                    <div class="enriched__category">
+                      <h5 class="enriched__category-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/>
+                        </svg>
+                        Dining
+                      </h5>
+                      <div class="enriched__grid">
+                        {% for item in dining_collection.products limit: 4 %}
+                          <a href="{{ item.url }}" target="_blank" rel="noopener" class="enriched-card">
+                            {% if item.featured_image %}
+                              <img 
+                                src="{{ item.featured_image | image_url: width: 200 }}"
+                                alt="{{ item.title | escape }}"
+                                class="enriched-card__image"
+                                loading="lazy"
+                                width="200"
+                                height="150"
+                              >
+                            {% else %}
+                              <div class="enriched-card__image enriched-card__image--placeholder">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                  <path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+                                </svg>
+                              </div>
+                            {% endif %}
+                            <span class="enriched-card__title">{{ item.title }}</span>
+                          </a>
+                        {% endfor %}
+                      </div>
+                    </div>
+                  {% endif %}
+                  
+                  {% comment %} Spa {% endcomment %}
+                  {% if spa_collection.products.size > 0 %}
+                    <div class="enriched__category">
+                      <h5 class="enriched__category-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M12 22c-4.97 0-9-2.69-9-6v-1c0-1.66 1.34-3 3-3h2c.09 0 .18 0 .27.01A7 7 0 0 1 12 7a7 7 0 0 1 3.73 5.01c.09-.01.18-.01.27-.01h2c1.66 0 3 1.34 3 3v1c0 3.31-4.03 6-9 6z"/>
+                          <path d="M12 22V7"/>
+                        </svg>
+                        Spa & Wellness
+                      </h5>
+                      <div class="enriched__grid">
+                        {% for item in spa_collection.products limit: 4 %}
+                          <a href="{{ item.url }}" target="_blank" rel="noopener" class="enriched-card">
+                            {% if item.featured_image %}
+                              <img 
+                                src="{{ item.featured_image | image_url: width: 200 }}"
+                                alt="{{ item.title | escape }}"
+                                class="enriched-card__image"
+                                loading="lazy"
+                                width="200"
+                                height="150"
+                              >
+                            {% else %}
+                              <div class="enriched-card__image enriched-card__image--placeholder">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                  <path d="M12 22c-4.97 0-9-2.69-9-6v-1c0-1.66 1.34-3 3-3h2"/>
+                                </svg>
+                              </div>
+                            {% endif %}
+                            <span class="enriched-card__title">{{ item.title }}</span>
+                          </a>
+                        {% endfor %}
+                      </div>
+                    </div>
+                  {% endif %}
+                  
+                </div>
+              {% endif %}
+            {% endif %}
+            
+          </section>
+          
+          {% assign running_day = running_day | plus: leg_nights %}
+          {% assign leg_index = leg_index | plus: 1 %}
+          
+        {% else %}
+          {% comment %} ========================================================
+            DEPARTURE SECTION
+          ======================================================== {% endcomment %}
+          
+          <section class="leg-section leg-section--departure">
+            <div class="leg-section__day-badge">
+              Day {{ running_day }}
+              
+              {% if wetu_itinerary.start_date.value != blank %}
+                {% assign day_offset = running_day | minus: 1 | times: 86400 %}
+                {% assign start_ts = wetu_itinerary.start_date.value | date: '%s' | plus: 0 %}
+                {% assign day_ts = start_ts | plus: day_offset %}
+                <span class="leg-section__date">{{ day_ts | date: '%b %e' }}</span>
+              {% endif %}
+            </div>
+            
+            <div class="departure__content">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>
+              </svg>
+              <h3 class="departure__title">End of Journey</h3>
+              {% comment %} Get the last property - use the previous leg's accommodation {% endcomment %}
+              {% assign prev_leg_index = forloop.index0 | minus: 1 %}
+              {% if prev_leg_index >= 0 %}
+                {% assign prev_leg = wetu_legs[prev_leg_index] %}
+                {% assign departure_location = prev_leg.accommodation_name.value | default: 'your final destination' %}
+              {% else %}
+                {% assign departure_location = 'your final destination' %}
+              {% endif %}
+              <p class="departure__text">Depart from {{ departure_location }}</p>
+            </div>
+          </section>
+          
+        {% endif %}
+        
+        {% comment %} ============================================================
+          DEPARTING ROUTES/TRANSFERS (after this leg)
+          Show routes that START from this leg's accommodation
+          Only show each unique route once based on route sequence
+        ============================================================ {% endcomment %}
+        
+        {% assign current_acc_pin = acc_pin_id | append: '' %}
+        
+        {% for route in wetu_routes %}
+          {% assign route_start_pin = route.start_content_entity_id.value | append: '' %}
+          {% assign route_seq = route.sequence.value | default: forloop.index0 %}
+          {% assign route_check = route_seq | append: '-' %}
+          
+          {% comment %} Show route if it starts from this accommodation and hasn't been shown {% endcomment %}
+          {% if route_start_pin == current_acc_pin %}
+            {% unless displayed_routes contains route_check %}
+              {% assign displayed_routes = displayed_routes | append: route_check %}
+              {% include 'wetu-itinerary-fresh-transfer',
+                route: route,
+                direction: 'departing',
+                show_maps_link: show_maps_links,
+                color_scheme: color_scheme
+              %}
+            {% endunless %}
+          {% endif %}
+        {% endfor %}
+        
+      {% endfor %}
+      
+    </div>
+  </main>
+  
+  {% comment %} ================================================================
+    PRICE DETAILS - Includes & Excludes
+  ================================================================ {% endcomment %}
+
+  {% assign price_includes = wetu_itinerary.price_includes.value %}
+  {% assign price_excludes = wetu_itinerary.price_excludes.value %}
+
+  {% if price_includes != blank or price_excludes != blank %}
+    <section class="itinerary-fresh__pricing">
+      <div class="pricing__container page-width">
+        <h3 class="pricing__title">What's Included</h3>
+        
+        <div class="pricing__columns">
+          {% if price_includes != blank %}
+            <div class="pricing__column pricing__column--includes">
+              <h4 class="pricing__column-title">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                Price Includes
+              </h4>
+              {% include 'wetu-render-richtext', content: price_includes, class: 'pricing__list' %}
+            </div>
+          {% endif %}
+          
+          {% if price_excludes != blank %}
+            <div class="pricing__column pricing__column--excludes">
+              <h4 class="pricing__column-title">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+                Price Excludes
+              </h4>
+              {% include 'wetu-render-richtext', content: price_excludes, class: 'pricing__list' %}
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </section>
+  {% endif %}
+
+  {% comment %} ================================================================
+    TERMS & CONDITIONS
+  ================================================================ {% endcomment %}
+
+  {% assign terms = wetu_itinerary.terms_and_conditions.value %}
+
+  {% if terms != blank %}
+    <section class="itinerary-fresh__terms">
+      <div class="terms__container page-width">
+        <details class="terms__accordion">
+          <summary class="terms__summary">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <polyline points="10 9 9 9 8 9"/>
+            </svg>
+            Terms & Conditions
+            <svg class="terms__chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </summary>
+          <div class="terms__content">
+            {% include 'wetu-render-richtext', content: terms, class: 'terms__text' %}
+          </div>
+        </details>
+      </div>
+    </section>
+  {% endif %}
+  
+  {% comment %} ================================================================
+    FOOTER - Trip Summary
+  ================================================================ {% endcomment %}
+  
+  <footer class="itinerary-fresh__footer">
+    <div class="footer__container page-width">
+      
+      {% comment %} Tour Operator Contacts {% endcomment %}
+      {% assign contacts = wetu_itinerary.contacts.value %}
+      {% if contacts.size > 0 %}
+        <div class="footer__contacts">
+          <h4 class="contacts__title">Your Travel Contacts</h4>
+          <div class="contacts__grid">
+            {% for contact in contacts %}
+              <div class="contact-card">
+                {% if contact.company.value != blank %}
+                  <p class="contact-card__company">{{ contact.company.value }}</p>
+                {% endif %}
+                {% if contact.contact_person.value != blank %}
+                  <p class="contact-card__person">{{ contact.contact_person.value }}</p>
+                {% endif %}
+                {% if contact.telephone.value != blank %}
+                  <a href="tel:{{ contact.telephone.value | strip }}" class="contact-card__phone">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                    </svg>
+                    {{ contact.telephone.value }}
+                  </a>
+                {% endif %}
+                {% if contact.email.value != blank %}
+                  <a href="mailto:{{ contact.email.value | strip }}" class="contact-card__email">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                      <polyline points="22,6 12,13 2,6"/>
+                    </svg>
+                    {{ contact.email.value }}
+                  </a>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+      
+      <div class="footer__content">
+        <p class="footer__message">
+          We hope you enjoy this incredible journey through 
+          {% for dest in wetu_destinations limit: 3 %}
+            {{ dest }}{% unless forloop.last %}, {% endunless %}
+          {% endfor %}{% if wetu_destinations.size > 3 %} and more{% endif %}.
+        </p>
+        
+        {% if product.price > 0 %}
+          <div class="footer__price">
+            <span class="price__label">Total Trip Price</span>
+            <span class="price__value">{{ product.price | money }}</span>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </footer>
+  
+</div>
+
+{% comment %} ================================================================
+  STYLES
+================================================================ {% endcomment %}
+
+<style>
+  /* ============================================
+     BASE & VARIABLES
+     ============================================ */
+  
+  .itinerary-fresh {
+    --if-spacing-xs: 8px;
+    --if-spacing-sm: 12px;
+    --if-spacing-md: 16px;
+    --if-spacing-lg: 24px;
+    --if-spacing-xl: 32px;
+    --if-spacing-2xl: 48px;
+    --if-radius-sm: 6px;
+    --if-radius-md: 12px;
+    --if-radius-lg: 16px;
+    
+    background: rgb(var(--color-background));
+    color: rgb(var(--color-foreground));
+    min-height: 100vh;
+  }
+  
+  .page-width {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 var(--if-spacing-md);
+  }
+  
+  /* ============================================
+     HEADER
+     ============================================ */
+  
+  .itinerary-fresh__header {
+    padding: var(--if-spacing-2xl) 0;
+    text-align: center;
+    border-bottom: 1px solid rgba(var(--color-foreground-rgb), 0.1);
+  }
+  
+  .header__client-label {
+    margin: 0 0 var(--if-spacing-xs);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: rgba(var(--color-foreground-rgb), 0.5);
+  }
+  
+  .header__client-name,
+  .header__title {
+    margin: 0 0 var(--if-spacing-sm);
+    font-size: clamp(1.75rem, 5vw, 2.5rem);
+    font-weight: 700;
+    line-height: 1.2;
+    color: rgb(var(--color-foreground));
+  }
+  
+  .header__reference {
+    margin: 0 0 var(--if-spacing-lg);
+    font-size: 0.9rem;
+    color: rgba(var(--color-foreground-rgb), 0.6);
+  }
+  
+  .header__stats {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: var(--if-spacing-lg);
+    margin-bottom: var(--if-spacing-lg);
+  }
+  
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: var(--if-spacing-sm) var(--if-spacing-md);
+    background: rgba(var(--color-foreground-rgb), 0.03);
+    border-radius: var(--if-radius-md);
+  }
+  
+  .stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: rgb(var(--color-foreground));
+  }
+  
+  .stat-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgba(var(--color-foreground-rgb), 0.6);
+  }
+  
+  .header__dates {
+    margin: 0 0 var(--if-spacing-lg);
+    font-size: 1rem;
+    font-weight: 500;
+    color: rgb(var(--color-foreground));
+  }
+  
+  .header__summary {
+    max-width: 700px;
+    margin: 0 auto;
+    font-size: 1rem;
+    line-height: 1.7;
+    color: rgba(var(--color-foreground-rgb), 0.8);
+  }
+  
+  .header__summary p {
+    margin: 0 0 var(--if-spacing-md);
+  }
+  
+  .header__summary p:last-child {
+    margin-bottom: 0;
+  }
+  
+  /* ============================================
+     NAVIGATION
+     ============================================ */
+  
+  .itinerary-fresh__nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgb(var(--color-background));
+    border-bottom: 1px solid rgba(var(--color-foreground-rgb), 0.1);
+    padding: var(--if-spacing-sm) 0;
+  }
+  
+  .nav__scroll {
+    display: flex;
+    gap: var(--if-spacing-sm);
+    overflow-x: auto;
+    padding: var(--if-spacing-xs) 0;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  
+  .nav__scroll::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .nav__item {
+    display: flex;
+    align-items: center;
+    gap: var(--if-spacing-xs);
+    padding: var(--if-spacing-xs) var(--if-spacing-sm);
+    background: rgba(var(--color-foreground-rgb), 0.03);
+    border: 1px solid rgba(var(--color-foreground-rgb), 0.1);
+    border-radius: var(--if-radius-md);
+    text-decoration: none;
+    color: inherit;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+  }
+  
+  .nav__item:hover {
+    background: rgba(var(--color-foreground-rgb), 0.06);
+    border-color: rgba(var(--color-foreground-rgb), 0.2);
+  }
+  
+  .nav__thumb {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--if-radius-sm);
+    object-fit: cover;
+  }
+  
+  .nav__thumb--placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(var(--color-foreground-rgb), 0.05);
+    color: rgba(var(--color-foreground-rgb), 0.4);
+  }
+  
+  .nav__label {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  
+  .nav__days {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgba(var(--color-foreground-rgb), 0.5);
+  }
+  
+  .nav__name {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: rgb(var(--color-foreground));
+  }
+  
+  /* ============================================
+     MAIN CONTENT
+     ============================================ */
+  
+  .itinerary-fresh__content {
+    padding: var(--if-spacing-xl) 0;
+  }
+  
+  /* ============================================
+     LEG SECTIONS
+     ============================================ */
+  
+  .leg-section {
+    margin-bottom: var(--if-spacing-2xl);
+    padding-bottom: var(--if-spacing-2xl);
+    border-bottom: 1px solid rgba(var(--color-foreground-rgb), 0.1);
+  }
+  
+  .leg-section:last-child {
+    border-bottom: none;
+  }
+  
+  .leg-section__day-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--if-spacing-sm);
+    padding: var(--if-spacing-xs) var(--if-spacing-md);
+    background: rgb(var(--color-foreground));
+    color: rgb(var(--color-background));
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: var(--if-radius-sm);
+    margin-bottom: var(--if-spacing-md);
+  }
+  
+  .leg-section__date {
+    font-weight: 400;
+    opacity: 0.7;
+  }
+  
+  /* ============================================
+     PROPERTY CARD
+     ============================================ */
+  
+  /* Compact Property Card (for return visits) */
+  .leg-section__property--compact {
+    padding: var(--if-spacing-md);
+    border-radius: var(--if-radius-md);
+    margin-bottom: var(--if-spacing-lg);
+    background: rgba(var(--color-foreground-rgb), 0.03);
+    border: 1px solid rgba(var(--color-foreground-rgb), 0.08);
+  }
+  
+  .leg-section__property--compact .property__info {
+    display: flex;
+    flex-direction: column;
+    gap: var(--if-spacing-xs);
+  }
+  
+  .leg-section__property--compact .property__type-label {
+    margin: 0;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: rgba(var(--color-foreground-rgb), 0.5);
+  }
+  
+  .leg-section__property--compact .property__name {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+  
+  .leg-section__property--compact .property__name a {
+    color: inherit;
+    text-decoration: none;
+  }
+  
+  .leg-section__property--compact .property__name a:hover {
+    text-decoration: underline;
+  }
+  
+  .property__nights-inline {
+    font-size: 0.85rem;
+    color: rgba(var(--color-foreground-rgb), 0.6);
+    font-weight: 500;
+  }
+  
+  /* ============================================
+     INCLUSIONS
+     ============================================ */
+  
+  .leg-section__inclusions {
+    display: grid;
+    gap: var(--if-spacing-md);
+    margin-bottom: var(--if-spacing-lg);
+  }
+  
+  @media (min-width: 768px) {
+    .leg-section__inclusions {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  
+  .inclusions__block {
+    padding: var(--if-spacing-md);
+    border-radius: var(--if-radius-md);
+    border: 1px solid rgba(var(--color-foreground-rgb), 0.1);
+  }
+  
+  .inclusions__block--included {
+    background: rgba(16, 185, 129, 0.05);
+    border-color: rgba(16, 185, 129, 0.2);
+  }
+  
+  .inclusions__block--excluded {
+    background: rgba(239, 68, 68, 0.03);
+    border-color: rgba(239, 68, 68, 0.15);
+  }
+  
+  .inclusions__title {
+    margin: 0 0 var(--if-spacing-sm);
+    display: flex;
+    align-items: center;
+    gap: var(--if-spacing-xs);
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+  
+  .inclusions__block--included .inclusions__title {
+    color: #059669;
+  }
+  
+  .inclusions__block--excluded .inclusions__title {
+    color: #dc2626;
+  }
+  
+  .inclusions__content {
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: rgba(var(--color-foreground-rgb), 0.8);
+  }
+  
+  .inclusions__content ul {
+    margin: 0;
+    padding-left: var(--if-spacing-md);
+  }
+  
+  .inclusions__content li {
+    margin-bottom: var(--if-spacing-xs);
+  }
+  
+  /* ============================================
+     DAY DETAILS
+     ============================================ */
+  
+  .leg-section__day-detail {
+    padding: var(--if-spacing-md);
+    background: rgba(var(--color-foreground-rgb), 0.02);
+    border-radius: var(--if-radius-md);
+    margin-bottom: var(--if-spacing-md);
+  }
+  
+  .day-detail__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--if-spacing-sm);
+    margin-bottom: var(--if-spacing-sm);
+  }
+  
+  .day-detail__number {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: rgb(var(--color-foreground));
+  }
+  
+  .day-detail__meals {
+    font-size: 0.75rem;
+    color: rgba(var(--color-foreground-rgb), 0.6);
+  }
+  
+  .day-detail__notes {
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: rgba(var(--color-foreground-rgb), 0.8);
+    margin-bottom: var(--if-spacing-md);
+  }
+  
+  .day-detail__notes p {
+    margin: 0 0 var(--if-spacing-sm);
+  }
+  
+  .activities__title {
+    margin: 0 0 var(--if-spacing-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgba(var(--color-foreground-rgb), 0.5);
+  }
+  
+  .activities__list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--if-spacing-xs);
+  }
+  
+  .activity-item {
+    display: flex;
+    align-items: center;
+    gap: var(--if-spacing-sm);
+    padding: var(--if-spacing-xs) 0;
+  }
+  
+  .activity-item__time {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: rgba(var(--color-foreground-rgb), 0.5);
+    min-width: 50px;
+  }
+  
+  .activity-item__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: rgb(var(--color-foreground));
+    text-decoration: none;
+    font-size: 0.9rem;
+  }
+  
+  .activity-item__link:hover {
+    text-decoration: underline;
+  }
+  
+  .activity-item__link svg {
+    opacity: 0.5;
+  }
+  
+  .activity-item__name {
+    font-size: 0.9rem;
+    color: rgb(var(--color-foreground));
+  }
+  
+  .activity-item__badge {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  
+  .activity-item__badge--included {
+    background: rgba(16, 185, 129, 0.1);
+    color: #059669;
+  }
+  
+  .activity-item__badge--optional {
+    background: rgba(245, 158, 11, 0.1);
+    color: #d97706;
+  }
+  
+  /* ============================================
+     ENRICHED PRODUCTS
+     ============================================ */
+  
+  .leg-section__enriched {
+    margin-top: var(--if-spacing-lg);
+    padding-top: var(--if-spacing-lg);
+    border-top: 1px solid rgba(var(--color-foreground-rgb), 0.1);
+  }
+  
+  .enriched__title {
+    margin: 0 0 var(--if-spacing-md);
+    font-size: 1rem;
+    font-weight: 600;
+    color: rgb(var(--color-foreground));
+  }
+  
+  .enriched__category {
+    margin-bottom: var(--if-spacing-lg);
+  }
+  
+  .enriched__category:last-child {
+    margin-bottom: 0;
+  }
+  
+  .enriched__category-title {
+    margin: 0 0 var(--if-spacing-sm);
+    display: flex;
+    align-items: center;
+    gap: var(--if-spacing-xs);
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgba(var(--color-foreground-rgb), 0.6);
+  }
+  
+  .enriched__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: var(--if-spacing-sm);
+  }
+  
+  .enriched-card {
+    display: flex;
+    flex-direction: column;
+    text-decoration: none;
+    color: inherit;
+    border-radius: var(--if-radius-sm);
+    overflow: hidden;
+    background: rgba(var(--color-foreground-rgb), 0.03);
+    border: 1px solid rgba(var(--color-foreground-rgb), 0.08);
+    transition: all 0.2s ease;
+  }
+  
+  .enriched-card:hover {
+    border-color: rgba(var(--color-foreground-rgb), 0.2);
+    transform: translateY(-2px);
+  }
+  
+  .enriched-card__image {
+    width: 100%;
+    aspect-ratio: 4/3;
+    object-fit: cover;
+  }
+  
+  .enriched-card__image--placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(var(--color-foreground-rgb), 0.05);
+    color: rgba(var(--color-foreground-rgb), 0.3);
+  }
+  
+  .enriched-card__title {
+    padding: var(--if-spacing-xs) var(--if-spacing-sm);
+    font-size: 0.8rem;
+    font-weight: 500;
+    line-height: 1.3;
+    color: rgb(var(--color-foreground));
+  }
+  
+  /* ============================================
+     DEPARTURE
+     ============================================ */
+  
+  .leg-section--departure {
+    text-align: center;
+    padding: var(--if-spacing-xl);
+  }
+  
+  .departure__content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--if-spacing-sm);
+    color: rgba(var(--color-foreground-rgb), 0.6);
+  }
+  
+  .departure__content svg {
+    opacity: 0.4;
+  }
+  
+  .departure__title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: rgb(var(--color-foreground));
+  }
+  
+  .departure__text {
+    margin: 0;
+    font-size: 0.95rem;
+  }
+  
+  /* ============================================
+     FOOTER
+     ============================================ */
+  
+  .itinerary-fresh__footer {
+    padding: var(--if-spacing-2xl) 0;
+    background: rgba(var(--color-foreground-rgb), 0.03);
+    border-top: 1px solid rgba(var(--color-foreground-rgb), 0.1);
+  }
+  
+  .footer__content {
+    text-align: center;
+  }
+  
+  .footer__message {
+    margin: 0 0 var(--if-spacing-lg);
+    font-size: 1.1rem;
+    line-height: 1.6;
+    color: rgba(var(--color-foreground-rgb), 0.8);
+  }
+  
+  .footer__price {
+    display: inline-flex;
+    flex-direction: column;
+    gap: var(--if-spacing-xs);
+    padding: var(--if-spacing-md) var(--if-spacing-xl);
+    background: rgb(var(--color-background));
+    border: 1px solid rgba(var(--color-foreground-rgb), 0.1);
+    border-radius: var(--if-radius-md);
+  }
+  
+  .price__label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgba(var(--color-foreground-rgb), 0.5);
+  }
+  
+  .price__value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: rgb(var(--color-foreground));
+  }
+  
+  /* ============================================
+     SPECIAL INTERESTS / TRIP TAGS
+     ============================================ */
+
+  .header__interests {
+    margin-bottom: var(--if-spacing-lg);
+  }
+
+  .interests__list {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: var(--if-spacing-xs);
+  }
+
+  .interest-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 14px;
+    background: rgba(var(--color-foreground-rgb), 0.06);
+    border: 1px solid rgba(var(--color-foreground-rgb), 0.1);
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: rgba(var(--color-foreground-rgb), 0.8);
+    white-space: nowrap;
+  }
+
+  /* ============================================
+     DESTINATION CARDS
+     ============================================ */
+
+  .leg-section__destination {
+    margin-bottom: var(--if-spacing-lg);
+    border-radius: var(--if-radius-lg);
+    overflow: hidden;
+    background: rgb(var(--color-background));
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  }
+
+  .destination__image-wrapper {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 3/1;
+    min-height: 200px;
+  }
+
+  .destination__image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .destination__overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: var(--if-spacing-lg);
+    background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 60%, transparent 100%);
+    color: white;
+  }
+
+  .destination__kicker {
+    margin: 0 0 var(--if-spacing-xs);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    opacity: 0.8;
+  }
+
+  .destination__title {
+    margin: 0;
+    font-size: clamp(1.5rem, 4vw, 2.5rem);
+    font-weight: 700;
+    line-height: 1.1;
+  }
+
+  .destination__content {
+    padding: var(--if-spacing-lg);
+  }
+
+  .destination__description {
+    font-size: 0.95rem;
+    line-height: 1.7;
+    color: rgba(var(--color-foreground-rgb), 0.8);
+    margin-bottom: var(--if-spacing-md);
+  }
+
+  .destination__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: rgb(var(--color-foreground));
+    text-decoration: none;
+    padding: 8px 16px;
+    background: rgba(var(--color-foreground-rgb), 0.05);
+    border-radius: var(--if-radius-sm);
+    transition: background 0.2s ease;
+  }
+
+  .destination__link:hover {
+    background: rgba(var(--color-foreground-rgb), 0.1);
+  }
+
+  /* ============================================
+     PRICING SECTION
+     ============================================ */
+
+  .itinerary-fresh__pricing {
+    padding: var(--if-spacing-2xl) 0;
+    background: rgba(var(--color-foreground-rgb), 0.02);
+    border-top: 1px solid rgba(var(--color-foreground-rgb), 0.08);
+  }
+
+  .pricing__title {
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0 0 var(--if-spacing-xl);
+    color: rgb(var(--color-foreground));
+  }
+
+  .pricing__columns {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--if-spacing-lg);
+  }
+
+  .pricing__column {
+    padding: var(--if-spacing-lg);
+    background: rgb(var(--color-background));
+    border-radius: var(--if-radius-md);
+    border: 1px solid rgba(var(--color-foreground-rgb), 0.08);
+  }
+
+  .pricing__column-title {
+    display: flex;
+    align-items: center;
+    gap: var(--if-spacing-sm);
+    margin: 0 0 var(--if-spacing-md);
+    font-size: 1rem;
+    font-weight: 600;
+    color: rgb(var(--color-foreground));
+  }
+
+  .pricing__column--includes .pricing__column-title {
+    color: #059669;
+  }
+
+  .pricing__column--includes svg {
+    color: #059669;
+  }
+
+  .pricing__column--excludes .pricing__column-title {
+    color: #dc2626;
+  }
+
+  .pricing__column--excludes svg {
+    color: #dc2626;
+  }
+
+  .pricing__list {
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: rgba(var(--color-foreground-rgb), 0.8);
+  }
+
+  .pricing__list ul {
+    margin: 0;
+    padding-left: var(--if-spacing-lg);
+  }
+
+  .pricing__list li {
+    margin-bottom: var(--if-spacing-xs);
+  }
+
+  /* ============================================
+     TERMS & CONDITIONS
+     ============================================ */
+
+  .itinerary-fresh__terms {
+    padding: var(--if-spacing-xl) 0;
+    background: rgba(var(--color-foreground-rgb), 0.02);
+  }
+
+  .terms__accordion {
+    background: rgb(var(--color-background));
+    border: 1px solid rgba(var(--color-foreground-rgb), 0.1);
+    border-radius: var(--if-radius-md);
+    overflow: hidden;
+  }
+
+  .terms__summary {
+    display: flex;
+    align-items: center;
+    gap: var(--if-spacing-sm);
+    padding: var(--if-spacing-md) var(--if-spacing-lg);
+    font-size: 1rem;
+    font-weight: 600;
+    color: rgb(var(--color-foreground));
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .terms__summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .terms__chevron {
+    margin-left: auto;
+    transition: transform 0.3s ease;
+  }
+
+  .terms__accordion[open] .terms__chevron {
+    transform: rotate(180deg);
+  }
+
+  .terms__content {
+    padding: 0 var(--if-spacing-lg) var(--if-spacing-lg);
+    border-top: 1px solid rgba(var(--color-foreground-rgb), 0.08);
+  }
+
+  .terms__text {
+    font-size: 0.9rem;
+    line-height: 1.7;
+    color: rgba(var(--color-foreground-rgb), 0.8);
+  }
+
+  .terms__text ol {
+    padding-left: var(--if-spacing-lg);
+  }
+
+  .terms__text li {
+    margin-bottom: var(--if-spacing-md);
+  }
+
+  /* ============================================
+     OPERATOR CONTACTS
+     ============================================ */
+
+  .footer__contacts {
+    margin-bottom: var(--if-spacing-xl);
+    padding-bottom: var(--if-spacing-xl);
+    border-bottom: 1px solid rgba(var(--color-foreground-rgb), 0.1);
+  }
+
+  .contacts__title {
+    text-align: center;
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 var(--if-spacing-lg);
+    color: rgb(var(--color-foreground));
+  }
+
+  .contacts__grid {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: var(--if-spacing-lg);
+  }
+
+  .contact-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--if-spacing-xs);
+    padding: var(--if-spacing-md);
+    background: rgb(var(--color-background));
+    border: 1px solid rgba(var(--color-foreground-rgb), 0.1);
+    border-radius: var(--if-radius-md);
+    min-width: 200px;
+    text-align: center;
+  }
+
+  .contact-card__company {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: rgb(var(--color-foreground));
+  }
+
+  .contact-card__person {
+    margin: 0;
+    font-size: 0.85rem;
+    color: rgba(var(--color-foreground-rgb), 0.7);
+  }
+
+  .contact-card__phone,
+  .contact-card__email {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: rgb(var(--color-foreground));
+    text-decoration: none;
+    padding: 6px 12px;
+    background: rgba(var(--color-foreground-rgb), 0.05);
+    border-radius: var(--if-radius-sm);
+    transition: background 0.2s ease;
+  }
+
+  .contact-card__phone:hover,
+  .contact-card__email:hover {
+    background: rgba(var(--color-foreground-rgb), 0.1);
+  }
+</style>
+
+{% schema %}
+{
+  "name": "WETU Itinerary Fresh",
+  "tag": "section",
+  "class": "section-wetu-itinerary-fresh",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Primary Color Scheme",
+      "default": "scheme-5"
+    },
+    {
+      "type": "color_scheme",
+      "id": "alt_color_scheme",
+      "label": "Alternate Color Scheme",
+      "info": "Used for property cards",
+      "default": "scheme-1"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_client_name",
+      "label": "Show Client Name",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_reference_number",
+      "label": "Show Reference Number",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_perfect_for",
+      "label": "Show 'Perfect For' on Properties",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_enriched_products",
+      "label": "Show Enriched Products",
+      "info": "Activities, dining, spa from property",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_google_maps_links",
+      "label": "Show Google Maps Links",
+      "info": "On transfers/routes",
+      "default": true
+    }
+  ],
+  "presets": [
+    {
+      "name": "WETU Itinerary Fresh"
+    }
+  ]
+}
+{% endschema %}

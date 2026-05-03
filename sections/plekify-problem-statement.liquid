@@ -1,0 +1,145 @@
+<div
+  class="plekify-problem"
+  data-testid="plekify-problem-{{ section.id }}"
+>
+  <div class="plekify-problem__content">
+    {% if section.settings.overline != blank %}
+      <span class="plekify-problem__overline">{{ section.settings.overline }}</span>
+    {% endif %}
+
+    {% if section.settings.heading != blank %}
+      <h2 class="plekify-problem__heading">{{ section.settings.heading }}</h2>
+    {% endif %}
+
+    <hr class="plekify-problem__divider">
+
+    {% if section.settings.body != blank %}
+      <div class="plekify-problem__body">{{ section.settings.body }}</div>
+    {% endif %}
+  </div>
+</div>
+
+{% style %}
+  #shopify-section-{{ section.id }} .plekify-problem {
+    background-color: #F5F2ED;
+  }
+{% endstyle %}
+
+{% stylesheet %}
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;600&display=swap');
+
+  .plekify-problem {
+    display: flex;
+    justify-content: center;
+    padding-block: 96px;
+    padding-inline: 64px;
+  }
+
+  .plekify-problem__content {
+    max-inline-size: 720px;
+    inline-size: 100%;
+    text-align: center;
+  }
+
+  .plekify-problem__overline {
+    display: block;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #C9A96E;
+    margin-block-end: 16px;
+  }
+
+  .plekify-problem__heading {
+    font-family: 'DM Serif Display', serif;
+    font-size: 44px;
+    line-height: 1.2;
+    color: #1A1A1A;
+    margin: 0;
+  }
+
+  .plekify-problem__divider {
+    inline-size: 64px;
+    block-size: 0;
+    border: none;
+    border-block-start: 1px solid #D5D0C8;
+    margin-block-start: 32px;
+    margin-block-end: 32px;
+    margin-inline: auto;
+  }
+
+  .plekify-problem__body {
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+    font-size: 18px;
+    line-height: 1.7;
+    color: #4A4A4A;
+    text-align: start;
+  }
+
+  .plekify-problem__body p {
+    margin-block: 0 1em;
+  }
+
+  .plekify-problem__body p:last-child {
+    margin-block-end: 0;
+  }
+
+  @media (max-width: 749px) {
+    .plekify-problem {
+      padding-block: 48px;
+      padding-inline: 24px;
+    }
+
+    .plekify-problem__heading {
+      font-size: 28px;
+    }
+
+    .plekify-problem__body {
+      font-size: 16px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .plekify-problem,
+    .plekify-problem * {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Plekify Problem Statement",
+  "settings": [
+    {
+      "type": "text",
+      "id": "overline",
+      "label": "Overline",
+      "default": "The Problem"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Your itineraries deserve more than a brochure."
+    },
+    {
+      "type": "richtext",
+      "id": "body",
+      "label": "Body",
+      "default": "<p>You invest heavily in Wetu. Your team curates descriptions, uploads photography, plots GPS coordinates, tags activities. The result is a polished digital itinerary that presents your product beautifully.</p><p>But when a guest is ready to commit, they click \"Book Now!\" and an email opens. The consultant responds when they can — hours later, maybe the next morning. By then, the guest has three other tabs open.</p><p>Meanwhile, every page view, every browsing session, every moment of purchase intent happens on wetu.com — not your domain. Google indexes it there. Your SEO equity accrues to someone else. And because the content renders inside a JavaScript iframe, search engines and AI agents cannot read it at all.</p><p>Wetu is excellent at what it does. But operators need commerce, not just presentation.</p>"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Plekify Problem Statement",
+      "category": "Plekify"
+    }
+  ]
+}
+{% endschema %}

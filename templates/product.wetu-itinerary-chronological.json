@@ -1,0 +1,74 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "hero": {
+      "type": "wetu-itinerary-new-hero",
+      "settings": {
+        "color_scheme": "scheme-5",
+        "section_height": 100,
+        "use_natural_media_ratio": true,
+        "show_destination_pills": true,
+        "show_booking_widget": true,
+        "show_view_toggle": true,
+        "show_print_button": true
+      }
+    },
+    "chronological_days": {
+      "type": "wetu-itinerary-chronological-days",
+      "settings": {
+        "color_scheme": "scheme-5"
+      }
+    },
+    "booking": {
+      "type": "wetu-itinerary-new-booking",
+      "settings": {
+        "color_scheme": "scheme-1",
+        "heading": "Book Your Journey",
+        "subheading": "Ready to start your adventure? Reserve your spot today.",
+        "show_includes": true,
+        "show_excludes": true,
+        "show_operator": true,
+        "show_trust_badges": true
+      }
+    },
+    "travel_brief": {
+      "type": "wetu-itinerary-new-travel-brief",
+      "settings": {
+        "color_scheme": "scheme-1",
+        "show_identifier": true,
+        "show_party_details": true,
+        "show_primary_contact": true,
+        "show_contacts": true,
+        "promote_special_interests": true,
+        "show_special_interests": true,
+        "show_checkin_times": true,
+        "use_table_layout": true,
+        "show_additional_info": true,
+        "show_terms": true
+      }
+    },
+    "enquiry": {
+      "type": "wetu-itinerary-new-enquiry",
+      "settings": {
+        "color_scheme": "scheme-1",
+        "heading": "Make an Enquiry",
+        "subheading": "Get in touch with our travel experts for a personalized quote"
+      }
+    }
+  },
+  "order": [
+    "hero",
+    "chronological_days",
+    "booking",
+    "travel_brief",
+    "enquiry"
+  ]
+}

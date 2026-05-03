@@ -1,0 +1,1511 @@
+{% javascript %}
+(() => {
+  const ROOT_SELECTOR = '.itin-command-center[data-section-id]';
+  const INSPECTOR_BODY_SELECTOR = '[data-command-center-inspector-body]';
+
+  const MAPBOX_GL_SCRIPT_ID = 'wetu-mapbox-gl-script';
+  const MAPBOX_GL_STYLE_ID = 'wetu-mapbox-gl-style';
+  const MAPBOX_GL_SCRIPT_URL = 'https://api.mapbox.com/mapbox-gl-js/v3.7.0/mapbox-gl.js';
+  const MAPBOX_GL_STYLE_URL = 'https://api.mapbox.com/mapbox-gl-js/v3.7.0/mapbox-gl.css';
+
+  const MAPBOX_LIGHT_STYLE = 'mapbox://styles/mapbox/light-v11';
+  const MAPBOX_DARK_STYLE = 'mapbox://styles/mapbox/dark-v11';
+  const MAP_ROUTE_COLOR_LIGHT = '#111111';
+  const MAP_ROUTE_COLOR_DARK = '#ffffff';
+
+  const MAP_SHELL_ATTR = 'data-command-center-map-shell';
+  const JOURNEY_TAB_ACTIVE_SELECTOR = '[data-command-center-journey-tab][aria-selected="true"]';
+
+  const FLIGHT_ROUTE_MODES = new Set(['charterflight', 'scheduledflight']);
+  const GROUND_ROUTE_MODES = new Set(['transfer', 'selfdrive']);
+  const MAP_OWNED_TAB_VIEWS = new Set(['overview', 'route']);
+
+  const mapControllers = new WeakMap();
+  const mapObservers = new WeakMap();
+  const journeyDataPromiseByRoot = new WeakMap();
+  const itineraryPayloadByUrl = new Map();
+  let mapboxResourcePromise = null;
+
+  const normalizeText = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+  const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const escapeHtml = (value) =>
+    String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
+  const isObjectLike = (value) => value && typeof value === 'object';
+
+  const unwrapValue = (value) => {
+    if (isObjectLike(value) && Object.prototype.hasOwnProperty.call(value, 'value')) {
+      return value.value;
+    }
+    return value;
+  };
+
+  const hasValue = (value) => {
+    if (value === null || value === undefined) return false;
+    if (typeof value === 'string') return normalizeText(value) !== '';
+    return true;
+  };
+
+  const readField = (record, key) => {
+    if (!isObjectLike(record)) return null;
+    return unwrapValue(record[key]);
+  };
+
+  const readFirstField = (record, keys = []) => {
+    for (const key of keys) {
+      const nextValue = readField(record, key);
+      if (hasValue(nextValue)) return nextValue;
+    }
+    return null;
+  };
+
+  const parseJson = (value, fallback) => {
+    const source = normalizeText(value);
+    if (!source) return fallback;
+    try {
+      return JSON.parse(source);
+    } catch (error) {
+      return fallback;
+    }
+  };
+
+  const toNumber = (value, fallback = Number.NaN) => {
+    const numeric = Number.parseFloat(String(unwrapValue(value) ?? '').replace(/[^0-9+-.]/g, ''));
+    return Number.isFinite(numeric) ? numeric : fallback;
+  };
+
+  const toInteger = (value, fallback = Number.NaN) => {
+    const numeric = Number.parseInt(String(unwrapValue(value) ?? ''), 10);
+    return Number.isFinite(numeric) ? numeric : fallback;
+  };
+
+  const normalizeEntityId = (value) => {
+    const text = normalizeText(unwrapValue(value));
+    if (!text) return '';
+    return /^\d+$/.test(text) ? String(Number.parseInt(text, 10)) : text.toLowerCase();
+  };
+
+  const normalizeRouteMode = (value) => normalizeText(value).replace(/\s+/g, '').toLowerCase();
+  const getActiveJourneyView = (root) => {
+    if (!(root instanceof HTMLElement)) return '';
+    const activeTab = root.querySelector(JOURNEY_TAB_ACTIVE_SELECTOR);
+    if (!(activeTab instanceof HTMLElement)) return '';
+    return normalizeText(activeTab.dataset.commandCenterJourneyTab).toLowerCase();
+  };
+  const getInspectorMode = (root, inspectorBody) => {
+    if (!(root instanceof HTMLElement) || !(inspectorBody instanceof HTMLElement)) return 'details';
+
+    const activeView = getActiveJourneyView(root);
+    if (activeView && MAP_OWNED_TAB_VIEWS.has(activeView)) {
+      return 'overview';
+    }
+    if (activeView === 'guests' || activeView === 'pricing') {
+      return 'details';
+    }
+
+    const payloadType = normalizeText(root.commandCenterState?.activeInspectorPayload?.type).toLowerCase();
+    const hasProductEmbed =
+      inspectorBody.classList.contains('is-product-embed')
+      || Boolean(inspectorBody.querySelector('.wetu-command-center-panel'));
+
+    if (payloadType === 'product' || hasProductEmbed) {
+      return 'product';
+    }
+    if (
+      payloadType === 'overview'
+      || payloadType === 'route'
+      || payloadType === 'landing'
+      || inspectorBody.hasAttribute('data-command-center-route-placeholder')
+    ) {
+      return 'overview';
+    }
+
+    return 'details';
+  };
+  const shouldMountMapShell = (root, inspectorBody) => getInspectorMode(root, inspectorBody) === 'overview';
+
+  const getThemeMode = (root) => {
+    if (!(root instanceof HTMLElement)) return 'light';
+    if (root.classList.contains('is-theme-dark') || normalizeText(root.dataset.theme).toLowerCase() === 'dark') {
+      return 'dark';
+    }
+    return 'light';
+  };
+
+  const getMapStyleForTheme = (themeMode) => (themeMode === 'dark' ? MAPBOX_DARK_STYLE : MAPBOX_LIGHT_STYLE);
+  const getRouteColorForTheme = (themeMode) => (themeMode === 'dark' ? MAP_ROUTE_COLOR_DARK : MAP_ROUTE_COLOR_LIGHT);
+
+  const getMapSurfacePalette = (themeMode) =>
+    themeMode === 'dark'
+      ? { land: '#333333', water: '#2a2a2a' }
+      : { land: '#f2f2f2', water: '#e8e8e8' };
+
+  const getMapSettings = (root) => {
+    if (!(root instanceof HTMLElement)) {
+      return { token: '' };
+    }
+
+    const token = normalizeText(root.dataset.mapboxToken);
+    return { token };
+  };
+
+  const setMapStatus = (root, message = '') => {
+    const statusNode = root.querySelector('[data-command-center-journey-map-status]');
+    if (!(statusNode instanceof HTMLElement)) return;
+
+    const hasMessage = normalizeText(message) !== '';
+    statusNode.hidden = !hasMessage;
+    statusNode.textContent = hasMessage ? message : '';
+  };
+
+  const removeMapLayerIfPresent = (map, layerId) => {
+    if (!map || !layerId || typeof map.getLayer !== 'function' || typeof map.removeLayer !== 'function') return;
+    if (map.getLayer(layerId)) {
+      map.removeLayer(layerId);
+    }
+  };
+
+  const removeMapSourceIfPresent = (map, sourceId) => {
+    if (!map || !sourceId || typeof map.getSource !== 'function' || typeof map.removeSource !== 'function') return;
+    if (map.getSource(sourceId)) {
+      map.removeSource(sourceId);
+    }
+  };
+
+  const teardownMap = (root) => {
+    const controller = mapControllers.get(root);
+    if (!controller || typeof controller !== 'object') return;
+
+    if (typeof controller.syncTimerId === 'number') {
+      window.clearInterval(controller.syncTimerId);
+    }
+
+    if (typeof controller.themeSyncFrameId === 'number') {
+      window.cancelAnimationFrame(controller.themeSyncFrameId);
+    }
+
+    if (controller.themeObserver && typeof controller.themeObserver.disconnect === 'function') {
+      controller.themeObserver.disconnect();
+    }
+
+    if (controller.stopList && controller.stopListClickHandler) {
+      controller.stopList.removeEventListener('click', controller.stopListClickHandler);
+    }
+
+    if (Array.isArray(controller.markers)) {
+      controller.markers.forEach((entry) => {
+        if (entry?.marker && typeof entry.marker.remove === 'function') {
+          entry.marker.remove();
+        }
+      });
+    }
+
+    if (controller.resizeObserver && typeof controller.resizeObserver.disconnect === 'function') {
+      controller.resizeObserver.disconnect();
+    }
+
+    if (controller.map && typeof controller.map.remove === 'function') {
+      controller.map.remove();
+    }
+
+    mapControllers.delete(root);
+  };
+
+  const ensureMapboxGl = () => {
+    if (window.mapboxgl) return Promise.resolve(window.mapboxgl);
+    if (mapboxResourcePromise) return mapboxResourcePromise;
+
+    mapboxResourcePromise = new Promise((resolve, reject) => {
+      if (!document.getElementById(MAPBOX_GL_STYLE_ID)) {
+        const styleTag = document.createElement('link');
+        styleTag.id = MAPBOX_GL_STYLE_ID;
+        styleTag.rel = 'stylesheet';
+        styleTag.href = MAPBOX_GL_STYLE_URL;
+        document.head.appendChild(styleTag);
+      }
+
+      const existingScript = document.getElementById(MAPBOX_GL_SCRIPT_ID);
+      if (existingScript instanceof HTMLScriptElement) {
+        existingScript.addEventListener(
+          'load',
+          () => {
+            if (window.mapboxgl) {
+              resolve(window.mapboxgl);
+              return;
+            }
+            reject(new Error('Mapbox GL script loaded but mapboxgl is unavailable.'));
+          },
+          { once: true },
+        );
+        existingScript.addEventListener('error', () => reject(new Error('Failed to load Mapbox GL script.')), { once: true });
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.id = MAPBOX_GL_SCRIPT_ID;
+      script.src = MAPBOX_GL_SCRIPT_URL;
+      script.async = true;
+      script.onload = () => {
+        if (window.mapboxgl) {
+          resolve(window.mapboxgl);
+          return;
+        }
+        reject(new Error('Mapbox GL script loaded but mapboxgl is unavailable.'));
+      };
+      script.onerror = () => reject(new Error('Failed to load Mapbox GL script.'));
+      document.head.appendChild(script);
+    }).catch((error) => {
+      mapboxResourcePromise = null;
+      throw error;
+    });
+
+    return mapboxResourcePromise;
+  };
+
+  const decodePolyline = (encoded) => {
+    const coords = [];
+    let index = 0;
+    let lat = 0;
+    let lng = 0;
+
+    while (index < encoded.length) {
+      let result = 0;
+      let shift = 0;
+      let byte;
+
+      do {
+        byte = encoded.charCodeAt(index) - 63;
+        index += 1;
+        result |= (byte & 0x1f) << shift;
+        shift += 5;
+      } while (byte >= 0x20);
+
+      const deltaLat = result & 1 ? ~(result >> 1) : result >> 1;
+      lat += deltaLat;
+
+      result = 0;
+      shift = 0;
+      do {
+        byte = encoded.charCodeAt(index) - 63;
+        index += 1;
+        result |= (byte & 0x1f) << shift;
+        shift += 5;
+      } while (byte >= 0x20);
+
+      const deltaLng = result & 1 ? ~(result >> 1) : result >> 1;
+      lng += deltaLng;
+
+      coords.push([lng / 1e5, lat / 1e5]);
+    }
+
+    return coords;
+  };
+
+  const parseRoutePoints = (pointsRaw) => {
+    const pointsString = normalizeText(pointsRaw);
+    if (!pointsString) return [];
+
+    try {
+      if (pointsString.startsWith('{') || pointsString.includes('"f":"polyline"')) {
+        const parsed = JSON.parse(pointsString);
+        if (parsed && parsed.f === 'polyline' && parsed.d) {
+          const decoded = decodePolyline(String(parsed.d));
+          if (decoded.length >= 2) return decoded;
+        }
+      }
+    } catch (error) {
+      // Fall through to plaintext parsers.
+    }
+
+    if (pointsString.includes('|')) {
+      const pipeCoords = pointsString
+        .split('|')
+        .map((part) => normalizeText(part))
+        .filter(Boolean)
+        .map((pair) => {
+          const [latRaw, lngRaw] = pair.split(',');
+          const lat = toNumber(latRaw);
+          const lng = toNumber(lngRaw);
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+          return [lng, lat];
+        })
+        .filter((coord) => Array.isArray(coord));
+
+      if (pipeCoords.length >= 2) return pipeCoords;
+    }
+
+    if (pointsString.includes(';')) {
+      const parts = pointsString
+        .split(';')
+        .map((part) => normalizeText(part))
+        .filter(Boolean);
+
+      const semicolonCoords = [];
+      for (let index = 0; index < parts.length - 1; index += 2) {
+        const lat = toNumber(parts[index]);
+        const lng = toNumber(parts[index + 1]);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+        semicolonCoords.push([lng, lat]);
+      }
+
+      if (semicolonCoords.length >= 2) return semicolonCoords;
+    }
+
+    return [];
+  };
+
+  const normalizeLongitude = (lng) => {
+    let normalizedLng = lng;
+    while (normalizedLng > 180) normalizedLng -= 360;
+    while (normalizedLng < -180) normalizedLng += 360;
+    return normalizedLng;
+  };
+
+  const createGreatCircleArc = (start, end, pointCount = 64) => {
+    if (!Array.isArray(start) || !Array.isArray(end)) return [];
+    if (start.length < 2 || end.length < 2) return [];
+
+    const [startLngDeg, startLatDeg] = start;
+    const [endLngDeg, endLatDeg] = end;
+
+    if (!Number.isFinite(startLngDeg) || !Number.isFinite(startLatDeg) || !Number.isFinite(endLngDeg) || !Number.isFinite(endLatDeg)) {
+      return [];
+    }
+
+    const toRad = (degrees) => (degrees * Math.PI) / 180;
+    const toDeg = (radians) => (radians * 180) / Math.PI;
+
+    const startLng = toRad(startLngDeg);
+    const startLat = toRad(startLatDeg);
+    const endLng = toRad(endLngDeg);
+    const endLat = toRad(endLatDeg);
+
+    const sinHalfDeltaLat = Math.sin((endLat - startLat) / 2);
+    const sinHalfDeltaLng = Math.sin((endLng - startLng) / 2);
+    const chord =
+      sinHalfDeltaLat * sinHalfDeltaLat
+      + Math.cos(startLat) * Math.cos(endLat) * sinHalfDeltaLng * sinHalfDeltaLng;
+    const angularDistance = 2 * Math.atan2(Math.sqrt(chord), Math.sqrt(Math.max(0, 1 - chord)));
+
+    if (!Number.isFinite(angularDistance) || angularDistance === 0) {
+      return [
+        [normalizeLongitude(startLngDeg), startLatDeg],
+        [normalizeLongitude(endLngDeg), endLatDeg],
+      ];
+    }
+
+    const coordinates = [];
+    const pointTotal = Math.max(2, Number.parseInt(String(pointCount), 10) || 64);
+
+    for (let index = 0; index <= pointTotal; index += 1) {
+      const fraction = index / pointTotal;
+      const weightStart = Math.sin((1 - fraction) * angularDistance) / Math.sin(angularDistance);
+      const weightEnd = Math.sin(fraction * angularDistance) / Math.sin(angularDistance);
+
+      const x =
+        weightStart * Math.cos(startLat) * Math.cos(startLng)
+        + weightEnd * Math.cos(endLat) * Math.cos(endLng);
+      const y =
+        weightStart * Math.cos(startLat) * Math.sin(startLng)
+        + weightEnd * Math.cos(endLat) * Math.sin(endLng);
+      const z = weightStart * Math.sin(startLat) + weightEnd * Math.sin(endLat);
+
+      const lng = Math.atan2(y, x);
+      const lat = Math.atan2(z, Math.sqrt(x * x + y * y));
+      coordinates.push([normalizeLongitude(toDeg(lng)), toDeg(lat)]);
+    }
+
+    return coordinates;
+  };
+
+  const extractCandidateCoordinate = (candidate) => {
+    const drivingLng = toNumber(candidate?.driving_longitude);
+    const drivingLat = toNumber(candidate?.driving_latitude);
+    if (Number.isFinite(drivingLng) && Number.isFinite(drivingLat)) {
+      return { lng: drivingLng, lat: drivingLat };
+    }
+
+    const fallbackLng = toNumber(candidate?.longitude);
+    const fallbackLat = toNumber(candidate?.latitude);
+    if (Number.isFinite(fallbackLng) && Number.isFinite(fallbackLat)) {
+      return { lng: fallbackLng, lat: fallbackLat };
+    }
+
+    return null;
+  };
+
+  const buildEntityLookup = (root) => {
+    const coordsByEntityId = new Map();
+    const labelByEntityId = new Map();
+
+    const setCoordinate = (entityId, coordinate) => {
+      const key = normalizeEntityId(entityId);
+      if (!key || !coordinate) return;
+      if (!Number.isFinite(coordinate.lng) || !Number.isFinite(coordinate.lat)) return;
+      coordsByEntityId.set(key, { lng: Number(coordinate.lng), lat: Number(coordinate.lat) });
+    };
+
+    const setLabel = (entityId, label) => {
+      const key = normalizeEntityId(entityId);
+      const normalizedLabel = normalizeText(label);
+      if (!key || !normalizedLabel) return;
+      if (!labelByEntityId.has(key)) {
+        labelByEntityId.set(key, normalizedLabel);
+      }
+    };
+
+    const componentCandidatesRaw = parseJson(root.dataset.componentProductCandidates, []);
+    const componentCandidates = Array.isArray(componentCandidatesRaw) ? componentCandidatesRaw : [];
+    const candidatesByHandle = new Map();
+
+    componentCandidates.forEach((candidate) => {
+      if (!isObjectLike(candidate)) return;
+
+      const title = normalizeText(candidate.title || candidate.handle || '');
+      const coordinate = extractCandidateCoordinate(candidate);
+      const candidateKeys = [
+        normalizeEntityId(candidate.pin),
+        normalizeEntityId(candidate.content_entity_id),
+        normalizeEntityId(candidate.primary_pin),
+      ].filter(Boolean);
+
+      candidateKeys.forEach((key) => {
+        if (title) setLabel(key, title);
+        if (coordinate) setCoordinate(key, coordinate);
+      });
+
+      const handleKey = normalizeText(candidate.handle).toLowerCase();
+      if (handleKey) {
+        candidatesByHandle.set(handleKey, candidate);
+      }
+    });
+
+    const pinMap = parseJson(root.dataset.pinMap, {});
+    if (isObjectLike(pinMap)) {
+      Object.entries(pinMap).forEach(([pin, handle]) => {
+        const pinKey = normalizeEntityId(pin);
+        if (!pinKey) return;
+
+        const candidate = candidatesByHandle.get(normalizeText(handle).toLowerCase());
+        if (!candidate) return;
+
+        const title = normalizeText(candidate.title || candidate.handle || '');
+        const coordinate = extractCandidateCoordinate(candidate);
+        if (title) setLabel(pinKey, title);
+        if (coordinate) setCoordinate(pinKey, coordinate);
+      });
+    }
+
+    return {
+      setCoordinate,
+      setLabel,
+      getCoordinate: (entityId) => coordsByEntityId.get(normalizeEntityId(entityId)) || null,
+      getLabel: (entityId) => labelByEntityId.get(normalizeEntityId(entityId)) || '',
+    };
+  };
+
+  const extractCanonicalPayload = (source) => {
+    if (!isObjectLike(source)) return null;
+
+    if (Array.isArray(source.legs) || Array.isArray(source.routes)) {
+      return source;
+    }
+
+    const nestedKeys = ['source_json', 'sourceJson', 'itinerary', 'payload', 'data'];
+    for (const key of nestedKeys) {
+      const nestedValue = unwrapValue(source[key]);
+      if (!isObjectLike(nestedValue)) continue;
+
+      const extracted = extractCanonicalPayload(nestedValue);
+      if (extracted) return extracted;
+    }
+
+    return source;
+  };
+
+  const fetchItineraryPayloadByUrl = async (url) => {
+    const normalizedUrl = normalizeText(url);
+    if (!normalizedUrl) return null;
+
+    if (itineraryPayloadByUrl.has(normalizedUrl)) {
+      return itineraryPayloadByUrl.get(normalizedUrl);
+    }
+
+    const request = fetch(normalizedUrl, { credentials: 'omit' })
+      .then((response) => (response.ok ? response.json() : null))
+      .catch(() => null);
+
+    itineraryPayloadByUrl.set(normalizedUrl, request);
+    const payload = await request;
+
+    if (!payload) {
+      itineraryPayloadByUrl.delete(normalizedUrl);
+    }
+
+    return payload;
+  };
+
+  const getPayloadFromExistingState = (root) => {
+    const state = root?.commandCenterState;
+    if (!isObjectLike(state)) return null;
+
+    const potentialPayloads = [
+      state.sourcePayload,
+      state.rawPayload,
+      state.canonicalPayload,
+      state.itineraryPayload,
+      state.payload,
+      state.model,
+    ];
+
+    for (const candidate of potentialPayloads) {
+      if (!isObjectLike(candidate)) continue;
+      const extracted = extractCanonicalPayload(candidate);
+      if (extracted && (Array.isArray(extracted.legs) || Array.isArray(extracted.routes))) {
+        return extracted;
+      }
+    }
+
+    return null;
+  };
+
+  const loadCanonicalPayload = async (root) => {
+    const statePayload = getPayloadFromExistingState(root);
+    if (statePayload) return statePayload;
+
+    const urls = [normalizeText(root.dataset.canonicalJsonUrl), normalizeText(root.dataset.fallbackJsonUrl)].filter(Boolean);
+
+    for (const url of urls) {
+      const fetched = await fetchItineraryPayloadByUrl(url);
+      const extracted = extractCanonicalPayload(fetched);
+      if (extracted && (Array.isArray(extracted.legs) || Array.isArray(extracted.routes))) {
+        return extracted;
+      }
+    }
+
+    return null;
+  };
+
+  const inferPeriodStartDay = (leg) => {
+    const periods = unwrapValue(leg?.periods);
+    if (!Array.isArray(periods) || periods.length === 0) return Number.NaN;
+
+    let minDay = Number.POSITIVE_INFINITY;
+    periods.forEach((period) => {
+      const rawDay = toInteger(readFirstField(period, ['itinerary_start_day', 'period_start_day']), Number.NaN);
+      if (Number.isFinite(rawDay)) {
+        minDay = Math.min(minDay, rawDay);
+      }
+    });
+
+    if (!Number.isFinite(minDay)) return Number.NaN;
+    return minDay + 1;
+  };
+
+  const inferPeriodEndDay = (leg) => {
+    const periods = unwrapValue(leg?.periods);
+    if (!Array.isArray(periods) || periods.length === 0) return Number.NaN;
+
+    let maxDay = Number.NEGATIVE_INFINITY;
+    periods.forEach((period) => {
+      const rawDay = toInteger(readFirstField(period, ['itinerary_end_day', 'period_end_day']), Number.NaN);
+      if (Number.isFinite(rawDay)) {
+        maxDay = Math.max(maxDay, rawDay);
+      }
+    });
+
+    if (!Number.isFinite(maxDay)) return Number.NaN;
+    return maxDay + 1;
+  };
+
+  const buildRouteSegments = (payload, entityLookup) => {
+    const routesRaw = Array.isArray(payload?.routes) ? payload.routes : [];
+
+    const sortedRoutes = routesRaw
+      .map((route, index) => ({ route, index }))
+      .sort((left, right) => {
+        const leftSequence = toInteger(readFirstField(left.route, ['sequence']), left.index);
+        const rightSequence = toInteger(readFirstField(right.route, ['sequence']), right.index);
+        return leftSequence - rightSequence;
+      });
+
+    const segments = [];
+
+    sortedRoutes.forEach(({ route }, routeIndex) => {
+      if (!isObjectLike(route)) return;
+
+      const mode = normalizeText(readFirstField(route, ['mode', 'type', 'variant']) || 'Transfer');
+      const normalizedMode = normalizeRouteMode(mode);
+      const isFlight = FLIGHT_ROUTE_MODES.has(normalizedMode);
+
+      const startEntityId = normalizeEntityId(readFirstField(route, ['start_content_entity_id', 'start_entity_id']));
+      const endEntityId = normalizeEntityId(readFirstField(route, ['end_content_entity_id', 'end_entity_id']));
+
+      const points = parseRoutePoints(readFirstField(route, ['points']) || '');
+
+      let startCoordinate = entityLookup.getCoordinate(startEntityId);
+      let endCoordinate = entityLookup.getCoordinate(endEntityId);
+
+      if (!startCoordinate && points.length > 0) {
+        startCoordinate = { lng: points[0][0], lat: points[0][1] };
+      }
+
+      if (!endCoordinate && points.length > 0) {
+        const lastPoint = points[points.length - 1];
+        endCoordinate = { lng: lastPoint[0], lat: lastPoint[1] };
+      }
+
+      if (startCoordinate && startEntityId) {
+        entityLookup.setCoordinate(startEntityId, startCoordinate);
+      }
+
+      if (endCoordinate && endEntityId) {
+        entityLookup.setCoordinate(endEntityId, endCoordinate);
+      }
+
+      let coordinates = [];
+      if (isFlight) {
+        if (startCoordinate && endCoordinate) {
+          coordinates = createGreatCircleArc([startCoordinate.lng, startCoordinate.lat], [endCoordinate.lng, endCoordinate.lat], 72);
+        }
+      } else if (points.length >= 2) {
+        coordinates = points;
+      } else if (startCoordinate && endCoordinate) {
+        coordinates = [
+          [startCoordinate.lng, startCoordinate.lat],
+          [endCoordinate.lng, endCoordinate.lat],
+        ];
+      }
+
+      if (coordinates.length < 2) return;
+
+      const defaultMode = GROUND_ROUTE_MODES.has(normalizedMode) || isFlight ? mode : 'Transfer';
+
+      segments.push({
+        id: `route-${routeIndex}`,
+        mode: defaultMode,
+        isFlight,
+        startEntityId,
+        endEntityId,
+        startDay: toInteger(readFirstField(route, ['start_day']), 0),
+        endDay: toInteger(readFirstField(route, ['end_day']), 0),
+        coordinates,
+      });
+    });
+
+    return segments;
+  };
+
+  const buildJourneyStops = (payload, entityLookup) => {
+    const legsRaw = Array.isArray(payload?.legs) ? payload.legs : [];
+
+    const sortedLegs = legsRaw
+      .map((leg, index) => ({ leg, index }))
+      .sort((left, right) => {
+        const leftSequence = toInteger(readFirstField(left.leg, ['sequence']), left.index);
+        const rightSequence = toInteger(readFirstField(right.leg, ['sequence']), right.index);
+        return leftSequence - rightSequence;
+      });
+
+    let inferredDayCursor = 1;
+
+    return sortedLegs.map(({ leg }, sortedIndex) => {
+      const sequence = toInteger(readFirstField(leg, ['sequence']), sortedIndex);
+
+      const legEntityId = normalizeEntityId(readFirstField(leg, ['content_entity_id']));
+      const destinationEntityId = normalizeEntityId(readFirstField(leg, ['destination_content_entity_id']));
+
+      const explicitStartDay = toInteger(readFirstField(leg, ['start_day', 'itinerary_start_day']), Number.NaN);
+      const explicitEndDay = toInteger(readFirstField(leg, ['end_day', 'itinerary_end_day']), Number.NaN);
+
+      const inferredPeriodStartDay = inferPeriodStartDay(leg);
+      const inferredPeriodEndDay = inferPeriodEndDay(leg);
+
+      const nightCount = Math.max(1, toInteger(readFirstField(leg, ['nights']), 1));
+
+      const startDay =
+        Number.isFinite(explicitStartDay) && explicitStartDay > 0
+          ? explicitStartDay
+          : Number.isFinite(inferredPeriodStartDay) && inferredPeriodStartDay > 0
+            ? inferredPeriodStartDay
+            : inferredDayCursor;
+
+      const endDay =
+        Number.isFinite(explicitEndDay) && explicitEndDay >= startDay
+          ? explicitEndDay
+          : Number.isFinite(inferredPeriodEndDay) && inferredPeriodEndDay >= startDay
+            ? inferredPeriodEndDay
+            : startDay + nightCount - 1;
+
+      inferredDayCursor = Math.max(inferredDayCursor, endDay + 1);
+
+      const legLabel = normalizeText(
+        readFirstField(leg, ['accommodation_name', 'destination_name', 'name', 'title', 'label'])
+          || entityLookup.getLabel(legEntityId)
+          || entityLookup.getLabel(destinationEntityId)
+          || `Leg ${sortedIndex + 1}`,
+      );
+
+      const coordinate = entityLookup.getCoordinate(legEntityId) || entityLookup.getCoordinate(destinationEntityId);
+
+      return {
+        index: sortedIndex,
+        legIndex: sortedIndex,
+        sequence,
+        entityId: legEntityId || destinationEntityId,
+        label: legLabel,
+        dayStart: startDay,
+        dayEnd: endDay,
+        dayLabel: `D${Math.max(1, startDay)}`,
+        lng: coordinate?.lng,
+        lat: coordinate?.lat,
+      };
+    });
+  };
+
+  const buildJourneyData = (root, payload) => {
+    const canonicalPayload = extractCanonicalPayload(payload);
+    if (!canonicalPayload) return null;
+
+    const entityLookup = buildEntityLookup(root);
+    const routeSegments = buildRouteSegments(canonicalPayload, entityLookup);
+    const allStops = buildJourneyStops(canonicalPayload, entityLookup);
+
+    const resolvedStops = allStops.filter((stop) => Number.isFinite(stop.lng) && Number.isFinite(stop.lat));
+
+    return {
+      routeSegments,
+      stops: resolvedStops,
+      totalStops: allStops.length,
+    };
+  };
+
+  const loadJourneyData = async (root) => {
+    const cachedPromise = journeyDataPromiseByRoot.get(root);
+    if (cachedPromise) {
+      return cachedPromise;
+    }
+
+    const nextPromise = loadCanonicalPayload(root)
+      .then((payload) => (payload ? buildJourneyData(root, payload) : null))
+      .catch(() => null);
+
+    journeyDataPromiseByRoot.set(root, nextPromise);
+
+    const data = await nextPromise;
+    if (!data) {
+      journeyDataPromiseByRoot.delete(root);
+    }
+
+    return data;
+  };
+
+  const renderStopList = (root, stops) => {
+    const stopList = root.querySelector('[data-command-center-journey-stop-list]');
+    if (!(stopList instanceof HTMLOListElement)) return;
+
+    stopList.innerHTML = stops
+      .map(
+        (stop, index) => `
+        <li class="itin-command-center__journey-map-stop">
+          <button
+            type="button"
+            class="itin-command-center__journey-map-stop-button${index === 0 ? ' is-active' : ''}"
+            data-command-center-journey-stop-index="${index}"
+            aria-label="Focus stop ${escapeHtml(stop.dayLabel)}: ${escapeHtml(stop.label)}"
+          >
+            <span class="itin-command-center__journey-map-stop-number">${escapeHtml(stop.dayLabel)}</span>
+            <span class="itin-command-center__journey-map-stop-label">${escapeHtml(stop.label)}</span>
+          </button>
+        </li>
+      `,
+      )
+      .join('');
+  };
+
+  const getActiveStopIndex = (root, maxStops) => {
+    const stopCount = Number.isFinite(maxStops) ? maxStops : 0;
+    if (stopCount <= 0) return 0;
+
+    const dayKey = normalizeText(root?.commandCenterState?.activeDay);
+    if (!dayKey) return 0;
+
+    const dayToLegIndex = root?.commandCenterState?.dayToLegIndex;
+    if (!dayToLegIndex || typeof dayToLegIndex !== 'object') return 0;
+
+    const rawLegIndex = dayToLegIndex[dayKey];
+    const legIndex = Number.parseInt(String(rawLegIndex ?? ''), 10);
+    if (Number.isNaN(legIndex)) return 0;
+
+    const controller = mapControllers.get(root);
+    if (controller?.stopIndexByLegIndex instanceof Map) {
+      const mappedStopIndex = controller.stopIndexByLegIndex.get(String(legIndex));
+      if (Number.isFinite(mappedStopIndex)) {
+        return Math.max(0, Math.min(mappedStopIndex, stopCount - 1));
+      }
+
+      let closestStopIndex = 0;
+      let closestLegIndex = Number.NEGATIVE_INFINITY;
+
+      controller.stopIndexByLegIndex.forEach((stopIndex, legIndexKey) => {
+        const numericLegIndex = Number.parseInt(String(legIndexKey), 10);
+        if (!Number.isFinite(numericLegIndex) || !Number.isFinite(stopIndex)) return;
+        if (numericLegIndex <= legIndex && numericLegIndex > closestLegIndex) {
+          closestLegIndex = numericLegIndex;
+          closestStopIndex = stopIndex;
+        }
+      });
+
+      return Math.max(0, Math.min(closestStopIndex, stopCount - 1));
+    }
+
+    return Math.max(0, Math.min(legIndex, stopCount - 1));
+  };
+
+  const updateMapProgress = (root, nextStopIndex, shouldFly = true) => {
+    const controller = mapControllers.get(root);
+    if (!controller || typeof controller !== 'object') return;
+
+    const stops = Array.isArray(controller.stops) ? controller.stops : [];
+    if (stops.length === 0) return;
+
+    const boundedIndex = Math.max(0, Math.min(nextStopIndex, stops.length - 1));
+    controller.selectedIndex = boundedIndex;
+
+    const stopButtons = root.querySelectorAll('[data-command-center-journey-stop-index]');
+    stopButtons.forEach((button, index) => {
+      if (!(button instanceof HTMLElement)) return;
+      button.classList.toggle('is-active', index === boundedIndex);
+    });
+
+    controller.markers.forEach((entry, index) => {
+      if (!(entry?.element instanceof HTMLElement)) return;
+      entry.element.classList.toggle('is-active', index === boundedIndex);
+    });
+
+    if (controller.map && controller.map.getSource(controller.progressSourceId)) {
+      const source = controller.map.getSource(controller.progressSourceId);
+      source.setData({
+        type: 'Feature',
+        geometry: {
+          type: 'LineString',
+          coordinates: stops.slice(0, boundedIndex + 1).map((stop) => [stop.lng, stop.lat]),
+        },
+        properties: {},
+      });
+    }
+
+    if (shouldFly && controller.map) {
+      controller.map.easeTo({
+        center: [stops[boundedIndex].lng, stops[boundedIndex].lat],
+        duration: prefersReducedMotion() ? 0 : 650,
+        zoom: Math.max(controller.map.getZoom(), 4.8),
+      });
+    }
+  };
+
+  const ensureMapShell = (root) => {
+    const inspectorBody = root.querySelector(INSPECTOR_BODY_SELECTOR);
+    if (!(inspectorBody instanceof HTMLElement)) return null;
+    if (!shouldMountMapShell(root, inspectorBody)) return null;
+
+    const sectionId = normalizeText(root.dataset.sectionId || 'default').replace(/[^a-z0-9_-]/gi, '-');
+    const mapCanvasId = `wetu-route-map-placeholder-${sectionId || 'default'}`;
+    let shell = inspectorBody.querySelector(`[${MAP_SHELL_ATTR}]`);
+
+    if (!(shell instanceof HTMLElement)) {
+      inspectorBody.innerHTML = `
+        <article class="itin-command-center__card itin-command-center__inspector-shell itin-command-center__route-placeholder-panel" ${MAP_SHELL_ATTR}>
+          <div class="itin-command-center__journey-map-stage" data-command-center-journey-map-stage>
+            <div
+              class="itin-command-center__journey-map-canvas"
+              id="${mapCanvasId}"
+              data-command-center-journey-map-canvas
+              role="img"
+              aria-label="Journey map"
+            ></div>
+            <div class="itin-command-center__journey-map-fade" aria-hidden="true"></div>
+            <div class="itin-command-center__journey-map-info">
+              <p class="itin-command-center__journey-map-label">Journey map</p>
+              <h3 class="itin-command-center__journey-map-title">Route overview</h3>
+              <ol class="itin-command-center__journey-map-stop-list" data-command-center-journey-stop-list></ol>
+            </div>
+            <p class="itin-command-center__journey-map-status" data-command-center-journey-map-status hidden></p>
+          </div>
+        </article>
+      `;
+      inspectorBody.classList.add('is-overview-active');
+      inspectorBody.setAttribute('data-command-center-route-placeholder', 'true');
+      inspectorBody.setAttribute('aria-busy', 'false');
+      shell = inspectorBody.querySelector(`[${MAP_SHELL_ATTR}]`);
+    }
+
+    return inspectorBody;
+  };
+
+  const setLayerPaintPropertySafely = (map, layerId, property, value) => {
+    try {
+      map.setPaintProperty(layerId, property, value);
+    } catch (error) {
+      // Ignore paint overrides that do not apply to this layer type.
+    }
+  };
+
+  const applyMapSurfacePalette = (map, themeMode) => {
+    if (!map || typeof map.getStyle !== 'function') return;
+
+    const palette = getMapSurfacePalette(themeMode);
+    const style = map.getStyle();
+    const layers = Array.isArray(style?.layers) ? style.layers : [];
+
+    layers.forEach((layer) => {
+      if (!layer || typeof layer.id !== 'string') return;
+
+      const layerType = normalizeText(layer.type).toLowerCase();
+      const layerId = layer.id.toLowerCase();
+      const sourceLayer = normalizeText(layer['source-layer']).toLowerCase();
+      const identity = `${layerId} ${sourceLayer}`;
+
+      if (layerType === 'background') {
+        setLayerPaintPropertySafely(map, layer.id, 'background-color', palette.land);
+        return;
+      }
+
+      if (!['fill', 'line'].includes(layerType)) return;
+
+      const isWater = /(^|\b)water(\b|_)/.test(identity);
+      const isLand = !isWater && /(land|landcover|landuse|hillshade|terrain)/.test(identity);
+      if (!isWater && !isLand) return;
+
+      const color = isWater ? palette.water : palette.land;
+      if (layerType === 'fill') {
+        setLayerPaintPropertySafely(map, layer.id, 'fill-color', color);
+      }
+      if (layerType === 'line') {
+        setLayerPaintPropertySafely(map, layer.id, 'line-color', color);
+      }
+    });
+  };
+
+  const drawJourneyMap = (root, options = {}) => {
+    const controller = mapControllers.get(root);
+    if (!controller || !controller.map) return;
+
+    const map = controller.map;
+    const themeMode = getThemeMode(root);
+    controller.themeMode = themeMode;
+
+    const routeColor = getRouteColorForTheme(themeMode);
+    const stops = controller.stops;
+
+    applyMapSurfacePalette(map, themeMode);
+
+    if (Array.isArray(controller.markers)) {
+      controller.markers.forEach((entry) => {
+        if (entry?.marker && typeof entry.marker.remove === 'function') {
+          entry.marker.remove();
+        }
+      });
+    }
+    controller.markers = [];
+
+    removeMapLayerIfPresent(map, controller.routeGroundLayerId);
+    removeMapLayerIfPresent(map, controller.routeFlightLayerId);
+    removeMapLayerIfPresent(map, controller.progressLayerId);
+
+    removeMapSourceIfPresent(map, controller.routeGroundSourceId);
+    removeMapSourceIfPresent(map, controller.routeFlightSourceId);
+    removeMapSourceIfPresent(map, controller.progressSourceId);
+
+    if (controller.groundFeatureCollection.features.length > 0) {
+      map.addSource(controller.routeGroundSourceId, {
+        type: 'geojson',
+        data: controller.groundFeatureCollection,
+      });
+
+      map.addLayer({
+        id: controller.routeGroundLayerId,
+        type: 'line',
+        source: controller.routeGroundSourceId,
+        layout: {
+          'line-join': 'round',
+          'line-cap': 'round',
+        },
+        paint: {
+          'line-color': routeColor,
+          'line-width': 2,
+          'line-opacity': 0.9,
+        },
+      });
+    }
+
+    if (controller.flightFeatureCollection.features.length > 0) {
+      map.addSource(controller.routeFlightSourceId, {
+        type: 'geojson',
+        data: controller.flightFeatureCollection,
+      });
+
+      map.addLayer({
+        id: controller.routeFlightLayerId,
+        type: 'line',
+        source: controller.routeFlightSourceId,
+        layout: {
+          'line-join': 'round',
+          'line-cap': 'round',
+        },
+        paint: {
+          'line-color': routeColor,
+          'line-width': 2,
+          'line-opacity': 0.88,
+          'line-dasharray': [2, 2],
+        },
+      });
+    }
+
+    map.addSource(controller.progressSourceId, {
+      type: 'geojson',
+      data: {
+        type: 'Feature',
+        geometry: {
+          type: 'LineString',
+          coordinates: [[stops[0].lng, stops[0].lat]],
+        },
+        properties: {},
+      },
+    });
+
+    map.addLayer({
+      id: controller.progressLayerId,
+      type: 'line',
+      source: controller.progressSourceId,
+      layout: {
+        'line-join': 'round',
+        'line-cap': 'round',
+      },
+      paint: {
+        'line-color': routeColor,
+        'line-width': 3.2,
+        'line-opacity': 0.95,
+      },
+    });
+
+    stops.forEach((stop, index) => {
+      const markerElement = document.createElement('button');
+      markerElement.type = 'button';
+      markerElement.className = `itin-command-center__journey-map-marker${index === controller.selectedIndex ? ' is-active' : ''}`;
+      markerElement.textContent = stop.dayLabel;
+      markerElement.setAttribute('aria-label', `Focus stop ${stop.dayLabel}: ${stop.label}`);
+      markerElement.addEventListener('click', (event) => {
+        event.preventDefault();
+        updateMapProgress(root, index, true);
+      });
+
+      const marker = new window.mapboxgl.Marker({ element: markerElement, anchor: 'center' })
+        .setLngLat([stop.lng, stop.lat])
+        .addTo(map);
+
+      controller.markers.push({ marker, element: markerElement });
+    });
+
+    if (options.fitBounds) {
+      const bounds = new window.mapboxgl.LngLatBounds();
+      stops.forEach((stop) => {
+        bounds.extend([stop.lng, stop.lat]);
+      });
+
+      controller.routeSegments.forEach((segment) => {
+        const points = segment.coordinates;
+        if (!Array.isArray(points) || points.length === 0) return;
+        bounds.extend(points[0]);
+        bounds.extend(points[points.length - 1]);
+      });
+
+      if (!bounds.isEmpty()) {
+        map.fitBounds(bounds, {
+          padding: { top: 80, right: 60, bottom: 140, left: 60 },
+          duration: prefersReducedMotion() ? 0 : 760,
+        });
+      }
+    }
+
+    updateMapProgress(root, controller.selectedIndex, false);
+  };
+
+  const syncThemeWithMap = (root) => {
+    const controller = mapControllers.get(root);
+    if (!controller || !controller.map || !controller.isMapLoaded) return;
+
+    if (controller.isStyleSwitching) {
+      controller.pendingThemeSync = true;
+      return;
+    }
+
+    const nextTheme = getThemeMode(root);
+    if (nextTheme === controller.themeMode) return;
+
+    const map = controller.map;
+    const nextStyle = getMapStyleForTheme(nextTheme);
+
+    controller.isStyleSwitching = true;
+    controller.themeMode = nextTheme;
+
+    const currentCenter = map.getCenter();
+    const currentZoom = map.getZoom();
+    const currentPitch = map.getPitch();
+    const currentBearing = map.getBearing();
+
+    map.setStyle(nextStyle);
+
+    map.once('style.load', () => {
+      const activeController = mapControllers.get(root);
+      if (activeController !== controller) return;
+
+      drawJourneyMap(root, { fitBounds: false });
+      map.jumpTo({
+        center: [currentCenter.lng, currentCenter.lat],
+        zoom: currentZoom,
+        pitch: currentPitch,
+        bearing: currentBearing,
+      });
+
+      controller.isStyleSwitching = false;
+      updateMapProgress(root, controller.selectedIndex, false);
+
+      if (controller.pendingThemeSync) {
+        controller.pendingThemeSync = false;
+        syncThemeWithMap(root);
+      }
+    });
+  };
+
+  const observeThemeChanges = (root) => {
+    const controller = mapControllers.get(root);
+    if (!controller) return;
+
+    if (controller.themeObserver && typeof controller.themeObserver.disconnect === 'function') {
+      controller.themeObserver.disconnect();
+    }
+
+    const themeObserver = new MutationObserver(() => {
+      if (typeof controller.themeSyncFrameId === 'number') {
+        window.cancelAnimationFrame(controller.themeSyncFrameId);
+      }
+
+      controller.themeSyncFrameId = window.requestAnimationFrame(() => {
+        controller.themeSyncFrameId = null;
+        syncThemeWithMap(root);
+      });
+    });
+
+    themeObserver.observe(root, { attributes: true, attributeFilter: ['class', 'data-theme'] });
+    controller.themeObserver = themeObserver;
+  };
+
+  const mountJourneyMap = async (root) => {
+    if (!(root instanceof HTMLElement)) return;
+
+    const inspectorBodyCandidate = root.querySelector(INSPECTOR_BODY_SELECTOR);
+    if (!(inspectorBodyCandidate instanceof HTMLElement)) return;
+    if (!shouldMountMapShell(root, inspectorBodyCandidate)) return;
+
+    const inspectorBody = ensureMapShell(root);
+    if (!(inspectorBody instanceof HTMLElement)) return;
+
+    const mapCanvas = inspectorBody.querySelector('[data-command-center-journey-map-canvas]');
+    if (!(mapCanvas instanceof HTMLElement)) return;
+
+    const existingController = mapControllers.get(root);
+    if (existingController?.canvas === mapCanvas && existingController?.map) {
+      const activeStopIndex = getActiveStopIndex(root, existingController.stops.length);
+      if (activeStopIndex !== existingController.selectedIndex) {
+        updateMapProgress(root, activeStopIndex, false);
+      }
+      syncThemeWithMap(root);
+      return;
+    }
+
+    teardownMap(root);
+
+    const settings = getMapSettings(root);
+
+    if (!settings.token) {
+      setMapStatus(root, 'Add a Mapbox public token (pk.*) in section settings to render the live map.');
+      return;
+    }
+
+    const isPlaceholderToken = /your_mapbox_public_token|replace_me|example/i.test(settings.token);
+    if (isPlaceholderToken) {
+      setMapStatus(root, 'Add your real Mapbox token in section settings to enable the live map.');
+      return;
+    }
+
+    if (!/^pk\./i.test(settings.token)) {
+      setMapStatus(root, 'Use a valid Mapbox public token starting with pk.');
+      return;
+    }
+
+    setMapStatus(root, 'Loading canonical journey coordinates...');
+    const journeyData = await loadJourneyData(root);
+
+    if (!journeyData) {
+      setMapStatus(root, 'Canonical itinerary data could not be loaded for map rendering.');
+      return;
+    }
+
+    const stops = Array.isArray(journeyData.stops) ? journeyData.stops : [];
+    renderStopList(root, stops);
+
+    if (stops.length < 2) {
+      setMapStatus(root, 'At least two mapped journey stops are required in canonical itinerary data.');
+      return;
+    }
+
+    let mapboxgl;
+    try {
+      mapboxgl = await ensureMapboxGl();
+    } catch (error) {
+      setMapStatus(root, 'Mapbox resources failed to load. Please refresh or verify network access.');
+      return;
+    }
+
+    mapboxgl.accessToken = settings.token;
+
+    const sectionId = normalizeText(root.dataset.sectionId || 'default').replace(/[^a-z0-9_-]/gi, '-');
+    const routeGroundSourceId = `itin-route-ground-${sectionId}`;
+    const routeFlightSourceId = `itin-route-flight-${sectionId}`;
+    const progressSourceId = `itin-route-progress-${sectionId}`;
+
+    const routeGroundLayerId = `itin-route-ground-layer-${sectionId}`;
+    const routeFlightLayerId = `itin-route-flight-layer-${sectionId}`;
+    const progressLayerId = `itin-route-progress-layer-${sectionId}`;
+
+    const themeMode = getThemeMode(root);
+
+    const map = new mapboxgl.Map({
+      container: mapCanvas,
+      style: getMapStyleForTheme(themeMode),
+      center: [stops[0].lng, stops[0].lat],
+      zoom: 4.3,
+      pitch: 46,
+      bearing: 10,
+      antialias: true,
+      attributionControl: false,
+      cooperativeGestures: true,
+    });
+
+    const resizeTarget = inspectorBody.querySelector('[data-command-center-journey-map-stage]');
+    const resizeObserver =
+      'ResizeObserver' in window && resizeTarget instanceof HTMLElement
+        ? new ResizeObserver(() => map.resize())
+        : null;
+
+    if (resizeObserver && resizeTarget instanceof HTMLElement) {
+      resizeObserver.observe(resizeTarget);
+    }
+
+    const routeSegments = Array.isArray(journeyData.routeSegments) ? journeyData.routeSegments : [];
+
+    const groundFeatureCollection = {
+      type: 'FeatureCollection',
+      features: routeSegments
+        .filter((segment) => !segment.isFlight)
+        .map((segment) => ({
+          type: 'Feature',
+          properties: {
+            id: segment.id,
+            mode: segment.mode,
+          },
+          geometry: {
+            type: 'LineString',
+            coordinates: segment.coordinates,
+          },
+        })),
+    };
+
+    const flightFeatureCollection = {
+      type: 'FeatureCollection',
+      features: routeSegments
+        .filter((segment) => segment.isFlight)
+        .map((segment) => ({
+          type: 'Feature',
+          properties: {
+            id: segment.id,
+            mode: segment.mode,
+          },
+          geometry: {
+            type: 'LineString',
+            coordinates: segment.coordinates,
+          },
+        })),
+    };
+
+    if (groundFeatureCollection.features.length === 0 && flightFeatureCollection.features.length === 0) {
+      groundFeatureCollection.features.push({
+        type: 'Feature',
+        properties: {
+          id: 'fallback-stops-route',
+          mode: 'Transfer',
+        },
+        geometry: {
+          type: 'LineString',
+          coordinates: stops.map((stop) => [stop.lng, stop.lat]),
+        },
+      });
+    }
+
+    const stopIndexByLegIndex = new Map();
+    stops.forEach((stop, index) => {
+      stopIndexByLegIndex.set(String(stop.legIndex), index);
+      if (Number.isFinite(stop.sequence)) {
+        stopIndexByLegIndex.set(String(stop.sequence), index);
+      }
+    });
+
+    const stopList = root.querySelector('[data-command-center-journey-stop-list]');
+    const stopListClickHandler = (event) => {
+      const button = event.target instanceof Element
+        ? event.target.closest('[data-command-center-journey-stop-index]')
+        : null;
+      if (!(button instanceof HTMLButtonElement)) return;
+
+      const stopIndex = Number.parseInt(button.dataset.commandCenterJourneyStopIndex, 10);
+      if (Number.isNaN(stopIndex)) return;
+      updateMapProgress(root, stopIndex, true);
+    };
+
+    if (stopList instanceof HTMLOListElement) {
+      stopList.addEventListener('click', stopListClickHandler);
+    }
+
+    const controller = {
+      map,
+      canvas: mapCanvas,
+      stops,
+      routeSegments,
+      stopIndexByLegIndex,
+      selectedIndex: 0,
+      markers: [],
+      resizeObserver,
+      routeGroundSourceId,
+      routeFlightSourceId,
+      progressSourceId,
+      routeGroundLayerId,
+      routeFlightLayerId,
+      progressLayerId,
+      groundFeatureCollection,
+      flightFeatureCollection,
+      stopList,
+      stopListClickHandler,
+      themeMode,
+      themeObserver: null,
+      themeSyncFrameId: null,
+      isMapLoaded: false,
+      isStyleSwitching: false,
+      pendingThemeSync: false,
+      syncTimerId: null,
+    };
+
+    mapControllers.set(root, controller);
+    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
+
+    map.on('load', () => {
+      const activeController = mapControllers.get(root);
+      if (activeController !== controller) return;
+
+      controller.isMapLoaded = true;
+      drawJourneyMap(root, { fitBounds: true });
+      observeThemeChanges(root);
+
+      const initialStopIndex = getActiveStopIndex(root, stops.length);
+      updateMapProgress(root, initialStopIndex, false);
+
+      controller.syncTimerId = window.setInterval(() => {
+        if (!document.contains(root)) {
+          teardownMap(root);
+          return;
+        }
+
+        const activeStopIndex = getActiveStopIndex(root, stops.length);
+        if (activeStopIndex !== controller.selectedIndex) {
+          updateMapProgress(root, activeStopIndex, false);
+        }
+      }, 700);
+
+      setMapStatus(root, '');
+    });
+
+    map.on('error', () => {
+      setMapStatus(root, 'Map rendering encountered an error. Verify the token and canonical route data.');
+    });
+  };
+
+  const initRoot = (root) => {
+    if (!(root instanceof HTMLElement)) return;
+    if (root.getAttribute('data-command-center-mapbox-ready') === 'true') return;
+
+    root.setAttribute('data-command-center-mapbox-ready', 'true');
+
+    const tryMount = () => {
+      void mountJourneyMap(root);
+    };
+
+    tryMount();
+    window.setTimeout(tryMount, 1100);
+
+    const inspectorBody = root.querySelector(INSPECTOR_BODY_SELECTOR);
+    if (inspectorBody instanceof HTMLElement) {
+      let observerFrameId = null;
+      const observer = new MutationObserver(() => {
+        if (typeof observerFrameId === 'number') {
+          window.cancelAnimationFrame(observerFrameId);
+        }
+
+        observerFrameId = window.requestAnimationFrame(() => {
+          observerFrameId = null;
+
+          const hasMapShell = inspectorBody.querySelector(`[${MAP_SHELL_ATTR}]`);
+          const inspectorMode = getInspectorMode(root, inspectorBody);
+
+          if (inspectorMode === 'overview') {
+            if (!hasMapShell) {
+              tryMount();
+            }
+            return;
+          }
+
+          if (!hasMapShell) {
+            teardownMap(root);
+          }
+        });
+      });
+      observer.observe(inspectorBody, {
+        childList: true,
+        subtree: false,
+        attributes: true,
+        attributeFilter: ['class', 'data-command-center-route-placeholder'],
+      });
+      mapObservers.set(root, observer);
+    }
+  };
+
+  const initAll = (scope) => {
+    const roots = [];
+    if (scope instanceof Element && scope.matches(ROOT_SELECTOR)) {
+      roots.push(scope);
+    }
+    scope.querySelectorAll?.(ROOT_SELECTOR).forEach((root) => roots.push(root));
+    roots.forEach((root) => initRoot(root));
+  };
+
+  document.addEventListener('DOMContentLoaded', () => initAll(document));
+  document.addEventListener('shopify:section:load', (event) => {
+    const scope = event.target instanceof Element ? event.target : document;
+    initAll(scope);
+  });
+})();
+{% endjavascript %}

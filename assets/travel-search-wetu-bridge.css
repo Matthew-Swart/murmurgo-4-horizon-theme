@@ -1,0 +1,458 @@
+.travel-search-main-wrapper.wetu-bridge-active {
+  --wetu-shell: #292c33;
+  --wetu-charcoal: #1a1c22;
+  --wetu-soft-charcoal: #4a4d55;
+  --wetu-white: #ffffff;
+  --wetu-result-gap: 1px;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .results-container {
+  background: var(--wetu-shell) !important;
+  padding: var(--wetu-result-gap) 0 0 !important;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .accommodations-grid {
+  grid-template-columns: minmax(0, 1fr) !important;
+  row-gap: var(--wetu-result-gap) !important;
+  column-gap: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .logo-placeholder-container {
+  display: none !important;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .accommodation-card {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  grid-template-rows: auto;
+  gap: var(--wetu-result-gap);
+  background: var(--wetu-shell) !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  overflow: hidden;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .accommodation-card:hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .accommodation-card:not([data-wetu-bridge-ready='true']) .accommodation-image {
+  opacity: 0 !important;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .accommodation-card[data-wetu-bridge-ready='true'] .accommodation-image {
+  opacity: 1 !important;
+  transition: opacity 180ms ease;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .accommodation-image-container {
+  grid-column: 1;
+  grid-row: 1;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #22252b !important;
+  overflow: hidden;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .accommodation-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  transform: none !important;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .accommodation-image.primary {
+  cursor: default;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .accommodation-image.secondary {
+  display: none !important;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .accommodation-image-container.has-secondary:hover .accommodation-image.primary,
+.travel-search-main-wrapper.wetu-bridge-active .accommodation-image-container.hover .accommodation-image.primary {
+  opacity: 1 !important;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .accommodation-image-container.has-secondary:hover .accommodation-image.secondary,
+.travel-search-main-wrapper.wetu-bridge-active .accommodation-image-container.hover .accommodation-image.secondary {
+  opacity: 0 !important;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .accommodation-available-badge {
+  top: 10px;
+  right: 10px;
+  background: rgba(255, 255, 255, 0.94) !important;
+  color: var(--wetu-charcoal) !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  text-shadow: none !important;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .badge-label,
+.travel-search-main-wrapper.wetu-bridge-active .badge-dates {
+  color: var(--wetu-charcoal) !important;
+  text-shadow: none !important;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .badge-label {
+  letter-spacing: 0.12em;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .wetu-card-thumbnails {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  width: min(72%, 420px);
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 2px;
+  z-index: 12;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .wetu-card-thumbnail {
+  margin: 0;
+  border: 0;
+  padding: 0;
+  appearance: none;
+  background: #141414;
+  aspect-ratio: 16 / 9;
+  cursor: zoom-in;
+  opacity: 0.9;
+  transition: opacity 140ms ease;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .wetu-card-thumbnail:hover,
+.travel-search-main-wrapper.wetu-bridge-active .wetu-card-thumbnail.is-active {
+  opacity: 1;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .wetu-card-thumbnail.is-active {
+  box-shadow: inset 0 0 0 1px #ffffff;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .wetu-card-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .accommodation-details {
+  grid-column: 2;
+  grid-row: 1;
+  position: relative !important;
+  inset: auto !important;
+  width: auto;
+  max-height: none;
+  display: block;
+  align-items: initial;
+  overflow: hidden;
+  padding: clamp(16px, 1.6vw, 24px) !important;
+  background: var(--wetu-white) !important;
+  pointer-events: auto;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .accommodation-details::before {
+  content: none !important;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .accommodation-overlay-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+  width: 100%;
+  height: 100%;
+  margin-top: 0;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .accommodation-location {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--wetu-soft-charcoal) !important;
+  text-shadow: none !important;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .accommodation-title-section {
+  gap: 6px;
+  max-width: 100%;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .accommodation-name,
+.travel-search-main-wrapper.wetu-bridge-active .accommodation-name-link {
+  margin: 0;
+  color: var(--wetu-charcoal) !important;
+  font-size: clamp(1.45rem, 2vw, 2rem) !important;
+  font-weight: 600 !important;
+  line-height: 1.15;
+  text-shadow: none !important;
+  border-bottom: 0 !important;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .accommodation-name-link:hover {
+  color: #1f1f1f !important;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active :is(.accommodation-name-link, .accommodation-property-link) {
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.14em;
+  transition: color 140ms ease, text-decoration-color 140ms ease;
+  cursor: pointer;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active :is(.accommodation-name-link, .accommodation-property-link):is(:hover, :focus-visible) {
+  color: #1f1f1f !important;
+  text-decoration-color: currentColor;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .accommodation-property-context,
+.travel-search-main-wrapper.wetu-bridge-active .accommodation-property-link {
+  color: var(--wetu-soft-charcoal) !important;
+  font-size: 0.95rem;
+  line-height: 1.35;
+  text-shadow: none !important;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .accommodation-property-link {
+  border-bottom-color: rgba(51, 51, 51, 0.4) !important;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active :is(.wetu-bridge-tagline, .accommodation-unit-tagline) {
+  margin: 0 !important;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: #4d4d4d !important;
+  text-shadow: none !important;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .wetu-bridge-summary {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: #4b4b4b;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .wetu-bridge-rich-details {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .wetu-bridge-details-grid {
+  width: 100%;
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 10px;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .wetu-bridge-detail-label {
+  margin: 0;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #707070;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .wetu-bridge-detail-value {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.35;
+  color: #3f3f3f;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .wetu-bridge-amenities {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .wetu-bridge-amenity-chip {
+  font-size: 0.75rem;
+  line-height: 1.25;
+  color: #4f4f4f;
+  background: #f3f3f3;
+  border: 1px solid #e5e5e5;
+  border-radius: 999px;
+  padding: 3px 9px;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .accommodation-actions-section {
+  margin-top: auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .accommodation-price {
+  text-align: left;
+  gap: 2px;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active :is(.accommodation-price-label, .accommodation-price-config, .accommodation-price-rooms-note) {
+  color: var(--wetu-soft-charcoal) !important;
+  text-shadow: none !important;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .accommodation-price-label {
+  letter-spacing: 0.1em;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .accommodation-price-amount {
+  color: var(--wetu-charcoal) !important;
+  font-size: clamp(1.58rem, 2.2vw, 2.2rem) !important;
+  font-weight: 700;
+  text-shadow: none !important;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .accommodation-actions {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .accommodation-btn-buy {
+  min-width: 11rem;
+  padding: 10px 20px;
+  background: transparent !important;
+  border: 1px solid rgba(51, 51, 51, 0.72) !important;
+  color: var(--wetu-charcoal) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  text-shadow: none !important;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+}
+
+.travel-search-main-wrapper.wetu-bridge-active .accommodation-btn-buy:hover:not(:disabled) {
+  background: rgba(51, 51, 51, 0.08) !important;
+  border-color: rgba(31, 31, 31, 0.92) !important;
+  color: #1f1f1f !important;
+  transform: none;
+}
+
+body.wetu-result-gallery-open {
+  overflow: hidden;
+}
+
+.wetu-result-gallery-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.94);
+  z-index: 999999;
+  display: none;
+  overflow: hidden;
+}
+
+.wetu-result-gallery-overlay.is-open {
+  display: flex;
+}
+
+.wetu-result-gallery-track {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+  overflow-y: auto;
+  gap: var(--wetu-result-gap);
+  padding: 64px 0 0;
+}
+
+.wetu-result-gallery-track::-webkit-scrollbar {
+  display: none;
+}
+
+.wetu-result-gallery-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  border: 1px solid rgba(255, 255, 255, 0.68);
+  background: rgba(0, 0, 0, 0.42);
+  color: #ffffff;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 10px 14px;
+}
+
+.wetu-result-gallery-close:hover,
+.wetu-result-gallery-close:focus-visible {
+  border-color: #ffffff;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.wetu-result-gallery-slide {
+  width: min(1280px, 100%);
+  margin: 0 auto;
+  border: 0;
+  padding: 0;
+  background: #000;
+}
+
+.wetu-result-gallery-slide img {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  display: block;
+}
+
+@media (max-width: 1060px) {
+  .travel-search-main-wrapper.wetu-bridge-active .accommodation-card {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .travel-search-main-wrapper.wetu-bridge-active .accommodation-image-container {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .travel-search-main-wrapper.wetu-bridge-active .accommodation-details {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .travel-search-main-wrapper.wetu-bridge-active .accommodation-name,
+  .travel-search-main-wrapper.wetu-bridge-active .accommodation-name-link {
+    font-size: clamp(1.26rem, 4.9vw, 1.75rem) !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .travel-search-main-wrapper.wetu-bridge-active .wetu-card-thumbnails {
+    width: min(82%, 320px);
+    left: 8px;
+    bottom: 8px;
+  }
+
+  .wetu-result-gallery-close {
+    top: 10px;
+    right: 10px;
+    padding: 8px 12px;
+    font-size: 0.74rem;
+  }
+}

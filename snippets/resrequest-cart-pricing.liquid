@@ -1,0 +1,376 @@
+{% comment %}
+  ResRequest Dynamic Cart Pricing
+  
+  This snippet displays ResRequest dynamic prices in the cart by reading
+  the _price and _currency values from cart line item properties.
+  
+  Usage: Included in theme.liquid
+{% endcomment %}
+
+<script>
+(function() {
+  'use strict';
+
+  /**
+   * ResRequest Cart Pricing Manager
+   * Updates cart prices to display dynamic ResRequest pricing
+   */
+  class ResRequestCartPricing {
+    constructor() {
+      this.initialized = false;
+      this.updateCount = 0;
+      this.init();
+    }
+
+    /**
+     * Initialize the pricing manager
+     */
+    init() {
+      if (this.initialized) return;
+      
+      console.log('🏨 [ResRequest] Initializing cart pricing manager');
+      
+      // Update prices on page load
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => this.updateAllPrices());
+      } else {
+        this.updateAllPrices();
+      }
+
+      // Listen for cart updates
+      this.setupEventListeners();
+      
+      // Watch for dynamic cart changes
+      this.setupMutationObserver();
+      
+      this.initialized = true;
+    }
+
+    /**
+     * Setup event listeners for cart updates
+     */
+    setupEventListeners() {
+      // Listen for various cart update events
+      const cartEvents = ['cart:updated', 'cart:refresh', 'cart:change', 'cart-drawer:open'];
+      
+      cartEvents.forEach(eventName => {
+        document.addEventListener(eventName, () => {
+          console.log(`🔄 [ResRequest] Received ${eventName} event`);
+          setTimeout(() => this.updateAllPrices(), 100);
+        });
+      });
+
+      // Listen for Shopify theme section updates
+      document.addEventListener('shopify:section:load', () => {
+        console.log('🔄 [ResRequest] Section loaded');
+        setTimeout(() => this.updateAllPrices(), 100);
+      });
+    }
+
+    /**
+     * Setup mutation observer for dynamic cart changes
+     */
+    setupMutationObserver() {
+      const observer = new MutationObserver((mutations) => {
+        const shouldUpdate = mutations.some(mutation => {
+          return mutation.addedNodes.length > 0 || 
+                 (mutation.type === 'attributes' && mutation.attributeName === 'class');
+        });
+
+        if (shouldUpdate) {
+          console.log('👀 [ResRequest] DOM mutation detected, updating prices');
+          this.updateAllPrices();
+        }
+      });
+
+      // Observe cart drawer
+      const cartDrawer = document.querySelector('cart-drawer, [data-cart-drawer], #CartDrawer, .cart-drawer');
+      if (cartDrawer) {
+        observer.observe(cartDrawer, {
+          childList: true,
+          subtree: true,
+          attributes: true,
+          attributeFilter: ['class']
+        });
+      }
+
+      // Observe main cart
+      const mainCart = document.querySelector('cart-items, [data-cart-items], .cart-items, #main-cart-items');
+      if (mainCart) {
+        observer.observe(mainCart, {
+          childList: true,
+          subtree: true
+        });
+      }
+    }
+
+    /**
+     * Format currency value
+     * CRITICAL: ResRequest prices are already in full currency units (1600 = R1,600.00), NOT in cents
+     */
+    formatCurrency(amount, currencyCode = 'ZAR') {
+      try {
+        // Parse amount as number (ResRequest returns full currency units, not cents)
+        const value = parseFloat(amount);
+        
+        if (isNaN(value)) {
+          console.error('❌ [ResRequest] Invalid amount:', amount);
+          return `${currencyCode} 0.00`;
+        }
+        
+        return new Intl.NumberFormat('en-ZA', {
+          style: 'currency',
+          currency: currencyCode,
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        }).format(value);
+      } catch (error) {
+        console.error('❌ [ResRequest] Currency formatting error:', error);
+        // Fallback formatting without division by 100
+        const symbol = currencyCode === 'USD' ? '$' : currencyCode === 'EUR' ? '€' : 'R';
+        return `${symbol}${parseFloat(amount).toLocaleString('en-ZA', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+      }
+    }
+
+    /**
+     * Update all cart prices
+     */
+    async updateAllPrices() {
+      try {
+        this.updateCount++;
+        console.log(`🔄 [ResRequest] Updating cart prices (attempt #${this.updateCount})`);
+
+        // Fetch current cart
+        const response = await fetch('/cart.js');
+        const cart = await response.json();
+
+        console.log('📦 [ResRequest] Cart data:', {
+          itemCount: cart.item_count,
+          items: cart.items.length
+        });
+
+        // Find items with ResRequest pricing
+        const resrequestItems = cart.items.filter(item => 
+          item.properties && 
+          item.properties._price && 
+          item.properties._reservation_id
+        );
+
+        if (resrequestItems.length === 0) {
+          console.log('ℹ️ [ResRequest] No ResRequest items in cart');
+          return;
+        }
+
+        console.log(`✅ [ResRequest] Found ${resrequestItems.length} ResRequest item(s)`);
+
+        // Clear update flags before updating (allows re-updating elements)
+        document.querySelectorAll('[data-resrequest-updated]').forEach(el => {
+          delete el.dataset.resrequestUpdated;
+        });
+        document.querySelectorAll('[data-resrequest-total-updated]').forEach(el => {
+          delete el.dataset.resrequestTotalUpdated;
+        });
+
+        // Update each item
+        resrequestItems.forEach(item => this.updateItemPrice(item, cart));
+
+        // Update cart totals
+        this.updateCartTotals(cart);
+
+      } catch (error) {
+        console.error('❌ [ResRequest] Error updating prices:', error);
+      }
+    }
+
+    /**
+     * Update price for a single cart item
+     */
+    updateItemPrice(item, cart) {
+      const customPrice = parseFloat(item.properties._price);
+      const currency = item.properties._currency || 'ZAR';
+      const nights = parseInt(item.properties._nights) || 1;
+      
+      if (isNaN(customPrice) || customPrice <= 0) {
+        console.warn('⚠️ [ResRequest] Invalid price for item:', item.id);
+        return;
+      }
+
+      const formattedPrice = this.formatCurrency(customPrice, currency);
+      const pricePerNight = this.formatCurrency(customPrice / nights, currency);
+
+      console.log(`💵 [ResRequest] Item ${item.variant_id}:`, {
+        totalPrice: formattedPrice,
+        perNight: pricePerNight,
+        nights: nights,
+        reservationId: item.properties._reservation_id
+      });
+
+      // Comprehensive selectors for different themes and cart types
+      const priceSelectors = this.getPriceSelectors(item, cart);
+
+      let foundElements = 0;
+      priceSelectors.forEach(selector => {
+        const elements = document.querySelectorAll(selector);
+        elements.forEach(element => {
+          if (element && !element.dataset.resrequestUpdated) {
+            element.textContent = formattedPrice;
+            element.dataset.resrequestUpdated = 'true';
+            element.title = `ResRequest: ${nights} night(s) @ ${pricePerNight}/night`;
+            foundElements++;
+            
+            // Add visual indicator
+            element.style.fontWeight = '600';
+            element.style.color = '#2c6ecb'; // Optional: highlight ResRequest prices
+          }
+        });
+      });
+
+      if (foundElements > 0) {
+        console.log(`✅ [ResRequest] Updated ${foundElements} price element(s) for variant ${item.variant_id}`);
+      } else {
+        console.warn(`⚠️ [ResRequest] No price elements found for variant ${item.variant_id}`);
+        console.log('🔍 [ResRequest] Available cart structure:', {
+          cartItems: document.querySelectorAll('[data-cart-item], .cart-item, cart-item').length,
+          priceElements: document.querySelectorAll('.price, [data-price], .cart-item__price').length
+        });
+      }
+    }
+
+    /**
+     * Get comprehensive price selectors for Horizon theme
+     */
+    getPriceSelectors(item, cart) {
+      const itemIndex = cart.items.indexOf(item) + 1;
+      
+      return [
+        // Horizon theme specific selectors
+        `cart-items .cart-item:nth-child(${itemIndex}) .price`,
+        `cart-items .cart-item:nth-child(${itemIndex}) .cart-item__price`,
+        `.cart-items .cart-item:nth-child(${itemIndex}) .price`,
+        
+        // By variant ID
+        `[data-variant-id="${item.variant_id}"] .cart-item__price`,
+        `[data-variant-id="${item.variant_id}"] .price`,
+        `[data-variant-id="${item.variant_id}"] [data-cart-item-price]`,
+        `[data-variant-id="${item.variant_id}"] .product-option`,
+        
+        // By line item key
+        `[data-line-item-key="${item.key}"] .cart-item__price`,
+        `[data-line-item-key="${item.key}"] .price`,
+        `[data-line-item-key="${item.key}"] [data-price]`,
+        
+        // By cart item key
+        `[data-cart-item-key="${item.key}"] .cart-item__price`,
+        `[data-cart-item-key="${item.key}"] .price`,
+        
+        // By item ID
+        `[data-item-id="${item.id}"] .cart-item__price`,
+        `[data-item-id="${item.id}"] .price`,
+        
+        // By index position
+        `.cart-item:nth-child(${itemIndex}) .cart-item__price`,
+        `.cart-item:nth-child(${itemIndex}) .price`,
+        `cart-item:nth-child(${itemIndex}) .price`,
+        
+        // Generic selectors with product handle
+        `.cart-item:has([href*="${item.handle}"]) .cart-item__price`,
+        `.cart-item:has([href*="${item.handle}"]) .price`,
+        
+        // Table-based cart layouts
+        `.cart-items__table-row:nth-child(${itemIndex}) .cart-item__price`,
+        `.cart-items__table-row:nth-child(${itemIndex}) td:last-child`,
+        
+        // Drawer-specific selectors
+        `cart-drawer-items .cart-item:nth-child(${itemIndex}) .price`,
+        `cart-drawer .cart-item:nth-child(${itemIndex}) .price`,
+        `#CartDrawer .cart-item:nth-child(${itemIndex}) .price`,
+        
+        // Horizon theme cart drawer
+        `.cart__item:nth-child(${itemIndex}) .price`,
+        `.cart-drawer__item:nth-child(${itemIndex}) .price`
+      ];
+    }
+
+    /**
+     * Update cart totals to reflect ResRequest prices
+     */
+    updateCartTotals(cart) {
+      // Calculate total with ResRequest prices (already in full currency units)
+      let resrequestTotal = 0;
+      let hasResRequestItems = false;
+      
+      cart.items.forEach(item => {
+        if (item.properties && item.properties._price) {
+          const customPrice = parseFloat(item.properties._price);
+          if (!isNaN(customPrice) && customPrice > 0) {
+            resrequestTotal += customPrice * item.quantity;
+            hasResRequestItems = true;
+          } else {
+            // If price is invalid, use Shopify's price (convert from cents)
+            resrequestTotal += item.final_line_price / 100;
+          }
+        } else {
+          // Use standard price for non-ResRequest items (Shopify prices are in cents)
+          resrequestTotal += item.final_line_price / 100;
+        }
+      });
+
+      const formattedTotal = this.formatCurrency(resrequestTotal, 'ZAR');
+      
+      console.log('💰 [ResRequest] Cart total:', {
+        shopifyTotalCents: cart.total_price,
+        resrequestTotal: formattedTotal,
+        hasResRequestItems: hasResRequestItems
+      });
+
+      // Update cart total display if there are ResRequest items
+      if (hasResRequestItems) {
+        const totalSelectors = [
+          '.cart-subtotal__price',
+          '[data-cart-subtotal]',
+          '.cart__footer-total',
+          '.totals__total-value',
+          '.cart-drawer__total-price',
+          '#CartTotal',
+          '.cart__total-price',
+          '[data-cart-total]'
+        ];
+        
+        totalSelectors.forEach(selector => {
+          const elements = document.querySelectorAll(selector);
+          elements.forEach(element => {
+            if (element && !element.dataset.resrequestTotalUpdated) {
+              element.textContent = formattedTotal;
+              element.dataset.resrequestTotalUpdated = 'true';
+              console.log(`✅ [ResRequest] Updated cart total with selector: ${selector}`);
+            }
+          });
+        });
+      }
+    }
+  }
+
+  // Initialize when DOM is ready
+  if (typeof window !== 'undefined') {
+    window.ResRequestCartPricing = new ResRequestCartPricing();
+  }
+})();
+</script>
+
+<style>
+/* Optional: Visual styling for ResRequest prices */
+[data-resrequest-updated="true"] {
+  position: relative;
+}
+
+[data-resrequest-updated="true"]::after {
+  content: "🏨";
+  position: absolute;
+  right: -20px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.8em;
+  opacity: 0.6;
+}
+</style>
+

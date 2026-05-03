@@ -1,0 +1,59 @@
+{% comment %}
+  Property Products Helper
+  Collects all property products and determines if store is single or multi-property
+  
+  Returns:
+  - property_products: Array of property products
+  - property_count: Number of properties
+  - is_single_property: Boolean
+  - main_property: The single property (if single property store)
+{% endcomment %}
+
+{% liquid
+  # Build array of property products by iterating through all products
+  # and checking product_type manually (where filter may not work with hyphens)
+  assign property_products = blank
+  assign property_count = 0
+  assign main_property = nil
+  
+  # Use a specific collection if available for better performance
+  if collections.properties
+    assign source_collection = collections.properties
+  elsif collections['all-properties']
+    assign source_collection = collections['all-properties']
+  else
+    assign source_collection = collections.all
+  endif
+  
+  # Manually filter for property products using the wetu-property tag
+  assign temp_properties = ''
+  for product in source_collection.products limit: 200
+    # Join all tags with | separator and check if |wetu-property| exists
+    # This ensures we don't match wetu-property-87045
+    assign joined_tags = product.tags | join: '|'
+    assign tag_string = '|' | append: joined_tags | append: '|'
+    
+    if tag_string contains '|wetu-property|'
+      assign property_count = property_count | plus: 1
+      if property_count == 1
+        assign main_property = product
+      endif
+      # Build comma-separated list of property handles for multi-property case
+      if temp_properties == ''
+        assign temp_properties = product.handle
+      else
+        assign temp_properties = temp_properties | append: ',' | append: product.handle
+      endif
+    endif
+  endfor
+  
+  # For multi-property stores, we'll need to iterate through products again in the menu snippets
+  # Store the property handles for reference
+  assign property_handles = temp_properties
+  
+  # Determine store type
+  assign is_single_property = false
+  if property_count == 1
+    assign is_single_property = true
+  endif
+%}

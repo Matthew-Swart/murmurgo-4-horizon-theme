@@ -1,0 +1,323 @@
+{% style %}
+  .itin-ops[data-section-id="{{ section.id }}"] {
+    --itin-ops-text: #101010;
+    --itin-ops-muted: #666666;
+    --itin-ops-border: #d8d8d8;
+    --itin-ops-border-strong: #b8b8b8;
+    --itin-ops-surface: #ffffff;
+    --itin-ops-surface-soft: #f8f8f8;
+
+    color: var(--itin-ops-text);
+    background: var(--itin-ops-surface-soft);
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__shell {
+    box-sizing: border-box;
+    max-inline-size: 900px;
+    margin-inline: auto;
+    padding: 1.5rem 1rem 3rem;
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__chrome {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-block-end: 1rem;
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__chrome-label {
+    margin: 0;
+    color: var(--itin-ops-muted);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__chrome-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__button {
+    border: 1px solid var(--itin-ops-border-strong);
+    background: #121212;
+    color: #ffffff;
+    border-radius: 2px;
+    padding: 0.45rem 0.8rem;
+    font: inherit;
+    font-size: 0.82rem;
+    cursor: pointer;
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__button--secondary {
+    background: var(--itin-ops-surface);
+    color: var(--itin-ops-text);
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__header,
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__panel {
+    border: 1px solid var(--itin-ops-border);
+    background: var(--itin-ops-surface);
+    padding: 1rem;
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__header {
+    margin-block-end: 0.8rem;
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__panel + .itin-ops__panel {
+    margin-block-start: 0.8rem;
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__section-label {
+    margin: 0 0 0.5rem;
+    color: var(--itin-ops-muted);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__title {
+    margin: 0;
+    font-size: clamp(1.25rem, 3vw, 1.7rem);
+    line-height: 1.2;
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__header-meta {
+    margin: 0.3rem 0 0.9rem;
+    color: var(--itin-ops-muted);
+    font-size: 0.9rem;
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__header-grid {
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.7rem;
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__header-item {
+    border: 1px solid var(--itin-ops-border);
+    padding: 0.5rem;
+    min-width: 0;
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__header-item dt {
+    margin: 0;
+    color: var(--itin-ops-muted);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__header-item dd {
+    margin: 0.26rem 0 0;
+    overflow-wrap: anywhere;
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace;
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__status {
+    margin: 0 0 0.8rem;
+    border: 1px solid var(--itin-ops-border);
+    background: var(--itin-ops-surface);
+    padding: 0.6rem 0.8rem;
+    font-size: 0.84rem;
+    color: var(--itin-ops-muted);
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__status[data-state="error"] {
+    border-color: #d38f8f;
+    background: #fff6f6;
+    color: #7a1e1e;
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__placeholder {
+    margin: 0;
+    color: var(--itin-ops-muted);
+    font-size: 0.92rem;
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__group + .itin-ops__group {
+    margin-block-start: 1rem;
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__group-title {
+    margin: 0 0 0.45rem;
+    font-size: 0.96rem;
+    font-weight: 600;
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__table {
+    inline-size: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    font-size: 0.83rem;
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__table caption {
+    text-align: start;
+    font-size: 0.72rem;
+    color: var(--itin-ops-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-block-end: 0.35rem;
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__table th,
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__table td {
+    border: 1px solid var(--itin-ops-border);
+    padding: 0.36rem 0.45rem;
+    vertical-align: top;
+    overflow-wrap: anywhere;
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__table th {
+    text-align: start;
+    background: var(--itin-ops-surface-soft);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--itin-ops-muted);
+    font-weight: 600;
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__day {
+    border: 1px solid var(--itin-ops-border);
+    background: var(--itin-ops-surface);
+    padding: 0.9rem;
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__day + .itin-ops__day {
+    margin-block-start: 0.8rem;
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__day-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.4rem 0.8rem;
+    margin-block-end: 0.65rem;
+    border-block-end: 1px solid var(--itin-ops-border);
+    padding-block-end: 0.45rem;
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__day-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__day-meta {
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--itin-ops-muted);
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__day-block + .itin-ops__day-block {
+    margin-block-start: 0.75rem;
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__day-block-title {
+    margin: 0 0 0.4rem;
+    font-size: 0.78rem;
+    color: var(--itin-ops-muted);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__notes {
+    margin: 0;
+    padding-inline-start: 1.05rem;
+    font-size: 0.84rem;
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__notes li + li {
+    margin-block-start: 0.25rem;
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__summary-list {
+    margin: 0;
+    padding-inline-start: 1.05rem;
+    font-size: 0.86rem;
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__summary-list li + li {
+    margin-block-start: 0.22rem;
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin: 0 0 0.75rem;
+    padding: 0;
+    list-style: none;
+  }
+
+  .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__tag {
+    border: 1px solid var(--itin-ops-border);
+    padding: 0.18rem 0.42rem;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    background: var(--itin-ops-surface-soft);
+  }
+
+  @media screen and (max-width: 749px) {
+    .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__header-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__chrome {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
+
+  @media print {
+    @page {
+      margin: 12mm;
+    }
+
+    .itin-ops[data-section-id="{{ section.id }}"] {
+      background: #ffffff;
+      color: #000000;
+      font-size: 10.5pt;
+    }
+
+    .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__shell {
+      max-inline-size: none;
+      padding: 0;
+    }
+
+    .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__chrome,
+    .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__status,
+    .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__button {
+      display: none !important;
+    }
+
+    .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__header,
+    .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__panel,
+    .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__day {
+      break-inside: avoid;
+      border-color: #c8c8c8;
+    }
+
+    .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__table th,
+    .itin-ops[data-section-id="{{ section.id }}"] .itin-ops__table td {
+      border-color: #c8c8c8;
+      padding: 0.26rem 0.33rem;
+    }
+  }
+{% endstyle %}

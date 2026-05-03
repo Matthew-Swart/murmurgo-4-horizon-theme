@@ -1,0 +1,66 @@
+/* Custom styling for Matt's profile image on homepage */
+/* Makes profile photo flush to bottom-left on desktop while other elements keep their padding */
+
+/* Desktop only - min-width matches typical tablet breakpoint */
+@media screen and (min-width: 990px) {
+  
+  /* Target the section containing the profile image - remove bottom padding */
+  [id*="section_KFAAWn"],
+  [id*="section_baUJDT"] {
+    padding-bottom: 0 !important;
+  }
+  
+  /* Target the section content wrapper - remove left padding for full bleed */
+  [id*="section_KFAAWn"] .section-content-wrapper,
+  [id*="section_baUJDT"] .section-content-wrapper {
+    padding-left: 0 !important;
+    padding-bottom: 0 !important;
+  }
+  
+  /* Target the left column group containing the profile image */
+  [id*="section_KFAAWn"] .group-block:first-child,
+  [id*="section_baUJDT"] .group-block:first-child {
+    padding-left: 0 !important;
+    padding-bottom: 0 !important;
+    margin-left: 0 !important;
+    margin-bottom: 0 !important;
+    align-self: flex-end !important;
+  }
+  
+  /* Target the image block directly */
+  [id*="section_KFAAWn"] [class*="image-block"]:has(img[src*="matt-profile"]),
+  [id*="section_baUJDT"] [class*="image-block"]:has(img[src*="matt-profile"]) {
+    padding: 0 !important;
+    margin: 0 !important;
+    margin-left: calc(-1 * var(--page-gutter, 40px)) !important;
+    margin-bottom: calc(-48px) !important;
+  }
+  
+  /* Ensure the image itself has no spacing */
+  [id*="section_KFAAWn"] img[src*="matt-profile"],
+  [id*="section_baUJDT"] img[src*="matt-profile"] {
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block;
+  }
+  
+  /* Keep padding on the right column (Get Started Today section) */
+  [id*="section_KFAAWn"] .group-block:last-child,
+  [id*="section_baUJDT"] .group-block:last-child {
+    padding-right: var(--page-gutter, 40px) !important;
+    padding-bottom: 48px !important;
+  }
+}
+
+/* Fallback for :has() not supported - target by image block class pattern */
+@supports not selector(:has(*)) {
+  @media screen and (min-width: 990px) {
+    [id*="section_KFAAWn"] [class*="image_g8Jqdw"],
+    [id*="section_baUJDT"] [class*="image_g8Jqdw"] {
+      padding: 0 !important;
+      margin: 0 !important;
+      margin-left: calc(-1 * var(--page-gutter, 40px)) !important;
+      margin-bottom: calc(-48px) !important;
+    }
+  }
+}

@@ -1,0 +1,1199 @@
+{% doc %}
+  WETU Rate Display Block
+  
+  Displays comprehensive rate information for WETU products from multiple sources:
+  1. Rate tier metaobjects (wetu_room.aggregated_rate_tiers or wetu.rate_tiers)
+  2. Fallback JSON metafields (base_rate, rate_structure, seasonal_rates)
+  3. Property-level rate ranges (min/max base rates)
+  4. Linked room products (via wetu.linked_rooms)
+  
+  @param {product} product - The product object (uses closest.product by default)
+  
+  @example
+  {% content_for 'block', type: 'wetu-rate-display', id: 'wetu-rates' %}
+{% enddoc %}
+
+{% liquid
+  assign product = block.settings.product | default: closest.product
+  
+  if product == blank
+    assign product = closest.product
+  endif
+  
+  assign rate_tiers = product.metafields.wetu_room.aggregated_rate_tiers | default: product.metafields.wetu.rate_tiers
+  assign base_rate = product.metafields.wetu_room.base_rate
+  assign currency = product.metafields.wetu_room.currency | default: product.metafields.wetu.min_base_rate_currency | default: 'USD'
+  assign rate_structure = product.metafields.wetu_room.rate_structure
+  assign seasonal_rates = product.metafields.wetu_room.seasonal_rates
+  
+  assign has_rate_tiers = false
+  if rate_tiers and rate_tiers.value != blank
+    assign has_rate_tiers = true
+  endif
+  
+  assign has_fallback_rates = false
+  if base_rate or rate_structure or seasonal_rates
+    assign has_fallback_rates = true
+  endif
+  
+  assign has_property_rates = false
+  assign property_min_rate = product.metafields.wetu_property.min_base_rate | default: product.metafields.wetu.min_base_rate
+  if property_min_rate
+    assign has_property_rates = true
+  endif
+  
+  assign has_any_rates = false
+  if has_rate_tiers or has_fallback_rates or has_property_rates
+    assign has_any_rates = true
+  endif
+%}
+
+{% if has_any_rates %}
+  <div 
+    class="wetu-rates rte"
+    {{ block.shopify_attributes }}
+    style="
+      --wetu-rates-padding: {{ block.settings.padding }}px;
+      --wetu-rates-gap: {{ block.settings.gap }}px;
+      --wetu-rates-border-radius: {{ block.settings.border_radius }}px;
+    "
+  >
+    {% if block.settings.show_heading %}
+      <h3 class="wetu-rates__heading">{{ block.settings.heading_text | default: 'Pricing & Rates' }}</h3>
+    {% endif %}
+    
+    {% if has_rate_tiers %}
+      {%- comment -%} Display detailed rate tier metaobjects {%- endcomment -%}
+      <div class="wetu-rates__tiers">
+        {% for tier in rate_tiers.value %}
+          {% liquid
+            assign tier_type = tier.rate_type.value
+            assign tier_amount = tier.rate_amount.value
+            assign tier_currency = tier.currency.value | default: currency
+            assign tier_season = tier.seasonal_label.value | default: 'Standard Rate'
+            assign tier_start = tier.start_date.value
+            assign tier_end = tier.end_date.value
+            assign tier_conditions = tier.rate_conditions.value
+            assign tier_included = tier.rate_included.value
+          %}
+          
+          <div class="rate-tier" data-rate-type="{{ tier_type }}" data-season="{{ tier_season }}">
+            <div class="rate-tier__header">
+              <h4 class="rate-tier__season">{{ tier_season }}</h4>
+              <span class="rate-tier__type">
+                {% case tier_type %}
+                  {% when 'per_person_sharing' %}
+                    {{ 'wetu.rates.per_person_sharing' | t | default: 'Per Person Sharing' }}
+                  {% when 'single' %}
+                    {{ 'wetu.rates.single' | t | default: 'Single Occupancy' }}
+                  {% when 'room' %}
+                    {{ 'wetu.rates.per_room' | t | default: 'Per Room' }}
+                  {% when 'unit' %}
+                    {{ 'wetu.rates.per_unit' | t | default: 'Per Unit' }}
+                  {% else %}
+                    {{ tier_type | replace: '_', ' ' | capitalize }}
+                {% endcase %}
+              </span>
+            </div>
+            
+            <div class="rate-tier__price">
+              <span class="rate-tier__currency">{{ tier_currency }}</span>
+              <span class="rate-tier__amount">{{ tier_amount | round: 0 }}</span>
+            </div>
+            
+            {% if tier_start and tier_end %}
+              <div class="rate-tier__dates">
+                <time datetime="{{ tier_start }}">{{ tier_start | date: '%b %d, %Y' }}</time>
+                <span class="rate-tier__separator"> – </span>
+                <time datetime="{{ tier_end }}">{{ tier_end | date: '%b %d, %Y' }}</time>
+              </div>
+            {% endif %}
+            
+            {% if tier_included != blank %}
+              <div class="rate-tier__included">
+                <strong>{{ 'wetu.rates.included' | t | default: 'Included:' }}</strong>
+                <div class="rate-tier__included-content">{{ tier_included }}</div>
+              </div>
+            {% endif %}
+            
+            {% if tier_conditions != blank %}
+              <details class="rate-tier__conditions">
+                <summary>{{ 'wetu.rates.terms' | t | default: 'Terms & Conditions' }}</summary>
+                <div class="rate-tier__conditions-content">{{ tier_conditions }}</div>
+              </details>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    
+    {% elsif has_fallback_rates %}
+      {%- comment -%} Display fallback rate information {%- endcomment -%}
+      <div class="wetu-rates__fallback">
+        
+        {% if base_rate %}
+          <div class="rate-basic">
+            <div class="rate-basic__label">{{ 'wetu.rates.base_rate' | t | default: 'Base Rate' }}</div>
+            <div class="rate-basic__price">
+              <span class="rate-basic__currency">{{ currency }}</span>
+              <span class="rate-basic__amount">{{ base_rate | round: 0 }}</span>
+            </div>
+          </div>
+        {% endif %}
+        
+        {% if rate_structure %}
+          {% liquid
+            assign structure = rate_structure
+            assign pps_size = structure.per_person_sharing.size
+            assign single_size = structure.single_rates.size
+            assign room_size = structure.room_rates.size
+          %}
+          
+          {% if pps_size > 0 or single_size > 0 or room_size > 0 %}
+            <div class="rate-structure">
+              <h4 class="rate-structure__heading">{{ 'wetu.rates.rate_structure' | t | default: 'Rate Structure' }}</h4>
+              
+              {% if pps_size > 0 %}
+                <div class="rate-structure__category">
+                  <strong>{{ 'wetu.rates.per_person_sharing' | t | default: 'Per Person Sharing:' }}</strong>
+                  <ul class="rate-structure__list">
+                    {% for rate in structure.per_person_sharing %}
+                      <li>
+                        {{ rate.currency | default: currency }}
+                        {{ rate.rate | round: 0 }}
+                        {% if rate.type %}<em>({{ rate.type }})</em>{% endif %}
+                      </li>
+                    {% endfor %}
+                  </ul>
+                </div>
+              {% endif %}
+              
+              {% if single_size > 0 %}
+                <div class="rate-structure__category">
+                  <strong>{{ 'wetu.rates.single' | t | default: 'Single Occupancy:' }}</strong>
+                  <ul class="rate-structure__list">
+                    {% for rate in structure.single_rates %}
+                      <li>
+                        {{ rate.currency | default: currency }}
+                        {{ rate.rate | round: 0 }}
+                        {% if rate.type %}<em>({{ rate.type }})</em>{% endif %}
+                      </li>
+                    {% endfor %}
+                  </ul>
+                </div>
+              {% endif %}
+              
+              {% if room_size > 0 %}
+                <div class="rate-structure__category">
+                  <strong>{{ 'wetu.rates.per_room' | t | default: 'Per Room:' }}</strong>
+                  <ul class="rate-structure__list">
+                    {% for rate in structure.room_rates %}
+                      <li>
+                        {{ rate.currency | default: currency }}
+                        {{ rate.rate | round: 0 }}
+                        {% if rate.type %}<em>({{ rate.type }})</em>{% endif %}
+                      </li>
+                    {% endfor %}
+                  </ul>
+                </div>
+              {% endif %}
+              
+              {% if structure.low_season_rate or structure.high_season_rate %}
+                <div class="rate-structure__range">
+                  <strong>{{ 'wetu.rates.rate_range' | t | default: 'Rate Range:' }}</strong>
+                  {% if structure.low_season_rate %}
+                    {{ 'wetu.rates.low_season' | t | default: 'Low Season:' }} {{ currency }} {{ structure.low_season_rate | round: 0 }}
+                  {% endif %}
+                  {% if structure.low_season_rate and structure.high_season_rate %} | {% endif %}
+                  {% if structure.high_season_rate %}
+                    {{ 'wetu.rates.high_season' | t | default: 'High Season:' }} {{ currency }} {{ structure.high_season_rate | round: 0 }}
+                  {% endif %}
+                </div>
+              {% endif %}
+            </div>
+          {% endif %}
+        {% endif %}
+        
+        {% if seasonal_rates and seasonal_rates.size > 0 %}
+          <div class="seasonal-rates">
+            <h4 class="seasonal-rates__heading">{{ 'wetu.rates.seasonal_rates' | t | default: 'Seasonal Rates' }}</h4>
+            <div class="seasonal-rates__grid">
+              {% for rate in seasonal_rates %}
+                <div class="seasonal-rate">
+                  {% if rate.season %}<div class="seasonal-rate__season">{{ rate.season }}</div>{% endif %}
+                  <div class="seasonal-rate__price">
+                    {{ rate.currency | default: currency }}
+                    {{ rate.amount | round: 0 }}
+                  </div>
+                  {% if rate.start_date and rate.end_date %}
+                    <div class="seasonal-rate__dates">
+                      {{ rate.start_date | date: '%b %d' }} – {{ rate.end_date | date: '%b %d, %Y' }}
+                    </div>
+                  {% endif %}
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+        
+        {%- comment -%} Property-level min/max rates as final fallback {%- endcomment -%}
+        {% if product.metafields.wetu_property.min_base_rate or product.metafields.wetu.min_base_rate %}
+          {% liquid
+            assign min_rate = product.metafields.wetu_property.min_base_rate | default: product.metafields.wetu.min_base_rate
+            assign max_rate = product.metafields.wetu_property.max_base_rate
+            assign prop_currency = product.metafields.wetu_property.min_base_rate_currency | default: product.metafields.wetu.min_base_rate_currency | default: currency
+          %}
+          
+          <div class="property-rates">
+            <h4 class="property-rates__heading">{{ 'wetu.rates.property_range' | t | default: 'Property Rate Range' }}</h4>
+            <div class="property-rates__range">
+              <strong>{{ 'wetu.rates.from' | t | default: 'From:' }}</strong> {{ prop_currency }} {{ min_rate | round: 0 }}
+              {% if max_rate %}
+                <strong>{{ 'wetu.rates.to' | t | default: 'To:' }}</strong> {{ prop_currency }} {{ max_rate | round: 0 }}
+              {% endif %}
+            </div>
+            <p class="property-rates__note">
+              <em>{{ 'wetu.rates.contact_note' | t | default: 'Rates vary by room type and season. Contact us for detailed pricing.' }}</em>
+            </p>
+          </div>
+        {% endif %}
+      </div>
+    
+    {% else %}
+      {%- comment -%} Display only property-level rates when no other data exists {%- endcomment -%}
+      {% if has_property_rates %}
+        <div class="wetu-rates__fallback">
+          {% liquid
+            assign min_rate = product.metafields.wetu_property.min_base_rate | default: product.metafields.wetu.min_base_rate
+            assign max_rate = product.metafields.wetu_property.max_base_rate
+            assign prop_currency = product.metafields.wetu_property.min_base_rate_currency | default: product.metafields.wetu.min_base_rate_currency | default: currency
+            assign linked_rooms = product.metafields.wetu.linked_rooms.value
+          %}
+          
+          {% liquid
+            comment Check if any linked rooms have pricing data for expansive display
+            endcomment
+            assign has_room_pricing = false
+            for room in linked_rooms
+              assign room_base_rate = room.metafields.wetu_room.base_rate
+              assign room_rate_tiers = room.metafields.wetu_room.aggregated_rate_tiers.value
+              if room_base_rate or room_rate_tiers.size > 0
+                assign has_room_pricing = true
+                break
+              endif
+            endfor
+          %}
+          
+          <div class="property-rates {% if has_room_pricing %}property-rates--expansive{% endif %}">
+            {% if has_room_pricing %}
+              {%- comment -%} Expansive display with room details {%- endcomment -%}
+              <div class="property-rates__summary">
+                <div class="property-rates__price-display">
+                  <div class="property-rates__price-from">
+                    <span class="property-rates__label">{{ 'wetu.rates.from' | t | default: 'FROM' }}</span>
+                    <span class="property-rates__currency">{{ prop_currency }}</span>
+                    <span class="property-rates__amount">{{ min_rate | round: 0 }}</span>
+                    <span class="property-rates__per">{{ 'wetu.rates.per_night' | t | default: 'per night' }}</span>
+                  </div>
+                  {% if max_rate and max_rate != min_rate %}
+                    <div class="property-rates__price-to">
+                      <span class="property-rates__label">{{ 'wetu.rates.up_to' | t | default: 'up to' }}</span>
+                      <span class="property-rates__currency">{{ prop_currency }}</span>
+                      <span class="property-rates__amount">{{ max_rate | round: 0 }}</span>
+                      <span class="property-rates__per">{{ 'wetu.rates.per_night' | t | default: 'per night' }}</span>
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+              
+              <div class="property-rates__room-breakdown">
+                <div class="property-rates__room-list">
+                  {% for room in linked_rooms %}
+                    {% liquid
+                      comment Get room pricing data
+                      endcomment
+                      assign room_base_rate = room.metafields.wetu_room.base_rate
+                      assign room_currency = room.metafields.wetu_room.currency | default: prop_currency
+                      assign room_rate_tiers = room.metafields.wetu_room.aggregated_rate_tiers.value
+                      assign lowest_rate = room_base_rate
+                      assign highest_rate = room_base_rate
+                      assign has_seasonal = false
+                      assign seasonal_count = 0
+                      
+                      if room_rate_tiers.size > 0
+                        assign sorted_tiers = room_rate_tiers | sort: 'rate_amount.value'
+                        assign lowest_tier = sorted_tiers.first
+                        assign highest_tier = sorted_tiers.last
+                        if lowest_tier.rate_amount.value
+                          assign lowest_rate = lowest_tier.rate_amount.value
+                        endif
+                        if highest_tier.rate_amount.value
+                          assign highest_rate = highest_tier.rate_amount.value
+                        endif
+                        assign has_seasonal = true
+                        assign seasonal_count = room_rate_tiers.size
+                      endif
+                      
+                      comment Determine rate types available
+                      endcomment
+                      assign rate_types = ''
+                      assign rate_types_list = ''
+                      if room_rate_tiers.size > 0
+                        for tier in room_rate_tiers
+                          assign tier_type = tier.rate_type.value
+                          unless rate_types_list contains tier_type
+                            if rate_types_list != ''
+                              assign rate_types_list = rate_types_list | append: ',' | append: tier_type
+                            else
+                              assign rate_types_list = tier_type
+                            endif
+                          endunless
+                        endfor
+                        assign rate_types_array = rate_types_list | split: ','
+                      endif
+                    %}
+                    {% if lowest_rate %}
+                      <a href="{{ room.url }}" class="property-rates__room-item">
+                        <div class="property-rates__room-header">
+                          <div class="property-rates__room-name">{{ room.title }}</div>
+                          <div class="property-rates__room-rate">
+                            <span class="property-rates__room-currency">{{ room_currency }}</span>
+                            <span class="property-rates__room-amount">{{ lowest_rate | round: 0 }}</span>
+                            {% if highest_rate and highest_rate != lowest_rate %}
+                              <span class="property-rates__room-separator"> - </span>
+                              <span class="property-rates__room-amount">{{ highest_rate | round: 0 }}</span>
+                            {% endif %}
+                            <span class="property-rates__room-per">{{ 'wetu.rates.per_night' | t | default: '/night' }}</span>
+                          </div>
+                        </div>
+                        
+                        {% if has_seasonal or rate_types_array.size > 0 %}
+                          <div class="property-rates__room-details">
+                            {% if has_seasonal %}
+                              <span class="property-rates__room-detail-item">
+                                {{ seasonal_count }} {{ 'wetu.rates.seasonal_rates' | t | default: 'seasonal rates' }}
+                              </span>
+                            {% endif %}
+                            {% if rate_types_array.size > 0 %}
+                              <span class="property-rates__room-detail-separator">•</span>
+                              <span class="property-rates__room-detail-item">
+                                {% for rate_type in rate_types_array %}
+                                  {% case rate_type %}
+                                    {% when 'per_person_sharing' %}
+                                      {{ 'wetu.rates.per_person_sharing_short' | t | default: 'Per person' }}
+                                    {% when 'single' %}
+                                      {{ 'wetu.rates.single_short' | t | default: 'Single' }}
+                                    {% when 'room' %}
+                                      {{ 'wetu.rates.per_room_short' | t | default: 'Per room' }}
+                                    {% when 'unit' %}
+                                      {{ 'wetu.rates.per_unit_short' | t | default: 'Per unit' }}
+                                    {% else %}
+                                      {{ rate_type | replace: '_', ' ' }}
+                                  {% endcase %}{% unless forloop.last %}, {% endunless %}
+                                {% endfor %}
+                                {{ 'wetu.rates.rates_available' | t | default: 'rates available' }}
+                              </span>
+                            {% endif %}
+                          </div>
+                        {% endif %}
+                      </a>
+                    {% endif %}
+                  {% endfor %}
+                </div>
+              </div>
+            {% else %}
+              {%- comment -%} Minimalist display without room details {%- endcomment -%}
+              <div class="property-rates__summary property-rates__summary--minimal">
+                <div class="property-rates__price-display">
+                  <div class="property-rates__price-from">
+                    <span class="property-rates__label">{{ 'wetu.rates.from' | t | default: 'FROM' }}</span>
+                    <span class="property-rates__currency">{{ prop_currency }}</span>
+                    <span class="property-rates__amount">{{ min_rate | round: 0 }}</span>
+                    <span class="property-rates__per">{{ 'wetu.rates.per_night' | t | default: 'per night' }}</span>
+                  </div>
+                  {% if max_rate and max_rate != min_rate %}
+                    <div class="property-rates__price-to">
+                      <span class="property-rates__label">{{ 'wetu.rates.up_to' | t | default: 'up to' }}</span>
+                      <span class="property-rates__currency">{{ prop_currency }}</span>
+                      <span class="property-rates__amount">{{ max_rate | round: 0 }}</span>
+                      <span class="property-rates__per">{{ 'wetu.rates.per_night' | t | default: 'per night' }}</span>
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      {% endif %}
+    {% endif %}
+    
+    {% comment %} Special Offers Section {% endcomment %}
+    {% liquid
+      assign special_offers = product.metafields.wetu.special_offers
+      assign has_offers = false
+      
+      if special_offers and special_offers != blank
+        assign has_offers = true
+      endif
+    %}
+    
+    {% if has_offers and block.settings.show_special_offers %}
+      <div class="wetu-rates__offers">
+        <h4 class="wetu-rates__offers-heading">{{ 'wetu.rates.special_offers_heading' | t | default: 'Special Offers' }}</h4>
+        
+        <div class="wetu-rates__offers-list">
+          {% for offer in special_offers %}
+            {% liquid
+              assign offer_name = offer.name
+              assign offer_type = offer.type
+              assign offer_description = offer.description
+              assign offer_start = offer.start
+              assign offer_end = offer.end
+              assign offer_conditions = offer.conditions
+              
+              comment Check if offer is active
+              endcomment
+              assign today = 'now' | date: '%s'
+              assign is_active = false
+              
+              if offer_end
+                assign end_date = offer_end | date: '%s'
+                if end_date > today
+                  assign is_active = true
+                endif
+              else
+                assign is_active = true
+              endif
+            %}
+            
+            {% if is_active or block.settings.show_expired_offers %}
+              <details class="wetu-offer {% unless is_active %}wetu-offer--expired{% endunless %}">
+                <summary class="wetu-offer__summary">
+                  <div class="wetu-offer__header">
+                    <h5 class="wetu-offer__name">{{ offer_name }}</h5>
+                    {% if offer_type %}
+                      <span class="wetu-offer__type">{{ offer_type }}</span>
+                    {% endif %}
+                  </div>
+                  {% if offer_start and offer_end %}
+                    <div class="wetu-offer__dates">
+                      <time datetime="{{ offer_start }}">{{ offer_start | date: '%b %d, %Y' }}</time>
+                      <span class="wetu-offer__dates-separator">–</span>
+                      <time datetime="{{ offer_end }}">{{ offer_end | date: '%b %d, %Y' }}</time>
+                    </div>
+                  {% endif %}
+                  <svg class="wetu-offer__icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 6l4 4 4-4"/>
+                  </svg>
+                </summary>
+                
+                <div class="wetu-offer__content">
+                  {% if offer_description %}
+                    <div class="wetu-offer__description rte">
+                      {{ offer_description }}
+                    </div>
+                  {% endif %}
+                  
+                  {% if offer_conditions %}
+                    <div class="wetu-offer__conditions">
+                      <h6 class="wetu-offer__conditions-heading">{{ 'wetu.rates.terms_conditions' | t | default: 'Terms & Conditions' }}</h6>
+                      <div class="wetu-offer__conditions-content rte">
+                        {{ offer_conditions }}
+                      </div>
+                    </div>
+                  {% endif %}
+                </div>
+              </details>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+    
+    {% if block.settings.show_disclaimer %}
+      <div class="wetu-rates__disclaimer">
+        <p><small>{{ block.settings.disclaimer_text | default: 'Rates are subject to availability and may change. Please contact us for the most current pricing and availability.' }}</small></p>
+      </div>
+    {% endif %}
+  </div>
+{% endif %}
+
+{% stylesheet %}
+  .wetu-rates {
+    margin: var(--wetu-rates-padding, 2rem) 0;
+    padding: var(--wetu-rates-padding, 1.5rem);
+    background: rgb(var(--color-background));
+    border: 1px solid rgba(var(--color-foreground), 0.1);
+    border-radius: var(--wetu-rates-border-radius, 8px);
+  }
+  
+  .wetu-rates__heading {
+    margin-top: 0;
+    margin-bottom: var(--wetu-rates-gap, 1.5rem);
+    font-size: var(--font-heading-scale);
+    color: rgb(var(--color-foreground));
+  }
+  
+  .wetu-rates__tiers,
+  .wetu-rates__fallback {
+    display: grid;
+    gap: var(--wetu-rates-gap, 1.5rem);
+  }
+  
+  /* Rate Tier Styles */
+  .rate-tier {
+    padding: 1.25rem;
+    background: rgba(var(--color-foreground), 0.03);
+    border-radius: calc(var(--wetu-rates-border-radius, 8px) - 2px);
+    border-left: 4px solid rgb(var(--color-button));
+  }
+  
+  .rate-tier__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+  
+  .rate-tier__season {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: rgb(var(--color-foreground));
+  }
+  
+  .rate-tier__type {
+    font-size: 0.875rem;
+    color: rgba(var(--color-foreground), 0.7);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  .rate-tier__price {
+    font-size: 2rem;
+    font-weight: 700;
+    color: rgb(var(--color-button));
+    margin-bottom: 0.5rem;
+    line-height: 1.2;
+  }
+  
+  .rate-tier__currency {
+    font-size: 1.25rem;
+    margin-right: 0.25rem;
+  }
+  
+  .rate-tier__dates {
+    font-size: 0.875rem;
+    color: rgba(var(--color-foreground), 0.7);
+    margin-bottom: 1rem;
+  }
+  
+  .rate-tier__included {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(var(--color-foreground), 0.1);
+  }
+  
+  .rate-tier__included-content {
+    margin-top: 0.5rem;
+    white-space: pre-line;
+  }
+  
+  .rate-tier__conditions {
+    margin-top: 1rem;
+    font-size: 0.875rem;
+  }
+  
+  .rate-tier__conditions summary {
+    cursor: pointer;
+    color: rgb(var(--color-button));
+    font-weight: 500;
+  }
+  
+  .rate-tier__conditions summary:hover {
+    text-decoration: underline;
+  }
+  
+  .rate-tier__conditions-content {
+    margin-top: 0.5rem;
+    padding: 0.75rem;
+    background: rgb(var(--color-background));
+    border-radius: 4px;
+    white-space: pre-line;
+  }
+  
+  /* Fallback Rate Styles */
+  .rate-basic,
+  .rate-structure,
+  .seasonal-rates,
+  .property-rates {
+    padding: 1.25rem;
+    background: rgba(var(--color-foreground), 0.03);
+    border-radius: calc(var(--wetu-rates-border-radius, 8px) - 2px);
+    margin-bottom: 1rem;
+  }
+  
+  .rate-basic:last-child,
+  .rate-structure:last-child,
+  .seasonal-rates:last-child,
+  .property-rates:last-child {
+    margin-bottom: 0;
+  }
+  
+  .rate-basic__label {
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgba(var(--color-foreground), 0.7);
+    margin-bottom: 0.5rem;
+  }
+  
+  .rate-basic__price,
+  .property-rates__range {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: rgb(var(--color-button));
+    margin-top: 0.5rem;
+  }
+  
+  .rate-structure__heading,
+  .seasonal-rates__heading,
+  .property-rates__heading {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+  
+  .rate-structure__category {
+    margin-bottom: 1rem;
+  }
+  
+  .rate-structure__category:last-child {
+    margin-bottom: 0;
+  }
+  
+  .rate-structure__list {
+    list-style: none;
+    padding: 0;
+    margin: 0.5rem 0 0 0;
+  }
+  
+  .rate-structure__list li {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(var(--color-foreground), 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .rate-structure__list li:last-child {
+    border-bottom: none;
+  }
+  
+  .rate-structure__range {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(var(--color-foreground), 0.1);
+  }
+  
+  .seasonal-rates__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  
+  .seasonal-rate {
+    padding: 1rem;
+    background: rgb(var(--color-background));
+    border-radius: 4px;
+    text-align: center;
+  }
+  
+  .seasonal-rate__season {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+  
+  .seasonal-rate__price {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: rgb(var(--color-button));
+    margin-bottom: 0.5rem;
+  }
+  
+  .seasonal-rate__dates {
+    font-size: 0.75rem;
+    color: rgba(var(--color-foreground), 0.7);
+  }
+  
+  .property-rates__summary {
+    margin-bottom: 2rem;
+  }
+  
+  .property-rates__summary--minimal {
+    margin-bottom: 0;
+  }
+  
+  .property-rates__price-display {
+    display: flex;
+    align-items: baseline;
+    gap: 2rem;
+    flex-wrap: wrap;
+  }
+  
+  .property-rates__price-from,
+  .property-rates__price-to {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+  
+  .property-rates__label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 600;
+    color: rgba(var(--color-foreground), 0.6);
+  }
+  
+  .property-rates__currency {
+    font-size: 1rem;
+    font-weight: 600;
+    color: rgb(var(--color-button));
+  }
+  
+  .property-rates__amount {
+    font-size: 2rem;
+    font-weight: 700;
+    color: rgb(var(--color-button));
+    line-height: 1;
+  }
+  
+  .property-rates__per {
+    font-size: 0.875rem;
+    font-weight: 400;
+    color: rgba(var(--color-foreground), 0.7);
+  }
+  
+  .property-rates__room-breakdown {
+    margin-top: 0;
+  }
+  
+  .property-rates__room-list {
+    display: grid;
+    gap: 0.75rem;
+  }
+  
+  .property-rates__room-item {
+    display: block;
+    padding: 1rem 1.25rem;
+    background: rgba(var(--color-foreground), 0.03);
+    border-radius: 4px;
+    text-decoration: none;
+    color: inherit;
+    border-left: 3px solid rgb(var(--color-button));
+    transition: all 0.2s ease;
+  }
+  
+  .property-rates__room-item:hover {
+    background: rgba(var(--color-foreground), 0.05);
+    border-left-color: rgb(var(--color-button-hover, var(--color-button)));
+    transform: translateX(4px);
+  }
+  
+  .property-rates__room-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .property-rates__room-name {
+    font-weight: 600;
+    font-size: 1rem;
+    flex: 1;
+    color: rgb(var(--color-foreground));
+  }
+  
+  .property-rates__room-rate {
+    font-weight: 700;
+    font-size: 1.125rem;
+    color: rgb(var(--color-button));
+    white-space: nowrap;
+    display: flex;
+    align-items: baseline;
+    gap: 0.25rem;
+  }
+  
+  .property-rates__room-currency {
+    font-size: 0.875rem;
+  }
+  
+  .property-rates__room-amount {
+    font-size: 1.125rem;
+  }
+  
+  .property-rates__room-separator {
+    font-size: 0.875rem;
+    font-weight: 400;
+    color: rgba(var(--color-foreground), 0.5);
+  }
+  
+  .property-rates__room-per {
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: rgba(var(--color-foreground), 0.6);
+  }
+  
+  .property-rates__room-details {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8125rem;
+    color: rgba(var(--color-foreground), 0.7);
+    flex-wrap: wrap;
+  }
+  
+  .property-rates__room-detail-item {
+    display: inline-block;
+  }
+  
+  .property-rates__room-detail-separator {
+    color: rgba(var(--color-foreground), 0.4);
+  }
+  
+
+  
+  .wetu-rates__disclaimer {
+    margin-top: var(--wetu-rates-gap, 1.5rem);
+    padding-top: 1rem;
+    border-top: 1px solid rgba(var(--color-foreground), 0.1);
+    text-align: center;
+    color: rgba(var(--color-foreground), 0.7);
+  }
+  
+  /* Special Offers Section */
+  .wetu-rates__offers {
+    margin-top: calc(var(--wetu-rates-gap, 1.5rem) * 2);
+    padding-top: calc(var(--wetu-rates-gap, 1.5rem) * 1.5);
+    border-top: 2px solid rgba(var(--color-foreground), 0.08);
+  }
+  
+  .wetu-rates__offers-heading {
+    font-family: var(--font-h4--family);
+    font-weight: var(--font-h4--weight);
+    font-size: var(--font-h4--size);
+    line-height: var(--font-h4--line-height);
+    margin: 0 0 1.5rem;
+    color: rgb(var(--color-foreground));
+  }
+  
+  .wetu-rates__offers-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  /* Individual Offer */
+  .wetu-offer {
+    border: 1px solid rgba(var(--color-foreground), 0.12);
+    border-radius: var(--wetu-rates-border-radius, 8px);
+    background: rgba(var(--color-foreground), 0.02);
+    transition: background 0.2s ease, border-color 0.2s ease;
+  }
+  
+  .wetu-offer[open] {
+    background: rgba(var(--color-foreground), 0.03);
+    border-color: rgba(var(--color-foreground), 0.18);
+  }
+  
+  .wetu-offer--expired {
+    opacity: 0.6;
+  }
+  
+  .wetu-offer__summary {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+    transition: background 0.2s ease;
+  }
+  
+  .wetu-offer__summary::-webkit-details-marker {
+    display: none;
+  }
+  
+  .wetu-offer__summary:hover {
+    background: rgba(var(--color-foreground), 0.04);
+  }
+  
+  .wetu-offer__header {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .wetu-offer__name {
+    font-family: var(--font-h5--family);
+    font-weight: var(--font-h5--weight);
+    font-size: var(--font-h5--size);
+    line-height: var(--font-h5--line-height);
+    margin: 0 0 0.25rem;
+    color: rgb(var(--color-foreground));
+  }
+  
+  .wetu-offer__type {
+    display: inline-block;
+    font-size: var(--font-size--xs, 0.75rem);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.25rem 0.625rem;
+    border-radius: calc(var(--wetu-rates-border-radius, 8px) / 2);
+    background: rgba(var(--color-foreground), 0.08);
+    color: rgba(var(--color-foreground), 0.8);
+  }
+  
+  .wetu-offer__dates {
+    font-size: var(--font-size--xs, 0.875rem);
+    color: rgba(var(--color-foreground), 0.6);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  
+  .wetu-offer__dates-separator {
+    margin: 0 0.375rem;
+  }
+  
+  .wetu-offer__icon {
+    flex-shrink: 0;
+    color: rgba(var(--color-foreground), 0.5);
+    transition: transform 0.2s ease;
+  }
+  
+  .wetu-offer[open] .wetu-offer__icon {
+    transform: rotate(180deg);
+  }
+  
+  .wetu-offer__content {
+    padding: 0 1.25rem 1.25rem;
+    animation: wetu-offer-expand 0.2s ease-out;
+  }
+  
+  @keyframes wetu-offer-expand {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .wetu-offer__description {
+    font-family: var(--font-paragraph--family);
+    font-size: var(--font-paragraph--size);
+    line-height: var(--font-paragraph--line-height);
+    color: rgba(var(--color-foreground), 0.85);
+    margin-bottom: 1rem;
+  }
+  
+  .wetu-offer__description p {
+    margin: 0 0 0.75rem;
+  }
+  
+  .wetu-offer__description p:last-child {
+    margin-bottom: 0;
+  }
+  
+  .wetu-offer__conditions {
+    padding-top: 1rem;
+    margin-top: 1rem;
+    border-top: 1px solid rgba(var(--color-foreground), 0.1);
+  }
+  
+  .wetu-offer__conditions-heading {
+    font-family: var(--font-h6--family);
+    font-weight: var(--font-h6--weight);
+    font-size: var(--font-h6--size);
+    line-height: var(--font-h6--line-height);
+    margin: 0 0 0.75rem;
+    color: rgb(var(--color-foreground));
+  }
+  
+  .wetu-offer__conditions-content {
+    font-size: var(--font-size--xs, 0.875rem);
+    line-height: 1.6;
+    color: rgba(var(--color-foreground), 0.7);
+  }
+  
+  .wetu-offer__conditions-content p,
+  .wetu-offer__conditions-content ul {
+    margin: 0 0 0.625rem;
+  }
+  
+  .wetu-offer__conditions-content p:last-child,
+  .wetu-offer__conditions-content ul:last-child {
+    margin-bottom: 0;
+  }
+  
+  .wetu-offer__conditions-content ul {
+    padding-left: 1.25rem;
+  }
+  
+  .wetu-offer__conditions-content li {
+    margin-bottom: 0.375rem;
+  }
+  
+  /* Responsive adjustments */
+  @media screen and (max-width: 749px) {
+    .rate-tier__price {
+      font-size: 1.5rem;
+    }
+    
+    .seasonal-rates__grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .rate-tier__header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    
+    .property-rates__amount {
+      font-size: 1.5rem;
+    }
+    
+    .property-rates__room-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+    
+    .property-rates__room-item {
+      padding: 0.875rem 1rem;
+    }
+    
+    .property-rates__room-details {
+      font-size: 0.75rem;
+    }
+    
+    .wetu-offer__summary {
+      flex-wrap: wrap;
+      padding: 1rem;
+    }
+    
+    .wetu-offer__header {
+      flex-basis: 100%;
+      margin-bottom: 0.5rem;
+    }
+    
+    .wetu-offer__dates {
+      flex: 1;
+      white-space: normal;
+      font-size: calc(var(--font-size--xs, 0.875rem) * 0.9);
+    }
+    
+    .wetu-offer__content {
+      padding: 0 1rem 1rem;
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "WETU Rate Display",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Content"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_heading",
+      "label": "Show heading",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "heading_text",
+      "label": "Heading text",
+      "default": "Pricing & Rates"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_disclaimer",
+      "label": "Show disclaimer",
+      "default": true
+    },
+    {
+      "type": "textarea",
+      "id": "disclaimer_text",
+      "label": "Disclaimer text",
+      "default": "Rates are subject to availability and may change. Please contact us for the most current pricing and availability."
+    },
+    {
+      "type": "checkbox",
+      "id": "show_special_offers",
+      "label": "Show special offers",
+      "default": true,
+      "info": "Display available special offers from Wetu"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_expired_offers",
+      "label": "Show expired offers",
+      "default": false,
+      "info": "Show offers that have passed their end date (will be displayed with reduced opacity)"
+    },
+    {
+      "type": "header",
+      "content": "t:content.appearance"
+    },
+    {
+      "type": "range",
+      "id": "padding",
+      "label": "Padding",
+      "min": 0,
+      "max": 50,
+      "step": 2,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "range",
+      "id": "gap",
+      "label": "Gap between elements",
+      "min": 8,
+      "max": 48,
+      "step": 4,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "range",
+      "id": "border_radius",
+      "label": "Corner radius",
+      "min": 0,
+      "max": 20,
+      "step": 2,
+      "unit": "px",
+      "default": 8
+    }
+  ],
+  "presets": [
+    {
+      "name": "WETU Rates",
+      "category": "Product"
+    }
+  ]
+}
+{% endschema %}

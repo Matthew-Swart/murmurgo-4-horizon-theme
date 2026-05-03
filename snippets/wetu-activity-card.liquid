@@ -1,0 +1,364 @@
+{% comment %}
+  ============================================================================
+  WETU ACTIVITY CARD SNIPPET
+  ============================================================================
+  
+  Displays an activity within the day-by-day itinerary.
+  
+  PARAMETERS:
+  - activity: The activity metaobject
+  
+  ACTIVITY FIELDS:
+  - name: Activity name
+  - description: Activity description
+  - type: Included, Optional, Recommended
+  - is_highlight: Boolean for featured activities
+  - time_slot: Morning, Afternoon, Evening, Full Day, None
+  - start_time, end_time, duration
+  - content_entity_id: Links to activity product
+  
+  ============================================================================
+{% endcomment %}
+
+{% assign activity_name = activity.name.value %}
+{% assign activity_type = activity.type.value | default: 'Included' %}
+{% assign activity_description = activity.description.value %}
+{% assign is_highlight = activity.is_highlight.value %}
+{% assign time_slot = activity.time_slot.value %}
+{% assign start_time = activity.start_time.value %}
+{% assign end_time = activity.end_time.value %}
+{% assign duration = activity.duration.value %}
+{% assign content_id = activity.content_entity_id.value %}
+
+{% comment %} Get linked activity product if exists {% endcomment %}
+{% assign activity_handle = 'wetu-' | append: content_id %}
+{% assign activity_product = all_products[activity_handle] %}
+
+<div class="wetu-activity-card{% if is_highlight %} wetu-activity-card--highlight{% endif %} wetu-activity-card--{{ activity_type | handleize }}">
+  {% comment %} Activity Icon {% endcomment %}
+  <div class="activity-card__icon">
+    {% case activity_type %}
+      {% when 'Recommended' %}
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
+        </svg>
+      {% when 'Optional' %}
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 6v6l4 2"/>
+        </svg>
+      {% else %}
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+    {% endcase %}
+  </div>
+
+  {% comment %} Activity Content {% endcomment %}
+  <div class="activity-card__content">
+    <div class="activity-card__header">
+      <h5 class="activity-card__title">
+        {% if activity_product != blank %}
+          <a href="{{ activity_product.url }}">{{ activity_name }}</a>
+        {% else %}
+          {{ activity_name }}
+        {% endif %}
+      </h5>
+      
+      {% comment %} Badges {% endcomment %}
+      <div class="activity-card__badges">
+        {% if is_highlight %}
+          <span class="activity-badge activity-badge--highlight" title="Trip Highlight">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+            Highlight
+          </span>
+        {% endif %}
+        
+        <span class="activity-badge activity-badge--{{ activity_type | handleize }}">
+          {{ activity_type }}
+        </span>
+      </div>
+    </div>
+    
+    {% comment %} Time Info {% endcomment %}
+    {% if time_slot != blank and time_slot != 'None' or start_time != blank or duration != blank %}
+      <div class="activity-card__time">
+        {% if time_slot != blank and time_slot != 'None' %}
+          <span class="time-slot">
+            {% case time_slot %}
+              {% when 'Morning' %}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="5"/>
+                  <line x1="12" y1="1" x2="12" y2="3"/>
+                  <line x1="12" y1="21" x2="12" y2="23"/>
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                  <line x1="1" y1="12" x2="3" y2="12"/>
+                  <line x1="21" y1="12" x2="23" y2="12"/>
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                </svg>
+              {% when 'Afternoon' %}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="5"/>
+                  <line x1="12" y1="1" x2="12" y2="3"/>
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                  <line x1="1" y1="12" x2="3" y2="12"/>
+                </svg>
+              {% when 'Evening' %}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                </svg>
+              {% when 'Full Day' %}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                  <line x1="16" y1="2" x2="16" y2="6"/>
+                  <line x1="8" y1="2" x2="8" y2="6"/>
+                  <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+            {% endcase %}
+            {{ time_slot }}
+          </span>
+        {% endif %}
+        
+        {% if start_time != blank %}
+          <span class="time-specific">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+            {{ start_time }}{% if end_time != blank %} - {{ end_time }}{% endif %}
+          </span>
+        {% endif %}
+        
+        {% if duration != blank %}
+          <span class="time-duration">{{ duration }}</span>
+        {% endif %}
+      </div>
+    {% endif %}
+    
+    {% comment %} Description - use rich-text helper for JSON-formatted content {% endcomment %}
+    {% if activity_description != blank %}
+      <div class="activity-card__description">
+        <p>{% render 'wetu-rich-text', content: activity_description %}</p>
+      </div>
+    {% endif %}
+    
+    {% comment %} Link to Activity Page {% endcomment %}
+    {% if activity_product != blank %}
+      <a href="{{ activity_product.url }}" class="activity-card__link">
+        Learn more
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+      </a>
+    {% endif %}
+  </div>
+</div>
+
+<style>
+  .wetu-activity-card {
+    display: flex;
+    gap: 14px;
+    padding: 16px;
+    background: color-mix(in srgb, var(--color-foreground) 2%, transparent);
+    border-radius: 12px;
+    transition: background 0.2s ease;
+  }
+
+  .wetu-activity-card:hover {
+    background: color-mix(in srgb, var(--color-foreground) 4%, transparent);
+  }
+
+  /* Highlight Variant */
+  .wetu-activity-card--highlight {
+    background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
+  }
+
+  .wetu-activity-card--highlight:hover {
+    background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  }
+
+  /* Icon */
+  .activity-card__icon {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    flex-shrink: 0;
+  }
+
+  .wetu-activity-card--included .activity-card__icon {
+    background: color-mix(in srgb, #22c55e 15%, transparent);
+    color: #16a34a;
+  }
+
+  .wetu-activity-card--recommended .activity-card__icon {
+    background: color-mix(in srgb, #3b82f6 15%, transparent);
+    color: #2563eb;
+  }
+
+  .wetu-activity-card--optional .activity-card__icon {
+    background: color-mix(in srgb, #f59e0b 15%, transparent);
+    color: #d97706;
+  }
+
+  /* Content */
+  .activity-card__content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .activity-card__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+
+  .activity-card__title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--color-foreground);
+    line-height: 1.3;
+  }
+
+  .activity-card__title a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .activity-card__title a:hover {
+    color: var(--color-primary);
+  }
+
+  /* Badges */
+  .activity-card__badges {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .activity-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+
+  .activity-badge--highlight {
+    background: color-mix(in srgb, #f59e0b 20%, transparent);
+    color: #d97706;
+  }
+
+  .activity-badge--included {
+    background: color-mix(in srgb, #22c55e 15%, transparent);
+    color: #16a34a;
+  }
+
+  .activity-badge--recommended {
+    background: color-mix(in srgb, #3b82f6 15%, transparent);
+    color: #2563eb;
+  }
+
+  .activity-badge--optional {
+    background: color-mix(in srgb, #f59e0b 15%, transparent);
+    color: #d97706;
+  }
+
+  /* Time */
+  .activity-card__time {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+
+  .time-slot,
+  .time-specific,
+  .time-duration {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.8rem;
+    color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+  }
+
+  .time-slot svg,
+  .time-specific svg {
+    color: var(--color-primary);
+  }
+
+  /* Description */
+  .activity-card__description {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: color-mix(in srgb, var(--color-foreground) 70%, transparent);
+  }
+
+  .activity-card__description p {
+    margin: 0;
+  }
+
+  .description-details summary {
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .description-details summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .show-more {
+    color: var(--color-primary);
+    margin-left: 4px;
+    font-weight: 500;
+  }
+
+  .description-details[open] summary {
+    display: none;
+  }
+
+  /* Link */
+  .activity-card__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 10px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--color-primary);
+    text-decoration: none;
+    transition: gap 0.2s ease;
+  }
+
+  .activity-card__link:hover {
+    gap: 8px;
+  }
+
+  /* Mobile Adjustments */
+  @media screen and (max-width: 480px) {
+    .activity-card__header {
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .activity-card__badges {
+      order: -1;
+    }
+  }
+</style>
+

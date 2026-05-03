@@ -1,0 +1,260 @@
+{% liquid
+  # Get the spa collection from settings or fall back to metafield
+  assign spa_collection = section.settings.collection
+  
+  # If no collection is set in settings, try to get it from product metafield
+  if spa_collection == blank and product != blank
+    assign spa_collection = product.metafields.wetu.spa_collection.value
+  endif
+  
+  # Count products in the collection
+  assign spa_count = 0
+  if spa_collection != blank
+    assign spa_count = spa_collection.products_count
+  endif
+  
+  # Determine the link URL based on product count
+  assign spa_url = ''
+  if spa_count == 1
+    # Link directly to the single product
+    assign spa_url = spa_collection.products.first.url
+  elsif spa_count > 1
+    # Link to the collection
+    assign spa_url = spa_collection.url
+  endif
+  
+  # Get the first product and its tagline for the overlay
+  assign first_product = spa_collection.products.first
+  assign spa_tagline = ''
+  if first_product
+    assign spa_tagline = first_product.metafields.wetu.tagline.value
+  endif
+%}
+
+{%- if spa_count > 0 -%}
+<div class="section-background color-{{ section.settings.color_scheme }}"></div>
+<div
+  class="
+    section
+    section--full-width
+    single-spa-product-section
+    color-{{ section.settings.color_scheme }}
+    spacing-style
+  "
+  style="
+    {% render 'spacing-style', settings: section.settings %}
+    --section-gap: 1px;
+  "
+>
+  <div class="single-spa-product">
+    <div class="single-spa-product__header color-{{ section.settings.header_color_scheme }}">
+      <div class="page-width">
+        <h3 class="single-spa-product__title">{{ section.settings.heading | default: spa_collection.title }}</h3>
+      </div>
+    </div>
+    
+    <div class="single-spa-product__media-wrapper">
+      <a href="{{ spa_url }}" class="single-spa-product__link">
+        {% if first_product.featured_image %}
+          {{
+            first_product.featured_image
+            | image_url: width: 3840
+            | image_tag:
+              widths: '832, 1200, 1600, 1920, 2560, 3840',
+              sizes: '100vw',
+              alt: first_product.featured_image.alt | default: first_product.title,
+              class: 'single-spa-product__image',
+              loading: 'lazy'
+          }}
+        {% else %}
+          <div class="single-spa-product__placeholder">
+            {{ 'product-1' | placeholder_svg_tag: 'single-spa-product__placeholder-svg' }}
+          </div>
+        {% endif %}
+        
+        {% comment %} Tagline overlay on bottom right {% endcomment %}
+        {% if spa_tagline != blank %}
+          <div class="single-spa-product__tagline-overlay">
+            {{ spa_tagline }}
+          </div>
+        {% endif %}
+      </a>
+    </div>
+  </div>
+</div>
+{%- endif -%}
+
+{% stylesheet %}
+  .single-spa-product-section {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: var(--section-gap, 4px);
+  }
+  
+  .single-spa-product {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  
+  .single-spa-product__header {
+    padding: 20px;
+  }
+  
+  .single-spa-product__title {
+    margin: 0;
+  }
+  
+  .single-spa-product__media-wrapper {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+  }
+  
+  .single-spa-product__link {
+    display: block;
+    width: 100%;
+    height: 100%;
+    position: relative;
+    text-decoration: none;
+  }
+  
+  .single-spa-product__image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  
+  .single-spa-product__placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-background-secondary, #f5f5f5);
+  }
+  
+  .single-spa-product__placeholder-svg {
+    width: 100%;
+    height: 100%;
+    opacity: 0.3;
+  }
+  
+  .single-spa-product__tagline-overlay {
+    position: absolute;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    color: #ffffff;
+    font-size: 1rem;
+    font-weight: 500;
+    line-height: 1.4;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+    pointer-events: none;
+    z-index: 2;
+    max-width: 50%;
+    text-align: right;
+  }
+  
+  @media screen and (max-width: 749px) {
+    .single-spa-product__header {
+      padding: 16px 20px;
+    }
+    
+    .single-spa-product__tagline-overlay {
+      bottom: 1rem;
+      right: 1rem;
+      font-size: 0.875rem;
+      max-width: 60%;
+    }
+  }
+  
+  /* Ensure full width even within constrained containers */
+  .section--full-width .single-spa-product__media-wrapper {
+    width: 100vw;
+    position: relative;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw;
+    margin-right: -50vw;
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Single SPA Product",
+  "class": "section-single-spa-product",
+  "disabled_on": {
+    "groups": ["header", "footer"]
+  },
+  "settings": [
+    {
+      "type": "collection",
+      "id": "collection",
+      "label": "SPA Collection",
+      "info": "Select the collection containing the SPA product. Only the first product will be displayed."
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Spa Services",
+      "info": "Leave empty to use the collection title"
+    },
+    {
+      "type": "header",
+      "content": "Header settings"
+    },
+    {
+      "type": "color_scheme",
+      "id": "header_color_scheme",
+      "label": "Header color scheme",
+      "default": "scheme-5",
+      "info": "Color scheme for the header section"
+    },
+    {
+      "type": "header",
+      "content": "Section settings"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "header",
+      "content": "Padding"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "label": "Top padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "label": "Bottom padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 0
+    }
+  ],
+  "presets": [
+    {
+      "name": "Single SPA Product",
+      "category": "Products"
+    }
+  ]
+}
+{% endschema %}

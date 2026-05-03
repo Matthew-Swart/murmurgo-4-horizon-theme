@@ -1,0 +1,217 @@
+{% comment %}
+  Wetu Panorama Full-Screen Section
+  Displays 360° panorama from wetu_panorama metaobject reference
+  Full-screen immersive experience with minimal UI
+{% endcomment %}
+
+{% comment %} DEBUG: Output all metafields to console {% endcomment %}
+<!-- DEBUG: Product metafields -->
+<!-- wetu_panorama.panorama: {{ product.metafields.wetu_panorama.panorama | json }} -->
+<!-- wetu.panorama: {{ product.metafields.wetu.panorama | json }} -->
+<!-- wetu.panoramas: {{ product.metafields.wetu.panoramas | json }} -->
+<!-- All wetu namespace: {{ product.metafields.wetu | json }} -->
+
+{% comment %} Get the panorama metaobject reference - try multiple possible locations {% endcomment %}
+{% assign panorama = product.metafields.wetu_panorama.panorama.value %}
+
+{% comment %} Try alternative metafield locations if not found {% endcomment %}
+{% unless panorama %}
+  {% assign panorama = product.metafields.wetu.panorama.value %}
+{% endunless %}
+
+{% unless panorama %}
+  {% assign panorama = product.metafields.wetu.panoramas.value %}
+{% endunless %}
+
+{% unless panorama %}
+  {% assign panorama = product.metafields.wetu_panorama.panorama_reference.value %}
+{% endunless %}
+
+{% comment %} If panoramas is a list, get the first one using for loop {% endcomment %}
+{% assign single_panorama = nil %}
+{% if panorama.first %}
+  {% assign single_panorama = panorama.first %}
+{% elsif panorama[0] %}
+  {% assign single_panorama = panorama[0] %}
+{% else %}
+  {% comment %} Try to extract first item by iterating {% endcomment %}
+  {% for pano in panorama limit:1 %}
+    {% assign single_panorama = pano %}
+  {% endfor %}
+{% endif %}
+
+{% comment %} If we didn't get a single panorama, maybe panorama itself is already a single item {% endcomment %}
+{% unless single_panorama %}
+  {% if panorama.url or panorama.panorama_url %}
+    {% assign single_panorama = panorama %}
+  {% endif %}
+{% endunless %}
+
+<!-- DEBUG: Original panorama: {{ panorama | json }} -->
+<!-- DEBUG: Extracted single_panorama: {{ single_panorama | json }} -->
+{% if single_panorama %}
+  <!-- DEBUG: Single panorama URL field: {{ single_panorama.url }} -->
+{% endif %}
+
+{% assign panorama = single_panorama %}
+
+{% comment %} Get panorama URL - check if panorama is a hash/object with url key {% endcomment %}
+{% assign panorama_url = '' %}
+
+{% comment %} Try accessing as hash first {% endcomment %}
+{% if panorama['url'] %}
+  {% assign panorama_url = panorama['url'] %}
+{% elsif panorama.url %}
+  {% if panorama.url.value %}
+    {% assign panorama_url = panorama.url.value %}
+  {% else %}
+    {% assign panorama_url = panorama.url %}
+  {% endif %}
+{% elsif panorama['panorama_url'] %}
+  {% assign panorama_url = panorama['panorama_url'] %}
+{% elsif panorama.panorama_url %}
+  {% if panorama.panorama_url.value %}
+    {% assign panorama_url = panorama.panorama_url.value %}
+  {% else %}
+    {% assign panorama_url = panorama.panorama_url %}
+  {% endif %}
+{% elsif panorama['embed_url'] %}
+  {% assign panorama_url = panorama['embed_url'] %}
+{% elsif panorama.embed_url %}
+  {% if panorama.embed_url.value %}
+    {% assign panorama_url = panorama.embed_url.value %}
+  {% else %}
+    {% assign panorama_url = panorama.embed_url %}
+  {% endif %}
+{% endif %}
+
+<!-- DEBUG: Final panorama_url: {{ panorama_url }} -->
+
+{% if panorama_url and panorama_url != blank %}
+  {% comment %} Get title and description - handle both formats {% endcomment %}
+  {% assign panorama_title = panorama.title.value | default: panorama.title | default: panorama.label.value | default: panorama.label | default: product.title %}
+  {% assign panorama_description = panorama.description.value | default: panorama.description %}
+  
+  <div class="wetu-panorama-fullscreen" id="panorama-section-{{ section.id }}">
+    {% comment %} Full-screen panorama iframe {% endcomment %}
+    <div class="wetu-panorama-fullscreen__container">
+      <iframe
+        src="{{ panorama_url }}"
+        title="{{ panorama_title | escape }}"
+        frameborder="0"
+        allowfullscreen
+        allow="accelerometer; gyroscope; xr-spatial-tracking; fullscreen"
+        loading="eager"
+        class="wetu-panorama-fullscreen__iframe"
+      ></iframe>
+    </div>
+    
+    {% comment %} Description centered at bottom - always show if available {% endcomment %}
+    {% if panorama_description != blank %}
+      <div class="wetu-panorama-fullscreen__bottom-description">
+        <p>{{ panorama_description }}</p>
+      </div>
+    {% endif %}
+  </div>
+{% else %}
+  {% comment %} Fallback message if no panorama found {% endcomment %}
+  <div class="wetu-panorama-fullscreen__no-content page-width">
+    <p>{{ section.settings.no_panorama_message | default: '360° panorama not available for this view.' }}</p>
+    <!-- DEBUG: No panorama URL found -->
+    <!-- DEBUG: Check browser console (View Source) for metafield data -->
+  </div>
+{% endif %}
+
+{% stylesheet %}
+  .wetu-panorama-fullscreen {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: #000;
+  }
+  
+  .wetu-panorama-fullscreen__container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+  
+  .wetu-panorama-fullscreen__iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+  }
+  
+  .wetu-panorama-fullscreen__bottom-description {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 800px;
+    padding: 1rem 2rem;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(10px);
+    border-radius: 8px;
+    z-index: 10;
+    text-align: center;
+  }
+  
+  .wetu-panorama-fullscreen__bottom-description p {
+    color: rgba(255,255,255,0.95);
+    font-size: 1rem;
+    line-height: 1.5;
+    margin: 0;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  }
+  
+  .wetu-panorama-fullscreen__no-content {
+    padding: 4rem 2rem;
+    text-align: center;
+    color: #666;
+  }
+  
+  @media (max-width: 768px) {
+    .wetu-panorama-fullscreen__bottom-description {
+      bottom: 10px;
+      max-width: calc(100% - 40px);
+      padding: 0.75rem 1rem;
+    }
+    
+    .wetu-panorama-fullscreen__bottom-description p {
+      font-size: 0.9rem;
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Wetu Panorama Full-Screen",
+  "tag": "section",
+  "class": "wetu-panorama-section",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Display Settings"
+    },
+    {
+      "type": "text",
+      "id": "no_panorama_message",
+      "label": "No panorama message",
+      "default": "360° panorama not available for this view.",
+      "info": "Message shown when panorama is not available"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Wetu Panorama Full-Screen"
+    }
+  ]
+}
+{% endschema %}
+

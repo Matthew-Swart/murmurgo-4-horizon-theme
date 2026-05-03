@@ -1,0 +1,475 @@
+{% comment %}
+  ============================================================================
+  WETU PROPERTY CARD SNIPPET
+  ============================================================================
+  
+  Displays property/accommodation details within day content.
+  
+  PARAMETERS:
+  - property: The Shopify product for this property
+  - leg: The leg metaobject with check-in/out times
+  - show_link: Boolean to show link to property page
+  - collapsible: Boolean for collapsible sections
+  
+  ============================================================================
+{% endcomment %}
+
+{% assign property_name = property.title %}
+{% assign property_description = property.description | strip_html | truncatewords: 40 %}
+{% assign position = property.metafields.wetu.position.value %}
+{% assign features = property.metafields.wetu.features.value %}
+{% assign check_in = leg.check_in_time.value %}
+{% assign check_out = leg.check_out_time.value %}
+{% assign room_basis = leg.periods.value.first.room_basis.value %}
+
+<div class="wetu-property-card">
+  {% comment %} Property Header {% endcomment %}
+  <div class="property-card__header">
+    <div class="property-card__title-group">
+      <h3 class="property-card__title">
+        {% if show_link %}
+          <a href="{{ property.url }}">{{ property_name }}</a>
+        {% else %}
+          {{ property_name }}
+        {% endif %}
+      </h3>
+      
+      {% comment %} Star Rating (if available) {% endcomment %}
+      {% assign star_rating = property.metafields.wetu.star_rating.value | default: features.star_rating %}
+      {% if star_rating and star_rating > 0 %}
+        <div class="property-card__rating" aria-label="{{ star_rating }} stars">
+          {% for i in (1..5) %}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="{% if i <= star_rating %}currentColor{% else %}none{% endif %}" stroke="currentColor" stroke-width="2">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+    
+    {% comment %} Location {% endcomment %}
+    {% if position.destination != blank or position.region != blank %}
+      <p class="property-card__location">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+          <circle cx="12" cy="10" r="3"/>
+        </svg>
+        <span>
+          {{ position.destination | default: position.region }}{% if position.country != blank %}, {{ position.country }}{% endif %}
+        </span>
+      </p>
+    {% endif %}
+  </div>
+
+  {% comment %} Description {% endcomment %}
+  {% if property_description != blank %}
+    <div class="property-card__description">
+      <p>{{ property_description }}</p>
+    </div>
+  {% endif %}
+
+  {% comment %} Why We Love This {% endcomment %}
+  {% assign highlights = features.highlights | default: features.property_highlights %}
+  {% if highlights and highlights.size > 0 %}
+    <div class="property-card__highlights">
+      <h4 class="highlights__title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+        </svg>
+        Why We Love This
+      </h4>
+      <ul class="highlights__list">
+        {% for highlight in highlights limit: 4 %}
+          <li>{{ highlight }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  {% comment %} Stay Details {% endcomment %}
+  <div class="property-card__stay-details">
+    {% if room_basis != blank %}
+      <div class="stay-detail">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
+          <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+          <line x1="6" y1="1" x2="6" y2="4"/>
+          <line x1="10" y1="1" x2="10" y2="4"/>
+          <line x1="14" y1="1" x2="14" y2="4"/>
+        </svg>
+        <span class="stay-detail__label">Meal Plan</span>
+        <span class="stay-detail__value">{{ room_basis }}</span>
+      </div>
+    {% endif %}
+    
+    {% if check_in != blank %}
+      <div class="stay-detail">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+          <polyline points="10 17 15 12 10 7"/>
+          <line x1="15" y1="12" x2="3" y2="12"/>
+        </svg>
+        <span class="stay-detail__label">Check-in</span>
+        <span class="stay-detail__value">{{ check_in }}</span>
+      </div>
+    {% endif %}
+    
+    {% if check_out != blank %}
+      <div class="stay-detail">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+        <span class="stay-detail__label">Check-out</span>
+        <span class="stay-detail__value">{{ check_out }}</span>
+      </div>
+    {% endif %}
+  </div>
+
+  {% comment %} Collapsible Details {% endcomment %}
+  {% if collapsible %}
+    {% comment %} Room Types {% endcomment %}
+    {% assign room_types = features.room_types | default: features.accommodation_types %}
+    {% if room_types and room_types.size > 0 %}
+      <details class="property-card__details">
+        <summary class="details__toggle">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+          <span>Room Types</span>
+          <svg class="toggle-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M6 9l6 6 6-6"/>
+          </svg>
+        </summary>
+        <div class="details__content">
+          <ul class="feature-list">
+            {% for room in room_types %}
+              <li>{{ room }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </details>
+    {% endif %}
+
+    {% comment %} Amenities {% endcomment %}
+    {% assign amenities = features.property_facilities | default: features.facilities %}
+    {% if amenities and amenities.size > 0 %}
+      <details class="property-card__details">
+        <summary class="details__toggle">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          <span>Amenities & Facilities</span>
+          <svg class="toggle-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M6 9l6 6 6-6"/>
+          </svg>
+        </summary>
+        <div class="details__content">
+          <div class="amenities-grid">
+            {% for amenity in amenities limit: 12 %}
+              <span class="amenity-tag">{{ amenity }}</span>
+            {% endfor %}
+          </div>
+        </div>
+      </details>
+    {% endif %}
+
+    {% comment %} Dining {% endcomment %}
+    {% assign dining = features.dining | default: features.restaurants %}
+    {% if dining and dining.size > 0 %}
+      <details class="property-card__details">
+        <summary class="details__toggle">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
+            <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+            <line x1="6" y1="1" x2="6" y2="4"/>
+            <line x1="10" y1="1" x2="10" y2="4"/>
+            <line x1="14" y1="1" x2="14" y2="4"/>
+          </svg>
+          <span>Dining</span>
+          <svg class="toggle-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M6 9l6 6 6-6"/>
+          </svg>
+        </summary>
+        <div class="details__content">
+          <ul class="feature-list">
+            {% for item in dining %}
+              <li>{{ item }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </details>
+    {% endif %}
+  {% endif %}
+
+  {% comment %} Property Link {% endcomment %}
+  {% if show_link %}
+    <div class="property-card__footer">
+      <a href="{{ property.url }}" class="property-card__link">
+        <span>View Full Property Details</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+      </a>
+    </div>
+  {% endif %}
+</div>
+
+<style>
+  .wetu-property-card {
+    background: color-mix(in srgb, var(--color-foreground) 3%, transparent);
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+
+  /* Header */
+  .property-card__header {
+    margin-bottom: 16px;
+  }
+
+  .property-card__title-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+
+  .property-card__title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--color-foreground);
+  }
+
+  .property-card__title a {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.2s ease;
+  }
+
+  .property-card__title a:hover {
+    color: var(--color-primary);
+  }
+
+  .property-card__rating {
+    display: flex;
+    gap: 2px;
+    color: #f59e0b;
+  }
+
+  .property-card__location {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-size: 0.9rem;
+    color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+  }
+
+  .property-card__location svg {
+    flex-shrink: 0;
+    color: var(--color-primary);
+  }
+
+  /* Description */
+  .property-card__description {
+    margin-bottom: 20px;
+  }
+
+  .property-card__description p {
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: color-mix(in srgb, var(--color-foreground) 75%, transparent);
+  }
+
+  /* Highlights */
+  .property-card__highlights {
+    margin-bottom: 20px;
+    padding: 16px;
+    background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+    border-radius: 12px;
+  }
+
+  .highlights__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 12px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--color-primary);
+  }
+
+  .highlights__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .highlights__list li {
+    position: relative;
+    padding-left: 20px;
+    font-size: 0.9rem;
+    color: var(--color-foreground);
+  }
+
+  .highlights__list li::before {
+    content: '✦';
+    position: absolute;
+    left: 0;
+    color: var(--color-primary);
+    font-size: 0.7rem;
+  }
+
+  /* Stay Details */
+  .property-card__stay-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 20px;
+    padding: 16px;
+    background: color-mix(in srgb, var(--color-foreground) 5%, transparent);
+    border-radius: 12px;
+  }
+
+  .stay-detail {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 140px;
+  }
+
+  .stay-detail svg {
+    flex-shrink: 0;
+    color: var(--color-primary);
+  }
+
+  .stay-detail__label {
+    font-size: 0.75rem;
+    color: color-mix(in srgb, var(--color-foreground) 50%, transparent);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .stay-detail__value {
+    margin-left: auto;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--color-foreground);
+  }
+
+  /* Collapsible Details */
+  .property-card__details {
+    border-top: 1px solid var(--color-border);
+  }
+
+  .details__toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 16px 0;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--color-foreground);
+    list-style: none;
+  }
+
+  .details__toggle::-webkit-details-marker {
+    display: none;
+  }
+
+  .details__toggle svg:first-child {
+    color: var(--color-primary);
+  }
+
+  .details__toggle span {
+    flex: 1;
+  }
+
+  .toggle-chevron {
+    transition: transform 0.2s ease;
+    color: color-mix(in srgb, var(--color-foreground) 40%, transparent);
+  }
+
+  .property-card__details[open] .toggle-chevron {
+    transform: rotate(180deg);
+  }
+
+  .details__content {
+    padding-bottom: 16px;
+  }
+
+  .feature-list {
+    margin: 0;
+    padding: 0 0 0 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .feature-list li {
+    font-size: 0.9rem;
+    color: color-mix(in srgb, var(--color-foreground) 75%, transparent);
+  }
+
+  .amenities-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .amenity-tag {
+    padding: 4px 10px;
+    background: color-mix(in srgb, var(--color-foreground) 8%, transparent);
+    border-radius: 6px;
+    font-size: 0.8rem;
+    color: color-mix(in srgb, var(--color-foreground) 70%, transparent);
+  }
+
+  /* Footer */
+  .property-card__footer {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .property-card__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--color-primary);
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: gap 0.2s ease;
+  }
+
+  .property-card__link:hover {
+    gap: 12px;
+  }
+
+  @media screen and (min-width: 750px) {
+    .stay-detail {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 4px;
+    }
+
+    .stay-detail__value {
+      margin-left: 0;
+    }
+  }
+</style>
+

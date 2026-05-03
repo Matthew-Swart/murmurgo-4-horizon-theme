@@ -1,0 +1,160 @@
+{% comment %}
+  ============================================================================
+  WETU RICH TEXT RENDERER
+  ============================================================================
+  
+  Renders rich text content from WETU metaobject fields.
+  Handles both direct rich text objects and Ruby hash string representations.
+  
+  USAGE:
+    {% render 'wetu-render-richtext', content: field.value %}
+    {% render 'wetu-render-richtext', content: field.value, class: 'custom-class' %}
+  
+  PARAMETERS:
+    - content     : The rich text content (can be object or string)
+    - class       : Optional CSS class for wrapper
+    - tag         : Optional wrapper tag (default: div)
+  ============================================================================
+{% endcomment %}
+
+{% liquid
+  assign wrapper_class = class | default: ''
+  assign wrapper_tag = tag | default: 'div'
+  assign render_content = false
+  assign is_richtext = false
+  assign text_content = nil
+%}
+
+{% comment %} Check content type {% endcomment %}
+{% if content != blank %}
+  {% comment %} Check if it's a direct rich text object with children {% endcomment %}
+  {% if content.type == 'root' and content.children %}
+    {% assign is_richtext = true %}
+    {% assign richtext_obj = content %}
+    {% assign render_content = true %}
+  {% elsif content.children %}
+    {% assign is_richtext = true %}
+    {% assign richtext_obj = content %}
+    {% assign render_content = true %}
+  {% elsif content contains '"type"=>"root"' or content contains '{"type"=>' or content contains '"type"=>' %}
+    {% comment %} Ruby hash string representation - extract list items or text {% endcomment %}
+    {% assign is_richtext = false %}
+    {% comment %} Check if it's a list structure {% endcomment %}
+    {% if content contains '"listType"=>"unordered"' or content contains '"listType"=>"ordered"' %}
+      {% comment %} Extract list items from Ruby hash format {% endcomment %}
+      {% comment %} First, isolate the list item values by removing wrapper structure {% endcomment %}
+      {% assign temp_content = content 
+        | replace: '{"type"=>"root", "children"=>[{"type"=>"list", "listType"=>"unordered", "children"=>[', ''
+        | replace: '{"type"=>"root", "children"=>[{"type"=>"list", "listType"=>"ordered", "children"=>[', ''
+      %}
+      {% comment %} Replace list-item wrappers with a delimiter we can split on {% endcomment %}
+      {% assign temp_content = temp_content 
+        | replace: '{"type"=>"list-item", "children"=>[{"type"=>"text", "value"=>"', '|||ITEM|||'
+        | replace: '"}]}', ''
+        | replace: ']}]}', ''
+        | replace: ', |||ITEM|||', '|||ITEM|||'
+        | replace: '&nbsp;', ' '
+        | replace: '&amp;', '&'
+      %}
+      {% assign list_items = temp_content | split: '|||ITEM|||' %}
+      {% capture text_content %}<ul>{% for item in list_items %}{% assign clean_item = item | strip %}{% if clean_item != blank and clean_item != ']' and clean_item != '[' and clean_item != ', ' %}<li>{{ clean_item }}</li>{% endif %}{% endfor %}</ul>{% endcapture %}
+      {% assign render_content = true %}
+    {% else %}
+      {% comment %} Simple paragraph extraction {% endcomment %}
+      {% assign text_content = content 
+        | replace: '{"type"=>"root", "children"=>[{"type"=>"paragraph", "children"=>[{"type"=>"text", "value"=>"', ''
+        | replace: '"}]}]}', ''
+        | replace: '&nbsp;', ' '
+        | replace: '&amp;', '&'
+      %}
+      {% if text_content != content %}
+        {% assign render_content = true %}
+      {% endif %}
+    {% endif %}
+  {% elsif content contains '<' and content contains '>' %}
+    {% comment %} Already HTML {% endcomment %}
+    {% assign text_content = content %}
+    {% assign render_content = true %}
+  {% else %}
+    {% comment %} Plain text {% endcomment %}
+    {% assign text_content = content %}
+    {% assign render_content = true %}
+  {% endif %}
+{% endif %}
+
+{% comment %} Render output {% endcomment %}
+{% if render_content %}
+  {% if wrapper_class != blank %}
+    <{{ wrapper_tag }} class="{{ wrapper_class }}">
+  {% else %}
+    <{{ wrapper_tag }}>
+  {% endif %}
+  
+  {% if is_richtext and richtext_obj %}
+    {% for child in richtext_obj.children %}
+      {% case child.type %}
+        {% when 'paragraph' %}
+          <p>
+            {%- for text_node in child.children -%}
+              {%- if text_node.type == 'text' -%}
+                {{ text_node.value | replace: '&nbsp;', ' ' | replace: '&amp;', '&' }}
+              {%- elsif text_node.type == 'link' -%}
+                <a href="{{ text_node.url }}" target="_blank" rel="noopener">
+                  {%- for link_child in text_node.children -%}
+                    {{ link_child.value }}
+                  {%- endfor -%}
+                </a>
+              {%- elsif text_node.type == 'bold' -%}
+                <strong>
+                  {%- for bold_child in text_node.children -%}
+                    {{ bold_child.value }}
+                  {%- endfor -%}
+                </strong>
+              {%- elsif text_node.type == 'italic' -%}
+                <em>
+                  {%- for italic_child in text_node.children -%}
+                    {{ italic_child.value }}
+                  {%- endfor -%}
+                </em>
+              {%- endif -%}
+            {%- endfor -%}
+          </p>
+        {% when 'list' %}
+          {% if child.listType == 'ordered' %}
+            <ol>
+          {% else %}
+            <ul>
+          {% endif %}
+            {% for list_item in child.children %}
+              <li>
+                {%- for item_child in list_item.children -%}
+                  {%- if item_child.type == 'text' -%}
+                    {{ item_child.value | replace: '&nbsp;', ' ' | replace: '&amp;', '&' }}
+                  {%- elsif item_child.type == 'paragraph' -%}
+                    {%- for para_child in item_child.children -%}
+                      {{ para_child.value | replace: '&nbsp;', ' ' | replace: '&amp;', '&' }}
+                    {%- endfor -%}
+                  {%- endif -%}
+                {%- endfor -%}
+              </li>
+            {% endfor %}
+          {% if child.listType == 'ordered' %}
+            </ol>
+          {% else %}
+            </ul>
+          {% endif %}
+        {% when 'heading' %}
+          {% assign heading_level = child.level | default: 3 %}
+          <h{{ heading_level }}>
+            {%- for text_node in child.children -%}
+              {{ text_node.value }}
+            {%- endfor -%}
+          </h{{ heading_level }}>
+      {% endcase %}
+    {% endfor %}
+  {% else %}
+    {{ text_content }}
+  {% endif %}
+  
+  </{{ wrapper_tag }}>
+{% endif %}

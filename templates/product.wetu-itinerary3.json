@@ -1,0 +1,385 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "hero": {
+      "type": "hero",
+      "blocks": {
+        "title_group": {
+          "type": "group",
+          "name": "t:names.group",
+          "settings": {
+            "content_direction": "column",
+            "vertical_on_mobile": true,
+            "horizontal_alignment": "flex-start",
+            "vertical_alignment": "flex-end",
+            "align_baseline": false,
+            "horizontal_alignment_flex_direction_column": "flex-start",
+            "vertical_alignment_flex_direction_column": "flex-end",
+            "gap": 24,
+            "width": "fill",
+            "width_mobile": "fill",
+            "height": "fit",
+            "inherit_color_scheme": true,
+            "background_media": "none",
+            "border": "none",
+            "padding-block-start": 0,
+            "padding-block-end": 0,
+            "padding-inline-start": 0,
+            "padding-inline-end": 0
+          },
+          "blocks": {
+            "content_row": {
+              "type": "group",
+              "name": "t:names.group",
+              "settings": {
+                "content_direction": "row",
+                "vertical_on_mobile": true,
+                "horizontal_alignment": "space-between",
+                "vertical_alignment": "flex-end",
+                "align_baseline": true,
+                "horizontal_alignment_flex_direction_column": "flex-start",
+                "vertical_alignment_flex_direction_column": "center",
+                "gap": 24,
+                "width": "fill",
+                "width_mobile": "fill",
+                "height": "fit",
+                "inherit_color_scheme": true,
+                "background_media": "none",
+                "border": "none"
+              },
+              "blocks": {
+                "text_column": {
+                  "type": "group",
+                  "name": "t:names.group",
+                  "settings": {
+                    "content_direction": "column",
+                    "horizontal_alignment_flex_direction_column": "flex-start",
+                    "vertical_alignment_flex_direction_column": "center",
+                    "gap": 8,
+                    "width": "custom",
+                    "custom_width": 70,
+                    "width_mobile": "fill",
+                    "height": "fit",
+                    "inherit_color_scheme": true,
+                    "background_media": "none",
+                    "border": "none"
+                  },
+                  "blocks": {
+                    "tagline": {
+                      "type": "text",
+                      "name": "t:names.heading",
+                      "settings": {
+                        "text": "<p><em>Your Journey Awaits</em></p>",
+                        "width": "100%",
+                        "max_width": "normal",
+                        "alignment": "left",
+                        "type_preset": "h6",
+                        "font": "var(--font-accent--family)",
+                        "font_size": "1rem",
+                        "line_height": "normal",
+                        "letter_spacing": "0.1em",
+                        "case": "uppercase",
+                        "wrap": "pretty",
+                        "color": "var(--color-foreground)",
+                        "background": false,
+                        "padding-block-start": 0,
+                        "padding-block-end": 0,
+                        "padding-inline-start": 0,
+                        "padding-inline-end": 0
+                      }
+                    },
+                    "title": {
+                      "type": "text",
+                      "name": "t:names.heading",
+                      "settings": {
+                        "text": "<h1>{{ product.title }}</h1>",
+                        "width": "100%",
+                        "max_width": "normal",
+                        "alignment": "left",
+                        "type_preset": "h1",
+                        "font": "var(--font-heading--family)",
+                        "font_size": "1rem",
+                        "line_height": "1.1",
+                        "letter_spacing": "-0.02em",
+                        "case": "none",
+                        "wrap": "pretty",
+                        "color": "var(--color-foreground)",
+                        "background": false,
+                        "padding-block-start": 0,
+                        "padding-block-end": 0,
+                        "padding-inline-start": 0,
+                        "padding-inline-end": 0
+                      }
+                    },
+                    "client": {
+                      "type": "custom-liquid",
+                      "name": "Client Name",
+                      "settings": {
+                        "custom_liquid": "{% assign itinerary = product.metafields.wetu.itinerary_metaobject.value %}{% if itinerary.client_name.value != blank %}<p style=\"font-size: 1.1rem; margin-top: 8px;\">Prepared for <strong>{{ itinerary.client_name.value }}</strong></p>{% endif %}"
+                      }
+                    }
+                  },
+                  "block_order": [
+                    "tagline",
+                    "title",
+                    "client"
+                  ]
+                },
+                "info_column": {
+                  "type": "group",
+                  "name": "t:names.group",
+                  "settings": {
+                    "content_direction": "row",
+                    "horizontal_alignment": "flex-end",
+                    "vertical_alignment": "center",
+                    "gap": 12,
+                    "width": "fit",
+                    "width_mobile": "fill",
+                    "height": "fit",
+                    "inherit_color_scheme": true,
+                    "background_media": "none",
+                    "border": "none"
+                  },
+                  "blocks": {
+                    "duration_badge": {
+                      "type": "text",
+                      "name": "t:names.text",
+                      "settings": {
+                        "text": "<p>{{ product.metafields.wetu.itinerary_days.value }} Days</p>",
+                        "width": "fit-content",
+                        "max_width": "none",
+                        "alignment": "center",
+                        "type_preset": "rte",
+                        "font": "var(--font-body--family)",
+                        "font_size": "0.9rem",
+                        "line_height": "normal",
+                        "background": true,
+                        "background_color": "#ffffff20",
+                        "corner_radius": 24,
+                        "padding-block-start": 10,
+                        "padding-block-end": 10,
+                        "padding-inline-start": 20,
+                        "padding-inline-end": 20
+                      }
+                    },
+                    "type_badge": {
+                      "type": "text",
+                      "name": "t:names.text",
+                      "settings": {
+                        "text": "<p>{{ product.metafields.wetu.itinerary_type.value }}</p>",
+                        "width": "fit-content",
+                        "max_width": "none",
+                        "alignment": "center",
+                        "type_preset": "rte",
+                        "font": "var(--font-body--family)",
+                        "font_size": "0.9rem",
+                        "line_height": "normal",
+                        "background": true,
+                        "background_color": "#ffffff20",
+                        "corner_radius": 24,
+                        "padding-block-start": 10,
+                        "padding-block-end": 10,
+                        "padding-inline-start": 20,
+                        "padding-inline-end": 20
+                      }
+                    }
+                  },
+                  "block_order": [
+                    "duration_badge",
+                    "type_badge"
+                  ]
+                }
+              },
+              "block_order": [
+                "text_column",
+                "info_column"
+              ]
+            },
+            "scroll_indicator": {
+              "type": "custom-liquid",
+              "name": "Scroll Indicator",
+              "settings": {
+                "custom_liquid": "{% render 'wetu-scroll-indicator' %}"
+              }
+            }
+          },
+          "block_order": [
+            "content_row",
+            "scroll_indicator"
+          ]
+        }
+      },
+      "block_order": [
+        "title_group"
+      ],
+      "settings": {
+        "media_type_1": "video",
+        "video_1": "{{ product.metafields.wetu.hero_video.value }}",
+        "media_type_2": "image",
+        "image_2": "{{ product.featured_image }}",
+        "stack_media_on_mobile": false,
+        "custom_mobile_media": false,
+        "content_direction": "column",
+        "vertical_on_mobile": true,
+        "horizontal_alignment_flex_direction_column": "center",
+        "vertical_alignment_flex_direction_column": "flex-end",
+        "gap": 16,
+        "section_width": "page-width",
+        "section_height": "full-screen",
+        "color_scheme": "scheme-5",
+        "toggle_overlay": true,
+        "overlay_color": "#00000050",
+        "overlay_style": "gradient",
+        "gradient_direction": "to top",
+        "blurred_reflection": false,
+        "padding-block-start": 40,
+        "padding-block-end": 60
+      }
+    },
+    "journey_overview": {
+      "type": "wetu-journey-overview",
+      "settings": {
+        "color_scheme": "scheme-1",
+        "heading": "Your Journey at a Glance",
+        "layout": "timeline",
+        "sticky_on_desktop": true,
+        "padding_top": 0,
+        "padding_bottom": 60
+      }
+    },
+    "trip_overview": {
+      "type": "wetu-trip-overview",
+      "settings": {
+        "color_scheme": "scheme-1",
+        "show_summary": true,
+        "show_highlights": true,
+        "show_quick_facts": true,
+        "padding_top": 60,
+        "padding_bottom": 60
+      }
+    },
+    "interactive_map": {
+      "type": "wetu-interactive-map",
+      "settings": {
+        "color_scheme": "scheme-1",
+        "show_header": true,
+        "heading": "Your Journey Map",
+        "subheading": "Explore all destinations and routes on your itinerary",
+        "map_height": 60,
+        "map_style": "outdoors-v12",
+        "animate_route": false,
+        "show_fullscreen_button": true,
+        "show_legend": true,
+        "show_sidebar": true,
+        "padding_top": 60,
+        "padding_bottom": 60
+      }
+    },
+    "day_by_day": {
+      "type": "wetu-day-by-day-entities",
+      "settings": {
+        "color_scheme": "scheme-1",
+        "color_scheme_alt": "scheme-5",
+        "show_header": true,
+        "subheading": "Your Journey",
+        "heading": "Day by Day",
+        "show_thumbnails_mobile": true,
+        "show_book_cta": true,
+        "padding_top": 60,
+        "padding_bottom": 60
+      }
+    },
+    "all_accommodations": {
+      "type": "wetu-all-accommodations",
+      "settings": {
+        "color_scheme": "scheme-5",
+        "subheading": "Your Accommodations",
+        "heading": "Where You'll Stay",
+        "layout": "grid",
+        "columns_desktop": 2,
+        "show_gallery_button": true,
+        "show_video_button": true,
+        "show_panorama_button": true,
+        "padding_top": 80,
+        "padding_bottom": 80
+      }
+    },
+    "all_transfers": {
+      "type": "wetu-all-transfers",
+      "settings": {
+        "color_scheme": "scheme-1",
+        "subheading": "Your Journey",
+        "heading": "Getting Around",
+        "group_by_type": false,
+        "show_map_link": true,
+        "show_driving_directions": true,
+        "padding_top": 60,
+        "padding_bottom": 60
+      }
+    },
+    "media_gallery": {
+      "type": "wetu-media-gallery",
+      "settings": {
+        "color_scheme": "scheme-5",
+        "subheading": "Explore",
+        "heading": "Trip Gallery",
+        "layout": "masonry",
+        "columns": 3,
+        "initial_count": 12,
+        "show_tabs": true,
+        "padding_top": 80,
+        "padding_bottom": 80
+      }
+    },
+    "contact": {
+      "type": "wetu-contact",
+      "settings": {
+        "color_scheme": "scheme-1",
+        "subheading": "Need Help?",
+        "heading": "Questions? We're Here to Help",
+        "show_emergency": true,
+        "padding_top": 60,
+        "padding_bottom": 60
+      }
+    },
+    "booking": {
+      "type": "wetu-itinerary-product-details",
+      "settings": {
+        "color_scheme": "scheme-5",
+        "show_heading": true,
+        "heading": "Book This Journey",
+        "show_subtitle": true,
+        "subtitle": "Secure your place on this extraordinary adventure",
+        "show_price_per_person": true,
+        "price_note": "per person sharing",
+        "show_tax_info": false,
+        "show_quantity_selector": true,
+        "add_to_cart_text": "Reserve Now",
+        "show_dynamic_checkout": true,
+        "show_installments": true,
+        "show_additional_info": true,
+        "info_text": "Prices are subject to availability. A deposit may be required to secure your booking. Full payment due 60 days before departure."
+      }
+    }
+  },
+  "order": [
+    "hero",
+    "journey_overview",
+    "trip_overview",
+    "interactive_map",
+    "day_by_day",
+    "all_accommodations",
+    "all_transfers",
+    "media_gallery",
+    "contact",
+    "booking"
+  ]
+}

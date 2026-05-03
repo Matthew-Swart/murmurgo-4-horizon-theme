@@ -1,0 +1,1343 @@
+{% comment %}
+  ============================================================================
+  WETU ITINERARY NEW HERO
+  ============================================================================
+  
+  Full-screen immersive hero with:
+  - Video/parallax image background
+  - Dynamic badges (duration, lodges)
+  - Destination pills
+  - Floating booking widget
+  - Story/Map view toggle
+  
+  ============================================================================
+{% endcomment %}
+
+{% comment %} Print Stylesheet {% endcomment %}
+{{ 'wetu-itinerary-print.css' | asset_url | stylesheet_tag: media: 'print' }}
+
+{% include 'wetu-itinerary-data' %}
+
+{% comment %} Hero Media {% endcomment %}
+{%- liquid
+  assign hero_video_url = nil
+  assign hero_image = nil
+  assign hero_external_image_url = nil
+  assign hero_media_aspect_ratio = nil
+  assign video_file = nil
+  assign has_video = false
+
+  assign wetu_video_metafield = product.metafields.wetu.hero_video
+  if wetu_video_metafield != blank and wetu_video_metafield.value != blank
+    assign video_file = wetu_video_metafield.value
+    if video_file.sources
+      for source in video_file.sources
+        if source.format == 'mp4'
+          assign hero_video_url = source.url
+          break
+        endif
+      endfor
+      if hero_video_url == blank and video_file.sources.size > 0
+        assign hero_video_url = video_file.sources[0].url
+      endif
+    elsif video_file.url
+      assign hero_video_url = video_file.url
+    else
+      assign hero_video_url = video_file | file_url
+    endif
+    if hero_video_url != blank
+      assign has_video = true
+    endif
+  elsif section.settings.custom_video_url != blank
+    assign hero_video_url = section.settings.custom_video_url
+    assign has_video = true
+  endif
+
+  if section.settings.custom_image != blank
+    assign hero_image = section.settings.custom_image
+  else
+    assign hero_image = product.featured_image
+  endif
+
+  if hero_image == blank
+    assign itinerary_images = wetu_itinerary.images.value | default: wetu_itinerary.images
+    if itinerary_images != blank and itinerary_images.size > 0
+      assign first_itinerary_image = itinerary_images[0]
+      assign hero_external_image_url = first_itinerary_image.url.value | default: first_itinerary_image.url | default: first_itinerary_image
+    endif
+  endif
+
+  assign section_height = section.settings.section_height | default: 100
+  assign use_natural_media_ratio = section.settings.use_natural_media_ratio
+
+  if has_video and video_file != blank
+    assign hero_media_aspect_ratio = video_file.aspect_ratio
+    if hero_media_aspect_ratio == blank and video_file.preview_image != blank
+      assign hero_media_aspect_ratio = video_file.preview_image.aspect_ratio
+    endif
+  endif
+
+  if hero_media_aspect_ratio == blank and hero_image != blank
+    assign hero_media_aspect_ratio = hero_image.aspect_ratio
+  endif
+
+  if hero_media_aspect_ratio == blank
+    assign hero_media_aspect_ratio = 1.7777777778
+  endif
+-%}
+
+{% comment %} Extract data {% endcomment %}
+{%- liquid
+  assign itinerary_title = product.title
+  assign total_days = wetu_total_days | default: product.metafields.wetu.itinerary_days.value | default: 0
+  assign total_nights = wetu_total_nights | default: 0
+  if total_nights == 0 and total_days > 0
+    assign total_nights = total_days | minus: 1
+  endif
+
+  # Client personalization
+  assign client_name = wetu_itinerary.client_name.value
+  assign has_client = false
+  if client_name != blank and client_name != 'Valued Traveler' and client_name != 'Guest' and client_name != 'Valued Guest'
+    assign has_client = true
+  endif
+
+  # Count unique accommodations
+  assign accommodation_count = 0
+  assign seen_accommodations = ''
+  for leg in wetu_legs
+    assign leg_type = leg.type.value | default: 'Standard'
+    assign leg_nights = leg.nights.value | default: 0
+    assign acc_id = leg.content_entity_id.value
+    if leg_type != 'Departure' and leg_nights > 0 and acc_id != blank
+      unless seen_accommodations contains acc_id
+        assign accommodation_count = accommodation_count | plus: 1
+        assign seen_accommodations = seen_accommodations | append: acc_id | append: ','
+      endunless
+    endif
+  endfor
+
+  # Build destination list
+  assign destination_names = ''
+  assign seen_destinations = ''
+  for leg in wetu_legs
+    assign leg_type = leg.type.value | default: 'Standard'
+    if leg_type != 'Departure'
+      assign dest_id = leg.destination_content_entity_id.value
+      if dest_id != blank
+        unless seen_destinations contains dest_id
+          assign seen_destinations = seen_destinations | append: dest_id | append: ','
+          # Find destination product
+          for dest_product in wetu_destination_products
+            assign dest_pin_id = dest_product.metafields.wetu.pin_id.value
+            if dest_pin_id == dest_id
+              assign dest_name = dest_product.title
+              if destination_names != ''
+                assign destination_names = destination_names | append: '|||'
+              endif
+              assign destination_names = destination_names | append: dest_name
+              break
+            endif
+          endfor
+        endunless
+      endif
+    endif
+  endfor
+  assign destinations_array = destination_names | split: '|||'
+
+  # Get price
+  assign selected_variant = product.selected_or_first_available_variant
+  assign base_price = selected_variant.price | money_without_trailing_zeros
+  assign tagline = product.metafields.wetu.tagline.value
+-%}
+
+<section
+  class="itin-new-hero color-{{ section.settings.color_scheme }}{% if use_natural_media_ratio %} itin-new-hero--natural-media{% endif %}"
+  id="hero"
+  aria-label="Itinerary overview"
+  style="--section-height: {{ section_height }}vh; --hero-media-aspect-ratio: {{ hero_media_aspect_ratio }};"
+>
+  {% comment %} Background Media {% endcomment %}
+  <div class="itin-new-hero__media">
+    {% if has_video %}
+      <video 
+        class="itin-new-hero__video"
+        autoplay 
+        muted 
+        loop 
+        playsinline
+        preload="auto"
+      >
+        <source src="{{ hero_video_url }}" type="video/mp4">
+      </video>
+    {% elsif hero_image %}
+      <img 
+        class="itin-new-hero__image"
+        src="{{ hero_image | image_url: width: 1920 }}"
+        srcset="{{ hero_image | image_url: width: 640 }} 640w,
+                {{ hero_image | image_url: width: 1024 }} 1024w,
+                {{ hero_image | image_url: width: 1920 }} 1920w"
+        sizes="100vw"
+        alt="{{ itinerary_title }}"
+        loading="eager"
+        fetchpriority="high"
+      >
+    {% elsif hero_external_image_url != blank %}
+      <img
+        class="itin-new-hero__image"
+        src="{{ hero_external_image_url }}"
+        sizes="100vw"
+        alt="{{ itinerary_title }}"
+        loading="eager"
+        fetchpriority="high"
+      >
+    {% else %}
+      <div class="itin-new-hero__placeholder"></div>
+    {% endif %}
+    <div class="itin-new-hero__overlay"></div>
+  </div>
+
+  {% comment %} View Toggle {% endcomment %}
+  {% if section.settings.show_view_toggle %}
+    <div class="itin-new-hero__view-toggle">
+      <button class="itin-new-hero__toggle-btn itin-new-hero__toggle-btn--active" data-view="story">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+        </svg>
+        <span>Story</span>
+      </button>
+      <a href="{{ product.url }}?view=wetu-itinerary-map" class="itin-new-hero__toggle-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
+          <line x1="8" y1="2" x2="8" y2="18"/>
+          <line x1="16" y1="6" x2="16" y2="22"/>
+        </svg>
+        <span>Map</span>
+      </a>
+    </div>
+  {% endif %}
+
+  {% comment %} Main Content {% endcomment %}
+  <div class="itin-new-hero__content page-width">
+    <div class="itin-new-hero__grid">
+      
+      {% comment %} Left: Info {% endcomment %}
+      <div class="itin-new-hero__info">
+        {% comment %} Badges {% endcomment %}
+        <div class="itin-new-hero__badges">
+          <span class="itin-new-hero__badge itin-new-hero__badge--primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+            {{ total_days }} Days / {{ total_nights }} Nights
+          </span>
+          {% if accommodation_count > 0 %}
+            <span class="itin-new-hero__badge">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                <polyline points="9 22 9 12 15 12 15 22"/>
+              </svg>
+              {{ accommodation_count }} {% if accommodation_count == 1 %}Lodge{% else %}Lodges{% endif %}
+            </span>
+          {% endif %}
+        </div>
+
+        {% comment %} Client Personalization {% endcomment %}
+        {% if has_client %}
+          <p class="itin-new-hero__client">
+            <span class="itin-new-hero__client-label">Prepared for</span>
+            <span class="itin-new-hero__client-name">{{ client_name }}</span>
+          </p>
+        {% endif %}
+
+        {% comment %} Title {% endcomment %}
+        <h1 class="itin-new-hero__title">{{ itinerary_title }}</h1>
+
+        {% comment %} Destination Pills {% endcomment %}
+        {% if section.settings.show_destination_pills and destinations_array.size > 0 %}
+          <div class="itin-new-hero__destinations">
+            {% for dest in destinations_array limit: 6 %}
+              <span class="itin-new-hero__dest-pill">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                  <circle cx="12" cy="12" r="4"/>
+                </svg>
+                {{ dest }}
+              </span>
+            {% endfor %}
+            {% if destinations_array.size > 6 %}
+              <span class="itin-new-hero__dest-pill itin-new-hero__dest-pill--more">
+                +{{ destinations_array.size | minus: 6 }} more
+              </span>
+            {% endif %}
+          </div>
+        {% endif %}
+
+        {% comment %} Tagline {% endcomment %}
+        {% if tagline != blank %}
+          <p class="itin-new-hero__tagline">{{ tagline }}</p>
+        {% endif %}
+
+        {% comment %} Scroll CTA {% endcomment %}
+        <a href="#journey" class="itin-new-hero__scroll-cta">
+          <span>Explore Journey</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 5v14M5 12l7 7 7-7"/>
+          </svg>
+        </a>
+      </div>
+
+  {% comment %} Print Button {% endcomment %}
+  {% if section.settings.show_print_button %}
+    <button class="itin-new-hero__print-btn" onclick="window.print()" aria-label="Print itinerary">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="6 9 6 2 18 2 18 9"/>
+        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+        <rect x="6" y="14" width="12" height="8"/>
+      </svg>
+      <span>Print / Save PDF</span>
+    </button>
+  {% endif %}
+
+      {% comment %} Right: Booking Widget {% endcomment %}
+      {% if section.settings.show_booking_widget %}
+        <div class="itin-new-hero__booking">
+          <div
+            class="itin-new-hero__booking-card"
+            data-itinerary-booking-widget
+            data-product-variants='{{ product.variants | json | escape }}'
+            data-selected-variant-id="{{ selected_variant.id }}"
+            data-currency="{{ shop.currency }}"
+            data-locale="{{ request.locale.iso_code | default: 'en-US' }}"
+          >
+            {% comment %} Price Display {% endcomment %}
+            <div class="itin-new-hero__price-section">
+              <div class="itin-new-hero__price-main">
+                <span class="itin-new-hero__price-label">From</span>
+                <span class="itin-new-hero__price-value">{{ base_price }}</span>
+                <span class="itin-new-hero__price-per">per person sharing</span>
+              </div>
+              <div class="itin-new-hero__price-total" data-base-price="{{ selected_variant.price }}">
+                <span class="itin-new-hero__total-value">{{ selected_variant.price | times: 2 | money_without_trailing_zeros }}</span>
+                <span class="itin-new-hero__total-label">total for <span data-guest-count>2</span> guests</span>
+              </div>
+            </div>
+
+            {% comment %} Guest Selector {% endcomment %}
+            <div class="itin-new-hero__guests">
+              <div class="itin-new-hero__guests-label">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+                <span>Guests</span>
+              </div>
+              <div class="itin-new-hero__guests-controls">
+                <button type="button" class="itin-new-hero__guest-btn" data-action="decrease" aria-label="Decrease guests">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                </button>
+                <input type="number" class="itin-new-hero__guest-input" value="2" min="1" max="20" data-guest-input aria-label="Number of guests">
+                <button type="button" class="itin-new-hero__guest-btn" data-action="increase" aria-label="Increase guests">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {% comment %} Book Now Button {% endcomment %}
+            <button type="button" class="itin-new-hero__book-btn" data-add-to-cart>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="9" cy="21" r="1"/>
+                <circle cx="20" cy="21" r="1"/>
+                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+              </svg>
+              <span>Book Now</span>
+            </button>
+
+            {% comment %} Confirmation Note {% endcomment %}
+            <p class="itin-new-hero__confirm-note">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              Prices per person sharing. Instant confirmation.
+            </p>
+          </div>
+        </div>
+      {% endif %}
+
+    </div>
+  </div>
+</section>
+
+<style>
+/* ============================================
+   HERO SECTION STYLES
+   ============================================ */
+
+.itin-new-hero {
+  position: relative;
+  min-height: var(--section-height, 100vh);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+}
+
+/* Media Background */
+.itin-new-hero__media {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.itin-new-hero--natural-media {
+  min-height: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: end;
+  justify-content: stretch;
+  justify-items: stretch;
+}
+
+.itin-new-hero--natural-media .itin-new-hero__media,
+.itin-new-hero--natural-media .itin-new-hero__content {
+  grid-area: 1 / 1;
+}
+
+.itin-new-hero--natural-media .itin-new-hero__media {
+  position: relative;
+  width: 100%;
+  max-width: none;
+  justify-self: stretch;
+  aspect-ratio: var(--hero-media-aspect-ratio, 16 / 9);
+  min-height: clamp(360px, 70vh, 860px);
+}
+
+.itin-new-hero__video,
+.itin-new-hero__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.itin-new-hero__placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #1a1a2e 0%, #2d2d44 50%, #1a1a2e 100%);
+}
+
+.itin-new-hero__overlay {
+  position: absolute;
+  inset: 0;
+  /* Minimal gradient - just a subtle vignette at bottom for safety */
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.3) 0%,
+    rgba(0, 0, 0, 0.1) 20%,
+    transparent 50%
+  );
+  pointer-events: none;
+}
+
+/* View Toggle */
+.itin-new-hero__view-toggle {
+  position: absolute;
+  top: calc(var(--header-height, 60px) + 20px);
+  right: 20px;
+  z-index: 20;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  border-radius: 8px;
+}
+
+.itin-new-hero__toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.itin-new-hero__toggle-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.itin-new-hero__toggle-btn--active {
+  color: var(--color-background, #1a1a2e);
+  background: var(--color-primary, #d4a574);
+}
+
+/* Content */
+.itin-new-hero__content {
+  position: relative;
+  z-index: 10;
+  padding-top: 120px;
+  padding-bottom: 48px;
+  padding-inline: clamp(18px, 3.8vw, 56px);
+}
+
+.itin-new-hero__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 32px;
+  align-items: end;
+}
+
+@media (min-width: 1024px) {
+  .itin-new-hero__grid {
+    grid-template-columns: 1fr 400px;
+    gap: 48px;
+  }
+}
+
+/* Info Column */
+.itin-new-hero__info {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  position: relative;
+  padding: clamp(18px, 2.3vw, 34px) clamp(18px, 3vw, 40px);
+  border-radius: 22px;
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.46), rgba(0, 0, 0, 0.2));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* Localized content shadow - subtle spotlight effect behind text */
+.itin-new-hero__info::before {
+  content: '';
+  position: absolute;
+  inset: -60px -80px;
+  background: radial-gradient(
+    ellipse 80% 100% at 30% 60%,
+    rgba(0, 0, 0, 0.5) 0%,
+    rgba(0, 0, 0, 0.3) 40%,
+    transparent 70%
+  );
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Badges */
+.itin-new-hero__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.itin-new-hero__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.itin-new-hero__badge--primary {
+  background: var(--color-primary, #d4a574);
+  color: var(--color-background, #1a1a2e);
+  border-color: transparent;
+  text-shadow: none;
+}
+
+/* Client Personalization */
+.itin-new-hero__client {
+  margin: 0;
+}
+
+.itin-new-hero__client-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.7);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  margin-bottom: 4px;
+}
+
+.itin-new-hero__client-name {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.4),
+    0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Title */
+.itin-new-hero__title {
+  font-size: clamp(2rem, 6vw, 3.5rem);
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.1;
+  margin: 0;
+  text-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.4),
+    0 4px 12px rgba(0, 0, 0, 0.3),
+    0 8px 24px rgba(0, 0, 0, 0.2);
+  max-width: 700px;
+}
+
+/* Destinations */
+.itin-new-hero__destinations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.itin-new-hero__dest-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 0.8125rem;
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.itin-new-hero__dest-pill--more {
+  font-style: italic;
+  opacity: 0.7;
+}
+
+/* Tagline */
+.itin-new-hero__tagline {
+  font-size: 1.125rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0;
+  max-width: 600px;
+  text-shadow: 
+    0 1px 3px rgba(0, 0, 0, 0.5),
+    0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Scroll CTA */
+.itin-new-hero__scroll-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 12px 20px;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: #fff;
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+}
+
+.itin-new-hero__scroll-cta:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(2px);
+}
+
+.itin-new-hero__scroll-cta svg {
+  animation: itin-bounce 2s infinite;
+}
+
+@keyframes itin-bounce {
+  0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(6px); }
+  60% { transform: translateY(3px); }
+}
+
+/* Booking Widget */
+.itin-new-hero__booking-card {
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: clamp(22px, 2vw, 30px);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  color: #fff;
+}
+
+.itin-new-hero__price-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.itin-new-hero__price-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.itin-new-hero__price-label {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.itin-new-hero__price-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.itin-new-hero__price-per {
+  font-size: 0.8125rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.itin-new-hero__price-total {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+}
+
+.itin-new-hero__total-value {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-primary, #d4a574);
+}
+
+.itin-new-hero__total-label {
+  font-size: 0.8125rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Guest Selector */
+.itin-new-hero__guests {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.itin-new-hero__guests-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9375rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.itin-new-hero__guests-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.itin-new-hero__guest-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.itin-new-hero__guest-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.itin-new-hero__guest-input {
+  width: 48px;
+  padding: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+  text-align: center;
+  background: transparent;
+  border: none;
+  -moz-appearance: textfield;
+}
+
+.itin-new-hero__guest-input::-webkit-outer-spin-button,
+.itin-new-hero__guest-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Book Button */
+.itin-new-hero__book-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 24px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-background, #1a1a2e);
+  background: var(--color-primary, #d4a574);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.itin-new-hero__book-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(212, 165, 116, 0.3);
+}
+
+/* Confirmation Note */
+.itin-new-hero__confirm-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0;
+}
+
+/* Print Button */
+.itin-new-hero__print-btn {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.itin-new-hero__print-btn:hover {
+  background: rgba(0, 0, 0, 0.9);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.itin-new-hero__print-btn svg {
+  opacity: 0.8;
+}
+
+@media print {
+  .itin-new-hero__print-btn {
+    display: none !important;
+  }
+}
+
+/* Mobile */
+@media (max-width: 1023px) {
+  .itin-new-hero {
+    min-height: auto;
+    padding-top: calc(var(--header-height, 60px) + 40px);
+  }
+
+  .itin-new-hero--natural-media {
+    padding-top: 0;
+  }
+
+  .itin-new-hero--natural-media .itin-new-hero__media {
+    min-height: clamp(280px, 55vh, 560px);
+  }
+  
+  .itin-new-hero__print-btn {
+    bottom: 12px;
+    left: 12px;
+    padding: 10px 12px;
+    font-size: 0.75rem;
+  }
+  
+  .itin-new-hero__print-btn span {
+    display: none;
+  }
+  
+  .itin-new-hero__content {
+    padding-top: 40px;
+    padding-bottom: 32px;
+    padding-inline: 16px;
+  }
+
+  .itin-new-hero__info {
+    padding: 16px 16px 18px;
+    border-radius: 16px;
+  }
+  
+  .itin-new-hero__info::before {
+    inset: -40px -40px;
+    background: radial-gradient(
+      ellipse 100% 100% at 50% 70%,
+      rgba(0, 0, 0, 0.5) 0%,
+      rgba(0, 0, 0, 0.3) 50%,
+      transparent 80%
+    );
+  }
+  
+  .itin-new-hero__title {
+    font-size: 1.75rem;
+    text-shadow: 
+      0 2px 4px rgba(0, 0, 0, 0.5),
+      0 4px 12px rgba(0, 0, 0, 0.4);
+  }
+  
+  .itin-new-hero__client-name {
+    font-size: 1.125rem;
+  }
+  
+  .itin-new-hero__tagline {
+    display: none;
+  }
+  
+  .itin-new-hero__scroll-cta {
+    display: none;
+  }
+  
+  .itin-new-hero__view-toggle {
+    top: auto;
+    bottom: 20px;
+    right: 50%;
+    transform: translateX(50%);
+  }
+}
+</style>
+
+<script>
+(function() {
+  'use strict';
+  
+  if (!window.wetuItineraryBooking) {
+    window.wetuItineraryBooking = (function() {
+      function formatCurrency(cents, locale, currency) {
+        return new Intl.NumberFormat(locale || 'en-US', {
+          style: 'currency',
+          currency: currency || 'USD',
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0
+        }).format((Number(cents) || 0) / 100);
+      }
+    
+      function parseGuestCount(value) {
+        if (!value) return null;
+        var normalized = String(value).trim().toLowerCase();
+        if (/^\d{1,2}$/.test(normalized)) {
+          return parseInt(normalized, 10);
+        }
+        var match = normalized.match(/(?:^|[^0-9])(\d{1,2})\s*(?:adult|adults|guest|guests|traveller|travellers|traveler|travelers|pax|people|person)s?\b/i);
+        if (!match) return null;
+        return parseInt(match[1], 10);
+      }
+
+      function getGuestCountFromVariant(variant) {
+        if (!variant) return null;
+
+        var options = [];
+        if (Array.isArray(variant.options)) {
+          options = options.concat(variant.options);
+        }
+        ['option1', 'option2', 'option3', 'title'].forEach(function(key) {
+          if (variant[key]) {
+            options.push(variant[key]);
+          }
+        });
+
+        for (var i = 0; i < options.length; i += 1) {
+          var parsed = parseGuestCount(options[i]);
+          if (parsed && parsed > 0) {
+            return parsed;
+          }
+    }
+    
+        return null;
+      }
+
+      function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+      }
+
+      function nearestCount(target, counts) {
+        if (!counts.length) return target;
+        return counts.reduce(function(closest, count) {
+          return Math.abs(count - target) < Math.abs(closest - target) ? count : closest;
+        }, counts[0]);
+      }
+
+      function selectVariantForGuests(guests, variants, countMap, counts, selectedVariant) {
+        if (counts.length) {
+          var exact = countMap[guests];
+          if (exact && exact.available !== false) return exact;
+
+          var nearest = nearestCount(guests, counts);
+          var nearVariant = countMap[nearest];
+          if (nearVariant) return nearVariant;
+        }
+
+        if (selectedVariant && selectedVariant.available !== false) {
+          return selectedVariant;
+        }
+
+        return variants.find(function(variant) {
+          return variant.available !== false;
+        }) || variants[0] || null;
+      }
+
+      function initWidget(config) {
+        var root = config.root;
+        if (!root) return;
+
+        var widget = root.querySelector(config.widgetSelector || '[data-itinerary-booking-widget]');
+        if (!widget || widget.dataset.bookingInitialized === 'true') return;
+        widget.dataset.bookingInitialized = 'true';
+
+        var guestInput = widget.querySelector(config.guestInputSelector || '[data-guest-input]');
+        var decreaseBtn = widget.querySelector(config.decreaseSelector || '[data-action="decrease"]');
+        var increaseBtn = widget.querySelector(config.increaseSelector || '[data-action="increase"]');
+        var priceValue = widget.querySelector(config.priceValueSelector || '.itin-new-hero__price-value');
+        var totalValue = widget.querySelector(config.totalValueSelector || '.itin-new-hero__total-value');
+        var guestCountSpan = widget.querySelector(config.guestCountSelector || '[data-guest-count]');
+        var priceTotal = widget.querySelector(config.priceTotalSelector || '.itin-new-hero__price-total');
+        var bookButton = widget.querySelector(config.bookButtonSelector || '[data-add-to-cart]');
+        var buttonText = bookButton ? bookButton.querySelector('span') : null;
+        var defaultButtonText = buttonText ? buttonText.textContent : 'Book Now';
+
+        if (!guestInput || !priceTotal || !bookButton) return;
+
+        var variants = [];
+        try {
+          variants = JSON.parse(widget.dataset.productVariants || '[]');
+        } catch (error) {
+          variants = [];
+        }
+
+        var selectedVariantId = String(widget.dataset.selectedVariantId || '');
+        var selectedVariant = variants.find(function(variant) {
+          return String(variant.id) === selectedVariantId;
+        }) || variants[0] || null;
+
+        var basePrice = parseInt(priceTotal.dataset.basePrice, 10);
+        if (!basePrice && selectedVariant) {
+          basePrice = Number(selectedVariant.price || 0);
+        }
+
+        var locale = widget.dataset.locale || 'en-US';
+        var currency = widget.dataset.currency || 'USD';
+
+        var countMap = {};
+        variants.forEach(function(variant) {
+          var count = getGuestCountFromVariant(variant);
+          if (!count || count > 40) return;
+
+          if (!countMap[count] || (countMap[count].available === false && variant.available !== false)) {
+            countMap[count] = variant;
+          }
+        });
+
+        var counts = Object.keys(countMap).map(function(count) {
+          return parseInt(count, 10);
+        }).sort(function(a, b) {
+          return a - b;
+        });
+
+        var minGuests = parseInt(guestInput.min, 10) || 1;
+        var maxGuests = parseInt(guestInput.max, 10) || 20;
+
+        if (counts.length) {
+          minGuests = counts[0];
+          maxGuests = counts[counts.length - 1];
+          guestInput.min = String(minGuests);
+          guestInput.max = String(maxGuests);
+        }
+
+        function normalizeGuests(rawGuests) {
+          var guests = parseInt(rawGuests, 10);
+          if (!guests) {
+            guests = counts.length && counts.indexOf(2) !== -1 ? 2 : minGuests;
+          }
+          guests = clamp(guests, minGuests, maxGuests);
+          if (counts.length) {
+            guests = nearestCount(guests, counts);
+          }
+          return guests;
+        }
+
+        function stepGuests(direction) {
+          var current = normalizeGuests(guestInput.value);
+          if (!counts.length) {
+            return clamp(current + direction, minGuests, maxGuests);
+          }
+
+          var index = counts.indexOf(current);
+          if (index === -1) {
+            return nearestCount(current + direction, counts);
+          }
+
+          var nextIndex = clamp(index + direction, 0, counts.length - 1);
+          return counts[nextIndex];
+        }
+
+        function updateWidgetDisplay() {
+          var guests = normalizeGuests(guestInput.value);
+          guestInput.value = String(guests);
+
+          var variant = selectVariantForGuests(guests, variants, countMap, counts, selectedVariant);
+          var variantPrice = Number(variant && variant.price ? variant.price : basePrice);
+
+          var displayPrice = variantPrice;
+          var checkoutQuantity = guests;
+          var total = variantPrice * guests;
+
+          if (counts.length) {
+            total = variantPrice;
+            displayPrice = guests > 0 ? Math.round(variantPrice / guests) : variantPrice;
+            checkoutQuantity = 1;
+          }
+
+          if (priceValue) {
+            priceValue.textContent = formatCurrency(displayPrice, locale, currency);
+          }
+
+          if (totalValue) {
+            totalValue.textContent = formatCurrency(total, locale, currency);
+          }
+
+          if (guestCountSpan) {
+            guestCountSpan.textContent = guests;
+          }
+
+          if (decreaseBtn) {
+            decreaseBtn.disabled = guests <= minGuests;
+          }
+
+          if (increaseBtn) {
+            increaseBtn.disabled = guests >= maxGuests;
+          }
+
+          var canBook = !!(variant && variant.available !== false);
+          bookButton.disabled = !canBook;
+          bookButton.dataset.variantId = variant ? String(variant.id) : '';
+          bookButton.dataset.quantity = String(checkoutQuantity);
+
+          if (buttonText && !bookButton.dataset.processing) {
+            buttonText.textContent = canBook ? defaultButtonText : 'Unavailable';
+          }
+
+          document.dispatchEvent(new CustomEvent('guestCountChanged', {
+            detail: { count: guests }
+          }));
+        }
+
+        if (decreaseBtn) {
+          decreaseBtn.addEventListener('click', function() {
+            guestInput.value = String(stepGuests(-1));
+            updateWidgetDisplay();
+          });
+        }
+
+        if (increaseBtn) {
+          increaseBtn.addEventListener('click', function() {
+            guestInput.value = String(stepGuests(1));
+            updateWidgetDisplay();
+          });
+        }
+
+        guestInput.addEventListener('change', updateWidgetDisplay);
+
+        bookButton.addEventListener('click', async function() {
+          if (bookButton.disabled) return;
+
+          var variantId = parseInt(bookButton.dataset.variantId, 10);
+          var quantity = Math.max(1, parseInt(bookButton.dataset.quantity, 10) || 1);
+          if (!variantId) return;
+
+          bookButton.dataset.processing = 'true';
+          bookButton.disabled = true;
+          if (buttonText) {
+            buttonText.textContent = 'Processing...';
+          }
+
+          try {
+            var response = await fetch('/cart/add.js', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json'
+              },
+              body: JSON.stringify({
+                items: [
+                  {
+                    id: variantId,
+                    quantity: quantity
+                  }
+                ]
+              })
+            });
+
+            if (!response.ok) {
+              throw new Error('Add to cart failed with status ' + response.status);
+            }
+
+            window.location.href = '/checkout';
+          } catch (error) {
+            console.error('Book now checkout failed:', error);
+            delete bookButton.dataset.processing;
+            updateWidgetDisplay();
+            alert('Unable to start checkout right now. Please try again.');
+          }
+        });
+
+        updateWidgetDisplay();
+      }
+
+      return {
+        initWidget: initWidget
+      };
+    })();
+  }
+
+  function initHeroBooking() {
+    const hero = document.querySelector('.itin-new-hero');
+    if (!hero) return;
+
+    window.wetuItineraryBooking.initWidget({
+      root: hero,
+      widgetSelector: '[data-itinerary-booking-widget]',
+      guestInputSelector: '[data-guest-input]',
+      decreaseSelector: '[data-action="decrease"]',
+      increaseSelector: '[data-action="increase"]',
+      priceValueSelector: '.itin-new-hero__price-value',
+      totalValueSelector: '.itin-new-hero__total-value',
+      guestCountSelector: '[data-guest-count]',
+      priceTotalSelector: '.itin-new-hero__price-total',
+      bookButtonSelector: '[data-add-to-cart]'
+    });
+  }
+  
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initHeroBooking);
+  } else {
+    initHeroBooking();
+  }
+})();
+</script>
+
+{% schema %}
+{
+  "name": "Itinerary New Hero",
+  "tag": "section",
+  "class": "section-itin-new-hero",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-5"
+    },
+    {
+      "type": "image_picker",
+      "id": "custom_image",
+      "label": "Custom hero image",
+      "info": "Override the product featured image"
+    },
+    {
+      "type": "text",
+      "id": "custom_video_url",
+      "label": "Custom video URL",
+      "info": "Fallback if no wetu.hero_video metafield"
+    },
+    {
+      "type": "range",
+      "id": "section_height",
+      "min": 50,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "label": "Section height",
+      "default": 100
+    },
+    {
+      "type": "checkbox",
+      "id": "use_natural_media_ratio",
+      "label": "Use media natural aspect ratio",
+      "info": "Displays the hero at the source image/video ratio instead of viewport height.",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "show_destination_pills",
+      "label": "Show destination pills",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_booking_widget",
+      "label": "Show booking widget",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_view_toggle",
+      "label": "Show Story/Map toggle",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_print_button",
+      "label": "Show Print/PDF button",
+      "default": true
+    }
+  ],
+  "presets": [
+    {
+      "name": "Itinerary New Hero"
+    }
+  ]
+}
+{% endschema %}

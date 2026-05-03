@@ -1,0 +1,704 @@
+{% liquid
+  assign section_id = section.settings.custom_id | default: section.id
+  assign section_class = 'property-collection-highlights'
+  assign properties_collection = collections[section.settings.collection] | default: collections.properties
+%}
+
+<section
+  id="{{ section_id }}"
+  class="{{ section_class }} section section--{{ section.settings.section_width }} color-{{ section.settings.color_scheme }} spacing-style"
+  style="{% render 'spacing-style', settings: section.settings %}"
+>
+  <div class="property-collection-highlights__container page-width">
+    {% if section.settings.heading != blank %}
+      <div class="property-collection-highlights__header">
+        <h2 class="property-collection-highlights__title">{{ section.settings.heading }}</h2>
+        {% if section.settings.subheading != blank %}
+          <p class="property-collection-highlights__subheading">{{ section.settings.subheading }}</p>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {% if properties_collection.products.size > 0 %}
+      {% liquid
+        # Calculate totals across all properties
+        assign total_accommodations = 0
+        assign total_activities = 0
+        assign total_restaurants = 0
+        assign total_spas = 0
+        assign countries = ''
+        assign regions = ''
+      %}
+
+      {% for product in properties_collection.products limit: section.settings.max_properties %}
+        {% liquid
+          assign accommodations_ref = product.metafields.wetu.accommodation_collection.value
+          assign activities_ref = product.metafields.wetu.activities_collection.value
+          assign restaurants_ref = product.metafields.wetu.restaurants_collection.value
+          assign spa_ref = product.metafields.wetu.spa_collection.value
+          
+          if accommodations_ref
+            assign total_accommodations = total_accommodations | plus: accommodations_ref.products_count
+          endif
+          if activities_ref
+            assign total_activities = total_activities | plus: activities_ref.products_count
+          endif
+          if restaurants_ref
+            assign total_restaurants = total_restaurants | plus: restaurants_ref.products_count
+          endif
+          if spa_ref
+            assign total_spas = total_spas | plus: spa_ref.products_count
+          endif
+          
+          assign product_country = product.metafields.wetu.country.value
+          assign product_region = product.metafields.wetu.region.value
+          
+          unless countries contains product_country
+            if countries != blank
+              assign countries = countries | append: '|'
+            endif
+            assign countries = countries | append: product_country
+          endunless
+          
+          unless regions contains product_region
+            if regions != blank
+              assign regions = regions | append: '|'
+            endif
+            assign regions = regions | append: product_region
+          endunless
+        %}
+      {% endfor %}
+
+      <div class="property-collection-highlights__summary">
+        <div class="highlights-summary__stats">
+          <div class="summary-stat">
+            <span class="summary-stat__number">{{ properties_collection.products.size | at_most: section.settings.max_properties }}</span>
+            <span class="summary-stat__label">{{ 'sections.property_collection_highlights.properties' | t }}</span>
+          </div>
+          {% if total_accommodations > 0 %}
+            <div class="summary-stat">
+              <span class="summary-stat__number">{{ total_accommodations }}</span>
+              <span class="summary-stat__label">{{ 'sections.property_collection_highlights.accommodations' | t }}</span>
+            </div>
+          {% endif %}
+          {% if total_activities > 0 %}
+            <div class="summary-stat">
+              <span class="summary-stat__number">{{ total_activities }}</span>
+              <span class="summary-stat__label">{{ 'sections.property_collection_highlights.activities' | t }}</span>
+            </div>
+          {% endif %}
+          {% if total_restaurants > 0 %}
+            <div class="summary-stat">
+              <span class="summary-stat__number">{{ total_restaurants }}</span>
+              <span class="summary-stat__label">{{ 'sections.property_collection_highlights.dining' | t }}</span>
+            </div>
+          {% endif %}
+          {% if total_spas > 0 %}
+            <div class="summary-stat">
+              <span class="summary-stat__number">{{ total_spas }}</span>
+              <span class="summary-stat__label">{{ 'sections.property_collection_highlights.wellness' | t }}</span>
+            </div>
+          {% endif %}
+        </div>
+
+        {% assign countries_array = countries | split: '|' %}
+        {% assign regions_array = regions | split: '|' %}
+        
+        <div class="highlights-summary__geography">
+          <p class="geography__intro">{{ 'sections.property_collection_highlights.geography_intro' | t }}</p>
+          <div class="geography__locations">
+            {% for region in regions_array %}
+              <span class="geography__location">{{ region }}</span>
+            {% endfor %}
+          </div>
+          {% if section.settings.show_countries and countries_array.size > 0 %}
+            <div class="geography__countries">
+              {% for country in countries_array %}
+                <span class="geography__country">{{ country }}</span>
+              {% endfor %}
+            </div>
+          {% endif %}
+        </div>
+
+        {% if section.settings.collection_description != blank %}
+          <div class="highlights-summary__description">
+            {{ section.settings.collection_description }}
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="property-collection-highlights__grid">
+        {% for product in properties_collection.products limit: section.settings.max_properties %}
+          {% liquid
+            assign property_image = product.featured_image | default: product.images.first
+            assign property_location = product.metafields.wetu.location.value | default: product.metafields.wetu.region.value
+            assign property_description = product.metafields.wetu.description.value | default: product.description | strip_html | truncatewords: 35
+            
+            assign accommodations_collection = product.metafields.wetu.accommodation_collection.value
+            assign activities_collection = product.metafields.wetu.activities_collection.value
+            assign restaurants_collection = product.metafields.wetu.restaurants_collection.value
+            assign spa_collection = product.metafields.wetu.spa_collection.value
+          %}
+
+          <article class="property-highlight-card">
+            {% if property_image %}
+              <div class="property-highlight-card__image">
+                <a href="{{ product.url }}" class="property-highlight-card__image-link">
+                  {{
+                    property_image
+                    | image_url: width: 800
+                    | image_tag: loading: 'lazy', class: 'property-highlight-card__img', alt: product.title
+                  }}
+                </a>
+              </div>
+            {% endif %}
+
+            <div class="property-highlight-card__content">
+              <div class="property-highlight-card__header">
+                <h3 class="property-highlight-card__title">
+                  <a href="{{ product.url }}">{{ product.title }}</a>
+                </h3>
+                {% if property_location %}
+                  <p class="property-highlight-card__location">{{ property_location }}</p>
+                {% endif %}
+              </div>
+
+              {% if property_description != blank %}
+                <p class="property-highlight-card__description">{{ property_description }}</p>
+              {% endif %}
+
+              <div class="property-highlight-card__details">
+                {% if accommodations_collection and accommodations_collection.products_count > 0 %}
+                  <div class="property-detail">
+                    <span class="property-detail__number">{{ accommodations_collection.products_count }}</span>
+                    <span class="property-detail__label">{{ 'sections.property_collection_highlights.room_types' | t }}</span>
+                  </div>
+                {% endif %}
+
+                {% if activities_collection and activities_collection.products_count > 0 %}
+                  <div class="property-detail">
+                    <span class="property-detail__number">{{ activities_collection.products_count }}</span>
+                    <span class="property-detail__label">{{ 'sections.property_collection_highlights.activities' | t }}</span>
+                  </div>
+                {% endif %}
+
+                {% if restaurants_collection and restaurants_collection.products_count > 0 %}
+                  <div class="property-detail">
+                    <span class="property-detail__number">{{ restaurants_collection.products_count }}</span>
+                    <span class="property-detail__label">{{ 'sections.property_collection_highlights.dining_venues' | t }}</span>
+                  </div>
+                {% endif %}
+
+                {% if spa_collection and spa_collection.products_count > 0 %}
+                  <div class="property-detail">
+                    <span class="property-detail__number">{{ spa_collection.products_count }}</span>
+                    <span class="property-detail__label">{{ 'sections.property_collection_highlights.spa' | t }}</span>
+                  </div>
+                {% endif %}
+              </div>
+
+              <a href="{{ product.url }}" class="property-highlight-card__link">
+                {{ 'sections.property_collection_highlights.view_property' | t }}
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <path d="M6 12L10 8L6 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </a>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+
+      {% if section.settings.show_view_all and properties_collection.url %}
+        <div class="property-collection-highlights__footer">
+          <a href="{{ properties_collection.url }}" class="highlights-view-all button button--secondary">
+            {{ 'sections.property_collection_highlights.view_all_properties' | t }}
+          </a>
+        </div>
+      {% endif %}
+    {% else %}
+      <div class="property-collection-highlights__empty">
+        <p>{{ 'sections.property_collection_highlights.no_properties' | t }}</p>
+      </div>
+    {% endif %}
+  </div>
+</section>
+
+{% stylesheet %}
+  .property-collection-highlights {
+    --highlights-text: rgb(var(--color-foreground));
+    --highlights-text-light: rgba(var(--color-foreground), 0.75);
+    --highlights-text-lighter: rgba(var(--color-foreground), 0.55);
+    --highlights-border: rgba(var(--color-foreground), 0.12);
+    --highlights-bg: rgb(var(--color-background));
+    --highlights-bg-subtle: rgba(var(--color-foreground), 0.03);
+  }
+
+  .property-collection-highlights__container {
+    max-width: 140rem;
+  }
+
+  .property-collection-highlights__header {
+    margin-bottom: 4rem;
+    border-bottom: 1px solid var(--highlights-border);
+    padding-bottom: 2.4rem;
+  }
+
+  .property-collection-highlights__title {
+    font-size: clamp(3.2rem, 4vw, 5.2rem);
+    font-weight: 400;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin: 0 0 1.2rem 0;
+    color: var(--highlights-text);
+  }
+
+  .property-collection-highlights__subheading {
+    font-size: 1.8rem;
+    line-height: 1.5;
+    color: var(--highlights-text-light);
+    margin: 0;
+    max-width: 80rem;
+    font-weight: 300;
+  }
+
+  /* Summary Stats */
+  .property-collection-highlights__summary {
+    margin-bottom: 4rem;
+    display: grid;
+    gap: 3.2rem;
+  }
+
+  .highlights-summary__stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2.4rem 4rem;
+    padding: 2.4rem 0;
+    border-bottom: 1px solid var(--highlights-border);
+  }
+
+  .summary-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .summary-stat__number {
+    font-size: 3.6rem;
+    font-weight: 300;
+    line-height: 1;
+    color: var(--highlights-text);
+    letter-spacing: -0.02em;
+  }
+
+  .summary-stat__label {
+    font-size: 1.3rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--highlights-text-lighter);
+    font-weight: 500;
+  }
+
+  /* Geography Section */
+  .highlights-summary__geography {
+    font-size: 1.6rem;
+    line-height: 1.6;
+  }
+
+  .geography__intro {
+    margin: 0 0 1.2rem 0;
+    color: var(--highlights-text-light);
+    font-weight: 400;
+  }
+
+  .geography__locations {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8rem 1.6rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .geography__location {
+    font-size: 1.8rem;
+    color: var(--highlights-text);
+    font-weight: 400;
+    position: relative;
+  }
+
+  .geography__location:not(:last-child)::after {
+    content: "·";
+    position: absolute;
+    right: -1rem;
+    color: var(--highlights-text-lighter);
+  }
+
+  .geography__countries {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.2rem;
+    margin-top: 1.2rem;
+  }
+
+  .geography__country {
+    font-size: 1.3rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--highlights-text-lighter);
+    font-weight: 500;
+  }
+
+  .highlights-summary__description {
+    font-size: 1.7rem;
+    line-height: 1.6;
+    color: var(--highlights-text-light);
+    font-weight: 300;
+    font-style: italic;
+    max-width: 90rem;
+  }
+
+  /* Property Grid - Newspaper Layout */
+  .property-collection-highlights__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 36rem), 1fr));
+    gap: 3.2rem 2.4rem;
+    margin-bottom: 4rem;
+  }
+
+  .property-highlight-card {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    gap: 1.6rem;
+    border: 1px solid var(--highlights-border);
+    background: var(--highlights-bg);
+    transition: all 0.3s ease;
+  }
+
+  .property-highlight-card:hover {
+    box-shadow: 0 4px 16px rgba(var(--color-foreground), 0.08);
+    border-color: rgba(var(--color-foreground), 0.2);
+  }
+
+  /* 16:9 Image Container */
+  .property-highlight-card__image {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    background: var(--highlights-bg-subtle);
+  }
+
+  .property-highlight-card__image-link {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .property-highlight-card__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.6s ease;
+  }
+
+  .property-highlight-card:hover .property-highlight-card__img {
+    transform: scale(1.05);
+  }
+
+  /* Card Content */
+  .property-highlight-card__content {
+    padding: 0 2rem 2rem 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.4rem;
+  }
+
+  .property-highlight-card__header {
+    border-bottom: 1px solid var(--highlights-border);
+    padding-bottom: 1.2rem;
+  }
+
+  .property-highlight-card__title {
+    margin: 0 0 0.6rem 0;
+    font-size: 2.2rem;
+    font-weight: 400;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+  }
+
+  .property-highlight-card__title a {
+    color: var(--highlights-text);
+    text-decoration: none;
+    transition: color 0.2s ease;
+  }
+
+  .property-highlight-card__title a:hover {
+    color: rgba(var(--color-foreground), 0.7);
+  }
+
+  .property-highlight-card__location {
+    margin: 0;
+    font-size: 1.3rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--highlights-text-lighter);
+    font-weight: 500;
+  }
+
+  .property-highlight-card__description {
+    margin: 0;
+    font-size: 1.5rem;
+    line-height: 1.5;
+    color: var(--highlights-text-light);
+    font-weight: 300;
+  }
+
+  .property-highlight-card__details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    gap: 1.2rem;
+    padding: 1.2rem 0;
+    border-top: 1px solid var(--highlights-border);
+  }
+
+  .property-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+
+  .property-detail__number {
+    font-size: 2rem;
+    font-weight: 400;
+    line-height: 1;
+    color: var(--highlights-text);
+  }
+
+  .property-detail__label {
+    font-size: 1.1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--highlights-text-lighter);
+    font-weight: 500;
+  }
+
+  .property-highlight-card__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 1.3rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--highlights-text);
+    text-decoration: none;
+    font-weight: 500;
+    transition: gap 0.3s ease;
+  }
+
+  .property-highlight-card__link:hover {
+    gap: 1rem;
+  }
+
+  .property-highlight-card__link svg {
+    transition: transform 0.3s ease;
+  }
+
+  .property-highlight-card__link:hover svg {
+    transform: translateX(4px);
+  }
+
+  /* Footer */
+  .property-collection-highlights__footer {
+    text-align: center;
+    padding-top: 3.2rem;
+    border-top: 1px solid var(--highlights-border);
+  }
+
+  .highlights-view-all {
+    font-size: 1.4rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 1.4rem 3.2rem;
+  }
+
+  /* Empty State */
+  .property-collection-highlights__empty {
+    text-align: center;
+    padding: 6rem 2rem;
+    color: var(--highlights-text-light);
+    font-size: 1.6rem;
+  }
+
+  /* Tablet Adjustments */
+  @media screen and (min-width: 750px) and (max-width: 1199px) {
+    .property-collection-highlights__grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  /* Mobile Adjustments */
+  @media screen and (max-width: 749px) {
+    .property-collection-highlights__header {
+      margin-bottom: 3rem;
+    }
+
+    .property-collection-highlights__title {
+      font-size: 2.8rem;
+      margin-bottom: 1rem;
+    }
+
+    .property-collection-highlights__subheading {
+      font-size: 1.6rem;
+    }
+
+    .highlights-summary__stats {
+      gap: 1.6rem 2.4rem;
+      padding: 1.6rem 0;
+    }
+
+    .summary-stat__number {
+      font-size: 2.8rem;
+    }
+
+    .property-collection-highlights__grid {
+      grid-template-columns: 1fr;
+      gap: 2.4rem;
+    }
+
+    .property-highlight-card__title {
+      font-size: 2rem;
+    }
+
+    .property-highlight-card__details {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .geography__location {
+      font-size: 1.6rem;
+    }
+  }
+
+  /* Large Desktop - 16:9 Optimization */
+  @media screen and (min-width: 1600px) {
+    .property-collection-highlights__container {
+      max-width: 160rem;
+    }
+
+    .property-collection-highlights__grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .property-collection-highlights__title {
+      font-size: 5.6rem;
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Property Highlights",
+  "tag": "section",
+  "class": "section-property-collection-highlights",
+  "settings": [
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Our Collection"
+    },
+    {
+      "type": "textarea",
+      "id": "subheading",
+      "label": "Subheading",
+      "default": "Exceptional properties positioned across the world's most celebrated destinations"
+    },
+    {
+      "type": "collection",
+      "id": "collection",
+      "label": "Properties Collection",
+      "info": "Select the collection containing your properties"
+    },
+    {
+      "type": "textarea",
+      "id": "collection_description",
+      "label": "Collection Description",
+      "info": "Optional italicized description below geography"
+    },
+    {
+      "type": "range",
+      "id": "max_properties",
+      "label": "Maximum Properties to Display",
+      "min": 3,
+      "max": 12,
+      "step": 1,
+      "default": 6
+    },
+    {
+      "type": "checkbox",
+      "id": "show_countries",
+      "label": "Show Countries",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_view_all",
+      "label": "Show View All Button",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Section Style"
+    },
+    {
+      "type": "select",
+      "id": "section_width",
+      "label": "Section Width",
+      "options": [
+        {
+          "value": "page-width",
+          "label": "Page Width"
+        },
+        {
+          "value": "full-width",
+          "label": "Full Width"
+        }
+      ],
+      "default": "page-width"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color Scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "Padding Top",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 60
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "Padding Bottom",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 60
+    },
+    {
+      "type": "text",
+      "id": "custom_id",
+      "label": "Custom ID"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Property Highlights"
+    }
+  ]
+}
+{% endschema %}

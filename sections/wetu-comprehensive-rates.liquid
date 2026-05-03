@@ -1,0 +1,929 @@
+{% comment %}
+  WETU Comprehensive Rates Section
+  
+  Intelligently displays pricing information based on product type:
+  - wetu-property: Shows all room rates from property
+  - wetu-accommodation: Shows rates for specific accommodation
+  - wetu-linked-product: Shows rates for activities, restaurants, etc.
+  
+  Uses accordion-based collapsible design for better organization
+{% endcomment %}
+
+{% liquid
+  assign product = section.settings.product | default: product
+  
+  comment If no product is set, try page metafield reference to source property
+  endcomment
+  if product == blank and page
+    assign page_source_property = page.metafields.wetu_page.source_property.value
+    if page_source_property
+      assign product = page_source_property
+    endif
+  endif
+
+  comment If still no product, try to get from properties collection
+  endcomment
+  if product == blank
+    assign properties_collection = collections['properties']
+    if properties_collection and properties_collection.products_count > 0
+      comment If only one property exists, use it automatically
+      endcomment
+      if properties_collection.products_count == 1
+        assign product = properties_collection.products.first
+      else
+        comment Multiple properties exist - try to find wetu-property type
+        endcomment
+        for prop in properties_collection.products
+          if prop.type == 'wetu-property'
+            assign product = prop
+            break
+          endif
+        endfor
+      endif
+    endif
+  endif
+  
+  assign product_type = product.type | downcase
+  
+  comment Initialize variables
+  endcomment
+  assign has_rates = false
+  assign is_single_room = false
+  assign section_title = section.settings.heading_text
+  
+  comment Extract special offers from actual metafield
+  endcomment
+  assign specials_json = product.metafields.wetu.special_offers.value
+  assign specials = nil
+  if specials_json != blank
+    assign specials = specials_json | parse_json
+  endif
+  
+  comment Filter expired special offers - only filter if explicitly requested
+  endcomment
+  assign current_timestamp = 'now' | date: '%s' | times: 1
+  
+  comment Determine product type and extract appropriate rate data
+  endcomment
+  if product_type == 'wetu-property'
+    comment Property products: use rate_tiers metaobjects or extract from rooms
+    endcomment
+    assign rate_tiers = product.metafields.wetu.rate_tiers.value
+    assign min_rate = product.metafields.wetu_property.min_base_rate.value
+    assign max_rate = product.metafields.wetu_property.max_base_rate.value
+    assign currency = product.metafields.wetu_property.min_base_rate_currency.value | default: 'USD'
+    
+    if rate_tiers and rate_tiers.size > 0
+      assign has_rates = true
+    elsif min_rate and min_rate > 0
+      assign has_rates = true
+    endif
+    
+  elsif product_type == 'wetu-accommodation'
+    comment Accommodation products: use seasonal_rates JSON or aggregated_rate_tiers
+    endcomment
+    assign is_single_room = true
+    assign seasonal_rates_json = product.metafields.wetu_room.seasonal_rates.value
+    assign aggregated_rate_tiers = product.metafields.wetu_room.aggregated_rate_tiers.value
+    assign base_rate = product.metafields.wetu_room.base_rate.value
+    assign currency = product.metafields.wetu_room.currency.value | default: 'USD'
+    assign rate_type = product.metafields.wetu_room.rate_type.value
+    assign amenities = product.metafields.wetu_room.amenities.value
+    assign room_description = product.metafields.wetu_room.room_description.value
+    
+    comment Parse seasonal rates JSON if available
+    endcomment
+    assign seasonal_rates = nil
+    if seasonal_rates_json != blank
+      assign seasonal_rates = seasonal_rates_json | parse_json
+    endif
+    
+    if seasonal_rates and seasonal_rates.size > 0
+      assign has_rates = true
+    elsif aggregated_rate_tiers and aggregated_rate_tiers.size > 0
+      assign has_rates = true
+    elsif base_rate and base_rate > 0
+      assign has_rates = true
+    endif
+    
+  elsif product_type == 'wetu-linked-product'
+    comment Linked products may have options with rates
+    endcomment
+    assign options = product.metafields.wetu.options.value
+    if options and options.size > 0
+      assign has_rates = true
+      assign section_title = 'Options & Pricing'
+    endif
+  endif
+%}
+
+{% if has_rates or specials %}
+  <div class="section-background color-{{ section.settings.color_scheme }}"></div>
+  <div
+    class="spacing-style section section--{{ section.settings.section_width }} color-{{ section.settings.color_scheme }}"
+    style="{% render 'spacing-padding', settings: section.settings %}"
+  >
+    {% comment %} Use enhanced pricing widgets based on product type {% endcomment %}
+    {% if product_type == 'wetu-property' %}
+      {% render 'wetu-property-pricing', product: product %}
+    {% elsif product_type == 'wetu-accommodation' %}
+      {% render 'wetu-accommodation-pricing', product: product %}
+    {% else %}
+      {% comment %} Fallback to old rendering for other product types {% endcomment %}
+      <div class="wetu-comprehensive-rates">
+        {% comment %} Section Header {% endcomment %}
+        {% if section.settings.show_heading %}
+          <div class="wetu-rates__header">
+            <h2 class="wetu-rates__title">{{ section_title }}</h2>
+            {% if section.settings.subheading_text != blank %}
+              <p class="wetu-rates__subheading">{{ section.settings.subheading_text }}</p>
+            {% endif %}
+            
+            {% comment %} Price Range Display {% endcomment %}
+            {% if min_rate and min_rate > 0 %}
+              <div class="wetu-rates__price-range">
+                <span class="wetu-rates__price-label">{{ 'wetu.rates.from' | t | default: 'from' }}</span>
+                <span class="wetu-rates__price-amount">{{ currency | default: shop.currency }} {{ min_rate | round: 0 }}</span>
+                {% if max_rate and max_rate != min_rate %}
+                  <span class="wetu-rates__price-separator">-</span>
+                  <span class="wetu-rates__price-amount">{{ currency | default: shop.currency }} {{ max_rate | round: 0 }}</span>
+                {% endif %}
+              </div>
+            {% endif %}
+          </div>
+        {% endif %}
+
+        {% comment %} Accordion Container {% endcomment %}
+        <div class="wetu-rates__accordion-container">
+        {% comment %} Special Offers Accordions {% endcomment %}
+        {% if specials and specials.size > 0 %}
+          {% for special in specials limit: section.settings.max_specials %}
+            {% comment %} Check if offer is expired {% endcomment %}
+            {% liquid
+              assign show_offer = true
+              if special.end != blank
+                assign offer_end = special.end | date: '%s' | times: 1
+                if offer_end < current_timestamp
+                  assign show_offer = false
+                endif
+              endif
+            %}
+            
+            {% if show_offer %}
+            <accordion-custom {% if forloop.first %}open-by-default-on-desktop{% endif %}>
+              <details class="wetu-accordion__details" data-testid="accordion-details">
+                <summary class="wetu-accordion__summary">
+                  <div class="wetu-accordion__header">
+                    <span class="wetu-accordion__title">{{ special.name }}</span>
+                    {% if special.type %}
+                      <span class="wetu-accordion__badge">{{ special.type }}</span>
+                    {% endif %}
+                  </div>
+                  <span class="wetu-accordion__caret svg-wrapper icon-caret icon-animated">
+                    {{- 'icon-caret.svg' | inline_asset_content -}}
+                  </span>
+                </summary>
+                
+                <div class="wetu-accordion__content">
+                  {% if special.description %}
+                    <div class="wetu-accordion__text">
+                      {{ special.description }}
+                    </div>
+                  {% endif %}
+                  
+                  {% if special.start or special.end %}
+                    <div class="wetu-accordion__dates">
+                      <strong>{{ 'wetu.rates.valid_dates' | t | default: 'Valid dates' }}:</strong>
+                      {% if special.start %}
+                        {{ special.start | date: '%b %d, %Y' }}
+                      {% endif %}
+                      {% if special.end %}
+                        to {{ special.end | date: '%b %d, %Y' }}
+                      {% endif %}
+                    </div>
+                  {% endif %}
+                  
+                  {% if special.conditions %}
+                    <div class="wetu-accordion__conditions">
+                      <strong>{{ 'wetu.rates.terms_conditions' | t | default: 'Terms & Conditions' }}:</strong>
+                      <p>{{ special.conditions }}</p>
+                    </div>
+                  {% endif %}
+                </div>
+              </details>
+            </accordion-custom>
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+
+        {% comment %} Rates Accordions {% endcomment %}
+        {% if has_rates %}
+          {% if is_single_room %}
+            {% comment %} Single room rendering for accommodation products {% endcomment %}
+            
+            {% comment %} Group rates by type {% endcomment %}
+            {% if seasonal_rates and seasonal_rates.size > 0 %}
+              {% liquid
+                assign per_person_rates = seasonal_rates | where: 'type', 'per_person' | concat: seasonal_rates | where: 'type', 'per_person_sharing'
+                assign single_rates = seasonal_rates | where: 'type', 'single_occupancy'
+                assign per_room_rates = seasonal_rates | where: 'type', 'per_room'
+              %}
+              
+              {% comment %} Per Person Sharing Accordion {% endcomment %}
+              {% if per_person_rates.size > 0 %}
+                <accordion-custom open-by-default-on-desktop>
+                  <details class="wetu-accordion__details" data-testid="accordion-details">
+                    <summary class="wetu-accordion__summary">
+                      <div class="wetu-accordion__header">
+                        <span class="wetu-accordion__title">{{ 'wetu.rates.per_person_sharing' | t | default: 'Per Person Sharing' }}</span>
+                        <span class="wetu-accordion__count">{{ per_person_rates.size }} {{ 'wetu.rates.rates' | t | default: 'rates' }}</span>
+                      </div>
+                      <span class="wetu-accordion__caret svg-wrapper icon-caret icon-animated">
+                        {{- 'icon-caret.svg' | inline_asset_content -}}
+                      </span>
+                    </summary>
+                    
+                    <div class="wetu-accordion__content">
+                      <div class="wetu-rate-table">
+                        {% for rate in per_person_rates %}
+                          {% comment %} Check if rate period is expired {% endcomment %}
+                          {% liquid
+                            assign show_rate = true
+                            if rate.end_date != blank
+                              assign rate_end = rate.end_date | date: '%s' | times: 1
+                              if rate_end < current_timestamp
+                                assign show_rate = false
+                              endif
+                            endif
+                          %}
+                          {% if show_rate %}
+                            {% render 'wetu-rate-row-accordion', rate: rate %}
+                          {% endif %}
+                        {% endfor %}
+                      </div>
+                    </div>
+                  </details>
+                </accordion-custom>
+              {% endif %}
+              
+              {% comment %} Single Occupancy Accordion {% endcomment %}
+              {% if single_rates.size > 0 %}
+                <accordion-custom>
+                  <details class="wetu-accordion__details" data-testid="accordion-details">
+                    <summary class="wetu-accordion__summary">
+                      <div class="wetu-accordion__header">
+                        <span class="wetu-accordion__title">{{ 'wetu.rates.single_occupancy' | t | default: 'Single Occupancy' }}</span>
+                        <span class="wetu-accordion__count">{{ single_rates.size }} {{ 'wetu.rates.rates' | t | default: 'rates' }}</span>
+                      </div>
+                      <span class="wetu-accordion__caret svg-wrapper icon-caret icon-animated">
+                        {{- 'icon-caret.svg' | inline_asset_content -}}
+                      </span>
+                    </summary>
+                    
+                    <div class="wetu-accordion__content">
+                      <div class="wetu-rate-table">
+                        {% for rate in single_rates %}
+                          {% comment %} Check if rate period is expired {% endcomment %}
+                          {% liquid
+                            assign show_rate = true
+                            if rate.end_date != blank
+                              assign rate_end = rate.end_date | date: '%s' | times: 1
+                              if rate_end < current_timestamp
+                                assign show_rate = false
+                              endif
+                            endif
+                          %}
+                          {% if show_rate %}
+                            {% render 'wetu-rate-row-accordion', rate: rate %}
+                          {% endif %}
+                        {% endfor %}
+                      </div>
+                    </div>
+                  </details>
+                </accordion-custom>
+              {% endif %}
+              
+              {% comment %} Per Room Accordion {% endcomment %}
+              {% if per_room_rates.size > 0 %}
+                <accordion-custom>
+                  <details class="wetu-accordion__details" data-testid="accordion-details">
+                    <summary class="wetu-accordion__summary">
+                      <div class="wetu-accordion__header">
+                        <span class="wetu-accordion__title">{{ 'wetu.rates.per_room' | t | default: 'Per Room' }}</span>
+                        <span class="wetu-accordion__count">{{ per_room_rates.size }} {{ 'wetu.rates.rates' | t | default: 'rates' }}</span>
+                      </div>
+                      <span class="wetu-accordion__caret svg-wrapper icon-caret icon-animated">
+                        {{- 'icon-caret.svg' | inline_asset_content -}}
+                      </span>
+                    </summary>
+                    
+                    <div class="wetu-accordion__content">
+                      <div class="wetu-rate-table">
+                        {% for rate in per_room_rates %}
+                          {% comment %} Check if rate period is expired {% endcomment %}
+                          {% liquid
+                            assign show_rate = true
+                            if rate.end_date != blank
+                              assign rate_end = rate.end_date | date: '%s' | times: 1
+                              if rate_end < current_timestamp
+                                assign show_rate = false
+                              endif
+                            endif
+                          %}
+                          {% if show_rate %}
+                            {% render 'wetu-rate-row-accordion', rate: rate %}
+                          {% endif %}
+                        {% endfor %}
+                      </div>
+                    </div>
+                  </details>
+                </accordion-custom>
+              {% endif %}
+              
+            {% elsif aggregated_rate_tiers and aggregated_rate_tiers.size > 0 %}
+              {% comment %} Aggregated rate tiers {% endcomment %}
+              <accordion-custom open-by-default-on-desktop>
+                <details class="wetu-accordion__details" data-testid="accordion-details">
+                  <summary class="wetu-accordion__summary">
+                    <div class="wetu-accordion__header">
+                      <span class="wetu-accordion__title">{{ 'wetu.rates.pricing' | t | default: 'Pricing' }}</span>
+                    </div>
+                    <span class="wetu-accordion__caret svg-wrapper icon-caret icon-animated">
+                      {{- 'icon-caret.svg' | inline_asset_content -}}
+                    </span>
+                  </summary>
+                  
+                  <div class="wetu-accordion__content">
+                    {% render 'wetu-rate-tiers-display', rate_tiers: aggregated_rate_tiers %}
+                  </div>
+                </details>
+              </accordion-custom>
+              
+            {% elsif base_rate and base_rate > 0 %}
+              {% comment %} Simple base rate {% endcomment %}
+              <div class="wetu-rate-summary">
+                <div class="wetu-rate-summary__price">
+                  <span class="wetu-rate-summary__label">{{ 'wetu.rates.from' | t | default: 'From' }}</span>
+                  <span class="wetu-rate-summary__amount">{{ currency | default: shop.currency }} {{ base_rate | round: 0 }}</span>
+                  {% if rate_type %}
+                    <span class="wetu-rate-summary__type">{{ rate_type | replace: '_', ' ' | capitalize }}</span>
+                  {% endif %}
+                </div>
+              </div>
+            {% endif %}
+            
+            {% comment %} Amenities Accordion {% endcomment %}
+            {% if amenities and amenities.size > 0 %}
+              <accordion-custom>
+                <details class="wetu-accordion__details" data-testid="accordion-details">
+                  <summary class="wetu-accordion__summary">
+                    <div class="wetu-accordion__header">
+                      <span class="wetu-accordion__title">{{ 'wetu.rates.amenities' | t | default: 'Amenities & Inclusions' }}</span>
+                      <span class="wetu-accordion__count">{{ amenities.size }} {{ 'wetu.rates.items' | t | default: 'items' }}</span>
+                    </div>
+                    <span class="wetu-accordion__caret svg-wrapper icon-caret icon-animated">
+                      {{- 'icon-caret.svg' | inline_asset_content -}}
+                    </span>
+                  </summary>
+                  
+                  <div class="wetu-accordion__content">
+                    <ul class="wetu-amenities-list">
+                      {% for amenity in amenities %}
+                        <li class="wetu-amenities-list__item">
+                          <svg class="wetu-amenities-list__icon" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M16.667 5L7.5 14.167L3.333 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                          </svg>
+                          {{ amenity }}
+                        </li>
+                      {% endfor %}
+                    </ul>
+                  </div>
+                </details>
+              </accordion-custom>
+            {% endif %}
+            
+          {% elsif product_type == 'wetu-property' %}
+            {% comment %} Property level rates {% endcomment %}
+            {% if rate_tiers and rate_tiers.size > 0 %}
+              <accordion-custom open-by-default-on-desktop>
+                <details class="wetu-accordion__details" data-testid="accordion-details">
+                  <summary class="wetu-accordion__summary">
+                    <div class="wetu-accordion__header">
+                      <span class="wetu-accordion__title">{{ 'wetu.rates.room_rates' | t | default: 'Room Rates' }}</span>
+                    </div>
+                    <span class="wetu-accordion__caret svg-wrapper icon-caret icon-animated">
+                      {{- 'icon-caret.svg' | inline_asset_content -}}
+                    </span>
+                  </summary>
+                  
+                  <div class="wetu-accordion__content">
+                    {% render 'wetu-rate-tiers-display', rate_tiers: rate_tiers, show_room_name: true %}
+                  </div>
+                </details>
+              </accordion-custom>
+            {% endif %}
+            
+          {% elsif product_type == 'wetu-linked-product' and options %}
+            {% comment %} Options rendering for linked products {% endcomment %}
+            {% for option in options %}
+              {% liquid
+                assign option_name = option.name.value
+                assign option_description = option.description.value
+                assign option_rates = option.option_rates.value
+              %}
+              
+              {% if option_rates and option_rates.size > 0 %}
+                <accordion-custom {% if forloop.first %}open-by-default-on-desktop{% endif %}>
+                  <details class="wetu-accordion__details" data-testid="accordion-details">
+                    <summary class="wetu-accordion__summary">
+                      <div class="wetu-accordion__header">
+                        <span class="wetu-accordion__title">{{ option_name }}</span>
+                      </div>
+                      <span class="wetu-accordion__caret svg-wrapper icon-caret icon-animated">
+                        {{- 'icon-caret.svg' | inline_asset_content -}}
+                      </span>
+                    </summary>
+                    
+                    <div class="wetu-accordion__content">
+                      {% if option_description %}
+                        <p class="wetu-accordion__description">{{ option_description }}</p>
+                      {% endif %}
+                      
+                      <div class="wetu-rate-table">
+                        {% for rate in option_rates %}
+                          {% render 'wetu-rate-row', rate: rate %}
+                        {% endfor %}
+                      </div>
+                    </div>
+                  </details>
+                </accordion-custom>
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+        {% endif %}
+      </div>
+
+        {% comment %} Disclaimer {% endcomment %}
+        {% if section.settings.show_disclaimer %}
+          <div class="wetu-rates__disclaimer">
+            <p>{{ section.settings.disclaimer_text }}</p>
+          </div>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+{% endif %}
+
+{% stylesheet %}
+  .wetu-comprehensive-rates {
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+  }
+
+  .wetu-rates__header {
+    text-align: left;
+  }
+
+  .wetu-rates__title {
+    font-family: var(--font-heading--family);
+    font-size: clamp(2rem, 4vw, 2.5rem);
+    font-weight: 600;
+    line-height: 1.2;
+    margin-bottom: 12px;
+    color: rgb(var(--color-foreground));
+  }
+
+  .wetu-rates__subheading {
+    font-size: 1.0625rem;
+    line-height: 1.6;
+    color: rgba(var(--color-foreground), 0.7);
+    margin: 0;
+  }
+
+  .wetu-rates__price-range {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 24px;
+  }
+
+  .wetu-rates__price-label {
+    font-size: 1rem;
+    color: rgba(var(--color-foreground), 0.7);
+  }
+
+  .wetu-rates__price-amount {
+    font-family: var(--font-heading--family);
+    font-size: 2rem;
+    font-weight: 700;
+    color: rgb(var(--color-foreground));
+    line-height: 1;
+  }
+
+  .wetu-rates__price-separator {
+    font-size: 1.5rem;
+    color: rgba(var(--color-foreground), 0.4);
+  }
+
+  /* Accordion Container */
+  .wetu-rates__accordion-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* Accordion Styling */
+  .wetu-accordion__details {
+    border: 1px solid rgba(var(--color-foreground), 0.1);
+    border-radius: 0;
+    background: rgba(var(--color-foreground), 0.05);
+    overflow: hidden;
+    transition: all 0.3s ease;
+  }
+
+  /* Subtle alternating backgrounds for visual separation */
+  accordion-custom:nth-child(odd) .wetu-accordion__details {
+    background: rgba(var(--color-foreground), 0.04);
+  }
+
+  accordion-custom:nth-child(even) .wetu-accordion__details {
+    background: rgba(var(--color-foreground), 0.06);
+  }
+
+  .wetu-accordion__details:hover {
+    border-color: rgba(var(--color-foreground), 0.15);
+  }
+
+  accordion-custom:nth-child(odd) .wetu-accordion__details:hover {
+    background: rgba(var(--color-foreground), 0.05);
+  }
+
+  accordion-custom:nth-child(even) .wetu-accordion__details:hover {
+    background: rgba(var(--color-foreground), 0.07);
+  }
+
+  .wetu-accordion__details[open] {
+    border-color: rgba(var(--color-foreground), 0.2);
+  }
+
+  .wetu-accordion__summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+    min-height: var(--minimum-touch-target, 48px);
+  }
+
+  .wetu-accordion__summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .wetu-accordion__header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    flex-wrap: wrap;
+  }
+
+  .wetu-accordion__icon {
+    font-size: 1.25rem;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+
+  .wetu-accordion__title {
+    font-family: var(--font-heading--family);
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: rgb(var(--color-foreground));
+    flex: 1;
+  }
+
+  .wetu-accordion__count,
+  .wetu-accordion__badge {
+    font-size: 0.8125rem;
+    padding: 4px 12px;
+    background: rgba(var(--color-foreground), 0.08);
+    border-radius: 12px;
+    font-weight: 500;
+    color: rgba(var(--color-foreground), 0.8);
+  }
+
+  .wetu-accordion__caret {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    transition: transform 0.3s ease;
+    color: rgba(var(--color-foreground), 0.6);
+  }
+
+  .wetu-accordion__details[open] .wetu-accordion__caret {
+    transform: rotate(180deg);
+  }
+
+  .wetu-accordion__content {
+    padding: 0 24px 24px;
+    animation: accordionSlideDown 0.3s ease;
+  }
+
+  @keyframes accordionSlideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .wetu-accordion__text {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: rgba(var(--color-foreground), 0.8);
+    margin-bottom: 16px;
+  }
+
+  .wetu-accordion__description {
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: rgba(var(--color-foreground), 0.7);
+    margin-bottom: 20px;
+  }
+
+  .wetu-accordion__dates {
+    font-size: 0.9375rem;
+    padding: 12px 16px;
+    background: rgba(var(--color-foreground), 0.04);
+    border-radius: 6px;
+    color: rgba(var(--color-foreground), 0.8);
+    margin-bottom: 12px;
+  }
+
+  .wetu-accordion__dates strong {
+    font-weight: 600;
+    color: rgb(var(--color-foreground));
+  }
+
+  .wetu-accordion__conditions {
+    font-size: 0.875rem;
+    padding: 12px 16px;
+    background: rgba(var(--color-foreground), 0.04);
+    border-left: 3px solid rgba(var(--color-foreground), 0.2);
+    border-radius: 4px;
+    line-height: 1.5;
+    color: rgba(var(--color-foreground), 0.7);
+  }
+
+  .wetu-accordion__conditions strong {
+    display: block;
+    font-weight: 600;
+    color: rgb(var(--color-foreground));
+    margin-bottom: 6px;
+  }
+
+  .wetu-accordion__conditions p {
+    margin: 0;
+  }
+
+  /* Rate Table */
+  .wetu-rate-table {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* Rate Summary */
+  .wetu-rate-summary {
+    padding: 32px;
+    text-align: center;
+    background: rgba(var(--color-foreground), 0.03);
+    border: 1px solid rgba(var(--color-foreground), 0.1);
+    border-radius: 8px;
+  }
+
+  .wetu-rate-summary__price {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .wetu-rate-summary__label {
+    font-size: 1rem;
+    color: rgba(var(--color-foreground), 0.7);
+  }
+
+  .wetu-rate-summary__amount {
+    font-family: var(--font-heading--family);
+    font-size: 2rem;
+    font-weight: 700;
+    color: rgb(var(--color-foreground));
+  }
+
+  .wetu-rate-summary__separator {
+    font-size: 1.5rem;
+    color: rgba(var(--color-foreground), 0.4);
+  }
+
+  .wetu-rate-summary__type {
+    font-size: 0.875rem;
+    color: rgba(var(--color-foreground), 0.6);
+    text-transform: capitalize;
+  }
+
+  /* Amenities List */
+  .wetu-amenities-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
+    gap: 12px;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .wetu-amenities-list__item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 0.9375rem;
+    color: rgba(var(--color-foreground), 0.8);
+    padding: 8px 0;
+  }
+
+  .wetu-amenities-list__icon {
+    flex-shrink: 0;
+    color: rgb(var(--color-foreground));
+    margin-top: 2px;
+  }
+
+  /* Disclaimer */
+  .wetu-rates__disclaimer {
+    text-align: left;
+    padding: 20px 24px;
+    background: rgba(var(--color-foreground), 0.03);
+    border-radius: 0;
+    border: 1px solid rgba(var(--color-foreground), 0.08);
+  }
+
+  .wetu-rates__disclaimer p {
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: rgba(var(--color-foreground), 0.6);
+    margin: 0;
+  }
+
+  /* Responsive */
+  @media screen and (max-width: 749px) {
+    .wetu-comprehensive-rates {
+      gap: 32px;
+    }
+
+    .wetu-accordion__summary {
+      padding: 16px 20px;
+    }
+
+    .wetu-accordion__content {
+      padding: 0 20px 20px;
+    }
+
+    .wetu-accordion__title {
+      font-size: 1rem;
+    }
+
+    .wetu-rate-summary {
+      padding: 24px 20px;
+    }
+
+    .wetu-rate-summary__amount {
+      font-size: 1.75rem;
+    }
+
+    .wetu-amenities-list {
+      grid-template-columns: 1fr;
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "WETU Comprehensive Rates",
+  "class": "section-wetu-rates",
+  "settings": [
+    {
+      "type": "product",
+      "id": "product",
+      "label": "Product"
+    },
+    {
+      "type": "header",
+      "content": "Section Header"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_heading",
+      "label": "Show heading",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "heading_text",
+      "label": "Heading",
+      "default": "Rates & Pricing"
+    },
+    {
+      "type": "textarea",
+      "id": "subheading_text",
+      "label": "Subheading",
+      "default": "Explore our accommodation options and seasonal rates"
+    },
+    {
+      "type": "header",
+      "content": "Special Offers"
+    },
+    {
+      "type": "range",
+      "id": "max_specials",
+      "min": 1,
+      "max": 10,
+      "step": 1,
+      "label": "Maximum specials to show",
+      "default": 6
+    },
+    {
+      "type": "header",
+      "content": "Disclaimer"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_disclaimer",
+      "label": "Show disclaimer",
+      "default": true
+    },
+    {
+      "type": "textarea",
+      "id": "disclaimer_text",
+      "label": "Disclaimer text",
+      "default": "Rates are subject to availability and may change. Please contact us for the most current pricing and special offers."
+    },
+    {
+      "type": "header",
+      "content": "Section Settings"
+    },
+    {
+      "type": "select",
+      "id": "section_width",
+      "label": "Width",
+      "options": [
+        {
+          "value": "page-width",
+          "label": "Page"
+        },
+        {
+          "value": "full-width",
+          "label": "Full"
+        }
+      ],
+      "default": "page-width"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "min": 0,
+      "max": 200,
+      "step": 4,
+      "unit": "px",
+      "label": "Padding top",
+      "default": 48
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "min": 0,
+      "max": 200,
+      "step": 4,
+      "unit": "px",
+      "label": "Padding bottom",
+      "default": 48
+    }
+  ],
+  "presets": [
+    {
+      "name": "WETU Comprehensive Rates"
+    }
+  ]
+}
+{% endschema %}

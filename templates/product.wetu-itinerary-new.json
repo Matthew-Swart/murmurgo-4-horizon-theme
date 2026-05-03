@@ -1,0 +1,117 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "hero": {
+      "type": "wetu-itinerary-new-hero",
+      "settings": {
+        "color_scheme": "scheme-5",
+        "section_height": 100,
+        "show_destination_pills": true,
+        "show_booking_widget": true,
+        "show_view_toggle": true,
+        "show_print_button": true
+      }
+    },
+    "day_navigator": {
+      "type": "wetu-itinerary-new-navigator",
+      "settings": {
+        "color_scheme": "scheme-5",
+        "sticky": true,
+        "show_progress_bar": true,
+        "show_map_link": true
+      }
+    },
+    "day_by_day": {
+      "type": "wetu-itinerary-new-days",
+      "settings": {
+        "color_scheme": "scheme-5",
+        "show_destination_heroes": true,
+        "show_transfers": true,
+        "show_driving_directions": true,
+        "show_videos": true,
+        "show_alternative_accommodations": true,
+        "show_period_notes": true,
+        "show_activities": true,
+        "show_daily_inclusions": true
+      }
+    },
+    "overview": {
+      "type": "wetu-itinerary-new-overview",
+      "settings": {
+        "color_scheme": "scheme-5",
+        "heading": "Your Journey",
+        "show_stats": true,
+        "show_timeline": true,
+        "show_accommodation_table": true,
+        "show_map_preview": true
+      }
+    },
+    "transport": {
+      "type": "wetu-itinerary-new-transport",
+      "settings": {
+        "color_scheme": "scheme-5",
+        "heading": "Transport Summary",
+        "show_flights": true,
+        "show_road_routes": true,
+        "show_duration": true,
+        "show_distance": true,
+        "show_directions": true,
+        "show_maps_link": true
+      }
+    },
+    "booking": {
+      "type": "wetu-itinerary-new-booking",
+      "settings": {
+        "color_scheme": "scheme-1",
+        "heading": "Book Your Journey",
+        "subheading": "Ready to start your adventure? Reserve your spot today.",
+        "show_includes": true,
+        "show_excludes": true,
+        "show_operator": true,
+        "show_trust_badges": true
+      }
+    },
+    "travel_brief": {
+      "type": "wetu-itinerary-new-travel-brief",
+      "settings": {
+        "color_scheme": "scheme-1",
+        "show_identifier": true,
+        "show_party_details": true,
+        "show_primary_contact": true,
+        "show_contacts": true,
+        "promote_special_interests": true,
+        "show_special_interests": true,
+        "show_checkin_times": true,
+        "use_table_layout": true,
+        "show_additional_info": true,
+        "show_terms": true
+      }
+    },
+    "enquiry": {
+      "type": "wetu-itinerary-new-enquiry",
+      "settings": {
+        "color_scheme": "scheme-1",
+        "heading": "Make an Enquiry",
+        "subheading": "Get in touch with our travel experts for a personalized quote"
+      }
+    }
+  },
+  "order": [
+    "hero",
+    "day_navigator",
+    "day_by_day",
+    "overview",
+    "transport",
+    "booking",
+    "travel_brief",
+    "enquiry"
+  ]
+}

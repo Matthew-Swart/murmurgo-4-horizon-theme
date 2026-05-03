@@ -1,0 +1,303 @@
+{% comment %}
+  ============================================================================
+  WETU ITINERARY INCLUSIONS/EXCLUSIONS SECTION
+  ============================================================================
+  
+  Displays the itinerary-level price_includes and price_excludes from WETU API
+  in a clean, visual format with icons.
+  
+  ============================================================================
+{% endcomment %}
+
+{% include 'wetu-itinerary-data' %}
+
+{%- liquid
+  assign price_includes = wetu_itinerary.price_includes.value
+  assign price_excludes = wetu_itinerary.price_excludes.value
+  
+  assign has_includes = false
+  assign has_excludes = false
+  
+  if price_includes != blank
+    assign has_includes = true
+  endif
+  
+  if price_excludes != blank
+    assign has_excludes = true
+  endif
+  
+  if has_includes or has_excludes
+    assign show_section = true
+  endif
+-%}
+
+{% if show_section %}
+<section 
+  class="itin-inclusions color-{{ section.settings.color_scheme }}" 
+  id="inclusions"
+  aria-labelledby="inclusions-heading"
+>
+  <div class="page-width">
+    <header class="itin-inclusions__header">
+      <h2 id="inclusions-heading" class="itin-inclusions__title">
+        {{ section.settings.heading | default: "What's Included" }}
+      </h2>
+      {% if section.settings.subheading != blank %}
+        <p class="itin-inclusions__subheading">{{ section.settings.subheading }}</p>
+      {% endif %}
+    </header>
+    
+    <div class="itin-inclusions__grid {% if has_includes and has_excludes %}itin-inclusions__grid--two-col{% endif %}">
+      
+      {% comment %} Price Includes {% endcomment %}
+      {% if has_includes and section.settings.show_includes %}
+        <div class="itin-inclusions__panel itin-inclusions__panel--included">
+          <div class="itin-inclusions__panel-header">
+            <span class="itin-inclusions__panel-icon itin-inclusions__panel-icon--included">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+            </span>
+            <h3 class="itin-inclusions__panel-title">
+              {{ 'wetu.itinerary.price_includes' | t | default: 'Price Includes' }}
+            </h3>
+          </div>
+          <div class="itin-inclusions__panel-content itin-inclusions__panel-content--included">
+            {% render 'wetu-ui-bullets', html: price_includes, variant: 'included', show_title: false %}
+          </div>
+        </div>
+      {% endif %}
+      
+      {% comment %} Price Excludes {% endcomment %}
+      {% if has_excludes and section.settings.show_excludes %}
+        <div class="itin-inclusions__panel itin-inclusions__panel--excluded">
+          <div class="itin-inclusions__panel-header">
+            <span class="itin-inclusions__panel-icon itin-inclusions__panel-icon--excluded">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="15" y1="9" x2="9" y2="15"/>
+                <line x1="9" y1="9" x2="15" y2="15"/>
+              </svg>
+            </span>
+            <h3 class="itin-inclusions__panel-title">
+              {{ 'wetu.itinerary.price_excludes' | t | default: 'Not Included' }}
+            </h3>
+          </div>
+          <div class="itin-inclusions__panel-content itin-inclusions__panel-content--excluded">
+            {% render 'wetu-ui-bullets', html: price_excludes, variant: 'excluded', show_title: false %}
+          </div>
+        </div>
+      {% endif %}
+      
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<style>
+.itin-inclusions {
+  padding: 60px 0;
+}
+
+.itin-inclusions__header {
+  margin-bottom: 40px;
+  text-align: center;
+}
+
+.itin-inclusions__title {
+  font-size: 1.75rem;
+  font-weight: 600;
+  margin: 0 0 8px;
+  color: rgb(var(--color-foreground));
+}
+
+.itin-inclusions__subheading {
+  font-size: 1rem;
+  color: rgba(var(--color-foreground), 0.7);
+  margin: 0;
+}
+
+.itin-inclusions__grid {
+  display: grid;
+  gap: 24px;
+}
+
+.itin-inclusions__grid--two-col {
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 990px) {
+  .itin-inclusions__grid--two-col {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.itin-inclusions__panel {
+  background: rgba(var(--color-foreground), 0.02);
+  border: 1px solid rgba(var(--color-foreground), 0.1);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.itin-inclusions__panel--included {
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.itin-inclusions__panel--excluded {
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.itin-inclusions__panel-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(var(--color-foreground), 0.08);
+}
+
+.itin-inclusions__panel--included .itin-inclusions__panel-header {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.08), rgba(34, 197, 94, 0.02));
+}
+
+.itin-inclusions__panel--excluded .itin-inclusions__panel-header {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.05), rgba(239, 68, 68, 0.01));
+}
+
+.itin-inclusions__panel-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.itin-inclusions__panel-icon--included {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+}
+
+.itin-inclusions__panel-icon--excluded {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.itin-inclusions__panel-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0;
+  color: rgb(var(--color-foreground));
+}
+
+.itin-inclusions__panel-content {
+  padding: 24px;
+}
+
+.itin-inclusions__panel-content ul,
+.itin-inclusions__panel-content ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.itin-inclusions__panel-content li {
+  position: relative;
+  padding-left: 28px;
+  margin-bottom: 12px;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: rgba(var(--color-foreground), 0.85);
+}
+
+.itin-inclusions__panel-content li:last-child {
+  margin-bottom: 0;
+}
+
+.itin-inclusions__panel-content li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  width: 16px;
+  height: 16px;
+  background-size: contain;
+  background-repeat: no-repeat;
+}
+
+.itin-inclusions__panel-content--included li::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2322c55e' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
+}
+
+.itin-inclusions__panel-content--excluded li::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23ef4444' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='18' y1='6' x2='6' y2='18'%3E%3C/line%3E%3Cline x1='6' y1='6' x2='18' y2='18'%3E%3C/line%3E%3C/svg%3E");
+}
+
+/* Fallback for raw HTML lists */
+.itin-inclusions__panel-content .wetu-bullets li::before {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .itin-inclusions {
+    padding: 40px 0;
+  }
+  
+  .itin-inclusions__title {
+    font-size: 1.5rem;
+  }
+  
+  .itin-inclusions__panel-header {
+    padding: 16px 20px;
+  }
+  
+  .itin-inclusions__panel-content {
+    padding: 20px;
+  }
+}
+</style>
+
+{% schema %}
+{
+  "name": "Itinerary Inclusions",
+  "tag": "section",
+  "class": "section-itin-inclusions",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "What's Included"
+    },
+    {
+      "type": "text",
+      "id": "subheading",
+      "label": "Subheading"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_includes",
+      "label": "Show price includes",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_excludes",
+      "label": "Show price excludes",
+      "default": true
+    }
+  ],
+  "presets": [
+    {
+      "name": "Itinerary Inclusions"
+    }
+  ]
+}
+{% endschema %}

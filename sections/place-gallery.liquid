@@ -1,0 +1,48 @@
+{% comment %}
+  place-gallery.liquid
+  Image grid with lazy loading.
+{% endcomment %}
+{% include 'murmurgo-resolve-place' %}
+
+<section class="murmurgo-place-gallery page-width" data-section-id="{{ section.id }}">
+  {% if m_place_gallery and m_place_gallery.size > 0 %}
+    <div class="place-gallery__grid">
+      {% for asset in m_place_gallery limit: 8 %}
+        <div class="place-gallery__item">
+          <img
+            src="{{ asset.cdn_url }}"
+            alt="{{ asset.alt | default: m_place_name }}"
+            loading="lazy"
+            width="{{ asset.width | default: 600 }}"
+            height="{{ asset.height | default: 400 }}"
+            style="max-width:100%;height:auto;"
+          >
+        </div>
+      {% endfor %}
+    </div>
+  {% elsif m_place_hero %}
+    <div class="place-gallery__single">
+      <img
+        src="{{ m_place_hero.cdn_url }}"
+        alt="{{ m_place_hero.alt | default: m_place_name }}"
+        loading="lazy"
+        width="{{ m_place_hero.width | default: 1200 }}"
+        height="{{ m_place_hero.height | default: 800 }}"
+        style="max-width:100%;height:auto;"
+      >
+    </div>
+  {% endif %}
+</section>
+
+{% schema %}
+{
+  "name": "Place Gallery",
+  "class": "section-place-gallery",
+  "settings": [],
+  "presets": [
+    {
+      "name": "Place Gallery"
+    }
+  ]
+}
+{% endschema %}

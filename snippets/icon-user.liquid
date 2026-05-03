@@ -1,0 +1,34 @@
+{% comment %}
+  ============================================================================
+  USER ICON SNIPPET
+  ============================================================================
+  
+  PARAMETERS:
+  - size: Icon size in pixels (default: 24)
+  - class: Additional CSS classes
+  
+  USAGE:
+  {% render 'icon-user', size: 24 %}
+  
+  ============================================================================
+{% endcomment %}
+
+{% assign icon_size = size | default: 24 %}
+{% assign icon_class = class | default: '' %}
+
+<svg 
+  class="icon icon-user {{ icon_class }}" 
+  width="{{ icon_size }}" 
+  height="{{ icon_size }}" 
+  viewBox="0 0 24 24" 
+  fill="none" 
+  stroke="currentColor" 
+  stroke-width="2" 
+  stroke-linecap="round" 
+  stroke-linejoin="round"
+  aria-hidden="true"
+>
+  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+  <circle cx="12" cy="7" r="4"/>
+</svg>
+

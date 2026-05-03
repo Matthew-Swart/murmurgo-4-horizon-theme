@@ -1,0 +1,33 @@
+{% comment %}
+  contained-places-list.liquid
+  Tabbed list of places inside a polygon (region/park).
+{% endcomment %}
+{% include 'murmurgo-resolve-place' %}
+
+<section class="murmurgo-contained-places page-width" data-section-id="{{ section.id }}">
+  {% if m_poly_name %}
+    <h2>Places in {{ m_poly_name }}</h2>
+    <div class="contained-places__tabs">
+      <div class="tab tab--active" data-tab="all">All</div>
+      <div class="tab" data-tab="accommodation">Stay</div>
+      <div class="tab" data-tab="activity">Experience</div>
+      <div class="tab" data-tab="restaurant">Dine</div>
+    </div>
+    <div class="contained-places__list" id="contained-places-list-{{ section.id }}">
+      <p>Dynamic place list will load here via JavaScript or metaobject query.</p>
+    </div>
+  {% endif %}
+</section>
+
+{% schema %}
+{
+  "name": "Contained Places List",
+  "class": "section-contained-places",
+  "settings": [],
+  "presets": [
+    {
+      "name": "Contained Places List"
+    }
+  ]
+}
+{% endschema %}

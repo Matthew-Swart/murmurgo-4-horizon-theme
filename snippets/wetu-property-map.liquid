@@ -1,0 +1,694 @@
+{% comment %}
+  Wetu Property Map - Reusable Mapbox Component
+  
+  Parameters:
+  - properties: Array of property objects with location data
+  - map_style: Mapbox style (default: satellite-streets-v12)
+  - aspect_ratio: '16:9' | '32:9' | 'fullscreen' (default: 16:9)
+  - scope: 'all' or 'single' (default: all)
+  - property_handle: Handle of single property to display (if scope is single)
+  - show_popups: Show popups on load (default: true)
+  - show_logo_overlay: Boolean. If true, shows a clickable logo overlay (default: false)
+  - logo_url: String. URL for logo image (optional)
+  - logo_link: String. HREF to navigate when clicking the logo (default: '/')
+  - logo_width: Number. Width in px (default: 140)
+  - logo_padding: Number. Padding in px from top/left (default: 16)
+  - force_mobile_popups: Boolean. If true, always use the compact/mobile popup UI
+{% endcomment %}
+
+{% assign mapbox_token = '{{ MAPBOX_ACCESS_TOKEN }}' %}
+{% if settings.mapbox_access_token and settings.mapbox_access_token != blank %}
+  {% assign mapbox_token = settings.mapbox_access_token %}
+{% endif %}
+{% assign map_style = map_style | default: 'satellite-streets-v12' %}
+{% assign aspect_ratio = aspect_ratio | default: '16:9' %}
+{% assign scope = scope | default: 'all' %}
+{% assign show_popups = show_popups | default: true %}
+{% assign show_logo_overlay = show_logo_overlay | default: false %}
+{% assign force_mobile_popups = force_mobile_popups | default: false %}
+{% assign logo_link = logo_link | default: '/' %}
+{% assign logo_width = logo_width | default: 140 %}
+{% assign logo_padding = logo_padding | default: 16 %}
+{% assign logo_sizes = '(min-width: 750px) ' | append: logo_width | append: 'px, 120px' %}
+
+{% comment %} Fetch property data based on scope {% endcomment %}
+{% if scope == 'single' and property_handle %}
+  {% assign target_properties = '' | split: '' %}
+  {% for prop in properties %}
+    {% if prop.handle == property_handle %}
+      {% assign target_properties = target_properties | push: prop %}
+    {% endif %}
+  {% endfor %}
+{% else %}
+  {% assign target_properties = properties %}
+{% endif %}
+
+{% if target_properties.size > 0 %}
+<div class="wetu-property-map-wrapper" style="position: relative; width: 100%; max-width: 100%; {% if aspect_ratio == 'fullscreen' %}height: 100vh;{% elsif aspect_ratio == '32:9' %}padding-bottom: 28.125%;{% else %}padding-bottom: 56.25%;{% endif %} overflow: hidden; box-sizing: border-box;">
+  <div class="wetu-property-map" id="map-{{ section.id | default: 'default' }}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; max-width: 100%;"></div>
+  {% if show_logo_overlay %}
+    <a class="wetu-map-logo-overlay" href="{{ logo_link }}" aria-label="{{ shop.name }}">
+      {% if logo_url and logo_url != blank %}
+        <img src="{{ logo_url }}" alt="{{ shop.name }}" loading="lazy" />
+      {% elsif settings.logo_inverse %}
+        {{ settings.logo_inverse | image_url: width: logo_width | image_tag: widths: '120, 160, 200', sizes: logo_sizes, alt: shop.name }}
+      {% elsif settings.logo %}
+        {{ settings.logo | image_url: width: logo_width | image_tag: widths: '120, 160, 200', sizes: logo_sizes, alt: shop.name }}
+      {% else %}
+        <span class="wetu-map-logo-text">{{ shop.name }}</span>
+      {% endif %}
+    </a>
+  {% endif %}
+</div>
+
+<style>
+{% if aspect_ratio == '32:9' %}
+@media (max-width: 749px) {
+  #shopify-section-{{ section.id }} .wetu-property-map-wrapper { padding-bottom: 56.25% !important; }
+}
+{% endif %}
+/* Ensure the map canvas sits behind popups/controls but above backgrounds */
+#shopify-section-{{ section.id }} .wetu-property-map { z-index: 1; }
+#shopify-section-{{ section.id }} .mapboxgl-popup { z-index: 3; }
+#shopify-section-{{ section.id }} .mapboxgl-ctrl { z-index: 3; }
+#shopify-section-{{ section.id }} .mapboxgl-canvas-container { position: absolute !important; top: 0; left: 0; width: 100% !important; height: 100% !important; }
+#shopify-section-{{ section.id }} .mapboxgl-canvas { width: 100% !important; height: 100% !important; }
+</style>
+
+{% if show_logo_overlay %}
+<style>
+#shopify-section-{{ section.id }} .wetu-map-logo-overlay {
+  position: absolute;
+  top: {{ logo_padding }}px;
+  left: {{ logo_padding }}px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 8px;
+  background: transparent;
+  border-radius: 6px;
+  text-decoration: none;
+}
+#shopify-section-{{ section.id }} .wetu-map-logo-overlay img { height: auto; max-width: {{ logo_width }}px; display: block; }
+#shopify-section-{{ section.id }} .wetu-map-logo-text { color: #111; font-weight: 600; font-size: 14px; }
+@media (max-width: 749px) {
+  #shopify-section-{{ section.id }} .wetu-map-logo-overlay { padding: 4px 6px; }
+  #shopify-section-{{ section.id }} .wetu-map-logo-overlay img { max-width: 120px; }
+}
+</style>
+{% endif %}
+
+<script src='https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.js'></script>
+<link href='https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.css' rel='stylesheet' />
+
+<script>
+(function() {
+  const mapId = 'map-{{ section.id | default: 'default' }}';
+  const mapContainer = document.getElementById(mapId);
+  
+  if (!mapContainer || typeof mapboxgl === 'undefined') return;
+  
+  mapboxgl.accessToken = '{{ mapbox_token }}';
+  const forceMobilePopups = {{ force_mobile_popups | json }};
+  
+  let data = {{ target_properties | json }};
+  let properties = [];
+  try {
+    if (Array.isArray(data)) {
+      properties = data;
+    } else if (typeof data === 'string') {
+      properties = JSON.parse(data);
+    } else if (data && Array.isArray(data.properties)) {
+      properties = data.properties;
+    } else if (data && Array.isArray(data.items)) {
+      properties = data.items;
+    }
+  } catch (e) {
+    console.error('Failed to parse properties data', e, data);
+    properties = [];
+  }
+  
+  // Guard: filter out invalid coordinates (prevents NaN errors in Mapbox)
+  const validProperties = (properties || []).filter(p => {
+    const lat = Number(p && p.latitude);
+    const lng = Number(p && p.longitude);
+    const valid = Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
+    if (!valid) {
+      console.warn('Skipping invalid property coordinates', p && p.name, p);
+    }
+    return valid;
+  });
+  
+  if (validProperties.length === 0) return;
+
+  // Group properties that share (nearly) identical coordinates
+  function groupByCoordinate(items) {
+    const EPS = 1e-5; // ~1m tolerance
+    const groups = [];
+    items.forEach((prop) => {
+      let group = groups.find(g => Math.abs(g.lng - prop.longitude) <= EPS && Math.abs(g.lat - prop.latitude) <= EPS);
+      if (!group) {
+        group = { lat: prop.latitude, lng: prop.longitude, properties: [] };
+        groups.push(group);
+      }
+      group.properties.push(prop);
+    });
+    return groups;
+  }
+  const coordGroups = groupByCoordinate(validProperties);
+  
+  const map = new mapboxgl.Map({
+    container: mapId,
+    style: 'mapbox://styles/mapbox/{{ map_style }}',
+    center: [validProperties[0].longitude, validProperties[0].latitude],
+    zoom: 11
+  });
+  
+  const popupManager = {
+    popups: [],
+    shouldShowExpanded: true,
+    
+    calculateLayout() {
+      if (forceMobilePopups) {
+        return false; // always use compact/mobile popup UI when forced
+      }
+      try {
+        const viewportWidth = window.innerWidth;
+        const isMobile = viewportWidth < 768;
+        // Smaller threshold on mobile; larger on desktop
+        const minDistance = isMobile ? 140 : 200;
+        
+        const screenPositions = coordGroups.map(group => {
+          const lngLat = new mapboxgl.LngLat(group.lng, group.lat);
+          const screenPos = map.project(lngLat);
+          return {
+            id: `${lngLat.lng},${lngLat.lat}`,
+            x: screenPos.x,
+            y: screenPos.y
+          };
+        });
+        
+        // Collapse only when markers themselves are too close (overlapping pins)
+        for (let i = 0; i < screenPositions.length; i++) {
+          for (let j = i + 1; j < screenPositions.length; j++) {
+            const dx = screenPositions[i].x - screenPositions[j].x;
+            const dy = screenPositions[i].y - screenPositions[j].y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < minDistance) {
+              return false; // collapsed mode
+            }
+          }
+        }
+        return true; // expanded mode
+      } catch (e) {
+        console.error('Layout calculation error:', e);
+        return true;
+      }
+    },
+    
+    createExpandedPopup(property) {
+      const popupContent = `
+        <div class="popup-wrapper">
+          <div class="popup-pointer"></div>
+          <div class="popup-image-container" onclick="window.location.href='${property.url}'">
+            <img src="${property.image}" alt="${property.name}">
+            <div class="popup-overlay">
+              <div class="popup-title">${property.name}</div>
+              <div class="popup-location">${property.destination}${property.country ? ', ' + property.country : ''}</div>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      return new mapboxgl.Popup({
+        offset: [15, 0],
+        closeButton: false,
+        closeOnClick: false,
+        closeOnMove: false,
+        className: 'property-popup',
+        anchor: 'left'
+      })
+      .setLngLat([property.longitude, property.latitude])
+      .setHTML(popupContent);
+    },
+    
+    createGroupedExpandedPopup(group) {
+      const items = group.properties.slice(0, 3).map((p, index) => {
+        const locationInfo = index === 0 ? ` <span class=\"popup-location-inline\">${p.destination}${p.country ? ', ' + p.country : ''}</span>` : '';
+        return `
+        <a class=\"popup-title-item\" href=\"${p.url}\" tabindex=\"-1\">\n          <span class=\"popup-title-thumb\"><img src=\"${p.image}\" alt=\"${p.name}\"></span>\n          <span class=\"popup-title-text\">${p.name}${locationInfo}</span>\n        </a>
+      `;
+      }).join('');
+      const popupContent = `
+        <div class=\"popup-multi-wrapper\">\n          <div class=\"popup-pointer\"></div>\n          <div class=\"popup-title-list\">${items}</div>\n        </div>
+      `;
+      return new mapboxgl.Popup({
+        offset: [15, 0],
+        closeButton: false,
+        closeOnClick: false,
+        closeOnMove: false,
+        className: 'property-popup-multi',
+        anchor: 'left'
+      })
+      .setLngLat([group.lng, group.lat])
+      .setHTML(popupContent);
+    },
+    
+    createCollapsedPopup(property) {
+      const popupContent = `
+        <div class="popup-mobile-wrapper" onclick="window.location.href='${property.url}'">
+          <div class="popup-mobile-pointer"></div>
+          <div class="popup-mobile-image-container">
+            <img src="${property.image}" alt="${property.name}">
+          </div>
+          <p class="popup-mobile-title">${property.name}</p>
+        </div>
+      `;
+      
+      return new mapboxgl.Popup({
+        offset: [10, 0],
+        closeButton: false,
+        closeOnClick: false,
+        closeOnMove: false,
+        className: 'property-popup-collapsed',
+        anchor: 'left'
+      })
+      .setLngLat([property.longitude, property.latitude])
+      .setHTML(popupContent);
+    },
+    
+    initialize() {
+      this.shouldShowExpanded = this.calculateLayout();
+      console.log('Layout mode:', this.shouldShowExpanded ? 'expanded' : 'collapsed');
+      
+      if (this.shouldShowExpanded) {
+        coordGroups.forEach(group => {
+          const popup = group.properties.length > 1
+            ? this.createGroupedExpandedPopup(group)
+            : this.createExpandedPopup(group.properties[0]);
+          {% if show_popups %}
+            popup.addTo(map);
+          {% endif %}
+          this.popups.push({ group, popup, isExpanded: true });
+        });
+      } else {
+        // Collapsed: small popup per property for clearer selection
+        validProperties.forEach(property => {
+          const popup = this.createCollapsedPopup(property);
+          {% if show_popups %}
+            popup.addTo(map);
+          {% endif %}
+          this.popups.push({ property, popup, isExpanded: false });
+        });
+      }
+    },
+    
+    handleResize() {
+      const newLayout = this.calculateLayout();
+      
+      if (newLayout === this.shouldShowExpanded) {
+        return;
+      }
+      
+      console.log('Layout changed to:', newLayout ? 'expanded' : 'collapsed');
+      this.shouldShowExpanded = newLayout;
+      
+      this.popups.forEach(popupData => {
+        popupData.popup.remove();
+      });
+      
+      this.popups = [];
+      this.initialize();
+    }
+  };
+  
+  map.on('load', () => {
+    // Create bounds that include all properties
+    const bounds = new mapboxgl.LngLatBounds();
+    validProperties.forEach(property => {
+      bounds.extend([property.longitude, property.latitude]);
+    });
+    
+    // Guard: ensure bounds are valid before fitting
+    if (!bounds || bounds.isEmpty()) {
+      console.warn('Invalid or empty bounds, skipping fitBounds');
+      return;
+    }
+    
+    // Compute responsive padding that fits within the container
+    const mapContainer = document.getElementById(mapId);
+    const containerWidth = mapContainer ? mapContainer.offsetWidth : window.innerWidth;
+    const containerHeight = mapContainer ? mapContainer.offsetHeight : window.innerHeight;
+    const isMobile = window.innerWidth < 768;
+    
+    // Calculate directional padding so that all pins and their popups are visible
+    const hasMultiGroups = coordGroups.some(g => g.properties.length > 1);
+    // Predict layout mode for padding purposes (force mobile overrides)
+    const predictedExpanded = forceMobilePopups ? false : popupManager.calculateLayout();
+    const popupWidth = predictedExpanded ? (hasMultiGroups ? 280 : 320) : 110; // compact/mobile ~80 image + pointer/margin
+    const popupHeight = predictedExpanded ? (hasMultiGroups ? 120 : 180) : 64;
+    
+    const basePadding = isMobile ? 40 : 60;
+    const padding = {
+      top: Math.min(Math.floor(containerHeight * 0.28), basePadding + Math.ceil(popupHeight / 2)),
+      bottom: Math.min(Math.floor(containerHeight * 0.28), basePadding + Math.ceil(popupHeight / 2)),
+      left: Math.min(Math.floor(containerWidth * 0.28), basePadding),
+      // Give extra space on the right to account for popup width next to rightmost pin
+      right: Math.min(Math.floor(containerWidth * 0.4), basePadding + popupWidth)
+    };
+    
+    // Ensure the map knows the final container size before fitting
+    try { map.resize(); } catch (e) {}
+    map.fitBounds(bounds, {
+      padding, // uniform equal padding on all four sides
+      maxZoom: validProperties.length === 1 ? 13 : (isMobile ? 10 : 11),
+      duration: 0,
+      animate: false,
+      linear: true
+    });
+    
+    map.addSource('marker-groups', {
+      type: 'geojson',
+      data: {
+        type: 'FeatureCollection',
+        features: coordGroups.map(group => ({
+          type: 'Feature',
+          geometry: {
+            type: 'Point',
+            coordinates: [group.lng, group.lat]
+          },
+          properties: { id: `${group.lng},${group.lat}` }
+        }))
+      }
+    });
+    
+    // Add white dot markers with responsive sizing
+    const markerRadius = isMobile 
+      ? ['interpolate', ['linear'], ['zoom'], 3, 6, 10, 9]
+      : ['interpolate', ['linear'], ['zoom'], 3, 5, 10, 7];
+    
+    map.addLayer({
+      id: 'position-dots',
+      type: 'circle',
+      source: 'marker-groups',
+      paint: {
+        'circle-radius': markerRadius,
+        'circle-color': '#ffffff',
+        'circle-stroke-width': isMobile ? 3 : 2,
+        'circle-stroke-color': '#333333',
+        'circle-opacity': 1
+      }
+    });
+    
+    // Store initial scroll position to restore after map loads
+    const initialScrollY = window.scrollY;
+    const initialScrollX = window.scrollX;
+    
+    // Prevent any scroll events during map initialization
+    let isInitializing = true;
+    const preventScrollDuringInit = (e) => {
+      if (isInitializing) {
+        window.scrollTo({ top: initialScrollY, left: initialScrollX, behavior: 'instant' });
+      }
+    };
+    window.addEventListener('scroll', preventScrollDuringInit, { passive: false });
+    
+    map.once('idle', () => {
+      setTimeout(() => {
+        popupManager.initialize();
+        // After popups render, ensure they fit within the viewport by checking for overflow
+        try {
+          const containerRect = mapContainer.getBoundingClientRect();
+          const popups = Array.from(mapContainer.querySelectorAll('.mapboxgl-popup'));
+          let overflow = 0;
+          popups.forEach((el) => {
+            const r = el.getBoundingClientRect();
+            overflow = Math.max(overflow,
+              Math.max(0, containerRect.left - r.left),
+              Math.max(0, r.right - containerRect.right),
+              Math.max(0, containerRect.top - r.top),
+              Math.max(0, r.bottom - containerRect.bottom)
+            );
+          });
+          if (overflow > 2) {
+            // Increase right padding slightly more because popups extend to the right of pins
+            const adjusted = Object.assign({}, padding);
+            adjusted.right = Math.min(Math.floor(containerWidth * 0.5), adjusted.right + Math.ceil(overflow) + 16);
+            // Small bump to top/bottom to avoid vertical clipping when rows are close to edges
+            adjusted.top = Math.min(Math.floor(containerHeight * 0.33), adjusted.top + 10);
+            adjusted.bottom = Math.min(Math.floor(containerHeight * 0.33), adjusted.bottom + 10);
+            map.fitBounds(bounds, { padding: adjusted, maxZoom: validProperties.length === 1 ? 13 : (isMobile ? 10 : 11), duration: 0, animate: false, linear: true });
+          }
+        } catch (e) {}
+        // Prevent auto-scroll caused by popup links receiving focus
+        setTimeout(() => {
+          // Always restore scroll position, not just when near top
+          window.scrollTo({ top: initialScrollY, left: initialScrollX, behavior: 'instant' });
+          
+          // Remove focus from any popup links
+          const popupLinks = document.querySelectorAll('.popup-title-item, .mapboxgl-popup a');
+          popupLinks.forEach(link => {
+            if (document.activeElement === link) {
+              link.blur();
+            }
+          });
+          
+          // Allow normal scrolling again after a brief delay
+          setTimeout(() => {
+            isInitializing = false;
+            window.removeEventListener('scroll', preventScrollDuringInit);
+          }, 100);
+        }, 50);
+      }, 100);
+    });
+    // Safety: ensure popups appear promptly on mobile too
+    setTimeout(() => {
+      if (!popupManager.popups.length) {
+        try { 
+          popupManager.initialize();
+          // Prevent auto-scroll caused by popup links receiving focus
+          setTimeout(() => {
+            // Always restore scroll position, not just when near top
+            window.scrollTo({ top: initialScrollY, left: initialScrollX, behavior: 'instant' });
+            
+            // Remove focus from any popup links
+            const popupLinks = document.querySelectorAll('.popup-title-item, .mapboxgl-popup a');
+            popupLinks.forEach(link => {
+              if (document.activeElement === link) {
+                link.blur();
+              }
+            });
+            
+            // Allow normal scrolling again after a brief delay
+            setTimeout(() => {
+              isInitializing = false;
+              window.removeEventListener('scroll', preventScrollDuringInit);
+            }, 100);
+          }, 50);
+        } catch (e) { console.error(e); }
+      }
+    }, 400);
+  });
+  
+  let resizeTimeout;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => popupManager.handleResize(), 250);
+  });
+  
+  map.on('zoom', () => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => popupManager.handleResize(), 250);
+  });
+  
+  {% if aspect_ratio != 'fullscreen' %}
+    map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+  {% else %}
+    map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+    map.addControl(new mapboxgl.FullscreenControl(), 'top-right');
+  {% endif %}
+})();
+</script>
+
+<style>
+/* Mapbox popup base styles */
+.mapboxgl-popup {
+  max-width: none !important;
+}
+.mapboxgl-popup-content {
+  padding: 0;
+  overflow: visible;
+  background: transparent;
+  box-shadow: none;
+}
+.mapboxgl-popup-tip {
+  display: none;
+}
+
+/* Desktop expanded popup */
+.popup-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+  gap: 0;
+}
+.popup-pointer {
+  width: 0;
+  height: 0;
+  border-top: 10px solid transparent;
+  border-bottom: 10px solid transparent;
+  border-right: 15px solid white;
+  flex-shrink: 0;
+  margin-left: 8px;
+  margin-right: 0;
+}
+.popup-image-container {
+  position: relative;
+  width: 280px;
+  height: 157.5px;
+  cursor: pointer;
+  overflow: hidden;
+  border: 2px solid white;
+  background: white;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+.popup-image-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.popup-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%);
+  padding: 12px;
+}
+.popup-title {
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 4px 0;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+.popup-location {
+  color: white;
+  font-size: 12px;
+  margin: 0;
+  opacity: 0.95;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+/* Mobile collapsed popup styles */
+.popup-mobile-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  cursor: pointer;
+}
+.popup-mobile-image-container {
+  position: relative;
+  width: 80px;
+  height: 45px;
+  cursor: pointer;
+  overflow: hidden;
+  border: 1px solid white;
+  background: white;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  flex-shrink: 0;
+}
+.popup-mobile-image-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.popup-mobile-pointer {
+  width: 0;
+  height: 0;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  border-right: 10px solid white;
+  flex-shrink: 0;
+  margin-left: 6px;
+  margin-right: 0;
+}
+.popup-mobile-title {
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0 0 0 8px;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  white-space: nowrap;
+}
+
+/* Grouped expanded popup (multiple titles with one image) */
+.popup-multi-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center; /* vertical centering of the title list */
+  flex-direction: row;
+  gap: 8px;
+}
+.popup-title-list {
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+  padding: 8px 0;
+  gap: 8px;
+}
+.popup-title-item {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  gap: 10px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+}
+.popup-title-item:focus {
+  outline: none;
+}
+.popup-title-thumb {
+  width: 50px;
+  height: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  overflow: hidden;
+  flex-shrink: 0;
+  background: transparent;
+}
+.popup-title-thumb img { 
+  width: 100%; 
+  height: 100%; 
+  object-fit: cover; 
+  display: block; 
+}
+.popup-title-text {
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  white-space: nowrap;
+  border: none;
+  outline: none;
+}
+.popup-location-inline {
+  color: white;
+  font-size: 12px;
+  font-weight: 400;
+  opacity: 0.95;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  margin-left: 6px;
+}
+.popup-title-item:hover .popup-title-text {
+  text-decoration: underline;
+}
+</style>
+{% endif %}

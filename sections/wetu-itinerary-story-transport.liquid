@@ -1,0 +1,808 @@
+{% comment %}
+  ============================================================================
+  WETU ITINERARY STORY TRANSPORT SUMMARY
+  ============================================================================
+
+  Transport summary section showing flights and transfers in separate tables.
+  Displays all route information from the itinerary for quick reference.
+
+  ============================================================================
+{% endcomment %}
+
+{% comment %} Load itinerary data {% endcomment %}
+{% include 'wetu-itinerary-data' %}
+
+{% comment %} Separate routes by type {% endcomment %}
+{% assign flight_routes = '' %}
+{% assign transfer_routes = '' %}
+{% assign other_routes = '' %}
+
+{% for route in wetu_routes %}
+  {% assign route_mode = route.mode.value | downcase %}
+
+  {% if route_mode contains 'flight' %}
+    {% if flight_routes == '' %}
+      {% assign flight_routes = route %}
+    {% else %}
+      {% assign flight_routes = flight_routes | concat: route %}
+    {% endif %}
+  {% elsif route_mode == 'transfer' %}
+    {% if transfer_routes == '' %}
+      {% assign transfer_routes = route %}
+    {% else %}
+      {% assign transfer_routes = transfer_routes | concat: route %}
+    {% endif %}
+  {% else %}
+    {% if other_routes == '' %}
+      {% assign other_routes = route %}
+    {% else %}
+      {% assign other_routes = other_routes | concat: route %}
+    {% endif %}
+  {% endif %}
+{% endfor %}
+
+{% comment %} Count routes by type {% endcomment %}
+{% assign flight_count = 0 %}
+{% assign transfer_count = 0 %}
+{% assign selfdrive_count = 0 %}
+{% assign other_count = 0 %}
+
+{% for route in wetu_routes %}
+  {% assign route_mode = route.mode.value | downcase %}
+  {% if route_mode contains 'flight' %}
+    {% assign flight_count = flight_count | plus: 1 %}
+  {% elsif route_mode == 'transfer' %}
+    {% assign transfer_count = transfer_count | plus: 1 %}
+  {% elsif route_mode == 'selfdrive' %}
+    {% assign selfdrive_count = selfdrive_count | plus: 1 %}
+  {% else %}
+    {% assign other_count = other_count | plus: 1 %}
+  {% endif %}
+{% endfor %}
+
+{% comment %} Only show section if there are routes {% endcomment %}
+{% if wetu_routes.size > 0 %}
+<section
+  class="itinerary-transport color-{{ section.settings.color_scheme }}"
+  id="transport"
+  aria-labelledby="transport-heading"
+>
+  <div class="page-width">
+
+    {% comment %} Section Header {% endcomment %}
+    <header class="itinerary-transport__header">
+      <h2 class="itinerary-transport__heading" id="transport-heading">
+        {{ section.settings.heading | default: 'Transport Summary' }}
+      </h2>
+      {% if section.settings.subheading != blank %}
+        <p class="itinerary-transport__subheading">{{ section.settings.subheading }}</p>
+      {% endif %}
+
+      {% comment %} Transport Stats {% endcomment %}
+      <div class="itinerary-transport__stats">
+        {% if flight_count > 0 %}
+          <span class="itinerary-transport__stat">
+            <svg class="itinerary-transport__stat-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
+            </svg>
+            {{ flight_count }} {% if flight_count == 1 %}Flight{% else %}Flights{% endif %}
+          </span>
+        {% endif %}
+        {% if transfer_count > 0 %}
+          <span class="itinerary-transport__stat">
+            <svg class="itinerary-transport__stat-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9L18 10l-2.7-3.6A2 2 0 0 0 13.7 5H6.3a2 2 0 0 0-1.6.8L2 9.4a2 2 0 0 0-.3.6L1 13v3c0 .6.4 1 1 1h2"/>
+              <circle cx="7" cy="17" r="2"/>
+              <circle cx="17" cy="17" r="2"/>
+            </svg>
+            {{ transfer_count }} {% if transfer_count == 1 %}Transfer{% else %}Transfers{% endif %}
+          </span>
+        {% endif %}
+        {% if selfdrive_count > 0 %}
+          <span class="itinerary-transport__stat">
+            <svg class="itinerary-transport__stat-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <circle cx="12" cy="12" r="4"/>
+              <path d="M12 2v4"/>
+              <path d="M12 18v4"/>
+              <path d="M4.93 4.93l2.83 2.83"/>
+              <path d="M16.24 16.24l2.83 2.83"/>
+            </svg>
+            {{ selfdrive_count }} Self-Drive {% if selfdrive_count == 1 %}Segment{% else %}Segments{% endif %}
+          </span>
+        {% endif %}
+      </div>
+    </header>
+
+    {% comment %} Flights Table {% endcomment %}
+    {% if flight_count > 0 and section.settings.show_flights_table %}
+      <div class="itinerary-transport__table-section">
+        <h3 class="itinerary-transport__table-heading">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
+          </svg>
+          {{ section.settings.flights_heading | default: 'Flights' }}
+        </h3>
+
+        <div class="itinerary-transport__table-wrapper">
+          <table class="itinerary-transport__table">
+            <thead>
+              <tr>
+                <th class="itinerary-transport__th itinerary-transport__th--route">Departure & Arrival</th>
+                <th class="itinerary-transport__th itinerary-transport__th--type">Flight</th>
+                <th class="itinerary-transport__th itinerary-transport__th--duration">Duration</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for route in wetu_routes %}
+                {% assign route_mode = route.mode.value | downcase %}
+                {% if route_mode contains 'flight' %}
+                  {% assign start_day_display = route.start_day.value | plus: 1 %}
+                  {% assign end_day_display = route.end_day.value | plus: 1 %}
+                  {% assign is_charter = false %}
+                  {% if route_mode contains 'charter' %}
+                    {% assign is_charter = true %}
+                  {% endif %}
+
+                  <tr class="itinerary-transport__tr">
+                    <td class="itinerary-transport__td itinerary-transport__td--route">
+                      <div class="itinerary-transport__route-info">
+                        <div class="itinerary-transport__route-leg itinerary-transport__route-leg--from">
+                          <span class="itinerary-transport__location">{{ route.start_location.value }}</span>
+                          <span class="itinerary-transport__day">Day {{ start_day_display }}</span>
+                        </div>
+                        <div class="itinerary-transport__route-arrow">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M5 12h14M12 5l7 7-7 7"/>
+                          </svg>
+                        </div>
+                        <div class="itinerary-transport__route-leg itinerary-transport__route-leg--to">
+                          <span class="itinerary-transport__location">{{ route.end_location.value }}</span>
+                          <span class="itinerary-transport__day">Day {{ end_day_display }}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="itinerary-transport__td itinerary-transport__td--type">
+                      <span class="itinerary-transport__type-badge itinerary-transport__type-badge--flight">
+                        {% if is_charter %}
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
+                          </svg>
+                          Charter
+                        {% else %}
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
+                          </svg>
+                          Scheduled
+                        {% endif %}
+                      </span>
+                    </td>
+                    <td class="itinerary-transport__td itinerary-transport__td--duration">
+                      {% if route.duration.value != blank %}
+                        {{ route.duration.value }}
+                      {% else %}
+                        —
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endif %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    {% endif %}
+
+    {% comment %} Transfers Table {% endcomment %}
+    {% if transfer_count > 0 and section.settings.show_transfers_table %}
+      <div class="itinerary-transport__table-section">
+        <h3 class="itinerary-transport__table-heading">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9L18 10l-2.7-3.6A2 2 0 0 0 13.7 5H6.3a2 2 0 0 0-1.6.8L2 9.4a2 2 0 0 0-.3.6L1 13v3c0 .6.4 1 1 1h2"/>
+            <circle cx="7" cy="17" r="2"/>
+            <circle cx="17" cy="17" r="2"/>
+          </svg>
+          {{ section.settings.transfers_heading | default: 'Transfers' }}
+        </h3>
+
+        <div class="itinerary-transport__table-wrapper">
+          <table class="itinerary-transport__table">
+            <thead>
+              <tr>
+                <th class="itinerary-transport__th itinerary-transport__th--route">Pick Up & Drop Off</th>
+                <th class="itinerary-transport__th itinerary-transport__th--type">Type</th>
+                <th class="itinerary-transport__th itinerary-transport__th--duration">Duration</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for route in wetu_routes %}
+                {% assign route_mode = route.mode.value | downcase %}
+                {% if route_mode == 'transfer' %}
+                  {% assign start_day_display = route.start_day.value | plus: 1 %}
+                  {% assign end_day_display = route.end_day.value | plus: 1 %}
+
+                  <tr class="itinerary-transport__tr">
+                    <td class="itinerary-transport__td itinerary-transport__td--route">
+                      <div class="itinerary-transport__route-info">
+                        <div class="itinerary-transport__route-leg itinerary-transport__route-leg--from">
+                          <span class="itinerary-transport__location">{{ route.start_location.value }}</span>
+                          <span class="itinerary-transport__day">Day {{ start_day_display }}</span>
+                        </div>
+                        <div class="itinerary-transport__route-arrow">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M5 12h14M12 5l7 7-7 7"/>
+                          </svg>
+                        </div>
+                        <div class="itinerary-transport__route-leg itinerary-transport__route-leg--to">
+                          <span class="itinerary-transport__location">{{ route.end_location.value }}</span>
+                          <span class="itinerary-transport__day">Day {{ end_day_display }}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="itinerary-transport__td itinerary-transport__td--type">
+                      <span class="itinerary-transport__type-badge itinerary-transport__type-badge--transfer">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9L18 10l-2.7-3.6A2 2 0 0 0 13.7 5H6.3a2 2 0 0 0-1.6.8L2 9.4a2 2 0 0 0-.3.6L1 13v3c0 .6.4 1 1 1h2"/>
+                          <circle cx="7" cy="17" r="2"/>
+                          <circle cx="17" cy="17" r="2"/>
+                        </svg>
+                        Transfer
+                      </span>
+                    </td>
+                    <td class="itinerary-transport__td itinerary-transport__td--duration">
+                      {% if route.duration.value != blank %}
+                        {{ route.duration.value }}
+                      {% else %}
+                        —
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endif %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    {% endif %}
+
+    {% comment %} Self-Drive & Other Routes Table {% endcomment %}
+    {% assign selfdrive_other_count = selfdrive_count | plus: other_count %}
+    {% if selfdrive_other_count > 0 and section.settings.show_other_routes %}
+      <div class="itinerary-transport__table-section">
+        <h3 class="itinerary-transport__table-heading">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 2v4"/>
+            <path d="M12 18v4"/>
+            <path d="M4.93 4.93l2.83 2.83"/>
+            <path d="M16.24 16.24l2.83 2.83"/>
+          </svg>
+          {{ section.settings.other_routes_heading | default: 'Road Routes' }}
+        </h3>
+
+        <div class="itinerary-transport__table-wrapper">
+          <table class="itinerary-transport__table">
+            <thead>
+              <tr>
+                <th class="itinerary-transport__th itinerary-transport__th--route">Route</th>
+                <th class="itinerary-transport__th itinerary-transport__th--type">Type</th>
+                <th class="itinerary-transport__th itinerary-transport__th--distance">Distance</th>
+                <th class="itinerary-transport__th itinerary-transport__th--duration">Duration</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for route in wetu_routes %}
+                {% assign route_mode = route.mode.value | downcase %}
+                {% unless route_mode contains 'flight' or route_mode == 'transfer' %}
+                  {% assign start_day_display = route.start_day.value | plus: 1 %}
+                  {% assign end_day_display = route.end_day.value | plus: 1 %}
+                  {% assign distance_km = route.distance.value | divided_by: 1000 %}
+
+                  <tr class="itinerary-transport__tr">
+                    <td class="itinerary-transport__td itinerary-transport__td--route">
+                      <div class="itinerary-transport__route-info">
+                        <div class="itinerary-transport__route-leg itinerary-transport__route-leg--from">
+                          <span class="itinerary-transport__location">{{ route.start_location.value }}</span>
+                          <span class="itinerary-transport__day">Day {{ start_day_display }}</span>
+                        </div>
+                        <div class="itinerary-transport__route-arrow">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M5 12h14M12 5l7 7-7 7"/>
+                          </svg>
+                        </div>
+                        <div class="itinerary-transport__route-leg itinerary-transport__route-leg--to">
+                          <span class="itinerary-transport__location">{{ route.end_location.value }}</span>
+                          <span class="itinerary-transport__day">Day {{ end_day_display }}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="itinerary-transport__td itinerary-transport__td--type">
+                      <span class="itinerary-transport__type-badge itinerary-transport__type-badge--{{ route_mode | handleize }}">
+                        {% case route_mode %}
+                          {% when 'selfdrive' %}
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <circle cx="12" cy="12" r="10"/>
+                              <circle cx="12" cy="12" r="4"/>
+                            </svg>
+                            Self-Drive
+                          {% when 'train' %}
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <rect x="4" y="3" width="16" height="16" rx="2"/>
+                              <path d="M4 11h16"/>
+                              <path d="M12 3v8"/>
+                              <path d="m8 19-2 3"/>
+                              <path d="m18 22-2-3"/>
+                              <circle cx="9" cy="15" r="1"/>
+                              <circle cx="15" cy="15" r="1"/>
+                            </svg>
+                            Train
+                          {% when 'boat' %}
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <path d="M2 21c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1 .6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/>
+                              <path d="M19.38 20A11.6 11.6 0 0 0 21 14l-9-4-9 4c0 2.9.94 5.34 2.81 7.76"/>
+                              <path d="M19 13V7a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v6"/>
+                              <path d="M12 10v4"/>
+                              <path d="M12 2v3"/>
+                            </svg>
+                            Boat
+                          {% else %}
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <path d="M3 17h1m16 0h1M5.6 17 4 9.2C3.6 7.4 5 6 6.8 6h10.4c1.8 0 3.2 1.4 2.8 3.2L18.4 17"/>
+                              <circle cx="6.5" cy="17.5" r="2.5"/>
+                              <circle cx="17.5" cy="17.5" r="2.5"/>
+                            </svg>
+                            {{ route.mode.value | default: 'Drive' }}
+                        {% endcase %}
+                      </span>
+                    </td>
+                    <td class="itinerary-transport__td itinerary-transport__td--distance">
+                      {% if distance_km > 0 %}
+                        {{ distance_km | round }} km
+                      {% else %}
+                        —
+                      {% endif %}
+                    </td>
+                    <td class="itinerary-transport__td itinerary-transport__td--duration">
+                      {% if route.duration.value != blank %}
+                        {{ route.duration.value }}
+                      {% else %}
+                        —
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endunless %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    {% endif %}
+
+    {% comment %} Transport Notes {% endcomment %}
+    {% if section.settings.show_notes and section.settings.transport_notes != blank %}
+      <div class="itinerary-transport__notes">
+        <h4 class="itinerary-transport__notes-heading">Important Information</h4>
+        <div class="itinerary-transport__notes-content rte">
+          {{ section.settings.transport_notes }}
+        </div>
+      </div>
+    {% endif %}
+
+  </div>
+</section>
+{% endif %}
+
+<style>
+/* ====================================
+   Itinerary Transport Section
+   ==================================== */
+
+.itinerary-transport {
+  padding: var(--section-spacing-top, 60px) 0 var(--section-spacing-bottom, 60px);
+  background: var(--color-background);
+}
+
+/* Header */
+.itinerary-transport__header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.itinerary-transport__heading {
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
+  font-weight: 600;
+  color: var(--color-foreground);
+  margin: 0 0 12px;
+}
+
+.itinerary-transport__subheading {
+  font-size: 1rem;
+  color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+  margin: 0 0 20px;
+}
+
+/* Stats Row */
+.itinerary-transport__stats {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 16px 32px;
+  margin-top: 20px;
+}
+
+.itinerary-transport__stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  border-radius: 20px;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--color-primary);
+}
+
+.itinerary-transport__stat-icon {
+  flex-shrink: 0;
+}
+
+/* Table Sections */
+.itinerary-transport__table-section {
+  margin-bottom: 40px;
+  padding: 24px;
+  background: color-mix(in srgb, var(--color-foreground) 2%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-foreground) 10%, transparent);
+  border-radius: 16px;
+}
+
+.itinerary-transport__table-section:last-of-type {
+  margin-bottom: 0;
+}
+
+.itinerary-transport__table-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-foreground);
+  margin: 0 0 20px;
+}
+
+.itinerary-transport__table-heading svg {
+  color: var(--color-primary);
+}
+
+/* Table */
+.itinerary-transport__table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.itinerary-transport__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+.itinerary-transport__th {
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+  border-bottom: 2px solid color-mix(in srgb, var(--color-foreground) 15%, transparent);
+}
+
+.itinerary-transport__th--route {
+  width: 55%;
+}
+
+.itinerary-transport__th--type {
+  width: 20%;
+}
+
+.itinerary-transport__th--duration,
+.itinerary-transport__th--distance {
+  width: 12%;
+  text-align: center;
+}
+
+.itinerary-transport__tr {
+  transition: background-color 0.2s ease;
+}
+
+.itinerary-transport__tr:hover {
+  background: color-mix(in srgb, var(--color-foreground) 3%, transparent);
+}
+
+.itinerary-transport__td {
+  padding: 16px;
+  vertical-align: middle;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-foreground) 8%, transparent);
+}
+
+.itinerary-transport__td--duration,
+.itinerary-transport__td--distance {
+  text-align: center;
+  font-weight: 500;
+  color: color-mix(in srgb, var(--color-foreground) 70%, transparent);
+}
+
+/* Route Info Layout */
+.itinerary-transport__route-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.itinerary-transport__route-leg {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 120px;
+}
+
+.itinerary-transport__location {
+  font-weight: 500;
+  color: var(--color-foreground);
+  line-height: 1.3;
+}
+
+.itinerary-transport__day {
+  font-size: 0.75rem;
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+.itinerary-transport__route-arrow {
+  color: color-mix(in srgb, var(--color-foreground) 30%, transparent);
+  flex-shrink: 0;
+}
+
+/* Type Badges */
+.itinerary-transport__type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.itinerary-transport__type-badge--flight {
+  background: color-mix(in srgb, #3b82f6 15%, transparent);
+  color: #2563eb;
+}
+
+.itinerary-transport__type-badge--transfer {
+  background: color-mix(in srgb, #8b5cf6 15%, transparent);
+  color: #7c3aed;
+}
+
+.itinerary-transport__type-badge--selfdrive {
+  background: color-mix(in srgb, #10b981 15%, transparent);
+  color: #059669;
+}
+
+.itinerary-transport__type-badge--train {
+  background: color-mix(in srgb, #f59e0b 15%, transparent);
+  color: #d97706;
+}
+
+.itinerary-transport__type-badge--boat {
+  background: color-mix(in srgb, #06b6d4 15%, transparent);
+  color: #0891b2;
+}
+
+/* Notes Section */
+.itinerary-transport__notes {
+  margin-top: 32px;
+  padding: 20px 24px;
+  background: color-mix(in srgb, var(--color-foreground) 3%, transparent);
+  border-left: 4px solid var(--color-primary);
+  border-radius: 8px;
+}
+
+.itinerary-transport__notes-heading {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-foreground);
+  margin: 0 0 12px;
+}
+
+.itinerary-transport__notes-content {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: color-mix(in srgb, var(--color-foreground) 75%, transparent);
+}
+
+.itinerary-transport__notes-content p {
+  margin: 0 0 0.75rem;
+}
+
+.itinerary-transport__notes-content p:last-child {
+  margin-bottom: 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .itinerary-transport {
+    padding: 40px 0;
+  }
+
+  .itinerary-transport__stats {
+    gap: 12px 16px;
+  }
+
+  .itinerary-transport__stat {
+    padding: 6px 12px;
+    font-size: 0.875rem;
+  }
+
+  .itinerary-transport__table-section {
+    padding: 16px;
+    margin-bottom: 24px;
+  }
+
+  .itinerary-transport__table-heading {
+    font-size: 1rem;
+    margin-bottom: 16px;
+  }
+
+  .itinerary-transport__th,
+  .itinerary-transport__td {
+    padding: 12px 10px;
+    font-size: 0.875rem;
+  }
+
+  .itinerary-transport__route-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .itinerary-transport__route-arrow {
+    transform: rotate(90deg);
+    margin: 4px 0;
+  }
+
+  .itinerary-transport__route-leg {
+    min-width: auto;
+  }
+
+  .itinerary-transport__th--duration,
+  .itinerary-transport__th--distance {
+    display: none;
+  }
+
+  .itinerary-transport__td--duration,
+  .itinerary-transport__td--distance {
+    display: none;
+  }
+
+  .itinerary-transport__type-badge {
+    padding: 4px 8px;
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .itinerary-transport__th--type {
+    display: none;
+  }
+
+  .itinerary-transport__td--type {
+    display: none;
+  }
+
+  .itinerary-transport__route-leg--to::before {
+    content: '→ ';
+    color: var(--color-primary);
+    font-weight: 600;
+  }
+}
+</style>
+
+{% schema %}
+{
+  "name": "Transport Summary",
+  "tag": "section",
+  "class": "section-itinerary-transport",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Transport Summary"
+    },
+    {
+      "type": "text",
+      "id": "subheading",
+      "label": "Subheading",
+      "default": "How you'll travel between destinations"
+    },
+    {
+      "type": "header",
+      "content": "Flights Table"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_flights_table",
+      "label": "Show flights table",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "flights_heading",
+      "label": "Flights section heading",
+      "default": "Flights"
+    },
+    {
+      "type": "header",
+      "content": "Transfers Table"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_transfers_table",
+      "label": "Show transfers table",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "transfers_heading",
+      "label": "Transfers section heading",
+      "default": "Transfers"
+    },
+    {
+      "type": "header",
+      "content": "Road Routes"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_other_routes",
+      "label": "Show self-drive and other routes",
+      "info": "Displays self-drive, train, boat, and other transport types",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "other_routes_heading",
+      "label": "Road routes section heading",
+      "default": "Road Routes"
+    },
+    {
+      "type": "header",
+      "content": "Additional Content"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_notes",
+      "label": "Show transport notes",
+      "default": false
+    },
+    {
+      "type": "richtext",
+      "id": "transport_notes",
+      "label": "Transport notes",
+      "info": "Additional information about transport arrangements"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Transport Summary"
+    }
+  ]
+}
+{% endschema %}

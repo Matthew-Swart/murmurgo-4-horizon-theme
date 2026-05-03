@@ -1,0 +1,272 @@
+{%- doc -%}
+  Renders a dynamic property-based header menu block.
+  Automatically detects single or multi-property stores and renders appropriate navigation.
+
+  @param {string} [variant] - What version of the menu to render. Defaults to header menu.
+  @param {string} [transparent] - Show a transparent menu
+{%- enddoc -%}
+
+{% liquid
+  assign block_settings = block.settings
+  assign animation_speed = 200
+
+  assign hide_menu = false
+  if template.name == 'page'
+    if template.suffix == 'resrequest-integration' or template.suffix == 'wetu-integration' or page.handle == 'resrequest-com-integration' or page.handle == 'wetu-com-integration'
+      assign hide_menu = true
+    endif
+  endif
+  
+  # Hide the header menu for non-Travel 2022 stores on non-home pages 
+  # since they use property-nav-bar instead (prevents duplicated overlay menu on hero)
+  assign is_travel_2022 = false
+  if shop.permanent_domain contains 'travel-2022'
+    assign is_travel_2022 = true
+  endif
+  
+  assign is_home_page = false
+  if request.path == '/' or template.name == 'index'
+    assign is_home_page = true
+  endif
+  
+  # Hide menu for non-Travel 2022 stores on non-home pages
+  if is_travel_2022 == false and is_home_page == false
+    assign hide_menu = true
+  endif
+%}
+
+<div {% if hide_menu %}style="display: none !important;" aria-hidden="true"{% endif %}>
+{% case variant %}
+  {% when 'mobile' %}
+    <div
+      class="header__drawer desktop:hidden"
+      ref="headerDrawerContainer"
+      {{ block.shopify_attributes }}
+    >
+      {% render 'header-drawer-dynamic',
+        class: 'header__drawer--mobile',
+        data_header_drawer_type: 'mobile-drawer',
+        block_settings: block_settings
+      %}
+    </div>
+
+  {% when 'navigation_bar' %}
+    {% if block_settings.navigation_bar == true %}
+      <div
+        class="menu-list menu-list--mobile{% if transparent == blank %} color-{{ block_settings.color_scheme_navigation_bar }}{% endif %}"
+        style="--menu-horizontal-gap: 15px; --mobile-nav-margin: auto;"
+      >
+        <div class="menu-list__scroll-container">
+          {% render 'dynamic-property-menu' %}
+        </div>
+      </div>
+    {% endif %}
+  {% else %}
+    <header-menu
+      ref="headerMenu"
+      class="header-menu mobile:hidden"
+      data-animation-delay="{{ animation_speed }}"
+      {{ block.shopify_attributes }}
+      style="--submenu-animation-speed: {{ animation_speed }}ms;"
+    >
+      <div class="header-menu__inner">
+        {%- render 'header-menu-dynamic' -%}
+      </div>
+
+      <script
+        src="{{ 'header-menu.js' | asset_url }}"
+        type="module"
+        fetchpriority="low"
+      ></script>
+    </header-menu>
+{% endcase %}
+</div>
+
+{% stylesheet %}
+  .menu-list--mobile {
+    &.menu-list {
+      display: grid;
+    }
+
+    & .menu-list__list {
+      width: max-content;
+      margin-inline: auto;
+      gap: var(--menu-horizontal-gap);
+    }
+
+    & li {
+      width: max-content;
+      padding-block: var(--padding-sm);
+    }
+
+    & li:first-of-type {
+      padding-inline-start: var(--menu-horizontal-gap);
+    }
+
+    & li:last-of-type {
+      padding-inline-end: var(--menu-horizontal-gap);
+    }
+
+    & a {
+      color: var(--color-foreground);
+    }
+  }
+
+  .menu-list__scroll-container {
+    position: relative;
+    overflow-x: auto;
+    mask-image: linear-gradient(to right, transparent, #000 20px, #000 calc(100% - 20px), transparent);
+    padding-block: var(--padding-2xs);
+  }
+
+  header-menu {
+    width: 100%;
+  }
+
+  /* Dynamic submenu positioning */
+  .dynamic-menu-item {
+    position: relative;
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Dynamic Property Menu",
+  "tag": null,
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "t:settings.color_scheme",
+      "default": "primary"
+    },
+    {
+      "type": "header",
+      "content": "t:content.typography"
+    },
+    {
+      "type": "select",
+      "id": "type_font_primary_size",
+      "label": "t:settings.top_level_size",
+      "options": [
+        {
+          "value": "0.625rem",
+          "label": "10px"
+        },
+        {
+          "value": "0.75rem",
+          "label": "12px"
+        },
+        {
+          "value": "0.875rem",
+          "label": "14px"
+        },
+        {
+          "value": "1rem",
+          "label": "16px"
+        },
+        {
+          "value": "1.125rem",
+          "label": "18px"
+        }
+      ],
+      "default": "1rem"
+    },
+    {
+      "type": "select",
+      "id": "menu_font_style",
+      "label": "t:settings.submenu_text_style",
+      "options": [
+        {
+          "value": "regular",
+          "label": "t:options.small"
+        },
+        {
+          "value": "inverse",
+          "label": "t:options.medium"
+        },
+        {
+          "value": "inverse_large",
+          "label": "t:options.large"
+        }
+      ],
+      "default": "inverse"
+    },
+    {
+      "type": "select",
+      "id": "type_font_primary_link",
+      "label": "t:settings.font",
+      "options": [
+        {
+          "value": "body",
+          "label": "t:options.body"
+        },
+        {
+          "value": "subheading",
+          "label": "t:options.subheading"
+        },
+        {
+          "value": "heading",
+          "label": "t:options.heading"
+        },
+        {
+          "value": "accent",
+          "label": "t:options.accent"
+        }
+      ],
+      "default": "heading"
+    },
+    {
+      "type": "select",
+      "id": "type_case_primary_link",
+      "label": "t:settings.text_case",
+      "options": [
+        {
+          "value": "none",
+          "label": "t:options.default"
+        },
+        {
+          "value": "uppercase",
+          "label": "t:options.uppercase"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "header",
+      "content": "t:content.mobile_layout"
+    },
+    {
+      "type": "checkbox",
+      "id": "navigation_bar",
+      "label": "t:settings.navigation_bar"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme_navigation_bar",
+      "label": "t:settings.navigation_bar_color_scheme",
+      "default": "primary",
+      "visible_if": "{{ block.settings.navigation_bar }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "drawer_accordion",
+      "label": "t:settings.accordion",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "drawer_accordion_expand_first",
+      "label": "t:settings.expand_first_group",
+      "default": false,
+      "visible_if": "{{ block.settings.drawer_accordion == true }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "drawer_dividers",
+      "label": "t:settings.dividers",
+      "default": false
+    }
+  ]
+}
+{% endschema %}

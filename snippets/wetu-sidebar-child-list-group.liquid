@@ -1,0 +1,266 @@
+{% liquid
+  if collection == blank or collection.products_count == 0
+    assign has_collection = false
+  else
+    assign has_collection = true
+  endif
+
+  assign max_items_limit = max_items | default: 0 | plus: 0
+  assign has_max_items = false
+  if max_items != blank and max_items_limit > 0
+    assign has_max_items = true
+  endif
+
+  assign rendered_card_count = 0
+
+  assign resolved_heading = collection.title | default: fallback_heading
+  if use_fallback_heading and fallback_heading != blank
+    assign resolved_heading = fallback_heading
+  endif
+  if heading != blank
+    assign resolved_heading = heading
+  endif
+%}
+
+{% if has_collection %}
+  {%- capture group_cards -%}
+    {%- for child_product in collection.products -%}
+      {%- if has_max_items and rendered_card_count >= max_items_limit -%}
+        {%- break -%}
+      {%- endif -%}
+
+      {%- assign resolved_content_type = content_type | default: 'standard' -%}
+      {%- if resolved_content_type == blank -%}
+        {%- assign child_product_type = child_product.type | downcase -%}
+        {%- if child_product_type contains 'video' -%}
+          {%- assign resolved_content_type = 'video' -%}
+        {%- elsif child_product_type contains 'panorama' or child_product_type contains '3d' -%}
+          {%- assign resolved_content_type = 'panorama' -%}
+        {%- elsif child_product_type contains 'document' or child_product_type contains 'pdf' -%}
+          {%- assign resolved_content_type = 'document' -%}
+        {%- else -%}
+          {%- assign resolved_content_type = 'standard' -%}
+        {%- endif -%}
+      {%- endif -%}
+
+      {%- assign is_document_content = false -%}
+      {%- if resolved_content_type == 'document' -%}
+        {%- assign is_document_content = true -%}
+      {%- endif -%}
+
+      {%- assign child_media = child_product.featured_media -%}
+      {%- assign child_media_is_placeholder = false -%}
+      {%- if child_media != blank -%}
+        {%- assign child_media_alt = child_media.alt | downcase -%}
+        {%- assign child_media_src = child_media.preview_image.src | downcase -%}
+        {%- if child_media_alt contains 'no image'
+          or child_media_alt contains 'no-image'
+          or child_media_alt contains 'placeholder'
+          or child_media_src contains 'no-image'
+          or child_media_src contains 'noimage'
+          or child_media_src contains 'placeholder'
+        -%}
+          {%- assign child_media_is_placeholder = true -%}
+        {%- endif -%}
+      {%- endif -%}
+
+      {%- assign child_media_label = child_product.title -%}
+      {%- assign child_thumbnail_image = blank -%}
+      {%- assign child_thumbnail_file = blank -%}
+      {%- assign use_panorama_placeholder = false -%}
+      {%- assign card_href = child_product.url -%}
+      {%- assign card_external_link = false -%}
+      {%- assign document_section = '' -%}
+      {%- assign overlay_title = child_product.title | strip -%}
+
+      {%- if resolved_content_type == 'video' -%}
+        {%- assign video_meta = child_product.metafields.wetu_video.video.value -%}
+        {%- if video_meta == blank -%}
+          {%- assign video_meta = child_product.metafields.wetu.video.value -%}
+        {%- endif -%}
+        {%- if video_meta == blank -%}
+          {%- assign video_meta = child_product.metafields.wetu.videos.value | first -%}
+        {%- endif -%}
+
+        {%- assign child_thumbnail_file = child_product.metafields.wetu_video.thumbnail.value -%}
+        {%- if child_thumbnail_file == blank -%}
+          {%- assign child_thumbnail_file = child_product.metafields.wetu.video_thumbnail.value -%}
+        {%- endif -%}
+        {%- if child_thumbnail_file == blank and video_meta != blank -%}
+          {%- assign child_thumbnail_file = video_meta.thumbnail.value | default: video_meta.image.value | default: video_meta.preview_image.value -%}
+        {%- endif -%}
+
+        {%- assign child_thumbnail_image = child_thumbnail_file -%}
+      {%- elsif resolved_content_type == 'panorama' -%}
+        {%- assign panorama_meta = child_product.metafields.wetu_panorama.panorama.value -%}
+        {%- if panorama_meta == blank -%}
+          {%- assign panorama_meta = child_product.metafields.wetu.panorama.value -%}
+        {%- endif -%}
+        {%- if panorama_meta == blank -%}
+          {%- assign panorama_meta = child_product.metafields.wetu.panoramas.value | first -%}
+        {%- endif -%}
+        {%- if panorama_meta == blank -%}
+          {%- assign panorama_meta = child_product.metafields.wetu_panorama.panorama_reference.value -%}
+        {%- endif -%}
+
+        {%- assign child_thumbnail_file = child_product.metafields.wetu_panorama.thumbnail.value -%}
+        {%- if child_thumbnail_file == blank and panorama_meta != blank -%}
+          {%- assign child_thumbnail_file = panorama_meta.thumbnail.value | default: panorama_meta.image.value | default: panorama_meta.preview_image.value -%}
+        {%- endif -%}
+
+        {%- assign child_thumbnail_image = child_thumbnail_file -%}
+      {%- elsif resolved_content_type == 'document' -%}
+        {%- assign document_meta = child_product.metafields.wetu_document.document.value -%}
+        {%- if document_meta == blank -%}
+          {%- assign document_meta = child_product.metafields.wetu.document.value -%}
+        {%- endif -%}
+        {%- if document_meta == blank -%}
+          {%- assign document_meta = child_product.metafields.wetu.documents.value | first -%}
+        {%- endif -%}
+
+        {%- assign document_title_source = child_product.metafields.wetu_document.label.value
+          | default: child_product.metafields.wetu_document.title.value
+          | default: child_product.metafields.wetu.label.value
+          | default: child_product.metafields.wetu.title.value
+          | default: child_product.title
+        -%}
+
+        {%- assign document_section = child_product.metafields.wetu_document.section.value
+          | default: child_product.metafields.wetu.section.value
+          | default: child_product.metafields.wetu.section
+        -%}
+
+        {%- if document_meta != blank -%}
+          {%- assign card_href = document_meta.file_url.value
+            | default: document_meta.url.value
+            | default: document_meta.file_url
+            | default: document_meta.url
+            | default: card_href
+          -%}
+
+          {%- assign document_section = document_meta.section.value | default: document_section -%}
+
+          {%- assign document_title_source = document_meta.label.value
+            | default: document_meta.title.value
+            | default: document_meta.label
+            | default: document_meta.title
+            | default: document_title_source
+          -%}
+        {%- endif -%}
+
+        {%- capture normalized_document_title -%}
+          {% render 'wetu-normalize-document-title', raw_title: document_title_source %}
+        {%- endcapture -%}
+        {%- assign overlay_title = normalized_document_title | strip | default: overlay_title -%}
+
+        {%- if card_href contains '://' -%}
+          {%- assign card_external_link = true -%}
+        {%- endif -%}
+      {%- endif -%}
+
+      {%- if child_thumbnail_image == blank and child_media != blank and child_media_is_placeholder == false -%}
+        {%- assign child_thumbnail_image = child_media.preview_image | default: child_media -%}
+        {%- assign child_media_label = child_media.alt | default: child_product.title -%}
+      {%- endif -%}
+
+      {%- if resolved_content_type == 'panorama' and child_thumbnail_image == blank -%}
+        {%- assign use_panorama_placeholder = true -%}
+      {%- endif -%}
+
+      {%- if is_document_content and card_href == blank -%}
+        {%- continue -%}
+      {%- endif -%}
+
+      {%- if child_thumbnail_image == blank and use_panorama_placeholder == false and is_document_content == false -%}
+        {%- continue -%}
+      {%- endif -%}
+
+      {%- assign rendered_card_count = rendered_card_count | plus: 1 -%}
+
+      {%- assign gallery_trigger_enabled = false -%}
+      {%- if enable_gallery_trigger and resolved_content_type == 'standard' -%}
+        {%- assign gallery_trigger_enabled = true -%}
+      {%- endif -%}
+      {%- assign inspector_trigger_enabled = false -%}
+      {%- if enable_inspector_trigger and resolved_content_type == 'standard' -%}
+        {%- assign inspector_trigger_enabled = true -%}
+      {%- endif -%}
+      {%- assign gallery_media_id = child_media.id | default: child_thumbnail_image.id -%}
+      {%- assign gallery_thumbnail_src = child_thumbnail_image | image_url: width: 1800 -%}
+
+      <a
+        class="wetu-sidebar-child-lists__card{% if is_document_content %} wetu-sidebar-child-lists__card--document{% endif %}"
+        href="{{ card_href }}"
+        {% if card_external_link %}
+          target="_blank"
+          rel="noopener"
+        {% endif %}
+        {% if gallery_trigger_enabled %}
+          data-command-center-gallery-trigger
+          data-command-center-gallery-handle="{{ child_product.handle | escape }}"
+          data-command-center-gallery-image-src="{{ gallery_thumbnail_src | escape }}"
+          {% if gallery_media_id != blank %}
+            data-command-center-gallery-media-id="{{ gallery_media_id }}"
+          {% endif %}
+          aria-label="Open {{ child_product.title | escape }} image gallery"
+        {% elsif inspector_trigger_enabled %}
+          data-command-center-inspector-product-trigger
+          data-command-center-inspector-product-handle="{{ child_product.handle | escape }}"
+          data-command-center-inspector-product-url="{{ child_product.url | escape }}"
+          data-command-center-inspector-product-title="{{ child_product.title | escape }}"
+          aria-label="Load {{ child_product.title | escape }} in itinerary inspector"
+        {% elsif is_document_content %}
+          aria-label="Open {{ overlay_title | escape }}"
+        {% endif %}
+      >
+        {% if is_document_content %}
+          <div class="wetu-sidebar-child-lists__media wetu-sidebar-child-lists__media--document">
+            <span class="wetu-sidebar-child-lists__document-icon" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5A3.375 3.375 0 0 0 10.125 2.25H8.25m2.25 0H5.625A1.125 1.125 0 0 0 4.5 3.375v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9z" />
+              </svg>
+            </span>
+            <div class="wetu-sidebar-child-lists__document-content">
+              <span class="wetu-sidebar-child-lists__media-badge">Document</span>
+              {% if document_section != blank %}
+                <p class="wetu-sidebar-child-lists__media-subtitle">{{ document_section }}</p>
+              {% endif %}
+              <h4 class="wetu-sidebar-child-lists__title">{{ overlay_title }}</h4>
+            </div>
+          </div>
+        {% else %}
+          <div class="wetu-sidebar-child-lists__media{% if use_panorama_placeholder %} wetu-sidebar-child-lists__media--panorama-fallback{% endif %}">
+            {% if child_thumbnail_image != blank %}
+              {{
+                child_thumbnail_image
+                | image_url: width: 720
+                | image_tag:
+                  alt: child_media_label,
+                  class: 'wetu-sidebar-child-lists__image',
+                  loading: 'lazy',
+                  width: 720,
+                  height: 405
+              }}
+            {% endif %}
+            {% if resolved_content_type == 'panorama' %}
+              <span class="wetu-sidebar-child-lists__media-badge">3D Panorama</span>
+              {% if use_panorama_placeholder %}
+                <p class="wetu-sidebar-child-lists__media-subtitle">Interactive 360° view</p>
+              {% endif %}
+            {% endif %}
+            <h4 class="wetu-sidebar-child-lists__title">{{ overlay_title }}</h4>
+          </div>
+        {% endif %}
+      </a>
+    {%- endfor -%}
+  {%- endcapture -%}
+
+  {%- unless group_cards == blank -%}
+    <section class="wetu-sidebar-child-lists__group{% if group_class != blank %} {{ group_class }}{% endif %}">
+      <h3 class="wetu-sidebar-child-lists__heading">{{ resolved_heading }}</h3>
+      <div class="wetu-sidebar-child-lists__grid"{% if grid_columns != blank %} style="--wetu-sidebar-group-columns: {{ grid_columns }};"{% endif %}>
+        {{ group_cards }}
+      </div>
+    </section>
+  {%- endunless -%}
+{% endif %}

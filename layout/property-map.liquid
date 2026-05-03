@@ -1,0 +1,272 @@
+<!doctype html>
+<html class="no-js" lang="{{ request.locale.iso_code }}">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="theme-color" content="">
+    <link rel="canonical" href="{{ canonical_url }}">
+
+    {%- if settings.favicon != blank -%}
+      <link rel="icon" type="image/png" href="{{ settings.favicon | image_url: width: 32, height: 32 }}">
+    {%- endif -%}
+
+    {%- unless settings.type_header_font.system? and settings.type_body_font.system? -%}
+      <link rel="preconnect" href="https://fonts.shopifycdn.com" crossorigin>
+    {%- endunless -%}
+
+    <title>
+      {{ page.title | escape }}
+      {%- if current_tags %} &ndash; tagged "{{ current_tags | join: ', ' }}"{% endif -%}
+      {%- if current_page != 1 %} &ndash; Page {{ current_page }}{% endif -%}
+      {%- unless page.title contains shop.name %} &ndash; {{ shop.name | escape }}{% endunless -%}
+    </title>
+
+    {% if page.metafields.custom.description %}
+      <meta name="description" content="{{ page.metafields.custom.description | escape }}">
+    {% elsif page_description %}
+      <meta name="description" content="{{ page_description | escape }}">
+    {% endif %}
+
+    {% render 'meta-tags' %}
+    {% render 'stylesheets' %}
+    {% render 'fonts' %}
+    {% render 'scripts' %}
+    {% render 'theme-styles-variables' %}
+    {% render 'color-schemes' %}
+
+    {{ content_for_header }}
+
+    {% style %}
+      {% render 'css-variables' %}
+      
+      /* Full-screen map with header overlay */
+      html, body { 
+        width: 100%; 
+        height: 100%; 
+        overflow: hidden; 
+        margin: 0;
+        padding: 0;
+      }
+    {% endstyle %}
+
+    {{ 'base.css' | asset_url | stylesheet_tag }}
+
+    {% style %}
+      /* Map Page CSS Override - Force transparent header with white text matching product pages */
+      
+      /* Map content positioning - fullscreen */
+      #MainContent {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        height: 100%;
+      }
+
+      /* Force header to be transparent and positioned correctly - match product page exactly */
+      body.property-map-page #header-group {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: var(--layer-overlay);
+      }
+      
+      body.property-map-page .header {
+        --header-bg-color: transparent !important;
+        --color-foreground: #ffffff !important;
+        --color-foreground-rgb: 255, 255, 255 !important;
+        background-color: transparent !important;
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+      }
+      
+      body.property-map-page .header[transparent] {
+        --header-bg-color: transparent !important;
+      }
+      
+      body.property-map-page .header__row {
+        background-color: transparent !important;
+        border-bottom: none !important;
+      }
+      
+      /* CRITICAL: Restore header padding that matches product/collection pages exactly */
+      body.property-map-page .header__columns {
+        --padding-block-start: var(--header-padding) !important;
+        --padding-block-end: var(--header-padding) !important;
+        --padding-inline-start: 40px !important;
+        --padding-inline-end: 40px !important;
+        padding-block-start: var(--header-padding) !important;
+        padding-block-end: var(--header-padding) !important;
+        padding-inline-start: 40px !important;
+        padding-inline-end: 40px !important;
+      }
+      
+      /* CRITICAL FIX: Force logo to display in white using CSS filters since inverse logo doesn't render on page templates */
+      body.property-map-page .header-logo__image-container--original {
+        filter: brightness(0) invert(1) !important;
+        -webkit-filter: brightness(0) invert(1) !important;
+      }
+      
+      /* Logo hover effect for map page - white logo with light gray glow */
+      body.property-map-page .header-logo:hover .header-logo__image-container--original {
+        filter: 
+          brightness(0) invert(1)
+          drop-shadow(0 0 3px rgba(200, 200, 200, 0.8))
+          drop-shadow(0 0 6px rgba(180, 180, 180, 0.6))
+          drop-shadow(0 0 10px rgba(160, 160, 160, 0.4)) !important;
+        -webkit-filter: 
+          brightness(0) invert(1)
+          drop-shadow(0 0 3px rgba(200, 200, 200, 0.8))
+          drop-shadow(0 0 6px rgba(180, 180, 180, 0.6))
+          drop-shadow(0 0 10px rgba(160, 160, 160, 0.4)) !important;
+      }
+      
+      /* Hide inverse logo if it exists (shouldn't on page templates, but just in case) */
+      body.property-map-page .header-logo__image-container--inverse {
+        display: none !important;
+      }
+      
+      /* Force white menu text on map pages - match product pages exactly */
+      body.property-map-page .header .header-menu .menu-list__link-title,
+      body.property-map-page .header:not([transparent]) .header-menu .menu-list__link-title,
+      body.property-map-page .header-menu .menu-list__link:hover .menu-list__link-title,
+      body.property-map-page .header-menu .menu-list__link[aria-expanded='true'] .menu-list__link-title {
+        color: #ffffff !important;
+        font-size: 1rem !important;
+        font-weight: 400 !important;
+        letter-spacing: 0.3px !important;
+        text-shadow: 
+          0 0 10px rgba(255, 255, 255, 0.3),
+          0 0 20px rgba(255, 255, 255, 0.2),
+          0 2px 4px rgba(0, 0, 0, 0.3) !important;
+      }
+      
+      /* Language Selector - White text with glow for map pages */
+      body.property-map-page .dropdown-localization__button,
+      body.property-map-page .localization-form__select {
+        color: #ffffff !important;
+        font-size: 1rem !important;
+        text-shadow: 
+          0 0 10px rgba(255, 255, 255, 0.3),
+          0 0 20px rgba(255, 255, 255, 0.2),
+          0 2px 4px rgba(0, 0, 0, 0.3) !important;
+      }
+      
+      /* Language Selector SVG icons - White with glow */
+      body.property-map-page .dropdown-localization .icon-caret svg {
+        color: #ffffff !important;
+        fill: #ffffff !important;
+        filter: drop-shadow(0 0 10px rgba(54, 54, 54, 0.6)) 
+                drop-shadow(0 2px 4px rgba(54, 54, 54, 0.5)) !important;
+      }
+      
+      /* Liquid glass hover effect - maintain 1px gap and tighter dimensions */
+      body.property-map-page .header-menu .menu-list__list {
+        gap: 1px !important;
+      }
+      
+      body.property-map-page .header-menu .menu-list__link {
+        position: relative;
+        padding: 8px 12px !important;
+      }
+      
+      body.property-map-page .header .header-menu .menu-list__link::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: rgba(255, 255, 255, 0.10) !important;
+        border: 1px solid rgba(255, 255, 255, 0.35) !important;
+        border-radius: 0 !important;
+        opacity: 0;
+        transform: translateZ(0);
+        transition: opacity var(--animation-speed) var(--animation-easing);
+        backdrop-filter: blur(10px) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
+        pointer-events: none;
+        z-index: -1;
+      }
+      
+      body.property-map-page .header .header-menu .menu-list__link:hover::before,
+      body.property-map-page .header .header-menu .menu-list__link[aria-expanded='true']::before {
+        opacity: 1 !important;
+      }
+      
+      /* Force white icons - match product pages exactly */
+      body.property-map-page .header .header-actions__action svg,
+      body.property-map-page .header .header-actions__action svg *,
+      body.property-map-page .header .header__icon--menu svg,
+      body.property-map-page .header .header__icon--menu svg *,
+      body.property-map-page .header:not([transparent]) .header-actions__action svg,
+      body.property-map-page .header:not([transparent]) .header-actions__action svg *,
+      body.property-map-page .header:not([transparent]) .header__icon--menu svg,
+      body.property-map-page .header:not([transparent]) .header__icon--menu svg * {
+        color: #ffffff !important;
+        fill: #ffffff !important;
+        stroke: #ffffff !important;
+      }
+    {% endstyle %}
+  </head>
+
+  <body class="gradient property-map-page">
+    <div id="header-group">
+      {% sections 'header-group' %}
+    </div>
+    
+    <script>
+      // Force header to be transparent on map pages
+      (function() {
+        const header = document.querySelector('.header');
+        if (header && !header.hasAttribute('transparent')) {
+          header.setAttribute('transparent', 'always');
+        }
+      })();
+    </script>
+
+    <script
+      src="{{ 'critical.js' | asset_url }}"
+      type="module"
+      async
+      blocking="render"
+    ></script>
+
+    <main id="MainContent" class="content-for-layout" role="main">
+      {{ content_for_layout }}
+    </main>
+
+    <script>
+      window.shopUrl = '{{ request.origin }}';
+      window.routes = {
+        cart_add_url: '{{ routes.cart_add_url }}',
+        cart_change_url: '{{ routes.cart_change_url }}',
+        cart_update_url: '{{ routes.cart_update_url }}',
+        cart_url: '{{ routes.cart_url }}',
+        predictive_search_url: '{{ routes.predictive_search_url }}'
+      };
+
+      window.cartStrings = {
+        error: `{{ 'sections.cart.cart_error' | t }}`,
+        quantityError: `{{ 'sections.cart.cart_quantity_error_html' | t: quantity: '[quantity]' }}`
+      }
+
+      window.variantStrings = {
+        addToCart: `{{ 'products.product.add_to_cart' | t }}`,
+        soldOut: `{{ 'products.product.sold_out' | t }}`,
+        unavailable: `{{ 'products.product.unavailable' | t }}`,
+        unavailable_with_option: `{{ 'products.product.value_unavailable' | t: option_value: '[value]' }}`,
+      }
+
+      window.accessibilityStrings = {
+        imageAvailable: `{{ 'products.product.media.image_available' | t: index: '[index]' }}`,
+        shareSuccess: `{{ 'general.share.success_message' | t }}`,
+        pauseSlideshow: `{{ 'sections.slideshow.pause_slideshow' | t }}`,
+        playSlideshow: `{{ 'sections.slideshow.play_slideshow' | t }}`,
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,841 @@
+{% comment %}
+  ============================================================================
+  WETU CONTACT SECTION
+  ============================================================================
+  
+  Displays contact information for travel consultants and emergency contacts.
+  Pulls additional contacts from itinerary metaobject.
+  
+  TEMPLATE: product.wetu-itinerary3.json
+  
+  ============================================================================
+  DATA ACCESS
+  ============================================================================
+  
+  Uses wetu-itinerary-data snippet for centralized data loading.
+  Accesses contacts JSON from itinerary metaobject.
+  Consultant info comes from section settings (customizable in theme editor).
+  
+  ============================================================================
+{% endcomment %}
+
+{% comment %} Load itinerary data {% endcomment %}
+{% render 'wetu-itinerary-data', product: product %}
+
+{% assign itinerary = product.metafields.wetu.itinerary_metaobject.value %}
+{% assign contacts = itinerary.contacts.value %}
+
+{% comment %} Parse contacts JSON if it's a string {% endcomment %}
+{% if contacts.first == nil and contacts != blank %}
+  {% assign contacts = contacts | parse_json %}
+{% endif %}
+
+<section 
+  id="contact"
+  class="wetu-contact color-{{ section.settings.color_scheme }}"
+  style="
+    --section-padding-top: {{ section.settings.padding_top }}px;
+    --section-padding-bottom: {{ section.settings.padding_bottom }}px;
+  "
+>
+  <div class="page-width">
+    {% comment %} Section Header {% endcomment %}
+    <header class="wetu-contact__header">
+      {% if section.settings.subheading != blank %}
+        <span class="wetu-contact__subheading">{{ section.settings.subheading }}</span>
+      {% endif %}
+      <h2 class="wetu-contact__heading h2">{{ section.settings.heading }}</h2>
+      {% if section.settings.description != blank %}
+        <p class="wetu-contact__description">{{ section.settings.description }}</p>
+      {% endif %}
+    </header>
+
+    <div class="wetu-contact__grid">
+      {% comment %} Primary Consultant Card {% endcomment %}
+      {% if section.settings.consultant_name != blank %}
+        <div class="wetu-contact__card wetu-contact__card--primary">
+          <div class="contact-card__avatar">
+            {% if section.settings.consultant_photo != blank %}
+              <img 
+                src="{{ section.settings.consultant_photo | image_url: width: 200 }}" 
+                alt="{{ section.settings.consultant_name }}"
+                width="200"
+                height="200"
+                loading="lazy"
+              >
+            {% else %}
+              <div class="contact-card__avatar-placeholder">
+                {% render 'icon-user', size: 48 %}
+              </div>
+            {% endif %}
+          </div>
+          
+          <div class="contact-card__info">
+            <span class="contact-card__role">Your Travel Consultant</span>
+            <h3 class="contact-card__name">{{ section.settings.consultant_name }}</h3>
+            {% if section.settings.consultant_title != blank %}
+              <p class="contact-card__title">{{ section.settings.consultant_title }}</p>
+            {% endif %}
+            
+            {% if section.settings.consultant_bio != blank %}
+              <p class="contact-card__bio">{{ section.settings.consultant_bio }}</p>
+            {% endif %}
+            
+            <div class="contact-card__actions">
+              {% if section.settings.consultant_email != blank %}
+                <a 
+                  href="mailto:{{ section.settings.consultant_email }}" 
+                  class="contact-card__btn"
+                  aria-label="Email {{ section.settings.consultant_name }}"
+                >
+                  {% render 'icon-email', size: 20 %}
+                  <span>Email</span>
+                </a>
+              {% endif %}
+              
+              {% if section.settings.consultant_phone != blank %}
+                <a 
+                  href="tel:{{ section.settings.consultant_phone | remove: ' ' | remove: '-' }}" 
+                  class="contact-card__btn"
+                  aria-label="Call {{ section.settings.consultant_name }}"
+                >
+                  {% render 'icon-phone', size: 20 %}
+                  <span>Call</span>
+                </a>
+              {% endif %}
+              
+              {% if section.settings.consultant_whatsapp != blank %}
+                {% assign wa_number = section.settings.consultant_whatsapp | remove: '+' | remove: ' ' | remove: '-' | remove: '(' | remove: ')' %}
+                <a 
+                  href="https://wa.me/{{ wa_number }}" 
+                  class="contact-card__btn contact-card__btn--whatsapp"
+                  target="_blank"
+                  rel="noopener"
+                  aria-label="WhatsApp {{ section.settings.consultant_name }}"
+                >
+                  {% render 'icon-whatsapp', size: 20 %}
+                  <span>WhatsApp</span>
+                </a>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      {% endif %}
+
+      {% comment %} Company/Office Contact {% endcomment %}
+      {% if section.settings.company_name != blank %}
+        <div class="wetu-contact__card wetu-contact__card--company">
+          <div class="contact-card__icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+          </div>
+          
+          <div class="contact-card__info">
+            <h4 class="contact-card__company-name">{{ section.settings.company_name }}</h4>
+            
+            {% if section.settings.company_address != blank %}
+              <p class="contact-card__address">
+                {% render 'icon-location-pin', size: 16 %}
+                {{ section.settings.company_address }}
+              </p>
+            {% endif %}
+            
+            <div class="contact-card__details">
+              {% if section.settings.company_phone != blank %}
+                <a href="tel:{{ section.settings.company_phone | remove: ' ' | remove: '-' }}">
+                  {% render 'icon-phone', size: 16 %}
+                  {{ section.settings.company_phone }}
+                </a>
+              {% endif %}
+              
+              {% if section.settings.company_email != blank %}
+                <a href="mailto:{{ section.settings.company_email }}">
+                  {% render 'icon-email', size: 16 %}
+                  {{ section.settings.company_email }}
+                </a>
+              {% endif %}
+              
+              {% if section.settings.company_website != blank %}
+                <a href="{{ section.settings.company_website }}" target="_blank" rel="noopener">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="2" y1="12" x2="22" y2="12"/>
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                  </svg>
+                  {{ section.settings.company_website | remove: 'https://' | remove: 'http://' | remove: 'www.' | split: '/' | first }}
+                </a>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      {% endif %}
+
+      {% comment %} Additional Contacts from Itinerary {% endcomment %}
+      {% if contacts and contacts.size > 0 %}
+        {% for contact in contacts %}
+          <div class="wetu-contact__card wetu-contact__card--additional">
+            <div class="contact-card__icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+            </div>
+            
+            <div class="contact-card__info">
+              {% if contact.company != blank %}
+                <h4 class="contact-card__company-name">{{ contact.company }}</h4>
+              {% endif %}
+              
+              {% if contact.contact_person != blank %}
+                <p class="contact-card__person">{{ contact.contact_person }}</p>
+              {% endif %}
+              
+              {% if contact.role != blank %}
+                <p class="contact-card__role-text">{{ contact.role }}</p>
+              {% endif %}
+              
+              <div class="contact-card__details">
+                {% if contact.telephone != blank %}
+                  <a href="tel:{{ contact.telephone | remove: ' ' | remove: '-' }}">
+                    {% render 'icon-phone', size: 16 %}
+                    {{ contact.telephone }}
+                  </a>
+                {% endif %}
+                
+                {% if contact.email != blank %}
+                  <a href="mailto:{{ contact.email }}">
+                    {% render 'icon-email', size: 16 %}
+                    {{ contact.email }}
+                  </a>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      {% endif %}
+
+      {% comment %} Emergency Contacts {% endcomment %}
+      {% if section.settings.show_emergency and section.settings.emergency_local != blank or section.settings.emergency_medical != blank or section.settings.emergency_police != blank %}
+        <div class="wetu-contact__card wetu-contact__card--emergency">
+          <div class="contact-card__icon contact-card__icon--emergency">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/>
+              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+          </div>
+          
+          <div class="contact-card__info">
+            <h4 class="contact-card__emergency-title">Emergency Contacts</h4>
+            
+            <ul class="contact-card__emergency-list">
+              {% if section.settings.emergency_local != blank %}
+                <li>
+                  <span class="emergency-label">Local Emergency</span>
+                  <a href="tel:{{ section.settings.emergency_local }}" class="emergency-number">
+                    {{ section.settings.emergency_local }}
+                  </a>
+                </li>
+              {% endif %}
+              
+              {% if section.settings.emergency_police != blank %}
+                <li>
+                  <span class="emergency-label">Police</span>
+                  <a href="tel:{{ section.settings.emergency_police }}" class="emergency-number">
+                    {{ section.settings.emergency_police }}
+                  </a>
+                </li>
+              {% endif %}
+              
+              {% if section.settings.emergency_medical != blank %}
+                <li>
+                  <span class="emergency-label">Medical Assistance</span>
+                  <a href="tel:{{ section.settings.emergency_medical }}" class="emergency-number">
+                    {{ section.settings.emergency_medical }}
+                  </a>
+                </li>
+              {% endif %}
+              
+              {% if section.settings.emergency_embassy != blank %}
+                <li>
+                  <span class="emergency-label">Embassy/Consulate</span>
+                  <a href="tel:{{ section.settings.emergency_embassy }}" class="emergency-number">
+                    {{ section.settings.emergency_embassy }}
+                  </a>
+                </li>
+              {% endif %}
+            </ul>
+            
+            {% if section.settings.emergency_note != blank %}
+              <p class="contact-card__emergency-note">{{ section.settings.emergency_note }}</p>
+            {% endif %}
+          </div>
+        </div>
+      {% endif %}
+    </div>
+    
+    {% comment %} Optional CTA Section {% endcomment %}
+    {% if section.settings.show_cta and section.settings.cta_text != blank %}
+      <div class="wetu-contact__cta">
+        <p class="contact-cta__text">{{ section.settings.cta_text }}</p>
+        {% if section.settings.cta_button_text != blank and section.settings.cta_button_link != blank %}
+          <a href="{{ section.settings.cta_button_link }}" class="contact-cta__button button button--primary">
+            {{ section.settings.cta_button_text }}
+          </a>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+</section>
+
+{% stylesheet %}
+  .wetu-contact {
+    padding-top: var(--section-padding-top);
+    padding-bottom: var(--section-padding-bottom);
+    background: var(--color-background);
+    color: var(--color-foreground);
+  }
+
+  /* Header */
+  .wetu-contact__header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+
+  .wetu-contact__subheading {
+    display: inline-block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--color-primary);
+    margin-bottom: 12px;
+  }
+
+  .wetu-contact__heading {
+    margin: 0 0 12px;
+    color: var(--color-foreground);
+  }
+
+  .wetu-contact__description {
+    max-width: 600px;
+    margin: 0 auto;
+    font-size: 1.1rem;
+    color: color-mix(in srgb, var(--color-foreground) 70%, transparent);
+  }
+
+  /* Grid */
+  .wetu-contact__grid {
+    display: grid;
+    gap: 24px;
+    grid-template-columns: 1fr;
+  }
+
+  @media screen and (min-width: 750px) {
+    .wetu-contact__grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media screen and (min-width: 1024px) {
+    .wetu-contact__grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .wetu-contact__card--primary {
+      grid-column: span 2;
+    }
+  }
+
+  /* Card Base */
+  .wetu-contact__card {
+    background: color-mix(in srgb, var(--color-foreground) 3%, transparent);
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* Primary Card (Consultant) */
+  .wetu-contact__card--primary {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 24px;
+    background: linear-gradient(135deg, 
+      color-mix(in srgb, var(--color-primary) 8%, transparent) 0%, 
+      color-mix(in srgb, var(--color-primary) 3%, transparent) 100%
+    );
+    border-color: color-mix(in srgb, var(--color-primary) 20%, transparent);
+  }
+
+  @media screen and (max-width: 600px) {
+    .wetu-contact__card--primary {
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+  }
+
+  .contact-card__avatar {
+    flex-shrink: 0;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 4px solid var(--color-background);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  }
+
+  .contact-card__avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .contact-card__avatar-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--color-foreground) 10%, transparent);
+    color: color-mix(in srgb, var(--color-foreground) 40%, transparent);
+  }
+
+  .contact-card__info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .contact-card__role {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--color-primary);
+    margin-bottom: 8px;
+  }
+
+  .contact-card__name {
+    margin: 0 0 4px;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--color-foreground);
+  }
+
+  .contact-card__title {
+    margin: 0 0 12px;
+    font-size: 0.95rem;
+    color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+  }
+
+  .contact-card__bio {
+    margin: 0 0 16px;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: color-mix(in srgb, var(--color-foreground) 70%, transparent);
+  }
+
+  /* Contact Actions */
+  .contact-card__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  @media screen and (max-width: 600px) {
+    .contact-card__actions {
+      justify-content: center;
+    }
+  }
+
+  .contact-card__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    background: var(--color-background);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--color-foreground);
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+
+  .contact-card__btn:hover {
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+  }
+
+  .contact-card__btn--whatsapp {
+    background: #25D366;
+    border-color: #25D366;
+    color: white;
+  }
+
+  .contact-card__btn--whatsapp:hover {
+    background: #128C7E;
+    border-color: #128C7E;
+    color: white;
+  }
+
+  /* Company Card */
+  .contact-card__icon {
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    border-radius: 12px;
+    color: var(--color-primary);
+  }
+
+  .contact-card__company-name {
+    margin: 0 0 8px;
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--color-foreground);
+  }
+
+  .contact-card__address {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    margin: 0 0 12px;
+    font-size: 0.9rem;
+    color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+  }
+
+  .contact-card__address svg {
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .contact-card__details {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .contact-card__details a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    color: var(--color-foreground);
+    text-decoration: none;
+    transition: color 0.2s ease;
+  }
+
+  .contact-card__details a:hover {
+    color: var(--color-primary);
+  }
+
+  .contact-card__details svg {
+    flex-shrink: 0;
+    color: var(--color-primary);
+  }
+
+  .contact-card__person {
+    margin: 0 0 4px;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--color-foreground);
+  }
+
+  .contact-card__role-text {
+    margin: 0 0 12px;
+    font-size: 0.85rem;
+    color: color-mix(in srgb, var(--color-foreground) 50%, transparent);
+  }
+
+  /* Emergency Card */
+  .wetu-contact__card--emergency {
+    background: color-mix(in srgb, #ef4444 5%, transparent);
+    border-color: color-mix(in srgb, #ef4444 20%, transparent);
+  }
+
+  .contact-card__icon--emergency {
+    background: color-mix(in srgb, #ef4444 15%, transparent);
+    color: #ef4444;
+  }
+
+  .contact-card__emergency-title {
+    margin: 0 0 16px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #ef4444;
+  }
+
+  .contact-card__emergency-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .contact-card__emergency-list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 14px;
+    background: var(--color-background);
+    border-radius: 8px;
+  }
+
+  .emergency-label {
+    font-size: 0.9rem;
+    color: color-mix(in srgb, var(--color-foreground) 70%, transparent);
+  }
+
+  .emergency-number {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #ef4444;
+    text-decoration: none;
+    transition: opacity 0.2s ease;
+  }
+
+  .emergency-number:hover {
+    opacity: 0.8;
+  }
+
+  .contact-card__emergency-note {
+    margin: 16px 0 0;
+    font-size: 0.85rem;
+    color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+    font-style: italic;
+  }
+
+  /* CTA Section */
+  .wetu-contact__cta {
+    margin-top: 48px;
+    padding: 40px;
+    background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+    border-radius: 16px;
+    text-align: center;
+  }
+
+  .contact-cta__text {
+    margin: 0 0 20px;
+    font-size: 1.1rem;
+    color: var(--color-foreground);
+  }
+
+  .contact-cta__button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 28px;
+    text-decoration: none;
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Contact Information",
+  "tag": "section",
+  "class": "section-wetu-contact",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "header",
+      "content": "Header"
+    },
+    {
+      "type": "text",
+      "id": "subheading",
+      "label": "Subheading",
+      "default": "Need Help?"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Questions? We're Here to Help"
+    },
+    {
+      "type": "textarea",
+      "id": "description",
+      "label": "Description"
+    },
+    {
+      "type": "header",
+      "content": "Travel Consultant"
+    },
+    {
+      "type": "image_picker",
+      "id": "consultant_photo",
+      "label": "Photo"
+    },
+    {
+      "type": "text",
+      "id": "consultant_name",
+      "label": "Name"
+    },
+    {
+      "type": "text",
+      "id": "consultant_title",
+      "label": "Title"
+    },
+    {
+      "type": "textarea",
+      "id": "consultant_bio",
+      "label": "Bio"
+    },
+    {
+      "type": "text",
+      "id": "consultant_email",
+      "label": "Email"
+    },
+    {
+      "type": "text",
+      "id": "consultant_phone",
+      "label": "Phone"
+    },
+    {
+      "type": "text",
+      "id": "consultant_whatsapp",
+      "label": "WhatsApp Number",
+      "info": "Include country code (e.g., +1234567890)"
+    },
+    {
+      "type": "header",
+      "content": "Company/Office"
+    },
+    {
+      "type": "text",
+      "id": "company_name",
+      "label": "Company Name"
+    },
+    {
+      "type": "textarea",
+      "id": "company_address",
+      "label": "Address"
+    },
+    {
+      "type": "text",
+      "id": "company_phone",
+      "label": "Phone"
+    },
+    {
+      "type": "text",
+      "id": "company_email",
+      "label": "Email"
+    },
+    {
+      "type": "url",
+      "id": "company_website",
+      "label": "Website"
+    },
+    {
+      "type": "header",
+      "content": "Emergency Contacts"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_emergency",
+      "label": "Show emergency contacts",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "emergency_local",
+      "label": "Local Emergency Number",
+      "info": "General emergency number for the destination"
+    },
+    {
+      "type": "text",
+      "id": "emergency_police",
+      "label": "Police"
+    },
+    {
+      "type": "text",
+      "id": "emergency_medical",
+      "label": "Medical Emergency"
+    },
+    {
+      "type": "text",
+      "id": "emergency_embassy",
+      "label": "Embassy/Consulate"
+    },
+    {
+      "type": "textarea",
+      "id": "emergency_note",
+      "label": "Emergency Note",
+      "info": "Additional information about emergencies"
+    },
+    {
+      "type": "header",
+      "content": "Call to Action"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_cta",
+      "label": "Show call to action",
+      "default": false
+    },
+    {
+      "type": "textarea",
+      "id": "cta_text",
+      "label": "CTA Text"
+    },
+    {
+      "type": "text",
+      "id": "cta_button_text",
+      "label": "Button Text"
+    },
+    {
+      "type": "url",
+      "id": "cta_button_link",
+      "label": "Button Link"
+    },
+    {
+      "type": "header",
+      "content": "Spacing"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "Top padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 60
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "Bottom padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 60
+    }
+  ],
+  "presets": [
+    {
+      "name": "Contact Information"
+    }
+  ]
+}
+{% endschema %}

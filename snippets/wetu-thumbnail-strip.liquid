@@ -1,0 +1,160 @@
+{% comment %}
+  ============================================================================
+  WETU THUMBNAIL STRIP SNIPPET
+  ============================================================================
+  
+  Displays a small row of thumbnail images with a "+X more" indicator.
+  Used to show that more images are available without displaying full gallery.
+  
+  PARAMETERS:
+  - images: Array of image objects (product.images)
+  - max_thumbnails: Maximum number of thumbnails to show (default: 5)
+  - size: 'small' (40px), 'medium' (48px), 'large' (56px) - default: 'small'
+  - show_count: Boolean to show total count badge
+  - link_to: Optional URL to link thumbnails to
+  - gap: Gap between thumbnails in px (default: 2)
+  
+  ============================================================================
+{% endcomment %}
+
+{% assign max_thumbs = max_thumbnails | default: 5 %}
+{% assign thumb_size = size | default: 'small' %}
+{% assign thumb_gap = gap | default: 2 %}
+
+{% case thumb_size %}
+  {% when 'small' %}
+    {% assign thumb_px = 40 %}
+  {% when 'medium' %}
+    {% assign thumb_px = 48 %}
+  {% when 'large' %}
+    {% assign thumb_px = 56 %}
+  {% else %}
+    {% assign thumb_px = 40 %}
+{% endcase %}
+
+{% if images and images.size > 0 %}
+  <div 
+    class="wetu-thumbnail-strip wetu-thumbnail-strip--{{ thumb_size }}"
+    style="--thumb-size: {{ thumb_px }}px; --thumb-gap: {{ thumb_gap }}px;"
+  >
+    {% comment %} Thumbnail images (skip first as it's the hero) {% endcomment %}
+    {% for image in images limit: max_thumbs offset: 1 %}
+      {% if link_to != blank %}
+        <a href="{{ link_to }}" class="thumbnail-strip__item" target="_blank" rel="noopener">
+          <img 
+            src="{{ image | image_url: width: thumb_px | times: 2 }}"
+            alt="{{ image.alt | escape }}"
+            loading="lazy"
+            width="{{ thumb_px }}"
+            height="{{ thumb_px }}"
+          >
+        </a>
+      {% else %}
+        <div class="thumbnail-strip__item">
+          <img 
+            src="{{ image | image_url: width: thumb_px | times: 2 }}"
+            alt="{{ image.alt | escape }}"
+            loading="lazy"
+            width="{{ thumb_px }}"
+            height="{{ thumb_px }}"
+          >
+        </div>
+      {% endif %}
+    {% endfor %}
+    
+    {% comment %} Remaining count badge {% endcomment %}
+    {% assign shown_count = max_thumbs | plus: 1 %}
+    {% assign remaining = images.size | minus: shown_count %}
+    {% if remaining > 0 %}
+      {% if link_to != blank %}
+        <a href="{{ link_to }}" class="thumbnail-strip__more" target="_blank" rel="noopener">
+          +{{ remaining }}
+        </a>
+      {% else %}
+        <span class="thumbnail-strip__more">+{{ remaining }}</span>
+      {% endif %}
+    {% endif %}
+    
+    {% comment %} Optional total count {% endcomment %}
+    {% if show_count %}
+      <span class="thumbnail-strip__count">{{ images.size }} photos</span>
+    {% endif %}
+  </div>
+{% endif %}
+
+<style>
+  .wetu-thumbnail-strip {
+    display: flex;
+    align-items: center;
+    gap: var(--thumb-gap, 2px);
+    flex-wrap: wrap;
+  }
+
+  .thumbnail-strip__item {
+    width: var(--thumb-size, 40px);
+    height: var(--thumb-size, 40px);
+    border-radius: 4px;
+    overflow: hidden;
+    border: 2px solid rgba(255,255,255,0.7);
+    flex-shrink: 0;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+  }
+
+  .thumbnail-strip__item:hover {
+    transform: scale(1.05);
+    border-color: white;
+  }
+
+  .thumbnail-strip__item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .thumbnail-strip__more {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: var(--thumb-size, 40px);
+    height: calc(var(--thumb-size, 40px) - 4px);
+    padding: 0 8px;
+    background: rgba(0,0,0,0.6);
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 4px;
+    backdrop-filter: blur(4px);
+    text-decoration: none;
+    transition: background 0.2s ease;
+  }
+
+  .thumbnail-strip__more:hover {
+    background: rgba(0,0,0,0.8);
+    color: white;
+  }
+
+  .thumbnail-strip__count {
+    margin-left: 8px;
+    font-size: 0.8rem;
+    color: rgba(255,255,255,0.8);
+  }
+
+  /* Size variants */
+  .wetu-thumbnail-strip--small .thumbnail-strip__item {
+    border-width: 1px;
+    border-radius: 3px;
+  }
+
+  .wetu-thumbnail-strip--large .thumbnail-strip__item {
+    border-width: 2px;
+    border-radius: 6px;
+  }
+
+  .wetu-thumbnail-strip--large .thumbnail-strip__more {
+    font-size: 0.85rem;
+    padding: 0 12px;
+    border-radius: 6px;
+  }
+</style>
+

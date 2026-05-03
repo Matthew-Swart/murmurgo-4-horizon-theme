@@ -1,0 +1,57 @@
+{% doc %}
+  Wetu Property Headline
+
+  Displays the "Perfect For" keywords for property products.
+
+  @param {product} product - The property product (required)
+
+  @example
+  {% render 'wetu-property-headline', product: product %}
+{% enddoc %}
+
+{% liquid
+  assign special_interests = product.metafields.wetu.special_interests.value
+  assign suggested_visitor_types = product.metafields.wetu.suggested_visitor_types.value
+%}
+
+<div class="wetu-property-headline">
+  {% if suggested_visitor_types and suggested_visitor_types.size > 0 %}
+    <div class="wetu-property-headline__detail">
+      <span class="wetu-property-headline__label">Perfect for</span>
+      <span class="wetu-property-headline__value">{{ suggested_visitor_types | join: ', ' }}</span>
+    </div>
+  {% elsif special_interests and special_interests.size > 0 %}
+    <div class="wetu-property-headline__detail">
+      <span class="wetu-property-headline__label">Perfect for</span>
+      <span class="wetu-property-headline__value">{{ special_interests | join: ', ' }}</span>
+    </div>
+  {% endif %}
+</div>
+
+{% stylesheet %}
+  .wetu-property-headline {
+    margin-block-start: 0;
+    margin-block-end: var(--spacing-lg, 32px);
+    padding: 0 24px;
+  }
+  
+  .wetu-property-headline__detail {
+    display: flex;
+    gap: var(--spacing-xs, 8px);
+    font-size: var(--font-size-sm, 0.875rem);
+    line-height: 1.6;
+  }
+  
+  .wetu-property-headline__label {
+    color: rgb(var(--color-foreground-rgb) / 0.6);
+    min-width: 80px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: var(--font-size-xs, 0.75rem);
+  }
+  
+  .wetu-property-headline__value {
+    color: var(--color-foreground);
+  }
+{% endstylesheet %}

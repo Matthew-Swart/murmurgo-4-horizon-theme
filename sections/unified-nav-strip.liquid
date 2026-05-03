@@ -1,0 +1,1395 @@
+{% comment %}
+  Unified Navigation Strip
+  ============================================================================
+  A single navigation component that combines breadcrumb hierarchy + property menu.
+  
+  Handles all store types:
+  - Aggregator (Travel 2022): Full geographic hierarchy with Plekify logo
+  - Group stores: Group icon + property hierarchy + menu
+  - Single property stores: Logo + property menu only
+  
+  Handles all content types:
+  - wetu-property: Property as current or parent
+  - wetu-accommodation, wetu-activity, etc.: Child items with parent property
+  - wetu-itinerary: Itinerary with day navigation
+  - Collections: Geographic/category context
+  
+  Structure:
+  [Home Icon] > [Geographic/Group] > [Property/Itinerary] > [Section] > Current (bold)
+  
+  Chevrons (>) = hierarchical drill-down
+  Current page = bold/white, others = muted
+  ============================================================================
+{% endcomment %}
+
+{%- liquid
+  # ============================================================================
+  # PHASE 1: STORE TYPE DETECTION
+  # ============================================================================
+  
+  assign is_aggregator = false
+  assign is_single_property = false
+  assign is_group_store = false
+  
+  # Aggregator detection (only Travel 2022)
+  if shop.permanent_domain contains 'travel-2022'
+    assign is_aggregator = true
+  endif
+  
+  # Count wetu-property products to determine store type
+  assign property_count = 0
+  assign single_property = nil
+  
+  if collections['properties']
+    assign source_collection = collections['properties']
+  elsif collections['all-properties']
+    assign source_collection = collections['all-properties']
+  else
+    assign source_collection = nil
+  endif
+  
+  if source_collection
+    for prod in source_collection.products limit: 10
+      if prod.type == 'wetu-property'
+        assign property_count = property_count | plus: 1
+        assign single_property = prod
+      endif
+    endfor
+  endif
+  
+  unless is_aggregator
+    if property_count == 1
+      assign is_single_property = true
+    elsif property_count > 1
+      assign is_group_store = true
+    endif
+  endunless
+  
+  # Fallback: Known single-property stores by domain
+  # These stores have homepage redirects to their single property
+  if property_count == 0 and is_aggregator == false
+    if shop.permanent_domain contains 'fundu-lagoon' or shop.permanent_domain contains 'matetsi' or shop.permanent_domain contains 'ellerman'
+      assign is_single_property = true
+    endif
+  endif
+  
+  # ============================================================================
+  # PHASE 2: PAGE VISIBILITY RULES
+  # ============================================================================
+  
+  assign show_nav = true
+  
+  # Hide on homepage (index template)
+  if template.name == 'index'
+    assign show_nav = false
+  endif
+  
+  # Note: Integration pages now show the nav strip (removed hide logic)
+  
+  # Hide in design mode preview of index
+  if request.design_mode and template.name == 'index'
+    assign show_nav = false
+  endif
+
+  # Hide on command center itinerary template to keep hero edge-to-edge
+  if template.name == 'product' and template.suffix == 'wetu-itinerary-command-center'
+    assign show_nav = false
+  endif
+  
+  # ============================================================================
+  # PHASE 3: CONTEXT RESOLUTION
+  # ============================================================================
+  
+  assign context_type = 'unknown'
+  assign parent_property = nil
+  assign parent_itinerary = nil
+  assign current_entity = nil
+  assign current_title = ''
+  assign is_on_property_page = false
+  assign is_on_itinerary_page = false
+  assign is_country_collection = false
+  assign is_group_collection = false
+  assign is_video_context = false
+  assign is_document_context = false
+  
+  # --- Product Pages ---
+  if product
+    assign current_title = product.title
+    
+    # Property product
+    if product.type == 'wetu-property'
+      assign context_type = 'property'
+      assign parent_property = product
+      assign is_on_property_page = true
+    
+    # Itinerary product
+    elsif product.type == 'wetu-itinerary'
+      assign context_type = 'itinerary'
+      assign parent_itinerary = product
+      assign is_on_itinerary_page = true
+    
+    # Child products (accommodation, activity, etc.)
+    elsif product.type contains 'wetu-'
+      assign context_type = 'property_child'
+      assign current_entity = product
+      
+      # Resolve parent property through metafields
+      assign parent_property = product.metafields.wetu.property_product.value
+      unless parent_property
+        assign parent_property = product.metafields.wetu_room.property_product.value
+      endunless
+      unless parent_property
+        assign parent_property = product.metafields.wetu_video.property_product.value
+      endunless
+      unless parent_property
+        assign parent_property = product.metafields.wetu_activity.property_product.value
+      endunless
+      unless parent_property
+        assign parent_property = product.metafields.wetu_restaurant.property_product.value
+      endunless
+      unless parent_property
+        assign parent_property = product.metafields.wetu_spa.property_product.value
+      endunless
+      unless parent_property
+        assign parent_property = product.metafields.wetu_panorama.property_product.value
+      endunless
+      unless parent_property
+        assign parent_property = product.metafields.wetu_document.property_product.value
+      endunless
+      unless parent_property
+        assign parent_property = product.metafields.wetu_linked_activity.property_product.value
+      endunless
+      unless parent_property
+        assign parent_property = product.metafields.wetu_linked_restaurant.property_product.value
+      endunless
+      unless parent_property
+        assign parent_property = product.metafields.wetu_linked_spa.property_product.value
+      endunless
+      
+      # Fallback: Check tags for parent handle
+      unless parent_property
+        for tag in product.tags
+          if tag contains 'wetu-property-parent-handle:'
+            assign parent_handle = tag | remove: 'wetu-property-parent-handle:' | strip
+            assign parent_property = all_products[parent_handle]
+            break
+          endif
+        endfor
+      endunless
+      
+      # Fallback: For 3D views and other child products, extract property handle from product handle
+      unless parent_property
+        if product.type == 'wetu-3d-view' or product.type == 'wetu-panorama'
+          assign handle_parts = product.handle | split: '-3d-view-'
+          if handle_parts.size > 1
+            assign property_handle_guess = handle_parts[0]
+            assign parent_property = all_products[property_handle_guess]
+          endif
+        endif
+      endunless
+      
+      # Fallback: Check wetu_3d_view namespace metafield
+      unless parent_property
+        assign parent_property = product.metafields.wetu_3d_view.property_product.value
+      endunless
+      
+      # Fallback: wetu-accommodation without parent acts as property
+      if product.type == 'wetu-accommodation' and parent_property == nil
+        assign is_on_property_page = true
+        assign parent_property = product
+        assign context_type = 'property'
+      endif
+
+      # Detect legacy/video-document context without relying on product type
+      if product.metafields.wetu_video != blank
+        assign is_video_context = true
+      elsif product.metafields.wetu_video.video != blank or product.metafields.wetu.video != blank or product.metafields.wetu.videos != blank
+        assign is_video_context = true
+      elsif product.handle contains '-video-'
+        assign is_video_context = true
+      endif
+
+      if product.metafields.wetu_document != blank
+        assign is_document_context = true
+      elsif product.metafields.wetu_document.document != blank or product.metafields.wetu.document != blank or product.metafields.wetu.documents != blank
+        assign is_document_context = true
+      elsif product.handle contains '-document-'
+        assign is_document_context = true
+      endif
+
+      if is_video_context == false or is_document_context == false
+        for product_collection in product.collections
+          if is_video_context == false
+            if product_collection.handle contains '-videos' or product_collection.handle == 'all-property-videos'
+              assign is_video_context = true
+            endif
+          endif
+          if is_document_context == false
+            if product_collection.handle contains '-documents' or product_collection.handle == 'all-property-documents'
+              assign is_document_context = true
+            endif
+          endif
+          if is_video_context and is_document_context
+            break
+          endif
+        endfor
+      endif
+    endif
+  
+  # --- Collection Pages ---
+  elsif collection
+    assign current_title = collection.title
+    assign context_type = 'collection'
+    assign current_entity = collection
+    
+    # Detect if this is a country or group collection (to avoid duplication in nav)
+    assign is_country_collection = false
+    assign is_group_collection = false
+    
+    # Check template suffix
+    if template.suffix == 'country'
+      assign is_country_collection = true
+    elsif template.suffix == 'group'
+      assign is_group_collection = true
+    endif
+    
+    # Check if collection is linked to a property
+    assign parent_property = collection.metafields.wetu.property_product.value
+    unless parent_property
+      assign parent_property = collection.metafields.wetu_collection.property_product.value
+    endunless
+
+    if collection.handle contains '-videos' or collection.handle == 'all-property-videos'
+      assign is_video_context = true
+    endif
+    if collection.handle contains '-documents' or collection.handle == 'all-property-documents'
+      assign is_document_context = true
+    endif
+  
+  # --- Page Pages ---
+  elsif page
+    assign current_title = page.title
+    assign context_type = 'page'
+    assign current_entity = page
+    
+    # Check if page is linked to a property
+    assign parent_property = page.metafields.wetu_page.source_property.value
+    unless parent_property
+      assign parent_property = page.metafields.wetu.property_product.value
+    endunless
+  endif
+  
+  # ============================================================================
+  # PHASE 4: GEOGRAPHIC HIERARCHY
+  # ============================================================================
+  
+  assign geo_country = nil
+  assign geo_region = nil
+  assign geo_group = nil
+  
+  # Get location data from parent property
+  if parent_property
+    # Country
+    assign geo_country = parent_property.metafields.wetu.country.value
+    
+    # Fallback to location object
+    if geo_country == blank
+      assign location_obj = parent_property.metafields.wetu.location.value
+      unless location_obj
+        assign location_obj = parent_property.metafields.custom.wetu.location.value
+      endunless
+      unless location_obj
+        assign location_obj = parent_property.metafields.travel.location.value
+      endunless
+      if location_obj
+        assign geo_country = location_obj.country
+      endif
+    endif
+    
+    # Group name
+    assign geo_group = parent_property.metafields.wetu.group_name.value
+    if geo_group == blank
+      assign geo_group = parent_property.metafields.custom.group_name.value
+    endif
+  endif
+  
+  # For itineraries, get first leg's country
+  if parent_itinerary and geo_country == blank
+    assign geo_country = parent_itinerary.metafields.wetu_itinerary.countries.value | split: ',' | first | strip
+  endif
+  
+  # For country collections, the collection IS the country - set geo_country from collection title
+  if is_country_collection
+    assign geo_country = collection.title
+  endif
+  
+  # For group collections, the collection IS the group - set geo_group from collection title
+  if is_group_collection
+    assign geo_group = collection.title
+  endif
+  
+  # ============================================================================
+  # PHASE 5: INTERMEDIATE CATEGORY
+  # ============================================================================
+  
+  assign intermediate_title = nil
+  assign intermediate_url = nil
+  
+  if parent_property and is_on_property_page == false and context_type == 'property_child'
+    # Determine category based on product type
+    if product.type == 'wetu-accommodation' or product.metafields.wetu_room != blank
+      assign intermediate_title = 'Accommodation'
+      assign accom_col_handle = parent_property.handle | append: '-accommodations'
+      if collections[accom_col_handle] and collections[accom_col_handle].products_count >= 1
+        assign intermediate_url = collections[accom_col_handle].url
+      else
+        assign intermediate_url = parent_property.url | append: '#accommodation'
+      endif
+    elsif is_video_context
+      assign intermediate_title = 'Videos'
+      assign video_col_handle = parent_property.handle | append: '-videos'
+      if collections[video_col_handle] and collections[video_col_handle].products_count >= 1
+        assign intermediate_url = collections[video_col_handle].url
+      else
+        assign intermediate_url = parent_property.url | append: '#videos'
+      endif
+    elsif product.type == 'wetu-activity' or product.type == 'wetu-linked-activity'
+      assign intermediate_title = 'Activities'
+      assign activity_col_handle = parent_property.handle | append: '-activities'
+      if collections[activity_col_handle] and collections[activity_col_handle].products_count >= 1
+        assign intermediate_url = collections[activity_col_handle].url
+      else
+        assign intermediate_url = parent_property.url | append: '#activities'
+      endif
+    elsif product.type == 'wetu-3d-view' or product.metafields.wetu_panorama != blank
+      assign intermediate_title = '3D Views'
+      assign views_col_handle = parent_property.handle | append: '-3d-views'
+      if collections[views_col_handle] and collections[views_col_handle].products_count >= 1
+        assign intermediate_url = collections[views_col_handle].url
+      else
+        assign intermediate_url = parent_property.url | append: '#3d-views'
+      endif
+    elsif product.type == 'wetu-restaurant' or product.type == 'wetu-linked-restaurant'
+      assign intermediate_title = 'Dining'
+      assign dining_col_handle = parent_property.handle | append: '-restaurants'
+      if collections[dining_col_handle] and collections[dining_col_handle].products_count >= 1
+        assign intermediate_url = collections[dining_col_handle].url
+      else
+        assign intermediate_url = parent_property.url | append: '#dining'
+      endif
+    elsif product.type == 'wetu-spa' or product.type == 'wetu-linked-spa'
+      assign intermediate_title = 'Spa'
+      assign spa_col_handle = parent_property.handle | append: '-spa'
+      if collections[spa_col_handle] and collections[spa_col_handle].products_count >= 1
+        assign intermediate_url = collections[spa_col_handle].url
+      else
+        assign intermediate_url = parent_property.url | append: '#spa'
+      endif
+    elsif is_document_context
+      assign intermediate_title = 'Documents'
+      assign docs_col_handle = parent_property.handle | append: '-documents'
+      if collections[docs_col_handle] and collections[docs_col_handle].products_count >= 1
+        assign intermediate_url = collections[docs_col_handle].url
+      else
+        assign intermediate_url = parent_property.url | append: '#documents'
+      endif
+    endif
+  endif
+  
+  # ============================================================================
+  # PHASE 6: TITLE CLEANUP
+  # ============================================================================
+  
+  # Remove parent property name from current title to avoid duplication
+  if parent_property and current_title contains parent_property.title
+    assign cleaned_title = current_title | remove: parent_property.title | strip
+    # Remove leading punctuation
+    assign first_char = cleaned_title | slice: 0
+    if first_char == '-' or first_char == '|' or first_char == ':' or first_char == '–' or first_char == ' '
+      assign cleaned_title = cleaned_title | slice: 1, cleaned_title.size | strip
+    endif
+    if cleaned_title != blank
+      assign current_title = cleaned_title
+    endif
+  endif
+  
+  # Standardize common titles
+  assign title_lower = current_title | downcase | strip
+  if title_lower == 'accommodation at' or title_lower == 'accommodation'
+    assign current_title = 'Accommodation'
+  elsif title_lower == 'activities at' or title_lower == 'activities'
+    assign current_title = 'Activities'
+  elsif title_lower == 'videos for' or title_lower == 'videos'
+    assign current_title = 'Videos'
+  elsif title_lower == 'location map' or title_lower == 'map'
+    assign current_title = 'Map'
+  elsif title_lower == 'rates'
+    assign current_title = 'Rates & Info'
+  endif
+  
+  # ============================================================================
+  # PHASE 7: PROPERTY MENU RESOLUTION
+  # ============================================================================
+  
+  assign property_menu = nil
+  assign menu_handle = nil
+  
+  if parent_property
+    assign menu_handle = parent_property.metafields.wetu_property.menu_handle
+    if menu_handle and menu_handle != blank
+      assign property_menu = linklists[menu_handle]
+    else
+      # Fallback: construct from pin_id
+      assign pin_id = parent_property.metafields.wetu.pin_id
+      if pin_id and pin_id != blank
+        assign constructed_handle = 'property-menu-' | append: pin_id
+        if linklists[constructed_handle]
+          assign property_menu = linklists[constructed_handle]
+          assign menu_handle = constructed_handle
+        endif
+      endif
+    endif
+  endif
+  
+  # ============================================================================
+  # PHASE 8: HOME ICON RESOLUTION
+  # ============================================================================
+  
+  assign home_icon = nil
+  assign home_icon_alt = 'Home'
+  
+  if is_aggregator
+    # Travel 2022 uses Plekify logo
+    assign home_icon = 'https://plekify.com/cdn/shop/files/logoBW.png?v=1763205759'
+    assign home_icon_alt = 'Plekify'
+  else
+    # Priority 1: Check for custom home favicon (file type metafield)
+    if shop.metafields.custom.home_favicon != blank
+      assign home_icon = shop.metafields.custom.home_favicon
+      assign home_icon_alt = shop.name | append: ' Home'
+    endif
+    
+    # Priority 2: Group stores use group favicon
+    if home_icon == blank
+      assign home_icon = shop.metafields.custom.group_favicon_white
+    endif
+    
+    # Priority 3: Fallback to plekify home icon
+    if home_icon == blank
+      assign home_icon = shop.metafields.plekify.home_icon
+    endif
+  endif
+  
+  # ============================================================================
+  # PHASE 9: COLOR SCHEME
+  # ============================================================================
+  
+  assign color_scheme = section.settings.color_scheme | default: 'scheme-5'
+-%}
+
+{% comment %} RENDER {% endcomment %}
+{% if show_nav %}
+{%- liquid
+  # ============================================================================
+  # BUILD PROPERTY CONTEXT MENU ITEMS
+  # These are equal-level navigation options within the property context
+  # ============================================================================
+  assign nav_items_array = nil
+  assign nav_property = nil
+  assign nav_handle = nil
+  assign nav_pin_id = nil
+  
+  # Try to get nav_handle and nav_pin_id from parent_property first
+  if parent_property or parent_itinerary
+    assign nav_property = parent_property | default: parent_itinerary
+    assign nav_handle = nav_property.handle
+    assign nav_pin_id = nav_property.metafields.wetu.pin_id
+  endif
+  
+  # Fallback: For child products without resolved parent, derive from product handle and tags
+  if nav_handle == blank and product
+    # Extract property handle from product handle patterns
+    if product.type == 'wetu-3d-view' or product.type == 'wetu-panorama'
+      assign handle_parts = product.handle | split: '-3d-view-'
+      if handle_parts.size > 1
+        assign nav_handle = handle_parts[0]
+      endif
+    elsif product.handle contains '-video-'
+      assign handle_parts = product.handle | split: '-video-'
+      if handle_parts.size > 1
+        assign nav_handle = handle_parts[0]
+      endif
+    elsif product.handle contains '-document-'
+      assign handle_parts = product.handle | split: '-document-'
+      if handle_parts.size > 1
+        assign nav_handle = handle_parts[0]
+      endif
+    endif
+    
+    # Extract pin_id from wetu-property-XXXXX tag
+    if nav_pin_id == blank
+      for tag in product.tags
+        if tag contains 'wetu-property-' and tag != 'wetu-property'
+          assign tag_parts = tag | split: 'wetu-property-'
+          if tag_parts.size > 1
+            assign nav_pin_id = tag_parts[1]
+            break
+          endif
+        endif
+      endfor
+    endif
+  endif
+  
+  # Build nav items if we have a handle to work with
+  if nav_handle != blank
+    assign nav_items = ''
+    
+    # ==========================================================================
+    # NAV ITEM ORDER: Rooms, Dining, Activities, Spa, Video, 360°, Rates (last)
+    # ==========================================================================
+    
+    # 1. ROOMS (accommodations)
+    assign accom_col_handle = nav_handle | append: '-accommodations'
+    assign accom_col = collections[accom_col_handle]
+    if accom_col and accom_col.products_count > 0
+      assign accom_link_url = accom_col.url
+      if accom_col.products_count == 1
+        assign accom_link_url = accom_col.products.first.url
+      endif
+      capture nav_items
+        echo nav_items
+        echo '|accommodation:'
+        echo accom_link_url
+      endcapture
+    endif
+    
+    # 2. DINING (restaurants)
+    assign dining_col_handle = nav_handle | append: '-restaurants'
+    assign dining_col = collections[dining_col_handle]
+    if dining_col and dining_col.products_count > 0
+      assign dining_link_url = dining_col.url
+      assign linked_restaurant_count = 0
+      assign linked_restaurant_product = nil
+      for dining_prod in dining_col.products
+        if dining_prod.type == 'wetu-linked-restaurant'
+          assign linked_restaurant_count = linked_restaurant_count | plus: 1
+          assign linked_restaurant_product = dining_prod
+        endif
+      endfor
+      if linked_restaurant_count == 1 and linked_restaurant_product
+        assign dining_link_url = linked_restaurant_product.url
+      endif
+      capture nav_items
+        echo nav_items
+        echo '|dining:'
+        echo dining_link_url
+      endcapture
+    endif
+    
+    # 3. ACTIVITIES
+    assign activity_col_handle = nav_handle | append: '-activities'
+    assign activity_col = collections[activity_col_handle]
+    if activity_col and activity_col.products_count > 0
+      assign activity_link_url = activity_col.url
+      assign linked_activity_count = 0
+      assign linked_activity_product = nil
+      for activity_prod in activity_col.products
+        if activity_prod.type == 'wetu-linked-activity'
+          assign linked_activity_count = linked_activity_count | plus: 1
+          assign linked_activity_product = activity_prod
+        endif
+      endfor
+      if linked_activity_count == 1 and linked_activity_product
+        assign activity_link_url = linked_activity_product.url
+      endif
+      capture nav_items
+        echo nav_items
+        echo '|activities:'
+        echo activity_link_url
+      endcapture
+    endif
+    
+    # 4. SPA
+    assign spa_col_handle = nav_handle | append: '-spa'
+    assign spa_col = collections[spa_col_handle]
+    if spa_col and spa_col.products_count > 0
+      assign spa_link_url = spa_col.url
+      assign linked_spa_count = 0
+      assign linked_spa_product = nil
+      for spa_prod in spa_col.products
+        if spa_prod.type == 'wetu-linked-spa'
+          assign linked_spa_count = linked_spa_count | plus: 1
+          assign linked_spa_product = spa_prod
+        endif
+      endfor
+      if linked_spa_count == 1 and linked_spa_product
+        assign spa_link_url = linked_spa_product.url
+      endif
+      capture nav_items
+        echo nav_items
+        echo '|spa:'
+        echo spa_link_url
+      endcapture
+    endif
+    
+    # 5. VIDEO
+    assign video_col_handle = nav_handle | append: '-videos'
+    assign video_col = collections[video_col_handle]
+    assign has_video_content = false
+    if video_col
+      assign video_link_url = video_col.url
+      if video_col.products_count > 0
+        assign has_video_content = true
+      endif
+    else
+      assign video_link_url = '/collections/' | append: video_col_handle
+    endif
+    if has_video_content == false and nav_property and nav_property.metafields.wetu.videos.value != blank
+      assign has_video_content = true
+    endif
+    if has_video_content == false and nav_property and nav_property.metafields.wetu.videos_collection_ref.value != blank and nav_property.metafields.wetu.videos_collection_ref.value.products_count > 0
+      assign has_video_content = true
+    endif
+    if has_video_content
+      capture nav_items
+        echo nav_items
+        echo '|video:'
+        echo video_link_url
+      endcapture
+    endif
+
+    # 6. DOCUMENTS
+    assign docs_col_handle = nav_handle | append: '-documents'
+    assign docs_col = collections[docs_col_handle]
+    assign has_documents_content = false
+    if docs_col
+      assign docs_link_url = docs_col.url
+      if docs_col.products_count > 0
+        assign has_documents_content = true
+      endif
+    else
+      assign docs_link_url = '/collections/' | append: docs_col_handle
+    endif
+    if has_documents_content == false and nav_property and nav_property.metafields.wetu.documents.value != blank
+      assign has_documents_content = true
+    endif
+    if has_documents_content == false and nav_property and nav_property.metafields.wetu.documents_collection_ref.value != blank and nav_property.metafields.wetu.documents_collection_ref.value.products_count > 0
+      assign has_documents_content = true
+    endif
+    if has_documents_content
+      capture nav_items
+        echo nav_items
+        echo '|documents:'
+        echo docs_link_url
+      endcapture
+    endif
+    
+    # 7. 360° VIEWS (3D views / panoramas)
+    assign views_col_handle = nav_handle | append: '-3d-views'
+    assign views_col = collections[views_col_handle]
+    if views_col and views_col.products_count > 0
+      assign views_link_url = views_col.url
+      if views_col.products_count == 1
+        assign views_link_url = views_col.products.first.url
+      endif
+      capture nav_items
+        echo nav_items
+        echo '|3d-views:'
+        echo views_link_url
+      endcapture
+    endif
+    
+    # 8. MAP (property map page)
+    assign map_page_handle = nav_handle | append: '-map'
+    assign map_page = pages[map_page_handle]
+    if map_page == blank
+      assign map_page_handle_alt = 'property-map-' | append: nav_pin_id
+      assign map_page = pages[map_page_handle_alt]
+    endif
+    if map_page and map_page != blank
+      capture nav_items
+        echo nav_items
+        echo '|map:'
+        echo map_page.url
+      endcapture
+    endif
+    
+    # 9. RATES (last)
+    assign rates_page_handle = nav_handle | append: '-rates'
+    assign rates_page = pages[rates_page_handle]
+    if rates_page == blank and nav_pin_id != blank
+      assign rates_pin_handle = 'rates-' | append: nav_pin_id
+      assign rates_page = pages[rates_pin_handle]
+    endif
+    if rates_page == blank
+      assign rates_page = pages['rates']
+    endif
+    if rates_page and rates_page != blank
+      capture nav_items
+        echo nav_items
+        echo '|rates:'
+        echo rates_page.url
+      endcapture
+    endif
+    
+    assign nav_items_array = nav_items | split: '|' | compact
+  endif
+-%}
+<nav 
+  class="unified-nav-strip color-{{ color_scheme }}" 
+  aria-label="Breadcrumb navigation"
+  style="
+    --nav-padding-top: {{ section.settings.padding_top }}px;
+    --nav-padding-bottom: {{ section.settings.padding_bottom }}px;
+  "
+>
+  <div class="unified-nav-strip__container">
+    <ol class="unified-nav-strip__list" role="list">
+      
+      {%- comment -%} HOME ICON - Hidden for single-property stores (property name becomes first link) {%- endcomment -%}
+      {% unless is_single_property %}
+        <li class="unified-nav-strip__item unified-nav-strip__home">
+          <a href="{{ routes.root_url }}" class="unified-nav-strip__link unified-nav-strip__home-link" title="Home">
+            {% if home_icon != blank %}
+              {%- liquid
+                # Handle different metafield types for home icon
+                # File reference metafields return a MediaImage object with .src property
+                # URL metafields return a string
+                if home_icon.src
+                  assign home_icon_src = home_icon | image_url: width: 48
+                elsif home_icon contains 'http'
+                  assign home_icon_src = home_icon
+                else
+                  assign home_icon_src = home_icon | image_url: width: 48
+                endif
+              -%}
+              <img 
+                src="{{ home_icon_src }}" 
+                alt="{{ home_icon_alt }}" 
+                class="unified-nav-strip__home-icon" 
+                loading="eager"
+              >
+            {% else %}
+              <svg class="unified-nav-strip__home-svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path d="M10 2L2 9h3v9h4v-6h2v6h4V9h3L10 2z"/>
+              </svg>
+            {% endif %}
+          </a>
+          {%- comment -%} Only show chevron if there's more hierarchical content {%- endcomment -%}
+          {% if geo_group != blank or geo_country != blank or parent_property != nil or parent_itinerary != nil or nav_handle != blank %}
+            <span class="unified-nav-strip__chevron" aria-hidden="true">
+              <svg viewBox="0 0 8 12" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M1 1l5 5-5 5"/>
+              </svg>
+            </span>
+          {% endif %}
+        </li>
+      {% endunless %}
+      
+      {%- comment -%} GROUP NAME (aggregator/group stores, not single property) {%- endcomment -%}
+      {% if geo_group != blank and is_single_property == false %}
+        {% assign group_handle = geo_group | handleize %}
+        {% assign group_collection = collections[group_handle] %}
+        <li class="unified-nav-strip__item">
+          {% if is_group_collection %}
+            <span class="unified-nav-strip__text unified-nav-strip__current" aria-current="page">{{ geo_group }}</span>
+          {% elsif group_collection %}
+            <a href="{{ group_collection.url }}" class="unified-nav-strip__link">{{ geo_group }}</a>
+          {% else %}
+            <span class="unified-nav-strip__text">{{ geo_group }}</span>
+          {% endif %}
+          {% unless is_group_collection %}
+            {% if geo_country != blank or parent_property != nil or parent_itinerary != nil %}
+              <span class="unified-nav-strip__chevron" aria-hidden="true">
+                <svg viewBox="0 0 8 12" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M1 1l5 5-5 5"/>
+                </svg>
+              </span>
+            {% endif %}
+          {% endunless %}
+        </li>
+      {% endif %}
+      
+      {%- comment -%} COUNTRY (only if no group, for aggregator stores) {%- endcomment -%}
+      {% if geo_country != blank and geo_group == blank and is_aggregator %}
+        {% assign country_handle = geo_country | handleize %}
+        {% assign country_collection = collections[country_handle] %}
+        <li class="unified-nav-strip__item">
+          {% if is_country_collection %}
+            <span class="unified-nav-strip__text unified-nav-strip__current" aria-current="page">{{ geo_country }}</span>
+          {% elsif country_collection %}
+            <a href="{{ country_collection.url }}" class="unified-nav-strip__link">{{ geo_country }}</a>
+          {% else %}
+            <span class="unified-nav-strip__text">{{ geo_country }}</span>
+          {% endif %}
+          {% unless is_country_collection %}
+            {% if parent_property != nil or parent_itinerary != nil %}
+              <span class="unified-nav-strip__chevron" aria-hidden="true">
+                <svg viewBox="0 0 8 12" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M1 1l5 5-5 5"/>
+                </svg>
+              </span>
+            {% endif %}
+          {% endunless %}
+        </li>
+      {% endif %}
+      
+      {%- comment -%} ITINERARY (if viewing itinerary or itinerary child) {%- endcomment -%}
+      {% if parent_itinerary %}
+        <li class="unified-nav-strip__item">
+          <a href="{{ parent_itinerary.url }}" class="unified-nav-strip__link{% if is_on_itinerary_page %} unified-nav-strip__link--parent{% endif %}">{{ parent_itinerary.title }}</a>
+        </li>
+      {% endif %}
+      
+      {%- comment -%} PROPERTY - always show, followed by context menu if available {%- endcomment -%}
+      {% if parent_property %}
+        <li class="unified-nav-strip__item">
+          <a href="{{ parent_property.url }}" class="unified-nav-strip__link{% if is_on_property_page %} unified-nav-strip__link--parent{% endif %}">{{ parent_property.title }}</a>
+        </li>
+      {% elsif nav_handle != blank and parent_itinerary == nil %}
+        {%- comment -%} Fallback: Show property link derived from nav_handle when parent_property not resolved (but NOT for itineraries which are already shown) {%- endcomment -%}
+        {%- liquid
+          assign derived_property_url = '/products/' | append: nav_handle
+          assign derived_property_title = nav_handle | replace: '-', ' ' | capitalize
+          # Better title formatting - capitalize each word
+          assign title_words = nav_handle | split: '-'
+          assign derived_property_title = ''
+          for word in title_words
+            assign cap_word = word | capitalize
+            if derived_property_title == ''
+              assign derived_property_title = cap_word
+            else
+              assign derived_property_title = derived_property_title | append: ' ' | append: cap_word
+            endif
+          endfor
+        -%}
+        <li class="unified-nav-strip__item">
+          <a href="{{ derived_property_url }}" class="unified-nav-strip__link">{{ derived_property_title }}</a>
+        </li>
+      {% endif %}
+      
+      {%- comment -%} ================================================================
+        PROPERTY CONTEXT MENU - Equal-level navigation within property
+        Uses dot dividers (·) instead of chevrons to indicate same level
+        Shows: Property · Rooms · Activities · Video (current is bold)
+      ================================================================ {%- endcomment -%}
+      {% if nav_items_array and nav_items_array.size > 0 %}
+        {% for nav_item in nav_items_array %}
+          {% if nav_item != blank %}
+            {% assign item_parts = nav_item | split: ':' %}
+            {% assign item_key = item_parts[0] %}
+            {% assign item_url = item_parts[1] %}
+            {% if item_parts.size > 2 %}
+              {% assign item_url = nav_item | remove_first: item_key | remove_first: ':' %}
+            {% endif %}
+            
+            {% assign item_label = item_key | capitalize %}
+            {% if item_key == 'accommodation' %}
+              {% assign item_label = 'Rooms' %}
+            {% elsif item_key == '3d-views' %}
+              {% assign item_label = '360°' %}
+            {% elsif item_key == 'video' %}
+              {% assign item_label = 'Video' %}
+            {% endif %}
+            
+            {% assign is_current_context = false %}
+            {% if request.path == item_url %}
+              {% assign is_current_context = true %}
+            {% elsif request.path contains item_url %}
+              {% assign is_current_context = true %}
+            {% elsif collection and item_key == 'accommodation' and collection.handle contains 'accommodations' %}
+              {% assign is_current_context = true %}
+            {% elsif collection and item_key == 'activities' and collection.handle contains 'activities' %}
+              {% assign is_current_context = true %}
+            {% elsif collection and item_key == 'video' and collection.handle contains 'videos' %}
+              {% assign is_current_context = true %}
+            {% elsif collection and item_key == 'documents' and collection.handle contains 'documents' %}
+              {% assign is_current_context = true %}
+            {% elsif collection and item_key == '3d-views' and collection.handle contains '3d-views' %}
+              {% assign is_current_context = true %}
+            {% elsif collection and item_key == 'dining' and collection.handle contains 'restaurants' %}
+              {% assign is_current_context = true %}
+            {% elsif collection and item_key == 'spa' and collection.handle contains 'spa' %}
+              {% assign is_current_context = true %}
+            {% elsif page and item_key == 'rates' and page.handle contains 'rates' %}
+              {% assign is_current_context = true %}
+            {% elsif page and item_key == 'map' and page.handle contains 'map' %}
+              {% assign is_current_context = true %}
+            {% elsif product and product.type == 'wetu-accommodation' and item_key == 'accommodation' %}
+              {% assign is_current_context = true %}
+            {% elsif product and product.type == 'wetu-activity' and item_key == 'activities' %}
+              {% assign is_current_context = true %}
+            {% elsif product and is_video_context and item_key == 'video' %}
+              {% assign is_current_context = true %}
+            {% elsif product and is_document_context and item_key == 'documents' %}
+              {% assign is_current_context = true %}
+            {% elsif product and product.type == 'wetu-panorama' and item_key == '3d-views' %}
+              {% assign is_current_context = true %}
+            {% elsif product and product.type == 'wetu-restaurant' and item_key == 'dining' %}
+              {% assign is_current_context = true %}
+            {% elsif product and product.type == 'wetu-linked-restaurant' and item_key == 'dining' %}
+              {% assign is_current_context = true %}
+            {% elsif product and product.type == 'wetu-spa' and item_key == 'spa' %}
+              {% assign is_current_context = true %}
+            {% elsif product and product.type == 'wetu-linked-spa' and item_key == 'spa' %}
+              {% assign is_current_context = true %}
+            {% elsif product and product.type == 'wetu-linked-activity' and item_key == 'activities' %}
+              {% assign is_current_context = true %}
+            {% endif %}
+            
+            <li class="unified-nav-strip__item unified-nav-strip__context-item">
+              <span class="unified-nav-strip__dot" aria-hidden="true">·</span>
+              {% if is_current_context %}
+                <span class="unified-nav-strip__text unified-nav-strip__current" aria-current="page">{{ item_label }}</span>
+              {% else %}
+                <a href="{{ item_url }}" class="unified-nav-strip__link unified-nav-strip__context-link">{{ item_label }}</a>
+              {% endif %}
+            </li>
+          {% endif %}
+        {% endfor %}
+      {% else %}
+        {%- comment -%} No context menu - show current page title if we're on a child page {%- endcomment -%}
+        {% if current_entity and is_on_property_page == false and is_on_itinerary_page == false and is_country_collection == false and is_group_collection == false %}
+          <li class="unified-nav-strip__item unified-nav-strip__context-item">
+            <span class="unified-nav-strip__dot" aria-hidden="true">·</span>
+            <span class="unified-nav-strip__text unified-nav-strip__current" aria-current="page">{{ current_title }}</span>
+          </li>
+        {% endif %}
+      {% endif %}
+      
+      {%- comment -%} FALLBACK: No context resolved, just show current page {%- endcomment -%}
+      {% if parent_property == nil and parent_itinerary == nil and current_title != blank and is_country_collection == false and is_group_collection == false %}
+        <li class="unified-nav-strip__item">
+          <span class="unified-nav-strip__text unified-nav-strip__current" aria-current="page">{{ current_title }}</span>
+        </li>
+      {% endif %}
+      
+    </ol>
+  </div>
+</nav>
+{% endif %}
+
+{% comment %} STYLES {% endcomment %}
+{% style %}
+  .unified-nav-strip {
+    width: 100%;
+    background: rgb(var(--color-background-rgb));
+    color: rgb(var(--color-foreground-rgb));
+    padding-top: var(--nav-padding-top, 0);
+    padding-bottom: var(--nav-padding-bottom, 0);
+    position: relative;
+    font-size: {{ section.settings.font_size }};
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    pointer-events: auto;
+  }
+
+  /* Force high z-index with high specificity to override all other styles including fullscreen map */
+  html body .unified-nav-strip,
+  html body .section-unified-nav-strip,
+  body:has(.wetu-fullscreen-map-v2) .unified-nav-strip,
+  body:has(.wetu-fullscreen-map-v2) .section-unified-nav-strip {
+    position: relative;
+    z-index: 2147483647 !important;
+    pointer-events: auto;
+  }
+  
+  /* Prevent header section from intercepting nav strip clicks */
+  /* Header comes after nav strip in DOM but may visually overlap due to transparent/negative margin styles */
+  /* Target the shopify-section wrapper and all header containers */
+  .shopify-section-group-header-group > .shopify-section.header-section,
+  .shopify-section-group-header-group .header-section,
+  .shopify-section-group-header-group .section-header,
+  #header-group .header-section,
+  .header-section {
+    pointer-events: none !important;
+  }
+  
+  /* Re-enable pointer events on actual clickable header content */
+  .shopify-section-group-header-group .header-section .header,
+  .shopify-section-group-header-group .header-section .header__columns,
+  .shopify-section-group-header-group .header-section .header__columns *,
+  .shopify-section-group-header-group .header-section header-component,
+  .shopify-section-group-header-group .section-header .header,
+  .header-section .header,
+  .header-section .header__columns,
+  .header-section .header__columns *,
+  .header-section header-component,
+  .header-section header-component * {
+    pointer-events: auto !important;
+  }
+  
+  .unified-nav-strip__container {
+    padding: 0 12px;
+    max-width: none;
+    margin: 0;
+    overflow: hidden;
+  }
+  
+  .unified-nav-strip__list {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    gap: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  
+  .unified-nav-strip__list::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .unified-nav-strip__item {
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  
+  .unified-nav-strip__home {
+    display: flex;
+    align-items: center;
+  }
+  
+  .unified-nav-strip__home-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 0;
+    opacity: 1;
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+    pointer-events: auto;
+    position: relative;
+    z-index: 1;
+  }
+  
+  /* First item gets left padding to anchor in corner */
+  .unified-nav-strip__item:first-child .unified-nav-strip__link,
+  .unified-nav-strip__item:first-child .unified-nav-strip__text {
+    padding-left: 0;
+  }
+  
+  .unified-nav-strip__home-icon {
+    height: {{ section.settings.icon_height }}px;
+    width: auto;
+    display: block;
+    object-fit: contain;
+  }
+  
+  .unified-nav-strip__home-logo {
+    height: {{ section.settings.logo_height }}px;
+    width: auto;
+    display: block;
+    object-fit: contain;
+  }
+  
+  .unified-nav-strip__home-svg {
+    width: 16px;
+    height: 16px;
+    opacity: 0.9;
+  }
+  
+  /* Chevron for hierarchical navigation (Home > Country > Property) */
+  .unified-nav-strip__chevron {
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    opacity: 0.5;
+  }
+  
+  .unified-nav-strip__chevron svg {
+    width: 6px;
+    height: 10px;
+  }
+  
+  /* Dot divider for equal-level context items (Rooms · Activities · Video) */
+  .unified-nav-strip__dot {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 8px;
+    opacity: 0.4;
+    font-size: 1.2em;
+    font-weight: 700;
+    line-height: 1;
+  }
+  
+  .unified-nav-strip__link {
+    color: inherit;
+    text-decoration: none;
+    opacity: 0.7;
+    transition: opacity 0.15s ease;
+    padding: 2px 0;
+  }
+  
+  .unified-nav-strip__link:hover {
+    opacity: 1;
+    text-decoration: underline;
+  }
+  
+  /* Parent link when on a child page - subtle underline indicator */
+  .unified-nav-strip__link--parent {
+    opacity: 0.85;
+  }
+  
+  /* Context links (same level as current page) */
+  .unified-nav-strip__context-link {
+    opacity: 0.6;
+  }
+  
+  .unified-nav-strip__context-link:hover {
+    opacity: 1;
+  }
+  
+  .unified-nav-strip__text {
+    opacity: 0.7;
+    padding: 2px 0;
+  }
+  
+  /* Current page indicator - bold and full opacity */
+  .unified-nav-strip__current {
+    opacity: 1;
+    font-weight: 600;
+    color: rgb(var(--color-foreground-rgb));
+  }
+  
+  /* Mobile adjustments - compact spacing, horizontal scroll */
+  @media screen and (max-width: 749px) {
+    .unified-nav-strip__container {
+      padding: 0 12px;
+    }
+    
+    .unified-nav-strip {
+      font-size: 0.6rem;
+    }
+    
+    .unified-nav-strip__home-icon {
+      height: {{ section.settings.icon_height_mobile }}px;
+    }
+    
+    .unified-nav-strip__home-logo {
+      height: {{ section.settings.logo_height_mobile }}px;
+    }
+    
+    .unified-nav-strip__chevron {
+      padding: 0 5px;
+    }
+    
+    .unified-nav-strip__dot {
+      padding: 0 5px;
+    }
+    
+    /* Subtle fade on right edge to indicate scrollability */
+    .unified-nav-strip__container::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      width: 24px;
+      background: linear-gradient(to right, transparent, rgb(var(--color-background-rgb)));
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    
+    .unified-nav-strip__list:not(:hover) + .unified-nav-strip__container::after {
+      opacity: 1;
+    }
+  }
+  
+  /* Very small screens - even more compact */
+  @media screen and (max-width: 390px) {
+    .unified-nav-strip {
+      font-size: 0.55rem;
+    }
+    
+    .unified-nav-strip__chevron {
+      padding: 0 4px;
+    }
+    
+    .unified-nav-strip__dot {
+      padding: 0 4px;
+    }
+  }
+{% endstyle %}
+
+{% comment %} JSON-LD STRUCTURED DATA {% endcomment %}
+{% if show_nav %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "{{ shop.url }}"
+    }
+    {% assign position = 1 %}
+    {% if geo_group != blank and is_single_property == false %}
+      {% assign position = position | plus: 1 %}
+      {% assign group_handle = geo_group | handleize %}
+      {% assign group_collection = collections[group_handle] %}
+      ,{
+        "@type": "ListItem",
+        "position": {{ position }},
+        "name": "{{ geo_group | escape }}",
+        "item": "{{ shop.url }}{% if group_collection %}{{ group_collection.url }}{% else %}/collections/{{ group_handle }}{% endif %}"
+      }
+    {% endif %}
+    {% if parent_property %}
+      {% assign position = position | plus: 1 %}
+      ,{
+        "@type": "ListItem",
+        "position": {{ position }},
+        "name": "{{ parent_property.title | escape }}",
+        "item": "{{ shop.url }}{{ parent_property.url }}"
+      }
+    {% endif %}
+    {% if current_entity and is_on_property_page == false %}
+      {% assign position = position | plus: 1 %}
+      ,{
+        "@type": "ListItem",
+        "position": {{ position }},
+        "name": "{{ current_title | escape }}",
+        "item": "{{ shop.url }}{{ current_entity.url | default: request.path }}"
+      }
+    {% endif %}
+  ]
+}
+</script>
+{% endif %}
+
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    // Force z-index to overcome any theme overrides or stacking context issues
+    const navs = document.querySelectorAll('.unified-nav-strip, .section-unified-nav-strip');
+    navs.forEach(el => {
+      el.style.setProperty('z-index', '2147483647', 'important');
+      el.style.setProperty('position', 'relative', 'important');
+      el.style.setProperty('pointer-events', 'auto', 'important');
+    });
+  });
+</script>
+
+{% schema %}
+{
+  "name": "Unified Nav Strip",
+  "tag": "section",
+  "class": "section-unified-nav-strip",
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "A unified breadcrumb navigation strip that combines hierarchical context with property navigation. Adapts automatically to store type (aggregator, group, single property)."
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-5",
+      "info": "Scheme 5 provides a dark background with light text"
+    },
+    {
+      "type": "header",
+      "content": "Home Icon"
+    },
+    {
+      "type": "range",
+      "id": "icon_height",
+      "label": "Icon height (desktop)",
+      "min": 12,
+      "max": 32,
+      "step": 2,
+      "unit": "px",
+      "default": 18
+    },
+    {
+      "type": "range",
+      "id": "icon_height_mobile",
+      "label": "Icon height (mobile)",
+      "min": 10,
+      "max": 24,
+      "step": 2,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "header",
+      "content": "Logo (Single Property Stores)"
+    },
+    {
+      "type": "range",
+      "id": "logo_height",
+      "label": "Logo height (desktop)",
+      "min": 16,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "range",
+      "id": "logo_height_mobile",
+      "label": "Logo height (mobile)",
+      "min": 12,
+      "max": 32,
+      "step": 2,
+      "unit": "px",
+      "default": 18
+    },
+    {
+      "type": "header",
+      "content": "Typography"
+    },
+    {
+      "type": "select",
+      "id": "font_size",
+      "label": "Font size",
+      "options": [
+        { "value": "0.625rem", "label": "10px" },
+        { "value": "0.6875rem", "label": "11px" },
+        { "value": "0.7rem", "label": "11.2px" },
+        { "value": "0.75rem", "label": "12px" }
+      ],
+      "default": "0.6875rem"
+    },
+    {
+      "type": "header",
+      "content": "Spacing"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "Top padding",
+      "min": 0,
+      "max": 24,
+      "step": 2,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "Bottom padding",
+      "min": 0,
+      "max": 24,
+      "step": 2,
+      "unit": "px",
+      "default": 0
+    }
+  ],
+  "presets": [
+    {
+      "name": "Unified Nav Strip"
+    }
+  ]
+}
+{% endschema %}

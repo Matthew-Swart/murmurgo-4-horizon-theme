@@ -1,0 +1,31 @@
+{% comment %}
+  place-amenities.liquid
+  Amenity flags rendered as chips.
+{% endcomment %}
+{% include 'murmurgo-resolve-place' %}
+
+<section class="murmurgo-place-amenities page-width" data-section-id="{{ section.id }}">
+  {% if m_place_amenities %}
+    <h3>Amenities</h3>
+    <ul class="place-amenities__list">
+      {% for amenity in m_place_amenities %}
+        {% if amenity[1] == true %}
+          <li class="place-amenities__chip">{{ amenity[0] | replace: '_', ' ' | capitalize }}</li>
+        {% endif %}
+      {% endfor %}
+    </ul>
+  {% endif %}
+</section>
+
+{% schema %}
+{
+  "name": "Place Amenities",
+  "class": "section-place-amenities",
+  "settings": [],
+  "presets": [
+    {
+      "name": "Place Amenities"
+    }
+  ]
+}
+{% endschema %}

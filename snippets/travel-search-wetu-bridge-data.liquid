@@ -1,0 +1,512 @@
+{%- comment -%}
+  Travel Search Wetu Bridge Data
+  Exposes a lightweight JSON pool of Wetu accommodation/property products so
+  ResRequest cards can be decorated in-theme for demo use-cases.
+{%- endcomment -%}
+
+{%- liquid
+  assign max_accommodation_items = 120
+  assign max_property_items = 60
+
+  assign accommodation_collection_handles = 'all-property-accommodation,all-accommodations,all-accommodation,wetu-accommodation,all' | split: ','
+  assign property_collection_handles = 'all-properties,properties,wetu-property,all' | split: ','
+
+  assign accommodations_json = ''
+  assign properties_json = ''
+
+  assign seen_accommodation_ids = '|'
+  assign seen_property_ids = '|'
+
+  assign accommodation_count = 0
+  assign property_count = 0
+-%}
+
+{%- for collection_handle in accommodation_collection_handles -%}
+  {%- assign source_collection = collections[collection_handle] -%}
+  {%- if source_collection != blank -%}
+    {%- for product in source_collection.products limit: 250 -%}
+      {%- if accommodation_count >= max_accommodation_items -%}
+        {%- break -%}
+      {%- endif -%}
+
+      {%- liquid
+        assign type_lower = product.type | downcase
+        assign is_wetu_accommodation = false
+        assign is_resrequest_accommodation = false
+
+        if type_lower contains 'wetu-accommodation' or product.tags contains 'wetu-accommodation'
+          assign is_wetu_accommodation = true
+        endif
+
+        if type_lower contains 'resrequest-accommodation' or product.tags contains 'resrequest-accommodation'
+          assign is_resrequest_accommodation = true
+        endif
+      -%}
+
+      {%- if is_wetu_accommodation or is_resrequest_accommodation and product.featured_image != blank and product.selected_or_first_available_variant -%}
+        {%- capture accommodation_token -%}|{{ product.id }}|{%- endcapture -%}
+        {%- unless seen_accommodation_ids contains accommodation_token -%}
+          {%- liquid
+            assign seen_accommodation_ids = seen_accommodation_ids | append: product.id | append: '|'
+            assign parent_property = product.metafields.wetu_room.property_product.value
+            assign parent_property_pin = product.metafields.wetu_room.parent_property_id.value
+
+            if parent_property == blank
+              assign parent_property = product.metafields.wetu.property_product.value
+            endif
+
+            if parent_property_pin == blank
+              assign parent_property_pin = product.metafields.wetu_room.parent_property_id
+            endif
+
+            if parent_property == blank
+              assign parent_property = product.metafields.resrequest.parent_property.value
+            endif
+
+            if parent_property_pin == blank
+              assign parent_property_pin = product.metafields.wetu.parent_property_id.value
+            endif
+
+            if parent_property_pin == blank
+              assign parent_property_pin = product.metafields.resrequest.parent_property_id.value
+            endif
+
+            if parent_property_pin == blank
+              assign parent_property_pin = product.metafields.resrequest.property_id.value
+            endif
+
+            if parent_property_pin == blank
+              assign parent_property_pin = product.metafields.resrequest.parent_property_id
+            endif
+
+            if parent_property_pin == blank
+              assign parent_property_pin = product.metafields.resrequest.property_id
+            endif
+
+            if parent_property_pin == blank
+              for product_tag in product.tags
+                if product_tag contains 'wetu-property-'
+                  assign parent_property_pin = product_tag | remove: 'wetu-property-'
+                  break
+                endif
+              endfor
+            endif
+
+            assign parent_property_pin = parent_property_pin | append: '' | remove: '"' | remove: "'" | strip
+
+            if parent_property == blank and parent_property_pin != blank
+              for property_collection_handle in property_collection_handles
+                assign property_collection = collections[property_collection_handle]
+                if property_collection == blank
+                  continue
+                endif
+
+                for property_candidate in property_collection.products limit: 250
+                  assign candidate_type = property_candidate.type | downcase
+                  assign is_property_candidate = false
+
+                  if candidate_type contains 'wetu-property' or candidate_type contains 'resrequest-property' or property_candidate.tags contains 'wetu-property' or property_candidate.tags contains 'resrequest-property'
+                    assign is_property_candidate = true
+                  endif
+
+                  if is_property_candidate == false
+                    continue
+                  endif
+
+                  assign candidate_pin = property_candidate.metafields.wetu.pin_id.value
+                  if candidate_pin == blank
+                    assign candidate_pin = property_candidate.metafields.resrequest.property_id.value
+                  endif
+                  if candidate_pin == blank
+                    assign candidate_pin = property_candidate.metafields.resrequest.property_id
+                  endif
+                  if candidate_pin == blank
+                    for property_tag in property_candidate.tags
+                      if property_tag contains 'wetu-property-'
+                        assign candidate_pin = property_tag | remove: 'wetu-property-'
+                        break
+                      endif
+                    endfor
+                  endif
+
+                  assign candidate_pin = candidate_pin | append: '' | remove: '"' | remove: "'" | strip
+
+                  if candidate_pin != blank and candidate_pin == parent_property_pin
+                    assign parent_property = property_candidate
+                    break
+                  endif
+                endfor
+
+                if parent_property != blank
+                  break
+                endif
+              endfor
+            endif
+
+            assign parent_property_title = ''
+            if parent_property != blank
+              assign parent_property_title = parent_property.title
+            else
+              assign seo_property_source = product.metafields.global.description_tag
+              if seo_property_source == blank
+                assign seo_property_source = product.metafields.global.title_tag
+              endif
+
+              if seo_property_source != blank and seo_property_source contains ' at '
+                assign property_after_at = seo_property_source | split: ' at ' | last
+                if property_after_at contains ' |'
+                  assign parent_property_title = property_after_at | split: ' |' | first | strip
+                endif
+              endif
+            endif
+
+            assign accommodation_source_id = product.metafields.resrequest.accommodation_id_product.value | default: product.metafields.resrequest.accommodation_id_product
+            if accommodation_source_id == blank
+              assign accommodation_source_id = product.metafields.wetu_room.simple_item_id.value | default: product.metafields.wetu_room.simple_item_id
+            endif
+            if accommodation_source_id == blank
+              assign accommodation_source_id = product.metafields.wetu.source_identifier.value | default: product.metafields.wetu.source_identifier
+            endif
+            assign accommodation_source_id = accommodation_source_id | append: '' | remove: '"' | remove: "'" | strip
+
+            assign property_source_id = ''
+            if parent_property != blank
+              assign property_source_id = parent_property.metafields.resrequest.property_id.value | default: parent_property.metafields.resrequest.property_id
+              if property_source_id == blank
+                assign property_source_id = parent_property.metafields.wetu.pin_id.value | default: parent_property.metafields.wetu.pin_id
+              endif
+              if property_source_id == blank
+                assign property_source_id = parent_property.metafields.wetu_property.pin_id.value | default: parent_property.metafields.wetu_property.pin_id
+              endif
+              assign property_source_id = property_source_id | append: '' | remove: '"' | remove: "'" | strip
+            endif
+
+            assign accommodation_tagline = product.metafields.wetu.tagline.value | default: product.metafields.plekify.tagline.value
+            assign accommodation_summary = product.metafields.wetu.summary.value | default: product.description | strip_html | strip | truncate: 180
+
+            assign room_type = product.metafields.wetu_room.room_type.value | default: product.metafields.wetu_room.room_type
+            assign room_basis = product.metafields.wetu_room.room_basis.value | default: product.metafields.wetu_room.room_basis
+            assign view_type = product.metafields.wetu_room.view_type.value | default: product.metafields.wetu_room.view_type
+            assign room_size = product.metafields.wetu_room.room_size.value | default: product.metafields.wetu_room.room_size
+
+            assign max_occupancy = product.metafields.wetu_room.max_occupancy.value | default: product.metafields.wetu_room.max_occupancy
+            if max_occupancy == blank
+              assign max_occupancy = product.metafields.resrequest.max_capacity_product.value | default: product.metafields.resrequest.max_capacity_product
+            endif
+
+            assign max_adults = product.metafields.wetu_room.max_adults.value | default: product.metafields.wetu_room.max_adults
+            if max_adults == blank
+              assign max_adults = product.metafields.resrequest.max_adults_product.value | default: product.metafields.resrequest.max_adults_product
+            endif
+
+            assign max_children = product.metafields.wetu_room.max_children.value | default: product.metafields.wetu_room.max_children
+
+            assign bed_types_parsed = product.metafields.wetu_room.bed_types_parsed.value
+            assign bed_configuration = product.metafields.wetu_room.bed_configuration.value
+            if bed_configuration == blank
+              assign bed_configuration = product.metafields.resrequest.bed_configuration.value
+            endif
+
+            assign beds_summary = ''
+            if bed_types_parsed != blank and bed_types_parsed.size > 0
+              assign beds_summary = bed_types_parsed | join: ', '
+            elsif bed_configuration != blank and bed_configuration.size > 0
+              assign bed_parts = ''
+
+              for bed in bed_configuration limit: 8
+                assign bed_label = bed.name | default: bed.type | default: bed
+                assign bed_count = bed.quantity | default: bed.count
+
+                assign bed_label = bed_label | append: '' | strip
+                assign bed_count = bed_count | append: '' | strip
+
+                if bed_label != blank
+                  if bed_count != blank
+                    assign next_bed_part = bed_count | append: ' ' | append: bed_label
+                  else
+                    assign next_bed_part = bed_label
+                  endif
+
+                  if bed_parts == blank
+                    assign bed_parts = next_bed_part
+                  else
+                    assign bed_parts = bed_parts | append: ', ' | append: next_bed_part
+                  endif
+                endif
+              endfor
+
+              assign beds_summary = bed_parts
+            endif
+
+            assign amenities_source = product.metafields.wetu_room.room_amenities.value
+            if amenities_source == blank
+              assign amenities_source = product.metafields.wetu_room.amenities.value
+            endif
+            if amenities_source == blank
+              assign amenities_source = product.metafields.wetu_room.special_amenities.value
+            endif
+            if amenities_source == blank
+              assign amenities_source = product.metafields.resrequest.accommodation_amenities.value
+            endif
+
+            assign amenities_json = ''
+            if amenities_source != blank
+              for amenity in amenities_source limit: 12
+                assign amenity_label = amenity.name | default: amenity.label | default: amenity.type | default: amenity
+                assign amenity_label = amenity_label | append: '' | strip
+
+                if amenity_label != blank
+                  assign amenity_json = amenity_label | json
+                  if amenities_json == blank
+                    assign amenities_json = amenity_json
+                  else
+                    assign amenities_json = amenities_json | append: ',' | append: amenity_json
+                  endif
+                endif
+              endfor
+            endif
+
+            assign property_area = ''
+            assign property_region = ''
+            assign property_country = ''
+            assign property_category = ''
+            assign property_star_rating = ''
+            assign property_check_in_time = ''
+            assign property_check_out_time = ''
+
+            if parent_property != blank
+              assign property_area = parent_property.metafields.wetu.area.value | default: parent_property.metafields.wetu.area
+              assign property_region = parent_property.metafields.wetu.region.value | default: parent_property.metafields.wetu.region
+              assign property_country = parent_property.metafields.wetu.country.value | default: parent_property.metafields.wetu.country
+              assign property_category = parent_property.metafields.wetu.category.value | default: parent_property.metafields.wetu.category
+              assign property_star_rating = parent_property.metafields.wetu.star_rating.value | default: parent_property.metafields.wetu.star_rating
+              assign property_check_in_time = parent_property.metafields.wetu.check_in_time.value | default: parent_property.metafields.wetu.check_in_time
+              assign property_check_out_time = parent_property.metafields.wetu.check_out_time.value | default: parent_property.metafields.wetu.check_out_time
+
+              if property_area == blank
+                assign property_area = parent_property.metafields.resrequest.area.value | default: parent_property.metafields.resrequest.area
+              endif
+              if property_region == blank
+                assign property_region = parent_property.metafields.resrequest.region.value | default: parent_property.metafields.resrequest.region
+              endif
+              if property_country == blank
+                assign property_country = parent_property.metafields.resrequest.country.value | default: parent_property.metafields.resrequest.country
+              endif
+            endif
+
+            if property_area == blank
+              assign property_area = product.metafields.wetu.area.value | default: product.metafields.wetu.area
+            endif
+            if property_area == blank
+              assign property_area = product.metafields.resrequest.area.value | default: product.metafields.resrequest.area
+            endif
+
+            if property_region == blank
+              assign property_region = product.metafields.wetu.region.value | default: product.metafields.wetu.region
+            endif
+            if property_region == blank
+              assign property_region = product.metafields.resrequest.region.value | default: product.metafields.resrequest.region
+            endif
+
+            if property_country == blank
+              assign property_country = product.metafields.wetu.country.value | default: product.metafields.wetu.country
+            endif
+            if property_country == blank
+              assign property_country = product.metafields.resrequest.country.value | default: product.metafields.resrequest.country
+            endif
+
+            assign property_location_display = ''
+            if property_area != blank
+              assign property_location_display = property_area
+            endif
+            if property_region != blank and property_region != property_area
+              if property_location_display != blank
+                assign property_location_display = property_location_display | append: ', '
+              endif
+              assign property_location_display = property_location_display | append: property_region
+            endif
+            if property_country != blank
+              if property_location_display != blank
+                assign property_location_display = property_location_display | append: ', '
+              endif
+              assign property_location_display = property_location_display | append: property_country
+            endif
+
+            assign accommodation_images_json = ''
+            for accommodation_image in product.images
+              assign next_accommodation_image_url = accommodation_image | image_url: width: 1600
+              assign next_accommodation_image_json = next_accommodation_image_url | json
+
+              if accommodation_images_json == blank
+                assign accommodation_images_json = next_accommodation_image_json
+              else
+                assign accommodation_images_json = accommodation_images_json | append: ',' | append: next_accommodation_image_json
+              endif
+            endfor
+
+            assign property_images_json = ''
+            if parent_property != blank
+              for property_image in parent_property.images
+                assign next_property_image_url = property_image | image_url: width: 1600
+                assign next_property_image_json = next_property_image_url | json
+
+                if property_images_json == blank
+                  assign property_images_json = next_property_image_json
+                else
+                  assign property_images_json = property_images_json | append: ',' | append: next_property_image_json
+                endif
+              endfor
+            endif
+
+            assign secondary_image_url = ''
+            assign tertiary_image_url = ''
+            assign property_image_url = ''
+
+            if product.images.size > 1
+              assign secondary_image_url = product.images[1] | image_url: width: 1200
+            endif
+
+            if product.images.size > 2
+              assign tertiary_image_url = product.images[2] | image_url: width: 1200
+            endif
+
+            if parent_property != blank and parent_property.featured_image != blank
+              assign property_image_url = parent_property.featured_image | image_url: width: 1200
+            endif
+
+            assign accommodation_variant_gid = 'gid://shopify/ProductVariant/' | append: product.selected_or_first_available_variant.id
+            assign accommodation_product_gid = 'gid://shopify/Product/' | append: product.id
+          -%}
+
+          {%- capture accommodation_item -%}
+            {
+              "title": {{ product.title | json }},
+              "handle": {{ product.handle | json }},
+              "url": {{ product.url | json }},
+              "source_id": {{ accommodation_source_id | default: '' | json }},
+              "property_source_id": {{ property_source_id | default: '' | json }},
+              "image_url": {{ product.featured_image | image_url: width: 1400 | json }},
+              "secondary_image_url": {{ secondary_image_url | json }},
+              "tertiary_image_url": {{ tertiary_image_url | json }},
+              "property_image_url": {{ property_image_url | json }},
+              "accommodation_images": [{{ accommodation_images_json }}],
+              "property_images": [{{ property_images_json }}],
+              "variant_id": {{ accommodation_variant_gid | json }},
+              "product_id": {{ accommodation_product_gid | json }},
+              "tagline": {{ accommodation_tagline | default: '' | json }},
+              "summary": {{ accommodation_summary | default: '' | json }},
+              "property_title": {{ parent_property_title | default: '' | json }},
+              "property_handle": {{ parent_property.handle | default: '' | json }},
+              "property_url": {{ parent_property.url | default: '' | json }},
+              "location_area": {{ property_area | default: '' | json }},
+              "location_region": {{ property_region | default: '' | json }},
+              "location_country": {{ property_country | default: '' | json }},
+              "location_display": {{ property_location_display | default: '' | json }},
+              "room_type": {{ room_type | default: '' | json }},
+              "room_basis": {{ room_basis | default: '' | json }},
+              "view_type": {{ view_type | default: '' | json }},
+              "room_size": {{ room_size | default: '' | json }},
+              "max_occupancy": {{ max_occupancy | default: '' | json }},
+              "max_adults": {{ max_adults | default: '' | json }},
+              "max_children": {{ max_children | default: '' | json }},
+              "beds_summary": {{ beds_summary | default: '' | json }},
+              "amenities": [{{ amenities_json }}],
+              "property_category": {{ property_category | default: '' | json }},
+              "property_star_rating": {{ property_star_rating | default: '' | json }},
+              "property_check_in_time": {{ property_check_in_time | default: '' | json }},
+              "property_check_out_time": {{ property_check_out_time | default: '' | json }}
+            }
+          {%- endcapture -%}
+
+          {%- if accommodations_json == blank -%}
+            {%- assign accommodations_json = accommodation_item -%}
+          {%- else -%}
+            {%- assign accommodations_json = accommodations_json | append: ',' | append: accommodation_item -%}
+          {%- endif -%}
+
+          {%- assign accommodation_count = accommodation_count | plus: 1 -%}
+        {%- endunless -%}
+      {%- endif -%}
+    {%- endfor -%}
+  {%- endif -%}
+
+  {%- if accommodation_count >= max_accommodation_items -%}
+    {%- break -%}
+  {%- endif -%}
+{%- endfor -%}
+
+{%- for collection_handle in property_collection_handles -%}
+  {%- assign source_collection = collections[collection_handle] -%}
+  {%- if source_collection != blank -%}
+    {%- for product in source_collection.products limit: 250 -%}
+      {%- if property_count >= max_property_items -%}
+        {%- break -%}
+      {%- endif -%}
+
+      {%- liquid
+        assign type_lower = product.type | downcase
+        assign is_wetu_property = false
+        assign is_resrequest_property = false
+
+        if type_lower contains 'wetu-property' or product.tags contains 'wetu-property'
+          assign is_wetu_property = true
+        endif
+
+        if type_lower contains 'resrequest-property' or product.tags contains 'resrequest-property'
+          assign is_resrequest_property = true
+        endif
+      -%}
+
+      {%- if is_wetu_property or is_resrequest_property and product.featured_image != blank -%}
+        {%- capture property_token -%}|{{ product.id }}|{%- endcapture -%}
+        {%- unless seen_property_ids contains property_token -%}
+          {%- assign seen_property_ids = seen_property_ids | append: product.id | append: '|' -%}
+
+          {%- liquid
+            assign property_gallery_images_json = ''
+            for property_image in product.images
+              assign next_property_image_url = property_image | image_url: width: 1600
+              assign next_property_image_json = next_property_image_url | json
+
+              if property_gallery_images_json == blank
+                assign property_gallery_images_json = next_property_image_json
+              else
+                assign property_gallery_images_json = property_gallery_images_json | append: ',' | append: next_property_image_json
+              endif
+            endfor
+          -%}
+
+          {%- capture property_item -%}
+            {
+              "title": {{ product.title | json }},
+              "handle": {{ product.handle | json }},
+              "url": {{ product.url | json }},
+              "image_url": {{ product.featured_image | image_url: width: 1400 | json }},
+              "gallery_images": [{{ property_gallery_images_json }}]
+            }
+          {%- endcapture -%}
+
+          {%- if properties_json == blank -%}
+            {%- assign properties_json = property_item -%}
+          {%- else -%}
+            {%- assign properties_json = properties_json | append: ',' | append: property_item -%}
+          {%- endif -%}
+
+          {%- assign property_count = property_count | plus: 1 -%}
+        {%- endunless -%}
+      {%- endif -%}
+    {%- endfor -%}
+  {%- endif -%}
+
+  {%- if property_count >= max_property_items -%}
+    {%- break -%}
+  {%- endif -%}
+{%- endfor -%}
+
+<script type="application/json" id="travel-search-wetu-bridge-data">
+  {
+    "generated_at": {{ 'now' | date: '%Y-%m-%dT%H:%M:%S%z' | json }},
+    "accommodations": [{{ accommodations_json }}],
+    "properties": [{{ properties_json }}]
+  }
+</script>

@@ -1,0 +1,80 @@
+{% liquid
+  # NEVER redirect in theme editor - allows homepage customization
+  if request.design_mode
+    break
+  endif
+
+  # Check home_behavior metafield - if set to 'native', don't redirect
+  # Supports both custom.home_behavior (Shopify admin) and plekify.home_behavior (API)
+  assign home_behavior = shop.metafields.custom.home_behavior.value | default: shop.metafields.plekify.home_behavior.value | default: 'native'
+  if home_behavior == 'native'
+    break
+  endif
+
+  # Only proceed with redirect logic if home_behavior is 'property_redirect'
+  # or if it's not set and we want legacy behavior
+  assign properties_collection = collections['all-properties']
+  if properties_collection == blank
+    assign properties_collection = collections['all']
+  endif
+  
+  assign property_count = 0
+  assign single_property = null
+  
+  for product in properties_collection.products
+    if product.type == 'wetu-property'
+      assign property_count = property_count | plus: 1
+      if property_count == 1
+        assign single_property = product
+      endif
+    endif
+  endfor
+%}
+
+{%- comment -%}
+  This section handles homepage logic based on number of wetu-property products.
+  
+  IMPORTANT: This section respects the plekify.home_behavior shop metafield:
+  - 'native': No redirect, show index.json content (DEFAULT)
+  - 'property_redirect': Redirect to single property if only one exists
+  
+  In theme editor (design_mode), no redirect occurs to allow homepage editing.
+{%- endcomment -%}
+
+{% if home_behavior == 'property_redirect' and property_count == 1 and single_property %}
+  <script>
+    window.location.href = "{{ single_property.url }}";
+  </script>
+  <meta http-equiv="refresh" content="0; url={{ single_property.url }}">
+  <div class="page-width" style="padding: 100px 20px; text-align: center;">
+    <p>{{ 'general.redirecting' | t | default: 'Redirecting to property...' }}</p>
+  </div>
+{% endif %}
+
+{%- comment -%}
+  For multiple properties or native mode, this section renders nothing
+  and the index.json sections will display normally.
+{%- endcomment -%}
+
+{% schema %}
+{
+  "name": "Property Homepage Logic",
+  "tag": "section",
+  "class": "conditional-property-homepage",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Homepage Behavior"
+    },
+    {
+      "type": "paragraph",
+      "content": "This section only redirects when shop metafield plekify.home_behavior is set to 'property_redirect' AND there is exactly one wetu-property product. Otherwise, the homepage index.json template renders normally."
+    }
+  ],
+  "presets": [
+    {
+      "name": "Property Homepage Logic"
+    }
+  ]
+}
+{% endschema %}

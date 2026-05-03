@@ -1,0 +1,473 @@
+{% comment %}
+  ============================================================================
+  WETU ITINERARY FRESH - TRANSFER DISPLAY
+  ============================================================================
+  
+  Displays a transfer/route between destinations with:
+  - Transport mode icon and details
+  - Duration and distance
+  - Google Maps link using driving coordinates
+  
+  PARAMETERS:
+  - route: The route metaobject
+  - direction: 'arriving' | 'departing'
+  - show_maps_link: Boolean for Google Maps link
+  - color_scheme: Color scheme class
+  
+  ============================================================================
+{% endcomment %}
+
+{% liquid
+  assign route_mode = route.mode.value
+  assign start_location = route.start_location.value
+  assign end_location = route.end_location.value
+  assign start_time = route.start_time.value
+  assign end_time = route.end_time.value
+  assign duration = route.duration.value
+  assign duration_minutes = route.duration_minutes.value
+  assign distance = route.distance.value
+  assign agency = route.agency.value
+  assign vehicle = route.vehicle.value
+  assign reference_codes = route.reference_codes.value
+  
+  comment Get coordinates for Google Maps
+  endcomment
+  assign start_lat = route.start_driving_latitude.value | default: route.start_latitude.value
+  assign start_lng = route.start_driving_longitude.value | default: route.start_longitude.value
+  assign end_lat = route.end_driving_latitude.value | default: route.end_latitude.value
+  assign end_lng = route.end_driving_longitude.value | default: route.end_longitude.value
+  
+  comment Fallback to linked product coordinates
+  endcomment
+  assign start_pin = route.start_content_entity_id.value
+  assign end_pin = route.end_content_entity_id.value
+%}
+
+{% comment %} Find start product for coordinates if not in route {% endcomment %}
+{% if start_lat == blank and start_pin != blank %}
+  {% for check_pin in wetu_pin_ids_array %}
+    {% if check_pin == start_pin %}
+      {% assign start_handle = wetu_handles_array[forloop.index0] %}
+      {% assign start_product = all_products[start_handle] %}
+      {% if start_product %}
+        {% assign position = start_product.metafields.wetu.position.value %}
+        {% assign start_lat = position.driving_latitude | default: position.latitude %}
+        {% assign start_lng = position.driving_longitude | default: position.longitude %}
+        {% if start_location == blank %}
+          {% assign start_location = start_product.title %}
+        {% endif %}
+      {% endif %}
+      {% break %}
+    {% endif %}
+  {% endfor %}
+{% endif %}
+
+{% comment %} Find end product for coordinates if not in route {% endcomment %}
+{% if end_lat == blank and end_pin != blank %}
+  {% for check_pin in wetu_pin_ids_array %}
+    {% if check_pin == end_pin %}
+      {% assign end_handle = wetu_handles_array[forloop.index0] %}
+      {% assign end_product = all_products[end_handle] %}
+      {% if end_product %}
+        {% assign position = end_product.metafields.wetu.position.value %}
+        {% assign end_lat = position.driving_latitude | default: position.latitude %}
+        {% assign end_lng = position.driving_longitude | default: position.longitude %}
+        {% if end_location == blank %}
+          {% assign end_location = end_product.title %}
+        {% endif %}
+      {% endif %}
+      {% break %}
+    {% endif %}
+  {% endfor %}
+{% endif %}
+
+{% comment %} Determine transport type {% endcomment %}
+{% liquid
+  assign is_flight = false
+  
+  if route_mode == 'ScheduledFlight' or route_mode == 'CharterFlight' or route_mode == 'Helicopter'
+    assign is_flight = true
+  endif
+%}
+
+{% comment %} Human-readable mode label {% endcomment %}
+{% case route_mode %}
+  {% when 'ScheduledFlight' %}
+    {% assign mode_label = 'Flight' %}
+    {% assign mode_color = '#3b82f6' %}
+  {% when 'CharterFlight' %}
+    {% assign mode_label = 'Charter Flight' %}
+    {% assign mode_color = '#3b82f6' %}
+  {% when 'Helicopter' %}
+    {% assign mode_label = 'Helicopter' %}
+    {% assign mode_color = '#8b5cf6' %}
+  {% when 'Selfdrive' %}
+    {% assign mode_label = 'Self-Drive' %}
+    {% assign mode_color = '#10b981' %}
+  {% when 'Transfer' %}
+    {% assign mode_label = 'Transfer' %}
+    {% assign mode_color = '#6b7280' %}
+  {% when 'Shuttle' %}
+    {% assign mode_label = 'Shuttle' %}
+    {% assign mode_color = '#6b7280' %}
+  {% when 'Train' %}
+    {% assign mode_label = 'Train' %}
+    {% assign mode_color = '#f59e0b' %}
+  {% when 'Boat' %}
+    {% assign mode_label = 'Boat' %}
+    {% assign mode_color = '#0ea5e9' %}
+  {% else %}
+    {% assign mode_label = route_mode %}
+    {% assign mode_color = '#6b7280' %}
+{% endcase %}
+
+{% comment %} Format duration {% endcomment %}
+{% if duration_minutes != blank %}
+  {% assign duration_mins = duration_minutes | plus: 0 %}
+  {% if duration_mins >= 60 %}
+    {% assign hours = duration_mins | divided_by: 60 %}
+    {% assign mins = duration_mins | modulo: 60 %}
+    {% if mins > 0 %}
+      {% assign formatted_duration = hours | append: 'h ' | append: mins | append: 'm' %}
+    {% else %}
+      {% assign formatted_duration = hours | append: 'h' %}
+    {% endif %}
+  {% else %}
+    {% assign formatted_duration = duration_mins | append: ' min' %}
+  {% endif %}
+{% else %}
+  {% assign formatted_duration = duration %}
+{% endif %}
+
+{% comment %} Format distance {% endcomment %}
+{% if distance != blank %}
+  {% assign distance_num = distance | plus: 0 %}
+  {% if distance_num >= 1000 %}
+    {% assign distance_km = distance_num | divided_by: 1000.0 | round: 1 %}
+    {% assign distance_display = distance_km | append: ' km' %}
+  {% else %}
+    {% assign distance_display = distance_num | append: ' m' %}
+  {% endif %}
+{% endif %}
+
+{% comment %} Build Google Maps URL {% endcomment %}
+{% assign maps_url = nil %}
+{% if show_maps_link and start_lat != blank and end_lat != blank %}
+  {% capture maps_url %}https://www.google.com/maps/dir/?api=1&origin={{ start_lat }},{{ start_lng }}&destination={{ end_lat }},{{ end_lng }}&travelmode={% if is_flight %}driving{% elsif is_boat %}driving{% else %}driving{% endif %}{% endcapture %}
+{% elsif show_maps_link and start_location != blank and end_location != blank %}
+  {% capture maps_url %}https://www.google.com/maps/dir/?api=1&origin={{ start_location | url_encode }}&destination={{ end_location | url_encode }}&travelmode=driving{% endcapture %}
+{% endif %}
+
+<div class="transfer-fresh transfer-fresh--{{ direction }} transfer-fresh--{{ route_mode | handleize }} color-{{ color_scheme }}" style="--transfer-accent: {{ mode_color }};">
+  
+  <div class="transfer-fresh__connector">
+    <span class="connector__line"></span>
+    <span class="connector__icon">
+      {% case route_mode %}
+        {% when 'ScheduledFlight', 'CharterFlight' %}
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>
+          </svg>
+        {% when 'Helicopter' %}
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2v2M5 6h14M12 8v8M6 16h12"/>
+            <ellipse cx="12" cy="18" rx="5" ry="3"/>
+          </svg>
+        {% when 'Selfdrive' %}
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a1 1 0 0 0-.8-.4H5.24a2 2 0 0 0-1.8 1.1l-.8 1.63A6 6 0 0 0 2 12.42V16h2"/>
+            <circle cx="6.5" cy="16.5" r="2.5"/>
+            <circle cx="16.5" cy="16.5" r="2.5"/>
+          </svg>
+        {% when 'Train' %}
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="4" y="3" width="16" height="16" rx="2"/>
+            <path d="M4 11h16"/><path d="M12 3v8"/>
+            <path d="M8 19l-2 3"/><path d="M16 19l2 3"/>
+            <circle cx="8" cy="15" r="1"/><circle cx="16" cy="15" r="1"/>
+          </svg>
+        {% when 'Boat' %}
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M2 21c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1 .6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/>
+            <path d="M19.38 20A11.6 11.6 0 0 0 21 14l-9-4-9 4c0 2.9.94 5.34 2.81 7.76"/>
+            <path d="M19 13V7a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v6"/>
+          </svg>
+        {% else %}
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="1" y="3" width="15" height="13"/>
+            <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
+            <circle cx="5.5" cy="18.5" r="2.5"/>
+            <circle cx="18.5" cy="18.5" r="2.5"/>
+          </svg>
+      {% endcase %}
+    </span>
+    <span class="connector__line"></span>
+  </div>
+  
+  <div class="transfer-fresh__content">
+    
+    <div class="transfer-fresh__header">
+      <span class="transfer-fresh__mode">{{ mode_label }}</span>
+      {% if formatted_duration != blank %}
+        <span class="transfer-fresh__duration">{{ formatted_duration }}</span>
+      {% endif %}
+      {% if distance_display != blank %}
+        <span class="transfer-fresh__distance">{{ distance_display }}</span>
+      {% endif %}
+    </div>
+    
+    <div class="transfer-fresh__route">
+      <div class="route__point route__point--start">
+        <span class="route__dot"></span>
+        <div class="route__info">
+          <span class="route__location">{{ start_location | default: 'Origin' }}</span>
+          {% if start_time != blank %}
+            <span class="route__time">{{ start_time }}</span>
+          {% endif %}
+        </div>
+      </div>
+      
+      <div class="route__arrow">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+      </div>
+      
+      <div class="route__point route__point--end">
+        <span class="route__dot"></span>
+        <div class="route__info">
+          <span class="route__location">{{ end_location | default: 'Destination' }}</span>
+          {% if end_time != blank %}
+            <span class="route__time">{{ end_time }}</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    
+    {% comment %} Additional details {% endcomment %}
+    {% if agency != blank or vehicle != blank or reference_codes != blank %}
+      <div class="transfer-fresh__details">
+        {% if agency != blank %}
+          <span class="detail-item">
+            <span class="detail-label">{% if is_flight %}Airline{% else %}Provider{% endif %}:</span>
+            {{ agency }}
+          </span>
+        {% endif %}
+        {% if vehicle != blank %}
+          <span class="detail-item">
+            <span class="detail-label">{% if is_flight %}Flight{% else %}Vehicle{% endif %}:</span>
+            {{ vehicle }}
+          </span>
+        {% endif %}
+        {% if reference_codes != blank %}
+          <span class="detail-item">
+            <span class="detail-label">Ref:</span>
+            {{ reference_codes }}
+          </span>
+        {% endif %}
+      </div>
+    {% endif %}
+    
+    {% comment %} Google Maps Link {% endcomment %}
+    {% if maps_url != blank and is_flight == false %}
+      <a href="{{ maps_url }}" target="_blank" rel="noopener" class="transfer-fresh__maps-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="10" r="3"/>
+          <path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 6.9 8 11.7z"/>
+        </svg>
+        Open in Google Maps
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+          <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+        </svg>
+      </a>
+    {% endif %}
+    
+  </div>
+  
+</div>
+
+<style>
+  .transfer-fresh {
+    --tf-accent: var(--transfer-accent, #6b7280);
+    display: flex;
+    gap: 16px;
+    padding: 20px 0;
+    margin: 8px 0;
+  }
+  
+  .transfer-fresh__connector {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding-top: 4px;
+  }
+  
+  .connector__line {
+    width: 2px;
+    flex: 1;
+    min-height: 20px;
+    background: repeating-linear-gradient(
+      180deg,
+      rgba(var(--color-foreground-rgb), 0.2) 0px,
+      rgba(var(--color-foreground-rgb), 0.2) 4px,
+      transparent 4px,
+      transparent 8px
+    );
+  }
+  
+  .connector__icon {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--tf-accent) 10%, transparent);
+    color: var(--tf-accent);
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  
+  .transfer-fresh__content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    background: rgba(var(--color-foreground-rgb), 0.02);
+    border: 1px solid rgba(var(--color-foreground-rgb), 0.08);
+    border-radius: 12px;
+  }
+  
+  .transfer-fresh__header {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  
+  .transfer-fresh__mode {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--tf-accent);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  .transfer-fresh__duration,
+  .transfer-fresh__distance {
+    font-size: 0.8rem;
+    color: rgba(var(--color-foreground-rgb), 0.6);
+    padding: 2px 8px;
+    background: rgba(var(--color-foreground-rgb), 0.05);
+    border-radius: 4px;
+  }
+  
+  .transfer-fresh__route {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  
+  .route__point {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    flex: 1;
+    min-width: 120px;
+  }
+  
+  .route__dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-top: 4px;
+    flex-shrink: 0;
+  }
+  
+  .route__point--start .route__dot {
+    background: var(--tf-accent);
+  }
+  
+  .route__point--end .route__dot {
+    background: transparent;
+    border: 2px solid rgb(var(--color-foreground));
+  }
+  
+  .route__info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  
+  .route__location {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: rgb(var(--color-foreground));
+  }
+  
+  .route__time {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--tf-accent);
+  }
+  
+  .route__arrow {
+    color: rgba(var(--color-foreground-rgb), 0.3);
+    flex-shrink: 0;
+  }
+  
+  .transfer-fresh__details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    font-size: 0.8rem;
+  }
+  
+  .detail-item {
+    color: rgba(var(--color-foreground-rgb), 0.8);
+  }
+  
+  .detail-label {
+    color: rgba(var(--color-foreground-rgb), 0.5);
+    margin-right: 4px;
+  }
+  
+  .transfer-fresh__maps-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: var(--tf-accent);
+    color: white;
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-decoration: none;
+    border-radius: 6px;
+    transition: opacity 0.2s ease;
+    align-self: flex-start;
+  }
+  
+  .transfer-fresh__maps-link:hover {
+    opacity: 0.9;
+  }
+  
+  @media (max-width: 600px) {
+    .transfer-fresh__route {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    
+    .route__point {
+      min-width: 100%;
+    }
+    
+    .route__arrow {
+      transform: rotate(90deg);
+      margin-left: 12px;
+    }
+  }
+</style>

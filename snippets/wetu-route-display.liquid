@@ -1,0 +1,612 @@
+{% comment %}
+  ============================================================================
+  WETU ROUTE DISPLAY SNIPPET
+  ============================================================================
+  
+  Displays transfer/route information with multiple style options.
+  
+  PARAMETERS:
+  - route: The route metaobject
+  - style: 'card' | 'inline' | 'timeline' (default: 'card')
+  - color_scheme: Color scheme class (default: 'scheme-5')
+  
+  ROUTE MODES:
+  - CharterFlight, ScheduledFlight: Air travel
+  - Transfer, Shuttle: Ground vehicle
+  - Selfdrive: Self-drive route
+  - Boat: Water transport
+  - Train: Rail travel
+  - Helicopter: Helicopter transfer
+  
+  USAGE:
+  {% render 'wetu-route-display',
+    route: route_object,
+    style: 'card',
+    color_scheme: 'scheme-5'
+  %}
+  
+  ============================================================================
+{% endcomment %}
+
+{% assign style = style | default: 'card' %}
+{% assign color_scheme = color_scheme | default: 'scheme-5' %}
+
+{% comment %} Extract route data {% endcomment %}
+{% assign route_mode = route.mode.value %}
+{% assign route_type = route.type.value %}
+{% assign route_label = route.label.value | default: route_mode %}
+{% assign from_name = route.start_location.value | default: route.from_name.value | default: 'Origin' %}
+{% assign to_name = route.end_location.value | default: route.to_name.value | default: 'Destination' %}
+{% assign start_time = route.start_time.value %}
+{% assign end_time = route.end_time.value %}
+{% assign duration_minutes = route.duration_minutes.value | default: route.duration.value %}
+{% assign distance = route.distance.value %}
+{% assign agency = route.agency.value %}
+{% assign vehicle = route.vehicle.value %}
+{% assign reference_codes = route.reference_codes.value %}
+{% assign via_points = route.via_points.value %}
+
+{% comment %} Calculate formatted duration {% endcomment %}
+{% if duration_minutes != blank %}
+  {% assign duration_mins = duration_minutes | plus: 0 %}
+  {% if duration_mins >= 60 %}
+    {% assign hours = duration_mins | divided_by: 60 %}
+    {% assign mins = duration_mins | modulo: 60 %}
+    {% if mins > 0 %}
+      {% assign formatted_duration = hours | append: 'h ' | append: mins | append: 'm' %}
+    {% else %}
+      {% assign formatted_duration = hours | append: 'h' %}
+    {% endif %}
+  {% else %}
+    {% assign formatted_duration = duration_mins | append: 'm' %}
+  {% endif %}
+{% else %}
+  {% assign formatted_duration = route.duration.value %}
+{% endif %}
+
+{% comment %} Calculate distance in km {% endcomment %}
+{% if distance != blank %}
+  {% assign distance_num = distance | plus: 0 %}
+  {% if distance_num > 1000 %}
+    {% assign distance_km = distance_num | divided_by: 1000.0 | round %}
+  {% else %}
+    {% assign distance_km = distance_num %}
+  {% endif %}
+{% endif %}
+
+{% comment %} Determine transport type flags {% endcomment %}
+{% assign is_flight = false %}
+{% assign is_self_drive = false %}
+{% assign is_boat = false %}
+{% assign is_train = false %}
+{% if route_mode == 'ScheduledFlight' or route_mode == 'CharterFlight' or route_mode == 'Helicopter' %}
+  {% assign is_flight = true %}
+{% elsif route_mode == 'Selfdrive' %}
+  {% assign is_self_drive = true %}
+{% elsif route_mode == 'Boat' %}
+  {% assign is_boat = true %}
+{% elsif route_mode == 'Train' %}
+  {% assign is_train = true %}
+{% endif %}
+
+{% comment %} Get human-readable mode label {% endcomment %}
+{% case route_mode %}
+  {% when 'ScheduledFlight' %}
+    {% assign mode_label = 'Flight' %}
+  {% when 'CharterFlight' %}
+    {% assign mode_label = 'Charter Flight' %}
+  {% when 'Selfdrive' %}
+    {% assign mode_label = 'Self-Drive' %}
+  {% when 'Transfer' %}
+    {% assign mode_label = 'Transfer' %}
+  {% when 'Shuttle' %}
+    {% assign mode_label = 'Shuttle' %}
+  {% when 'Train' %}
+    {% assign mode_label = 'Train' %}
+  {% when 'Boat' %}
+    {% assign mode_label = 'Boat' %}
+  {% when 'Helicopter' %}
+    {% assign mode_label = 'Helicopter' %}
+  {% else %}
+    {% assign mode_label = route_mode %}
+{% endcase %}
+
+{% comment %} Generate unique ID for component {% endcomment %}
+{% assign unique_id = 'route-' | append: route_mode | handleize | append: '-' | append: 'now' | date: '%s%N' | slice: -6, 6 %}
+
+<div class="wetu-route-display wetu-route-display--{{ style }} wetu-route-display--{{ route_mode | handleize }} color-{{ color_scheme }}" id="{{ unique_id }}">
+
+  {% case style %}
+  
+  {% comment %} ===================== CARD STYLE ===================== {% endcomment %}
+  {% when 'card' %}
+    <div class="route-card">
+      <div class="route-card__header">
+        <div class="route-card__icon">
+          {% render 'wetu-route-display-icon', mode: route_mode %}
+        </div>
+        <span class="route-card__mode">{{ mode_label | upcase }}</span>
+        {% if reference_codes != blank %}
+          <span class="route-card__ref">{{ reference_codes }}</span>
+        {% endif %}
+      </div>
+      
+      <div class="route-card__journey">
+        <div class="route-card__origin">
+          <span class="route-card__location-name">{{ from_name }}</span>
+          {% if start_time != blank %}
+            <span class="route-card__time">{{ start_time }}</span>
+          {% endif %}
+        </div>
+        
+        <div class="route-card__path">
+          <span class="route-card__dot route-card__dot--start"></span>
+          <span class="route-card__line"></span>
+          <span class="route-card__transport-icon">
+            {% render 'wetu-route-display-icon', mode: route_mode, size: 20 %}
+          </span>
+          <span class="route-card__line"></span>
+          <span class="route-card__dot route-card__dot--end"></span>
+        </div>
+        
+        <div class="route-card__destination">
+          <span class="route-card__location-name">{{ to_name }}</span>
+          {% if end_time != blank %}
+            <span class="route-card__time">{{ end_time }}</span>
+          {% endif %}
+        </div>
+      </div>
+      
+      <div class="route-card__meta">
+        {% if formatted_duration != blank %}
+          <span class="route-card__duration">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+            {{ formatted_duration }}
+          </span>
+        {% endif %}
+        {% if distance_km != blank %}
+          <span class="route-card__distance">{{ distance_km }} km</span>
+        {% endif %}
+        {% if agency != blank %}
+          <span class="route-card__agency">{{ agency }}</span>
+        {% endif %}
+        {% if vehicle != blank %}
+          <span class="route-card__agency">{{ vehicle }}</span>
+        {% endif %}
+      </div>
+
+      {% if via_points != blank %}
+        <div class="route-card__via-points" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--route-border); font-size: 0.85rem; color: var(--route-muted);">
+          <strong>Via:</strong> {{ via_points }}
+        </div>
+      {% endif %}
+    </div>
+  
+  {% comment %} ===================== INLINE STYLE ===================== {% endcomment %}
+  {% when 'inline' %}
+    <div class="route-inline">
+      <span class="route-inline__icon">
+        {% render 'wetu-route-display-icon', mode: route_mode, size: 16 %}
+      </span>
+      <span class="route-inline__mode">{{ mode_label }}:</span>
+      <span class="route-inline__route">
+        {{ from_name }} <span class="route-inline__arrow">→</span> {{ to_name }}
+      </span>
+      {% if formatted_duration != blank %}
+        <span class="route-inline__duration">({{ formatted_duration }})</span>
+      {% endif %}
+    </div>
+  
+  {% comment %} ===================== TIMELINE STYLE ===================== {% endcomment %}
+  {% when 'timeline' %}
+    <div class="route-timeline">
+      <div class="route-timeline__point route-timeline__point--start">
+        <span class="route-timeline__marker"></span>
+        <div class="route-timeline__info">
+          <span class="route-timeline__action">Depart</span>
+          <span class="route-timeline__location">{{ from_name }}</span>
+          {% if start_time != blank %}
+            <span class="route-timeline__time">{{ start_time }}</span>
+          {% endif %}
+        </div>
+      </div>
+      
+      <div class="route-timeline__connector">
+        <span class="route-timeline__line"></span>
+        <div class="route-timeline__transport">
+          <span class="route-timeline__transport-icon">
+            {% render 'wetu-route-display-icon', mode: route_mode, size: 18 %}
+          </span>
+          <span class="route-timeline__transport-label">{{ mode_label }}</span>
+          {% if formatted_duration != blank %}
+            <span class="route-timeline__transport-duration">({{ formatted_duration }})</span>
+          {% endif %}
+        </div>
+      </div>
+      
+      <div class="route-timeline__point route-timeline__point--end">
+        <span class="route-timeline__marker"></span>
+        <div class="route-timeline__info">
+          <span class="route-timeline__action">Arrive</span>
+          <span class="route-timeline__location">{{ to_name }}</span>
+          {% if end_time != blank %}
+            <span class="route-timeline__time">{{ end_time }}</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  
+  {% endcase %}
+
+</div>
+
+<style>
+  /* ============================================
+     ROUTE DISPLAY - BASE STYLES
+     ============================================ */
+  
+  .wetu-route-display {
+    --route-accent: var(--color-primary);
+    --route-muted: color-mix(in srgb, var(--color-foreground) 50%, transparent);
+    --route-subtle-bg: color-mix(in srgb, var(--color-foreground) 3%, transparent);
+    --route-border: var(--color-border);
+    width: 100%;
+  }
+
+  /* Mode-specific accent colors */
+  .wetu-route-display--scheduledFlight,
+  .wetu-route-display--charterflight {
+    --route-accent: #3b82f6;
+  }
+
+  .wetu-route-display--helicopter {
+    --route-accent: #8b5cf6;
+  }
+
+  .wetu-route-display--selfdrive {
+    --route-accent: #22c55e;
+  }
+
+  .wetu-route-display--transfer,
+  .wetu-route-display--shuttle {
+    --route-accent: #64748b;
+  }
+
+  .wetu-route-display--boat {
+    --route-accent: #06b6d4;
+  }
+
+  .wetu-route-display--train {
+    --route-accent: #f97316;
+  }
+
+  /* ============================================
+     CARD STYLE
+     ============================================ */
+  
+  .route-card {
+    padding: 24px;
+    background: var(--route-subtle-bg);
+    border: 1px solid var(--route-border);
+    border-radius: 12px;
+  }
+
+  .route-card__header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .route-card__icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--route-accent) 15%, transparent);
+    color: var(--route-accent);
+    border-radius: 10px;
+  }
+
+  .route-card__mode {
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: var(--route-accent);
+  }
+
+  .route-card__ref {
+    margin-left: auto;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--route-muted);
+    background: color-mix(in srgb, var(--color-foreground) 8%, transparent);
+    padding: 4px 10px;
+    border-radius: 6px;
+  }
+
+  /* Journey Path */
+  .route-card__journey {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .route-card__origin,
+  .route-card__destination {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .route-card__destination {
+    text-align: right;
+  }
+
+  .route-card__location-name {
+    display: block;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--color-foreground);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .route-card__time {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--route-accent);
+    margin-top: 4px;
+  }
+
+  .route-card__path {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 0;
+    min-width: 120px;
+  }
+
+  .route-card__dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .route-card__dot--start {
+    background: var(--route-accent);
+  }
+
+  .route-card__dot--end {
+    background: transparent;
+    border: 2px solid var(--color-foreground);
+  }
+
+  .route-card__line {
+    flex: 1;
+    height: 2px;
+    background: repeating-linear-gradient(
+      90deg,
+      var(--route-border) 0px,
+      var(--route-border) 6px,
+      transparent 6px,
+      transparent 10px
+    );
+    min-width: 20px;
+  }
+
+  .route-card__transport-icon {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-background);
+    border: 1px solid var(--route-border);
+    border-radius: 50%;
+    color: var(--route-accent);
+    flex-shrink: 0;
+  }
+
+  /* Meta Info */
+  .route-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--route-border);
+  }
+
+  .route-card__duration,
+  .route-card__distance,
+  .route-card__agency {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: var(--route-muted);
+  }
+
+  .route-card__duration svg {
+    color: var(--route-accent);
+  }
+
+  /* ============================================
+     INLINE STYLE
+     ============================================ */
+  
+  .route-inline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+    line-height: 1.4;
+  }
+
+  .route-inline__icon {
+    color: var(--route-accent);
+    flex-shrink: 0;
+    display: flex;
+  }
+
+  .route-inline__mode {
+    font-weight: 600;
+    color: var(--color-foreground);
+  }
+
+  .route-inline__route {
+    color: var(--color-foreground);
+  }
+
+  .route-inline__arrow {
+    color: var(--route-accent);
+    margin: 0 4px;
+  }
+
+  .route-inline__duration {
+    color: var(--route-muted);
+  }
+
+  /* ============================================
+     TIMELINE STYLE
+     ============================================ */
+  
+  .route-timeline {
+    padding-left: 4px;
+  }
+
+  .route-timeline__point {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    position: relative;
+  }
+
+  .route-timeline__marker {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 3px;
+  }
+
+  .route-timeline__point--start .route-timeline__marker {
+    background: var(--route-accent);
+  }
+
+  .route-timeline__point--end .route-timeline__marker {
+    background: transparent;
+    border: 2px solid var(--color-foreground);
+  }
+
+  .route-timeline__info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-bottom: 8px;
+  }
+
+  .route-timeline__action {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--route-muted);
+  }
+
+  .route-timeline__location {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-foreground);
+  }
+
+  .route-timeline__time {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--route-accent);
+  }
+
+  /* Timeline Connector */
+  .route-timeline__connector {
+    display: flex;
+    align-items: stretch;
+    padding-left: 6px;
+    min-height: 60px;
+    position: relative;
+  }
+
+  .route-timeline__line {
+    width: 2px;
+    background: repeating-linear-gradient(
+      180deg,
+      var(--route-border) 0px,
+      var(--route-border) 6px,
+      transparent 6px,
+      transparent 10px
+    );
+  }
+
+  .route-timeline__transport {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 24px;
+    padding: 12px 16px;
+    background: var(--route-subtle-bg);
+    border-radius: 8px;
+    align-self: center;
+  }
+
+  .route-timeline__transport-icon {
+    color: var(--route-accent);
+    display: flex;
+  }
+
+  .route-timeline__transport-label {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--color-foreground);
+  }
+
+  .route-timeline__transport-duration {
+    font-size: 0.85rem;
+    color: var(--route-muted);
+  }
+
+  /* ============================================
+     MOBILE ADJUSTMENTS
+     ============================================ */
+  
+  @media screen and (max-width: 600px) {
+    .route-card__journey {
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .route-card__origin,
+    .route-card__destination {
+      text-align: center;
+    }
+
+    .route-card__path {
+      width: 100%;
+      justify-content: center;
+    }
+
+    .route-inline {
+      flex-wrap: wrap;
+    }
+
+    .route-timeline__transport {
+      margin-left: 16px;
+      padding: 8px 12px;
+    }
+  }
+</style>

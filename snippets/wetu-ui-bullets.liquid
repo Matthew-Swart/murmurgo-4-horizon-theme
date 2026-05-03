@@ -1,0 +1,150 @@
+{% comment %}
+  WETU UI Bullets Snippet
+  =======================
+  Renders inclusions/exclusions lists from WETU rich text/HTML/newlines into clean bullet lists.
+  
+  Parameters:
+    - title: (string) The heading text for the list
+    - icon: (string, optional) Custom icon override
+    - html: (string) Rich text/HTML content from WETU containing the list items
+    - variant: (string) 'included' or 'excluded' - determines icon and styling
+    - show_title: (boolean, default: true) Whether to show the title heading
+  
+  Usage:
+    {% render 'wetu-ui-bullets', title: "What's Included", html: pricing_includes, variant: 'included' %}
+    {% render 'wetu-ui-bullets', title: 'Exclusions', html: pricing_excludes, variant: 'excluded', show_title: false %}
+{% endcomment %}
+
+{%- liquid
+  assign show_title = show_title | default: true
+  assign variant = variant | default: 'included'
+  
+  # Use a unique delimiter for splitting
+  assign delimiter = '|||SPLIT|||'
+  
+  # Normalize line breaks: replace <br>, <br/>, <br /> with delimiter
+  assign normalized = html | replace: '<br>', delimiter
+  assign normalized = normalized | replace: '<br/>', delimiter
+  assign normalized = normalized | replace: '<br />', delimiter
+  assign normalized = normalized | replace: '<BR>', delimiter
+  assign normalized = normalized | replace: '<BR/>', delimiter
+  assign normalized = normalized | replace: '<BR />', delimiter
+  
+  # Also handle </p><p> and </li><li> patterns as line breaks
+  assign normalized = normalized | replace: '</p><p>', delimiter
+  assign normalized = normalized | replace: '</P><P>', delimiter
+  assign normalized = normalized | replace: '</li><li>', delimiter
+  assign normalized = normalized | replace: '</LI><LI>', delimiter
+  
+  # Strip all HTML tags
+  assign stripped = normalized | strip_html
+  
+  # Split on our delimiter
+  assign lines = stripped | split: delimiter
+-%}
+
+{%- if lines.size > 0 -%}
+  <style>
+    .wetu-bullets {
+      margin: 0;
+      padding: 0;
+    }
+    .wetu-bullets__title {
+      font-size: 1.1em;
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+      color: inherit;
+    }
+    .wetu-bullets__list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .wetu-bullets__item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      padding: 0.35rem 0;
+      line-height: 1.4;
+    }
+    .wetu-bullets__icon {
+      flex-shrink: 0;
+      width: 1.1em;
+      height: 1.1em;
+      margin-top: 0.15em;
+    }
+    .wetu-bullets__icon--included {
+      color: #22c55e;
+    }
+    .wetu-bullets__icon--excluded {
+      color: #ef4444;
+    }
+    .wetu-bullets__text {
+      flex: 1;
+    }
+  </style>
+
+  <div class="wetu-bullets wetu-bullets--{{ variant }}">
+    {%- if show_title and title != blank -%}
+      <h4 class="wetu-bullets__title">{{ title }}</h4>
+    {%- endif -%}
+    
+    <ul class="wetu-bullets__list">
+      {%- for line in lines -%}
+        {%- liquid
+          # Trim whitespace
+          assign clean_line = line | strip
+          
+          # Remove common bullet prefixes
+          if clean_line contains '- '
+            assign first_chars = clean_line | slice: 0, 2
+            if first_chars == '- '
+              assign clean_line = clean_line | slice: 2, 1000
+            endif
+          endif
+          
+          if clean_line contains '• '
+            assign first_chars = clean_line | slice: 0, 2
+            if first_chars == '• '
+              assign clean_line = clean_line | slice: 2, 1000
+            endif
+          endif
+          
+          if clean_line contains '* '
+            assign first_chars = clean_line | slice: 0, 2
+            if first_chars == '* '
+              assign clean_line = clean_line | slice: 2, 1000
+            endif
+          endif
+          
+          # Also handle bullets without space
+          assign first_char = clean_line | slice: 0, 1
+          if first_char == '•' or first_char == '·' or first_char == '‣' or first_char == '◦'
+            assign clean_line = clean_line | slice: 1, 1000 | strip
+          endif
+          
+          # Final trim
+          assign clean_line = clean_line | strip
+        -%}
+        
+        {%- if clean_line != blank -%}
+          <li class="wetu-bullets__item">
+            {%- if icon != blank -%}
+              {{ icon }}
+            {%- elsif variant == 'included' -%}
+              <svg class="wetu-bullets__icon wetu-bullets__icon--included" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            {%- elsif variant == 'excluded' -%}
+              <svg class="wetu-bullets__icon wetu-bullets__icon--excluded" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            {%- endif -%}
+            <span class="wetu-bullets__text">{{ clean_line }}</span>
+          </li>
+        {%- endif -%}
+      {%- endfor -%}
+    </ul>
+  </div>
+{%- endif -%}

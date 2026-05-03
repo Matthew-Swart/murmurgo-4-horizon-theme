@@ -1,0 +1,191 @@
+{% doc %}
+  ResRequest Property Key Details
+
+  Displays detailed information for ResRequest properties including location,
+  contact information, and policies.
+
+  @param {product} product - The property product (required)
+
+  @example
+  {% render 'resrequest-property-key-details', product: product %}
+{% enddoc %}
+
+{% liquid
+  assign property_data = product.metafields.resrequest.related_metaobjects.value
+  assign property_metaobject = null
+  assign location_metaobject = null
+  assign contact_metaobject = null
+  assign policies_metaobject = null
+  
+  if property_data and property_data.size > 0
+    for item in property_data
+      if item.type == 'resrequest_property'
+        assign property_metaobject = item
+      elsif item.type == 'resrequest_location'
+        assign location_metaobject = item
+      elsif item.type == 'resrequest_contact'
+        assign contact_metaobject = item
+      elsif item.type == 'resrequest_policies'
+        assign policies_metaobject = item
+      endif
+    endfor
+  endif
+  
+  assign has_location = false
+  if location_metaobject
+    if location_metaobject.latitude or location_metaobject.city or location_metaobject.country
+      assign has_location = true
+    endif
+  endif
+  
+  assign has_contact = false
+  if contact_metaobject
+    if contact_metaobject.website or contact_metaobject.email or contact_metaobject.phone
+      assign has_contact = true
+    endif
+  endif
+  
+  assign has_policies = false
+  if policies_metaobject
+    if policies_metaobject.cancellation_policy or policies_metaobject.child_policy
+      assign has_policies = true
+    endif
+  endif
+%}
+
+{% if has_location or has_contact or has_policies %}
+<div class="resrequest-property-key-details">
+  <h3 class="resrequest-property-key-details__title">Property information</h3>
+  
+  <div class="resrequest-property-key-details__grid">
+    {% if has_location %}
+      <div class="resrequest-property-key-details__section">
+        <h4 class="resrequest-property-key-details__subtitle">Location</h4>
+        <div class="resrequest-property-key-details__content">
+          {% if location_metaobject.city and location_metaobject.city != blank %}
+            <div class="resrequest-property-key-details__info-row">
+              <span class="resrequest-property-key-details__info-label">City</span>
+              <span class="resrequest-property-key-details__info-value">{{ location_metaobject.city }}</span>
+            </div>
+          {% endif %}
+          {% if location_metaobject.country and location_metaobject.country != blank %}
+            <div class="resrequest-property-key-details__info-row">
+              <span class="resrequest-property-key-details__info-label">Country</span>
+              <span class="resrequest-property-key-details__info-value">{{ location_metaobject.country }}</span>
+            </div>
+          {% endif %}
+          {% if location_metaobject.latitude and location_metaobject.longitude %}
+            <div class="resrequest-property-key-details__info-row">
+              <span class="resrequest-property-key-details__info-label">Coordinates</span>
+              <span class="resrequest-property-key-details__info-value">{{ location_metaobject.latitude }}, {{ location_metaobject.longitude }}</span>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+    
+    {% if has_contact %}
+      <div class="resrequest-property-key-details__section">
+        <h4 class="resrequest-property-key-details__subtitle">Contact</h4>
+        <div class="resrequest-property-key-details__content">
+          {% if contact_metaobject.website and contact_metaobject.website != blank %}
+            <div class="resrequest-property-key-details__info-row">
+              <span class="resrequest-property-key-details__info-label">Website</span>
+              <span class="resrequest-property-key-details__info-value">
+                <a href="{{ contact_metaobject.website }}" target="_blank" rel="noopener">{{ contact_metaobject.website }}</a>
+              </span>
+            </div>
+          {% endif %}
+          {% if contact_metaobject.email and contact_metaobject.email != blank %}
+            <div class="resrequest-property-key-details__info-row">
+              <span class="resrequest-property-key-details__info-label">Email</span>
+              <span class="resrequest-property-key-details__info-value">
+                <a href="mailto:{{ contact_metaobject.email }}">{{ contact_metaobject.email }}</a>
+              </span>
+            </div>
+          {% endif %}
+          {% if contact_metaobject.phone and contact_metaobject.phone != blank %}
+            <div class="resrequest-property-key-details__info-row">
+              <span class="resrequest-property-key-details__info-label">Phone</span>
+              <span class="resrequest-property-key-details__info-value">{{ contact_metaobject.phone }}</span>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{% stylesheet %}
+  .resrequest-property-key-details {
+    margin-block: var(--spacing-xl, 40px);
+  }
+  
+  .resrequest-property-key-details__title {
+    font-size: var(--font-size-h5, 1.25rem);
+    font-weight: 600;
+    margin-block-end: var(--spacing-lg, 32px);
+    color: #000;
+    letter-spacing: -0.01em;
+  }
+  
+  .resrequest-property-key-details__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--spacing-xl, 40px) var(--spacing-lg, 32px);
+  }
+  
+  @media screen and (max-width: 749px) {
+    .resrequest-property-key-details__grid {
+      grid-template-columns: 1fr;
+      gap: var(--spacing-lg, 32px);
+    }
+  }
+  
+  .resrequest-property-key-details__section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm, 12px);
+  }
+  
+  .resrequest-property-key-details__subtitle {
+    font-size: var(--font-size-sm, 0.875rem);
+    font-weight: 600;
+    margin: 0;
+    color: #000;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  .resrequest-property-key-details__content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs, 8px);
+  }
+  
+  .resrequest-property-key-details__info-row {
+    display: flex;
+    gap: var(--spacing-sm, 12px);
+    font-size: var(--font-size-sm, 0.875rem);
+    line-height: 1.6;
+  }
+  
+  .resrequest-property-key-details__info-label {
+    color: #999;
+    min-width: 80px;
+  }
+  
+  .resrequest-property-key-details__info-value {
+    color: #333;
+  }
+  
+  .resrequest-property-key-details__info-value a {
+    color: inherit;
+    text-decoration: underline;
+  }
+  
+  .resrequest-property-key-details__info-value a:hover {
+    color: #000;
+  }
+{% endstylesheet %}

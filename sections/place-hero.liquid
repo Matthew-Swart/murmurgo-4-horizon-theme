@@ -1,0 +1,64 @@
+{% comment %}
+  place-hero.liquid
+  Adaptive hero for all 12 Murmurgo place types.
+{% endcomment %}
+{% include 'murmurgo-resolve-place' %}
+
+<section class="murmurgo-place-hero page-width" data-section-id="{{ section.id }}">
+  <div class="place-hero__content">
+    <h1 class="place-hero__title">{{ m_place_name | default: m_poly_name | default: page.title }}</h1>
+    {% if m_place_tagline %}
+      <p class="place-hero__tagline">{{ m_place_tagline }}</p>
+    {% endif %}
+    <div class="place-hero__meta">
+      {% if m_place_type %}
+        <span class="place-hero__type">{{ m_place_type | replace: '_', ' ' | capitalize }}</span>
+      {% endif %}
+      {% if m_poly_tier %}
+        <span class="place-hero__tier">{{ m_poly_tier | replace: '_', ' ' | capitalize }}</span>
+      {% endif %}
+      {% if m_place_price %}
+        <span class="place-hero__price">{{ m_place_price }}</span>
+      {% endif %}
+      {% if m_place_rating %}
+        <span class="place-hero__rating">
+          {{ m_place_rating | round: 1 }} ★
+          {% if m_place_rating_count %}({{ m_place_rating_count }}){% endif %}
+        </span>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if m_place_hero %}
+    <div class="place-hero__media">
+      <img
+        src="{{ m_place_hero.cdn_url }}"
+        alt="{{ m_place_hero.alt | default: m_place_name }}"
+        loading="eager"
+        width="{{ m_place_hero.width | default: 1200 }}"
+        height="{{ m_place_hero.height | default: 800 }}"
+        style="max-width:100%;height:auto;"
+      >
+    </div>
+  {% elsif m_poly_centroid_lat %}
+    <div class="place-hero__map-fallback"
+         data-lat="{{ m_poly_centroid_lat }}"
+         data-lon="{{ m_poly_centroid_lon }}"
+         data-bbox="{{ m_poly_bbox | json }}">
+      <p>Map view for {{ m_poly_name }}</p>
+    </div>
+  {% endif %}
+</section>
+
+{% schema %}
+{
+  "name": "Place Hero",
+  "class": "section-place-hero",
+  "settings": [],
+  "presets": [
+    {
+      "name": "Place Hero"
+    }
+  ]
+}
+{% endschema %}

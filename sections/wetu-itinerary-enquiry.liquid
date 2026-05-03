@@ -1,0 +1,682 @@
+{% comment %}
+  ============================================================================
+  WETU ITINERARY ENQUIRY SECTION
+  ============================================================================
+
+  Contact form for itinerary enquiries with operator information display.
+  Pre-populates itinerary details and captures guest requirements.
+
+  Features:
+  - Full contact form with date pickers
+  - Contact preference selection (Email/Phone)
+  - Guest counts (Adults/Children)
+  - Travel dates
+  - Operator contact information from WETU
+  - Mobile-responsive design
+
+  ============================================================================
+{% endcomment %}
+
+{% comment %} Load itinerary data {% endcomment %}
+{% include 'wetu-itinerary-data' %}
+
+{% assign itinerary_metaobject = product.metafields.wetu.itinerary_metaobject.value %}
+{% assign wetu_contacts = itinerary_metaobject.contacts.value | default: '' %}
+
+<section
+  class="itinerary-enquiry-section color-{{ section.settings.color_scheme }}"
+  id="enquiry"
+  aria-labelledby="enquiry-heading"
+>
+  <div class="page-width">
+
+    {% comment %} Section Header {% endcomment %}
+    <header class="itinerary-enquiry-section__header">
+      <h2 class="itinerary-enquiry-section__heading" id="enquiry-heading">
+        {{ section.settings.heading | default: 'Make an Enquiry' }}
+      </h2>
+      {% if section.settings.subheading != blank %}
+        <p class="itinerary-enquiry-section__subheading">
+          {{ section.settings.subheading }}
+        </p>
+      {% endif %}
+    </header>
+
+    <div class="itinerary-enquiry-section__grid">
+
+      {% comment %} Left: Operator Contact Info {% endcomment %}
+      <div class="itinerary-enquiry-section__info">
+
+        {% comment %} ============================================
+             OPERATOR CONTACT DISPLAY
+             ============================================ {% endcomment %}
+        {% if wetu_contacts != blank %}
+          <div class="itinerary-enquiry-section__operator">
+            <h3 class="itinerary-enquiry-section__info-heading">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+              </svg>
+              Your Tour Operator
+            </h3>
+
+            {% for contact in wetu_contacts %}
+              <div class="itinerary-enquiry-operator-card">
+                {% if contact.company %}
+                  <h4 class="itinerary-enquiry-operator-card__company">{{ contact.company }}</h4>
+                {% endif %}
+
+                <div class="itinerary-enquiry-operator-card__details">
+                  {% if contact.contact_person %}
+                    <div class="itinerary-enquiry-operator-card__row">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                      </svg>
+                      <span>{{ contact.contact_person }}</span>
+                    </div>
+                  {% endif %}
+
+                  {% if contact.email %}
+                    <div class="itinerary-enquiry-operator-card__row">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                        <polyline points="22,6 12,13 2,6"/>
+                      </svg>
+                      <a href="mailto:{{ contact.email }}">{{ contact.email }}</a>
+                    </div>
+                  {% endif %}
+
+                  {% if contact.telephone %}
+                    <div class="itinerary-enquiry-operator-card__row">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                      </svg>
+                      <a href="tel:{{ contact.telephone | remove: ' ' }}">{{ contact.telephone }}</a>
+                    </div>
+                  {% endif %}
+
+                  {% if contact.website %}
+                    <div class="itinerary-enquiry-operator-card__row">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="2" y1="12" x2="22" y2="12"/>
+                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                      </svg>
+                      <a href="{{ contact.website }}" target="_blank" rel="noopener">{{ contact.website | remove: 'https://' | remove: 'http://' | remove: 'www.' | truncate: 30 }}</a>
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        {% comment %} Response Time {% endcomment %}
+        <div class="itinerary-enquiry-section__response-info">
+          <div class="itinerary-enquiry-section__response-item">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+            <div>
+              <strong>Quick Response</strong>
+              <p>Usually within 24 hours</p>
+            </div>
+          </div>
+
+          <div class="itinerary-enquiry-section__response-item">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+              <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+            <div>
+              <strong>No Obligation</strong>
+              <p>Free quote, no commitment</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {% comment %} Right: Contact Form {% endcomment %}
+      <div class="itinerary-enquiry-section__form-wrapper">
+        <form
+          class="itinerary-enquiry-form"
+          method="post"
+          action="{{ section.settings.form_action | default: '/contact#contact_form' }}"
+          accept-charset="UTF-8"
+        >
+          <input type="hidden" name="form_type" value="contact">
+          <input type="hidden" name="utf8" value="✓">
+          <input type="hidden" name="contact[itinerary]" value="{{ product.title }}">
+          <input type="hidden" name="contact[itinerary_url]" value="{{ shop.url }}{{ product.url }}">
+
+          {% comment %} Name Field {% endcomment %}
+          <div class="itinerary-enquiry-form__field">
+            <label for="enquiry-name" class="itinerary-enquiry-form__label">
+              Name <span class="required">*</span>
+            </label>
+            <input
+              type="text"
+              id="enquiry-name"
+              name="contact[name]"
+              class="itinerary-enquiry-form__input"
+              required
+              placeholder="Your full name"
+            >
+          </div>
+
+          {% comment %} Email Field {% endcomment %}
+          <div class="itinerary-enquiry-form__field">
+            <label for="enquiry-email" class="itinerary-enquiry-form__label">
+              Email <span class="required">*</span>
+            </label>
+            <input
+              type="email"
+              id="enquiry-email"
+              name="contact[email]"
+              class="itinerary-enquiry-form__input"
+              required
+              placeholder="your@email.com"
+            >
+          </div>
+
+          {% comment %} Telephone Field {% endcomment %}
+          <div class="itinerary-enquiry-form__field">
+            <label for="enquiry-phone" class="itinerary-enquiry-form__label">
+              Telephone <span class="required">*</span>
+            </label>
+            <input
+              type="tel"
+              id="enquiry-phone"
+              name="contact[phone]"
+              class="itinerary-enquiry-form__input"
+              required
+              placeholder="+1 234 567 8900"
+            >
+          </div>
+
+          {% comment %} Contact Preference {% endcomment %}
+          <div class="itinerary-enquiry-form__field">
+            <label class="itinerary-enquiry-form__label">
+              Preferred Contact Method
+            </label>
+            <div class="itinerary-enquiry-form__radio-group">
+              <label class="itinerary-enquiry-form__radio">
+                <input
+                  type="radio"
+                  name="contact[preference]"
+                  value="Email"
+                  checked
+                >
+                <span>Email</span>
+              </label>
+              <label class="itinerary-enquiry-form__radio">
+                <input
+                  type="radio"
+                  name="contact[preference]"
+                  value="Phone"
+                >
+                <span>Phone</span>
+              </label>
+            </div>
+          </div>
+
+          {% comment %} Guest Counts Row {% endcomment %}
+          <div class="itinerary-enquiry-form__row">
+            <div class="itinerary-enquiry-form__field">
+              <label for="enquiry-adults" class="itinerary-enquiry-form__label">
+                Number of Adults
+              </label>
+              <input
+                type="number"
+                id="enquiry-adults"
+                name="contact[adults]"
+                class="itinerary-enquiry-form__input"
+                min="1"
+                max="20"
+                value="2"
+              >
+            </div>
+
+            <div class="itinerary-enquiry-form__field">
+              <label for="enquiry-children" class="itinerary-enquiry-form__label">
+                Number of Children
+              </label>
+              <input
+                type="number"
+                id="enquiry-children"
+                name="contact[children]"
+                class="itinerary-enquiry-form__input"
+                min="0"
+                max="10"
+                value="0"
+              >
+            </div>
+          </div>
+
+          {% comment %} Travel Dates Row {% endcomment %}
+          <div class="itinerary-enquiry-form__row">
+            <div class="itinerary-enquiry-form__field">
+              <label for="enquiry-arrival" class="itinerary-enquiry-form__label">
+                Arrival Date
+              </label>
+              <input
+                type="date"
+                id="enquiry-arrival"
+                name="contact[arrival_date]"
+                class="itinerary-enquiry-form__input"
+              >
+            </div>
+
+            <div class="itinerary-enquiry-form__field">
+              <label for="enquiry-departure" class="itinerary-enquiry-form__label">
+                Departure Date
+              </label>
+              <input
+                type="date"
+                id="enquiry-departure"
+                name="contact[departure_date]"
+                class="itinerary-enquiry-form__input"
+              >
+            </div>
+          </div>
+
+          {% comment %} Message Field {% endcomment %}
+          <div class="itinerary-enquiry-form__field">
+            <label for="enquiry-message" class="itinerary-enquiry-form__label">
+              Message
+            </label>
+            <textarea
+              id="enquiry-message"
+              name="contact[body]"
+              class="itinerary-enquiry-form__textarea"
+              rows="5"
+              placeholder="Tell us about your travel plans, preferences, or any questions you have..."
+            ></textarea>
+          </div>
+
+          {% comment %} Submit Button {% endcomment %}
+          <button type="submit" class="itinerary-enquiry-form__submit">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="22" y1="2" x2="11" y2="13"/>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+            SEND
+          </button>
+
+          {% comment %} Form Note {% endcomment %}
+          <p class="itinerary-enquiry-form__note">
+            By submitting this form, you agree to our privacy policy and terms of service.
+          </p>
+        </form>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<style>
+/* ====================================
+   Itinerary Enquiry Section
+   ==================================== */
+
+.itinerary-enquiry-section {
+  padding: 80px 0;
+  background: var(--color-background);
+}
+
+.itinerary-enquiry-section__header {
+  text-align: center;
+  margin-bottom: 48px;
+}
+
+.itinerary-enquiry-section__heading {
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
+  font-weight: 700;
+  color: var(--color-foreground);
+  margin: 0 0 12px;
+}
+
+.itinerary-enquiry-section__subheading {
+  font-size: 1rem;
+  color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+  margin: 0;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Grid Layout */
+.itinerary-enquiry-section__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 48px;
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .itinerary-enquiry-section__grid {
+    grid-template-columns: 380px 1fr;
+    gap: 64px;
+  }
+}
+
+/* ====================================
+   Info Column (Left)
+   ==================================== */
+
+.itinerary-enquiry-section__info {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.itinerary-enquiry-section__info-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-foreground);
+  margin: 0 0 16px;
+}
+
+.itinerary-enquiry-section__info-heading svg {
+  flex-shrink: 0;
+  color: var(--color-primary);
+}
+
+/* ====================================
+   Operator Card
+   ==================================== */
+
+.itinerary-enquiry-section__operator {
+  padding: 24px;
+  background: color-mix(in srgb, var(--color-primary) 5%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
+  border-radius: 12px;
+}
+
+.itinerary-enquiry-operator-card {
+  margin-top: 16px;
+}
+
+.itinerary-enquiry-operator-card__company {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-foreground);
+  margin: 0 0 16px;
+}
+
+.itinerary-enquiry-operator-card__details {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.itinerary-enquiry-operator-card__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9375rem;
+  color: var(--color-foreground);
+}
+
+.itinerary-enquiry-operator-card__row svg {
+  flex-shrink: 0;
+  color: var(--color-primary);
+}
+
+.itinerary-enquiry-operator-card__row a {
+  color: var(--color-primary);
+  text-decoration: none;
+  word-break: break-word;
+}
+
+.itinerary-enquiry-operator-card__row a:hover {
+  text-decoration: underline;
+}
+
+/* Response Info */
+.itinerary-enquiry-section__response-info {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  background: color-mix(in srgb, var(--color-foreground) 3%, transparent);
+  border-radius: 12px;
+}
+
+.itinerary-enquiry-section__response-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.itinerary-enquiry-section__response-item svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--color-primary);
+}
+
+.itinerary-enquiry-section__response-item strong {
+  display: block;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-foreground);
+  margin-bottom: 2px;
+}
+
+.itinerary-enquiry-section__response-item p {
+  font-size: 0.875rem;
+  color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+  margin: 0;
+}
+
+/* ====================================
+   Form Column (Right)
+   ==================================== */
+
+.itinerary-enquiry-section__form-wrapper {
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  padding: 32px;
+}
+
+@media (max-width: 640px) {
+  .itinerary-enquiry-section__form-wrapper {
+    padding: 24px 20px;
+  }
+}
+
+/* Form */
+.itinerary-enquiry-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.itinerary-enquiry-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.itinerary-enquiry-form__label {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--color-foreground);
+}
+
+.itinerary-enquiry-form__label .required {
+  color: #ef4444;
+}
+
+.itinerary-enquiry-form__input,
+.itinerary-enquiry-form__textarea {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 0.9375rem;
+  color: var(--color-foreground);
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.itinerary-enquiry-form__input:focus,
+.itinerary-enquiry-form__textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent);
+}
+
+.itinerary-enquiry-form__textarea {
+  resize: vertical;
+  min-height: 120px;
+  font-family: inherit;
+  line-height: 1.6;
+}
+
+/* Radio Group */
+.itinerary-enquiry-form__radio-group {
+  display: flex;
+  gap: 16px;
+}
+
+.itinerary-enquiry-form__radio {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 0.9375rem;
+  color: var(--color-foreground);
+}
+
+.itinerary-enquiry-form__radio input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--color-primary);
+}
+
+/* Form Row (for side-by-side fields) */
+.itinerary-enquiry-form__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 640px) {
+  .itinerary-enquiry-form__row {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+/* Submit Button */
+.itinerary-enquiry-form__submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 32px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-background);
+  background: var(--color-primary);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  margin-top: 8px;
+}
+
+.itinerary-enquiry-form__submit:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--color-primary) 30%, transparent);
+}
+
+.itinerary-enquiry-form__submit:active {
+  transform: translateY(0);
+}
+
+.itinerary-enquiry-form__submit svg {
+  flex-shrink: 0;
+}
+
+/* Form Note */
+.itinerary-enquiry-form__note {
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--color-foreground) 50%, transparent);
+  text-align: center;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ====================================
+   Responsive
+   ==================================== */
+
+@media (max-width: 1023px) {
+  .itinerary-enquiry-section {
+    padding: 48px 0 120px; /* Extra padding for sticky bar */
+  }
+
+  .itinerary-enquiry-section__grid {
+    gap: 32px;
+  }
+
+  .itinerary-enquiry-section__info {
+    order: 2; /* Move operator info below form on mobile */
+  }
+
+  .itinerary-enquiry-section__form-wrapper {
+    order: 1;
+  }
+}
+</style>
+
+{% schema %}
+{
+  "name": "Itinerary Enquiry Section",
+  "tag": "section",
+  "class": "section-itinerary-enquiry",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Make an Enquiry"
+    },
+    {
+      "type": "text",
+      "id": "subheading",
+      "label": "Subheading",
+      "default": "Get in touch with our travel experts for a personalized quote"
+    },
+    {
+      "type": "header",
+      "content": "Form Settings"
+    },
+    {
+      "type": "url",
+      "id": "form_action",
+      "label": "Form action URL",
+      "info": "Leave blank to use default Shopify contact form endpoint"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Itinerary Enquiry Section"
+    }
+  ]
+}
+{% endschema %}

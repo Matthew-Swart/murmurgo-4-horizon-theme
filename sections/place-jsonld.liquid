@@ -1,0 +1,72 @@
+{% comment %}
+  place-jsonld.liquid
+  JSON-LD structured data per content type.
+{% endcomment %}
+{% include 'murmurgo-resolve-place' %}
+
+{% if m_place_name %}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "{{ m_place_type | replace: 'lodging', 'LodgingBusiness' | replace: 'hotel', 'LodgingBusiness' | replace: 'restaurant', 'Restaurant' | replace: 'activity', 'TouristAttraction' | default: 'TouristAttraction' }}",
+    "name": {{ m_place_name | json }},
+    "description": {{ m_place_ai_snippet | default: m_place_description | default: page.title | json }},
+    "url": {{ shop.url | append: page.url | json }},
+    {% if m_place_lat and m_place_lon %}
+    "geo": {
+      "@type": "GeoCoordinates",
+      "latitude": {{ m_place_lat }},
+      "longitude": {{ m_place_lon }}
+    },
+    {% endif %}
+    "address": {
+      "@type": "PostalAddress",
+      "addressCountry": {{ m_place_country | json }}
+    },
+    {% if m_place_rating %}
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": {{ m_place_rating }},
+      "reviewCount": {{ m_place_rating_count | default: 0 }}
+    },
+    {% endif %}
+    {% if m_place_hero %}
+    "image": {{ m_place_hero.cdn_url | json }}
+    {% endif %}
+  }
+  </script>
+{% elsif m_poly_name %}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TouristDestination",
+    "name": {{ m_poly_name | json }},
+    "description": {{ page.title | json }},
+    "url": {{ shop.url | append: page.url | json }},
+    {% if m_poly_centroid_lat and m_poly_centroid_lon %}
+    "geo": {
+      "@type": "GeoCoordinates",
+      "latitude": {{ m_poly_centroid_lat }},
+      "longitude": {{ m_poly_centroid_lon }}
+    },
+    {% endif %}
+    "address": {
+      "@type": "PostalAddress",
+      "addressCountry": {{ m_poly_country | json }}
+    }
+  }
+  </script>
+{% endif %}
+
+{% schema %}
+{
+  "name": "Place JSON-LD",
+  "class": "section-place-jsonld",
+  "settings": [],
+  "presets": [
+    {
+      "name": "Place JSON-LD"
+    }
+  ]
+}
+{% endschema %}

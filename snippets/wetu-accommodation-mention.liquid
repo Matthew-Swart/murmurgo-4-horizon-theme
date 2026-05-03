@@ -1,0 +1,263 @@
+{% comment %}
+  ============================================================================
+  WETU ACCOMMODATION MENTION SNIPPET
+  ============================================================================
+  
+  Subtle, single-line mention for accommodation on subsequent days.
+  Used when traveler is returning to or staying at the same property.
+  
+  USAGE:
+    {% render 'wetu-accommodation-mention',
+      accommodation_product: acc_product,
+      accommodation_name: 'Hoodia Desert Lodge',
+      context: 'morning',
+      day_number: 2,
+      color_scheme: 'scheme-5'
+    %}
+  
+  PARAMETERS:
+    - accommodation_product: The accommodation product object
+    - accommodation_name: String - Name of the accommodation
+    - context: String - 'morning' | 'evening' | 'overnight' (default: 'overnight')
+    - day_number: Number - Day number in itinerary
+    - color_scheme: String - Color scheme class (default: 'scheme-5')
+    - show_thumbnail: Boolean - Show small property image (default: true)
+  
+  CONTEXT VARIATIONS:
+    - morning: "Wake up at Hoodia Desert Lodge"
+    - evening: "Return to Hoodia Desert Lodge"
+    - overnight: "Overnight at Hoodia Desert Lodge"
+  
+  ============================================================================
+{% endcomment %}
+
+{%- liquid
+  assign color_scheme = color_scheme | default: 'scheme-5'
+  assign context = context | default: 'overnight'
+  assign show_thumbnail = show_thumbnail | default: true
+  assign unique_id = 'acc-mention-' | append: accommodation_name | handleize | append: '-' | append: day_number
+  
+  # Build contextual text
+  case context
+    when 'morning'
+      assign context_text = 'Wake up at'
+      assign context_icon = 'sunrise'
+    when 'evening'
+      assign context_text = 'Return to'
+      assign context_icon = 'sunset'
+    else
+      assign context_text = 'Overnight at'
+      assign context_icon = 'moon'
+  endcase
+  
+  # Get thumbnail image
+  assign thumb_image = accommodation_product.featured_image | default: accommodation_product.images[0]
+-%}
+
+<style>
+  /* ============================================
+     ACCOMMODATION MENTION STYLES
+     ============================================ */
+  
+  .wetu-acc-mention {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+    padding: 16px 20px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    text-decoration: none;
+    transition: all 0.25s ease;
+    cursor: pointer;
+  }
+  
+  .wetu-acc-mention:hover {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+  
+  /* Light theme adjustments */
+  .color-scheme-1 .wetu-acc-mention,
+  [data-color-scheme="scheme-1"] .wetu-acc-mention {
+    background: rgba(0, 0, 0, 0.03);
+    border-color: rgba(0, 0, 0, 0.08);
+  }
+  
+  .color-scheme-1 .wetu-acc-mention:hover,
+  [data-color-scheme="scheme-1"] .wetu-acc-mention:hover {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.12);
+  }
+  
+  .wetu-acc-mention__thumb {
+    flex-shrink: 0;
+    width: 56px;
+    height: 56px;
+    border-radius: 6px;
+    overflow: hidden;
+    background: rgba(var(--color-foreground), 0.05);
+  }
+  
+  .wetu-acc-mention__thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  .wetu-acc-mention__icon {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(var(--color-foreground), 0.06);
+    border-radius: 50%;
+  }
+  
+  .wetu-acc-mention__icon svg {
+    width: 20px;
+    height: 20px;
+    stroke: rgba(var(--color-foreground), 0.7);
+    fill: none;
+  }
+  
+  .wetu-acc-mention__content {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .wetu-acc-mention__context {
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: rgba(var(--color-foreground), 0.5);
+    margin-bottom: 2px;
+  }
+  
+  .wetu-acc-mention__name {
+    font-size: 1rem;
+    font-weight: 500;
+    color: rgba(var(--color-foreground), 0.95);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .wetu-acc-mention__arrow {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(var(--color-foreground), 0.4);
+    transition: transform 0.2s ease, color 0.2s ease;
+  }
+  
+  .wetu-acc-mention:hover .wetu-acc-mention__arrow {
+    transform: translateX(4px);
+    color: rgba(var(--color-foreground), 0.7);
+  }
+  
+  .wetu-acc-mention__arrow svg {
+    width: 20px;
+    height: 20px;
+    stroke: currentColor;
+    fill: none;
+  }
+  
+  /* Compact variant without thumbnail */
+  .wetu-acc-mention--compact {
+    padding: 12px 16px;
+    gap: 12px;
+  }
+  
+  .wetu-acc-mention--compact .wetu-acc-mention__icon {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .wetu-acc-mention--compact .wetu-acc-mention__icon svg {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .wetu-acc-mention--compact .wetu-acc-mention__name {
+    font-size: 0.9375rem;
+  }
+  
+  /* Responsive */
+  @media screen and (max-width: 600px) {
+    .wetu-acc-mention {
+      padding: 12px 16px;
+      gap: 12px;
+    }
+    
+    .wetu-acc-mention__thumb {
+      width: 48px;
+      height: 48px;
+    }
+    
+    .wetu-acc-mention__name {
+      font-size: 0.9375rem;
+    }
+  }
+</style>
+
+{%- if accommodation_product -%}
+  <a href="{{ accommodation_product.url }}" class="wetu-acc-mention{% unless show_thumbnail %} wetu-acc-mention--compact{% endunless %} color-{{ color_scheme }}" id="{{ unique_id }}">
+{%- else -%}
+  <div class="wetu-acc-mention{% unless show_thumbnail %} wetu-acc-mention--compact{% endunless %} color-{{ color_scheme }}" id="{{ unique_id }}">
+{%- endif -%}
+  
+  {%- if show_thumbnail and thumb_image -%}
+    <div class="wetu-acc-mention__thumb">
+      <img 
+        src="{{ thumb_image | image_url: width: 120 }}"
+        alt="{{ accommodation_name }}"
+        loading="lazy"
+        width="56"
+        height="56"
+      >
+    </div>
+  {%- else -%}
+    <div class="wetu-acc-mention__icon">
+      {%- case context_icon -%}
+        {%- when 'sunrise' -%}
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M17 18a5 5 0 00-10 0M12 2v7M4.22 10.22l1.42 1.42M1 18h2M21 18h2M18.36 11.64l1.42-1.42M23 22H1M8 6l4-4 4 4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        {%- when 'sunset' -%}
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M17 18a5 5 0 00-10 0M12 9V2M4.22 10.22l1.42 1.42M1 18h2M21 18h2M18.36 11.64l1.42-1.42M23 22H1M16 5l-4 4-4-4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        {%- else -%}
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+      {%- endcase -%}
+    </div>
+  {%- endif -%}
+  
+  <div class="wetu-acc-mention__content">
+    <div class="wetu-acc-mention__context">{{ context_text }}</div>
+    <div class="wetu-acc-mention__name">{{ accommodation_name }}</div>
+  </div>
+  
+  {%- if accommodation_product -%}
+    <div class="wetu-acc-mention__arrow">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M5 12h14M12 5l7 7-7 7" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+  {%- endif -%}
+  
+{%- if accommodation_product -%}
+  </a>
+{%- else -%}
+  </div>
+{%- endif -%}

@@ -1,0 +1,659 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin language editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "accessibility": {
+    "account": "Account",
+    "cart": "Cart",
+    "cart_count": "Total items in cart",
+    "close_dialog": "Close dialog",
+    "country_region": "Country/Region",
+    "country_results_count": "{{ count }} results",
+    "decrease_quantity": "Decrease quantity",
+    "discount": "Apply a discount code",
+    "discount_menu": "Discount Codes",
+    "discount_applied": "Applied discount code: {{ code }}",
+    "filters": "Filters",
+    "filter_count": {
+      "one": "{{ count }} filter applied",
+      "other": "{{ count }} filters applied"
+    },
+    "increase_quantity": "Increase quantity",
+    "inventory_status": "Inventory status",
+    "localization_region_and_language": "Region and language selector",
+    "menu": "Menu",
+    "nested_product": "{{ product_title }} for {{ parent_title }}",
+    "new_window": "Opens in a new window.",
+    "quantity": "Quantity",
+    "pause_video": "Pause video",
+    "play_model": "Play 3D model",
+    "play_video": "Play video",
+    "loading_product_recommendations": "Loading product recommendations",
+    "rating": "Rating of this product is {{ rating }} out of 5",
+    "remove_item": "Remove {{ title}}",
+    "reset_search": "Reset search",
+    "scroll_to": "Scroll to {{ title }}",
+    "search_results_count": "{{ count }} search results found for \"{{ query }}\"",
+    "search_results_no_results": "No results found for \"{{ query }}\"",
+    "skip_to_product_info": "Skip to product information",
+    "skip_to_results_list": "Skip to results list",
+    "skip_to_text": "Skip to content",
+    "slide_status": "Slide {{ index }} of {{ length }}",
+    "slideshow_next": "Next slide",
+    "slideshow_pause": "Pause slideshow",
+    "slideshow_play": "Play slideshow",
+    "slideshow_previous": "Previous slide",
+    "unit_price": "Unit price",
+    "find_country": "Find country"
+  },
+  "actions": {
+    "add": "Add",
+    "add_to_cart": "Add to cart",
+    "added": "Added",
+    "apply": "Apply",
+    "back": "Back",
+    "choose": "Choose",
+    "clear": "Clear",
+    "clear_all": "Clear all",
+    "close": "Close",
+    "open": "Open",
+    "continue_shopping": "Continue shopping",
+    "enter_password": "Enter password",
+    "log_in_html": "Have an account? <a href=\"{{ link }}\">Log in</a> to check out faster.",
+    "log_in": "Sign in",
+    "log_out": "Log out",
+    "open_image_in_full_screen": "Open image in full screen",
+    "remove": "Remove",
+    "remove_discount": "Remove discount {{ code }}",
+    "show_all_options": "Show all options",
+    "see_items": {
+      "one": "See {{ count }} item",
+      "other": "See {{ count }} items"
+    },
+    "show_filters": "Filter",
+    "show_less": "Show less",
+    "show_more": "Show more",
+    "sign_in_options": "Other sign in options",
+    "view_in_your_space": "View in your space",
+    "view_all": "View all",
+    "more": "More",
+    "zoom": "Zoom",
+    "close_dialog": "Close dialog",
+    "reset": "Reset",
+    "enter_using_password": "Enter using password",
+    "sign_up": "Sign up",
+    "submit": "Submit",
+    "view_store_information": "View store information",
+    "sort": "Sort"
+  },
+  "blocks": {
+    "contact_form": {
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "comment": "Comment",
+      "post_success": "Thanks for contacting us. We'll get back to you as soon as possible.",
+      "error_heading": "Please adjust the following:"
+    },
+    "email_signup": {
+      "label": "Email",
+      "placeholder": "Email address",
+      "success": "Thanks for subscribing!"
+    },
+    "filter": "Filter",
+    "load_video": "Load video: {{ description }}",
+    "sold_out": "Sold out",
+    "payment_methods": "Payment methods"
+  },
+  "blogs": {
+    "article": {
+      "comments_heading": {
+        "one": "{{ count }} comment",
+        "other": "{{ count }} comments"
+      },
+      "comment_author_separator": "•"
+    },
+    "comment_form": {
+      "email": "Email",
+      "error": "Comment failed to post, please address the following:",
+      "heading": "Leave a comment",
+      "message": "Message",
+      "moderated": "Please note, comments need to be approved before they are published.",
+      "name": "Name",
+      "post": "Post comment",
+      "success_moderated": "Comment posted, awaiting moderation",
+      "success": "Comment posted"
+    }
+  },
+  "content": {
+    "discount": "Discount",
+    "account_title": "Account",
+    "terms_and_policies": "Terms and Policies",
+    "account_title_personalized": "Hi {{ first_name }}",
+    "account_orders": "Orders",
+    "account_profile": "Profile",
+    "blog_details_separator": "|",
+    "cart_estimated_total": "Estimated total",
+    "cart_title": "Cart",
+    "cart_subtotal": "Subtotal",
+    "cart_total": "Cart total",
+    "checkout": "Check out",
+    "collection_placeholder": "Collection title",
+    "discount_code": "Discount code",
+    "shipping_discount_error": "Shipping discounts are shown at checkout after adding an address",
+    "discount_code_error": "Discount code cannot be applied to your cart",
+    "discounts": "Discounts",
+    "duties_and_taxes_included": "Duties and taxes included.",
+    "duties_and_taxes_included_shipping_at_checkout_with_policy_html": "Duties and taxes included. Discounts and <a href=\"{{ link }}\">shipping</a> calculated at checkout.",
+    "duties_and_taxes_included_shipping_at_checkout_with_policy_without_discounts_html": "Duties and taxes included. Shipping is calculated at checkout.",
+    "duties_and_taxes_included_shipping_at_checkout_without_policy": "Duties and taxes included. Discounts and shipping calculated at checkout.",
+    "duties_and_taxes_included_shipping_at_checkout_without_policy_without_discounts": "Duties and taxes included. Shipping is calculated at checkout.",
+    "duties_included": "Duties included.",
+    "duties_included_taxes_at_checkout_shipping_at_checkout_with_policy_html": "Duties included. Taxes, discounts and <a href=\"{{ link }}\">shipping</a> calculated at checkout.",
+    "duties_included_taxes_at_checkout_shipping_at_checkout_with_policy_without_discounts_html": "Duties included. Shipping is calculated at checkout.",
+    "duties_included_taxes_at_checkout_shipping_at_checkout_without_policy": "Duties included. Taxes, discounts and shipping calculated at checkout.",
+    "duties_included_taxes_at_checkout_shipping_at_checkout_without_policy_without_discounts": "Duties included. Shipping is calculated at checkout.",
+    "featured_products": "Featured products",
+    "filters": "Filters",
+    "grid_view": {
+      "default_view": "Default",
+      "grid_fieldset": "Column grid",
+      "single_item": "Single",
+      "zoom_out": "Zoom out"
+    },
+    "inventory_low_stock_show_count": {
+      "one": "{{ count }} left",
+      "other": "{{ count }} left"
+    },
+    "inventory_low_stock": "Low stock",
+    "inventory_in_stock": "In stock",
+    "inventory_out_of_stock": "Out of stock",
+    "item_count": {
+      "one": "{{ count }} item",
+      "other": "{{ count }} items"
+    },
+    "language": "Language",
+    "localization_region_and_language": "Region and language",
+    "no_products_found": "No products found.",
+    "no_results_found": "No results found",
+    "page_placeholder_title": "Page title",
+    "page_placeholder_content": "Select a page to display its content.",
+    "pagination": {
+      "nav_label": "Pagination navigation",
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {{ page }}"
+    },
+    "pickup_available_at_html": "Pickup available at <b>{{ location }}</b>",
+    "pickup_available_in": "Pickup available, {{ pickup_time }}",
+    "pickup_not_available": "Pickup currently not available",
+    "pickup_ready_in": "{{ pickup_time }}",
+    "powered_by": "This shop will be powered by",
+    "price": "Price",
+    "price_compare_at": "Compare at price",
+    "price_from": "From {{ price }}",
+    "price_regular": "Regular price",
+    "price_sale": "Sale price",
+    "price_filter_html": "The highest price is {{ price }}",
+    "product_image": "Product image",
+    "product_information": "Product information",
+    "product_total": "Product total",
+    "product_badge_sold_out": "Sold out",
+    "product_badge_sale": "Sale",
+    "product_card_placeholder": "Product title",
+    "placeholder_image": "Placeholder image",
+    "quantity": "Quantity",
+    "recently_viewed_products": "Recently viewed",
+    "reviews": "reviews",
+    "read_more": "Read more...",
+    "search_input_label": "Search",
+    "search_input_placeholder": "Search",
+    "search": "Search",
+    "search_results": "Search results",
+    "search_results_label": "Search results",
+    "search_results_no_results": "No results found for \"{{ terms }}\". Try another search.",
+    "search_results_no_results_check_spelling": "No results found for \"{{ terms }}\". Check the spelling or use a different word or phrase.",
+    "search_results_resource_articles": "Blog posts",
+    "search_results_resource_collections": "Collections",
+    "search_results_resource_pages": "Pages",
+    "search_results_resource_products": "Products",
+    "search_results_resource_products_count": {
+      "one": "{{ count }} product",
+      "other": "{{ count }} products"
+    },
+    "search_results_resource_queries": "Search suggestions",
+    "search_results_view_all": "View all",
+    "search_results_view_all_button": "View all",
+    "seller_note": "Special instructions",
+    "shipping_policy": "Shipping calculated at checkout.",
+    "shipping_policy_html": "<a href=\"{{ link }}\">Shipping</a> calculated at checkout.",
+    "store_owner_link_html": "Are you the store owner? <a href=\"{{ link }}\">Log in here</a>",
+    "taxes_at_checkout_shipping_at_checkout_with_policy_html": "Taxes, discounts and <a href=\"{{ link }}\">shipping</a> calculated at checkout.",
+    "taxes_at_checkout_shipping_at_checkout_with_policy_without_discounts_html": "Taxes and <a href=\"{{ link }}\">shipping</a> calculated at checkout.",
+    "taxes_at_checkout_shipping_at_checkout_without_policy": "Taxes, discounts and shipping calculated at checkout.",
+    "taxes_at_checkout_shipping_at_checkout_without_policy_without_discounts": "Taxes and shipping calculated at checkout.",
+    "taxes_included": "Taxes included.",
+    "taxes_included_shipping_at_checkout_with_policy_html": "Taxes included. Discounts and <a href=\"{{ link }}\">shipping</a> calculated at checkout.",
+    "taxes_included_shipping_at_checkout_with_policy_without_discounts_html": "Taxes included. Shipping is calculated at checkout.",
+    "taxes_included_shipping_at_checkout_without_policy": "Taxes included. Discounts and shipping calculated at checkout.",
+    "taxes_included_shipping_at_checkout_without_policy_without_discounts": "Taxes included. Shipping is calculated at checkout.",
+    "unavailable": "Unavailable",
+    "use_fewer_filters_html": "Try using fewer filters, or <a class=\"{{ class }}\" href=\"{{ link }}\">clear all filters</a>.",
+    "view_more_details": "View more details",
+    "your_cart_is_empty": "Your cart is empty",
+    "product_count": "Product count",
+    "errors": "Errors",
+    "wrong_password": "Wrong password",
+    "recipient_form_send_to": "Send to",
+    "recipient_form_email_label": "Recipient’s email",
+    "recipient_form_email_label_my_email": "My email",
+    "recipient_form_email_address": "Recipient email address",
+    "recipient_form_name_label": "Recipient name (optional)",
+    "recipient_form_message": "Message (optional)",
+    "recipient_form_characters_used": "{{ used_chars }}/{{ max_chars }} characters used",
+    "recipient_form_send_on": "YYYY-MM-DD",
+    "recipient_form_send_on_label": "Send on (optional)",
+    "recipient_form_fields_visible": "Recipient form fields are now visible",
+    "recipient_form_fields_hidden": "Recipient form fields are now hidden",
+    "recipient_form_error": "There was an error with the form submission",
+    "product_custom_property_character_count": "{{ used_chars }}/{{ max_chars }} characters used"
+  },
+  "fields": {
+    "separator": "to"
+  },
+  "gift_cards": {
+    "issued": {
+      "how_to_use_gift_card": "Use the gift card code online or QR code in-store",
+      "title": "Here's your {{ value }} gift card balance for {{ shop }}!",
+      "subtext": "Your gift card",
+      "shop_link": "Visit online store",
+      "add_to_apple_wallet": "Add to Apple Wallet",
+      "qr_image_alt": "QR code — scan to redeem gift card",
+      "copy_code": "Copy gift card code",
+      "expiration_date": "Expires {{ expires_on }}",
+      "copy_code_success": "Code copied successfully",
+      "expired": "Expired"
+    }
+  },
+  "placeholders": {
+    "password": "Password",
+    "search": "Search",
+    "product_title": "Product title",
+    "collection_title": "Collection title",
+    "blog_posts": "Blog Posts",
+    "blog_post_title": "Title",
+    "blog_post_author": "Author",
+    "blog_post_date": "Date",
+    "blog_post_description": "An excerpt of your blog post's content"
+  },
+  "products": {
+    "product": {
+      "add_to_cart": "Add to cart",
+      "adding_to_cart": "Adding...",
+      "added_to_cart": "Added to cart",
+      "add_to_cart_error": "Error adding to cart",
+      "quantity_error_max": "This item has a maximum of {{ maximum }}",
+      "sold_out": "Sold out",
+      "unavailable": "Unavailable",
+      "quantity": "Quantity",
+      "quantity_increments": "Increments of {{ increment }}",
+      "quantity_minimum": "Minimum of {{ minimum }}",
+      "quantity_maximum": "Maximum of {{ maximum }}",
+      "in_cart": "in cart",
+      "from": "From",
+      "per_person_sharing": "per person sharing",
+      "single": "single",
+      "per_room": "per room",
+      "per_night": "per night"
+    },
+    "general": {
+      "no_video": "No video available for this product."
+    }
+  },
+  "general": {
+    "redirecting": "Redirecting to property..."
+  },
+  "collections": {
+    "no_products": "No properties available at this time."
+  },
+  "travel_search": {
+    "title": "Find Your Perfect Stay",
+    "subtitle": "Search accommodations by location, dates, and guests",
+    "placeholder": "Where are you going?",
+    "dates_label": "Travel dates",
+    "check_in": "Check-in",
+    "check_out": "Check-out",
+    "guests": "Guests",
+    "search_button": "Search Properties",
+    "searching": "Searching...",
+    "no_results": "No properties or locations found",
+    "error": "An error occurred. Please try again.",
+    "destinations": "Destinations",
+    "properties": "Properties",
+    "select_checkin": "Select your check-in date",
+    "select_checkout": "Select your check-out date",
+    "hover_for_nights": "Hover over dates to see number of nights",
+    "one_night": "1 night",
+    "nights_count": "{{ count }} nights",
+    "guest_options": {
+      "one_adult": "1 Adult, 1 Room",
+      "two_adults": "2 Adults, 1 Room",
+      "three_adults": "3 Adults, 1 Room",
+      "four_adults_one": "4 Adults, 1 Room",
+      "four_adults_two": "4 Adults, 2 Rooms",
+      "six_adults_two": "6 Adults, 2 Rooms",
+      "six_adults_three": "6 Adults, 3 Rooms"
+    }
+  },
+  "wetu": {
+    "property": {
+      "total_rooms": "Total Rooms",
+      "perfect_for": "Perfect For",
+      "key_details": "Key Details",
+      "property_facilities": "Property Facilities",
+      "available_services": "Available Services",
+      "check_times": "Check-in & Check-out",
+      "check_in": "Check-in Time",
+      "check_out": "Check-out Time",
+      "languages_spoken": "Languages Spoken",
+      "contact": "Contact",
+      "telephone": "Telephone",
+      "email": "Email"
+    },
+    "accommodation": {
+      "room": "Room",
+      "occupancy": "Occupancy",
+      "guests_count": "{{ count }} guests",
+      "adults_children": "{{ adults }} adults, {{ children }} children",
+      "bed_configuration": "Bed Configuration",
+      "meal_plan": "Meal Plan",
+      "key_details": "Room Details",
+      "room_amenities": "Room Amenities",
+      "special_features": "Special Features",
+      "room_features": "Room Features",
+      "view": "View",
+      "has_balcony": "Private Balcony",
+      "has_jacuzzi": "Private Jacuzzi",
+      "property": "Property",
+      "view_property": "View {{ property }} details"
+    },
+    "rates": {
+      "title": "Rates & Pricing",
+      "from": "from",
+      "to": "to",
+      "view_details": "View detailed rates and availability",
+      "view_full_details": "View Full Details",
+      "special_offers": "Special Offers",
+      "valid_from": "Valid from",
+      "valid_to": "Valid to",
+      "valid_dates": "Valid dates",
+      "terms_conditions": "Terms & Conditions",
+      "per_person_sharing": "Per Person Sharing",
+      "per_person_sharing_abbr": "PPS",
+      "single": "Single Occupancy",
+      "single_occupancy": "Single Occupancy",
+      "single_abbr": "SGL",
+      "per_room": "Per Room",
+      "per_room_abbr": "UNIT",
+      "per_unit": "Per Unit",
+      "per_person_per_night": "per person per night",
+      "per_unit_per_night": "per unit per night",
+      "per_night": "per night",
+      "pricing": "Pricing",
+      "seasonal_pricing": "Seasonal Rates",
+      "seasonal_rates": "seasonal rates",
+      "seasonal_rate_schedule": "Seasonal Rate Schedule",
+      "room_rates": "Room Rates",
+      "rate_structure": "Rate Structure",
+      "included": "Included",
+      "whats_included": "What's Included",
+      "conditions": "Conditions",
+      "amenities": "Amenities & Inclusions",
+      "rates": "rates",
+      "items": "items",
+      "max_occupancy": "Max"
+    },
+    "pricing": {
+      "title": "Rates & special offers",
+      "from": "From",
+      "range_note": "Rates range from {{ min }} to {{ max }} per person per night, depending on accommodation type and season.",
+      "special_offers": "Special Offers",
+      "current_offers": "Current special offers",
+      "all_accommodation_rates": "All accommodation options and seasonal rates",
+      "accommodation_options": "Accommodation options & seasonal rates",
+      "valid_dates": "Valid:",
+      "terms_conditions": "Terms & conditions",
+      "accommodation_rates": "Accommodation Rates",
+      "per_unit_night": "per unit per night",
+      "per_person_night": "per person per night",
+      "per_person_sharing": "Per person per night, sharing",
+      "per_person_or_unit": "per person per night",
+      "view_rates": "View seasonal rates",
+      "notice_title": "Important pricing information",
+      "notice_text": "All rates are subject to availability and may change without notice. Additional conservation fees and transfers may apply. Please contact us for a detailed quote tailored to your specific travel dates and requirements.",
+      "seasonal_rates": "Seasonal rates",
+      "seasonal_trend": "12-Month Pricing Trend",
+      "rates_intro": "All rates are displayed chronologically by season. Select a period to view detailed pricing and conditions.",
+      "rate_periods": "Rate periods",
+      "rate_includes": "Rate includes",
+      "available_offers": "Available special offers",
+      "view_details": "View details",
+      "view_full_details": "View full details →",
+      "view_accommodation": "View Accommodation Details",
+      "accommodation_intro": "Click on any accommodation below to view detailed information, amenities, full seasonal pricing, and photo galleries.",
+      "comprehensive_intro": "Comprehensive seasonal rates for all accommodation options. Expand each section to view detailed pricing, inclusions, and terms."
+    },
+    "videos": {
+      "heading": "Related videos"
+    },
+    "documents": {
+      "heading": "Documents & Resources",
+      "opens_new_window": "Opens PDF in a new window",
+      "other": "Other Documents"
+    }
+  },
+  "sections": {
+    "collection": {
+      "empty": "No products found in this collection.",
+      "view_all": "View all"
+    },
+    "property_highlights": {
+      "name": "Property Highlights",
+      "collection_summary": "Our collection comprises five carefully curated properties, each strategically positioned to provide uncompromising access to Kenya's most celebrated wildlife destinations and offering a combined total of 68 elegantly appointed accommodations.",
+      "masai_mara_detail": "Three properties within the Masai Mara ecosystem, including our flagship Governors' Camp established in 1972",
+      "naivasha_detail": "Loldia House on the shores of Lake Naivasha, offering diverse landscapes and activities",
+      "laikipia_detail": "Governors' Mugie House in the Laikipia Plateau, providing exclusive access to northern Kenya's wilderness",
+      "experience_summary": "From the legendary Great Migration to intimate wildlife encounters, cultural immersion, and conservation initiatives, each property delivers authentic safari experiences refined over five decades of operation.",
+      "settings": {
+        "heading": {
+          "label": "Heading"
+        },
+        "description": {
+          "label": "Description"
+        },
+        "button_text": {
+          "label": "Button text"
+        },
+        "button_url": {
+          "label": "Button URL"
+        }
+      },
+      "presets": {
+        "property_highlights": {
+          "name": "Property Highlights"
+        }
+      }
+    },
+    "property_collection_highlights": {
+      "properties": "Properties",
+      "accommodations": "Accommodations",
+      "activities": "Activities",
+      "dining": "Dining venues",
+      "wellness": "Wellness",
+      "room_types": "Room types",
+      "dining_venues": "Dining",
+      "spa": "Spa",
+      "geography_intro": "Positioned across distinctive regions:",
+      "view_property": "View property",
+      "view_all_properties": "View all properties",
+      "no_properties": "No properties available"
+    },
+    "group_highlights": {
+      "unique_properties": "Unique Properties",
+      "luxury_spaces": "Luxury Tents, Suites & Cottages",
+      "iconic_destinations": "Iconic Destinations",
+      "explore": "Explore",
+      "view_collection": "View collection"
+    }
+  },
+  "plekify_homepage": {
+    "hero": {
+      "title": "Shopify for Travel",
+      "subtitle": "created in CAPE TOWN",
+      "tagline": "Transform your travel business with Shopify eCommerce platform and Plekify App."
+    },
+    "intro": {
+      "paragraph_1": "Plekify integrates your existing travel systems—like ResRequest or Wetu—with the power of Shopify, the world's leading e-commerce platform.",
+      "paragraph_2": "Plekify automates the creation and updating of a custom Shopify store at your own domain, designed for travel, using information from your existing reservations platform."
+    },
+    "features": {
+      "own_data": {
+        "title": "Own Your Bookings, Own Your Data",
+        "description": "Capture every direct reservation on your domain, including payment. Retain exclusive access to your own guest data for personalized remarketing, while integrating effortlessly with your existing PMS system. Result: Higher profits from reduced commissions and repeat business."
+      },
+      "multilanguage": {
+        "title": "Effortless Multi-Language Reach",
+        "description": "Reach global travelers in up to 20 languages, including English, German, French, Dutch, Italian, Spanish, Portuguese, and Mandarin. Shopify's built-in tools handle translations, SEO, and localized currencies—perfect for high-end safaris and boutique lodges targeting international markets."
+      },
+      "addons": {
+        "title": "Sell More with Add-Ons and Extras",
+        "description": "Offer curated experiences beyond rooms: spa treatments, game drives, transfers, wine tastings, and more. Guests add extras at checkout, increasing average order value by 20-30%."
+      },
+      "marketing": {
+        "title": "Powerful Marketing Built-In",
+        "description_1": "Re-activate and communicate in a personalised way with your previous customers.",
+        "description_2": "Segment and automate emails with Klaviyo integration.",
+        "description_3": "Recover abandoned carts, send post-stay reviews, and run loyalty programs.",
+        "description_4": "Track campaigns across channels—your site, Instagram, Google—from one dashboard."
+      },
+      "financial": {
+        "title": "Financial Clarity and Scalability",
+        "description_1": "Connect to gateways like Peach Payments for direct-to-your-bank settlements.",
+        "description_2": "Easily connect to modern ERP platforms such as Acumatica Cloud ERP or Oracle Netsuite.",
+        "description_3": "AirBnB's can easily connect accounting to QuickBooks or Xero."
+      },
+      "delight": {
+        "title": "Delight in Daily Use",
+        "description": "Intuitive usability for non-tech users, real-time analytics, and 24/7 support. Shopify is a delight—fast, reliable, and beautifully designed."
+      }
+    },
+    "founder": {
+      "title": "Founded by Travel Innovation Pioneer",
+      "description": "Plekify is created by Matthew Swart who co-founded SafariNow.com in 1999, South Africa's pioneering travel booking platform. Read his journey.",
+      "quote": "I created Plekify in 2025 because i believe Shopify is now the smartest choice for travel and tourism in any location—scalable, secure, and built for profit."
+    },
+    "prototypes": {
+      "heading": "Prototype Sites",
+      "royal": {
+        "title": "The Royal Portfolio",
+        "description": "Discover an exclusive collection of design-inspired hotels, luxury safari lodges, and private villas offering bespoke experiences in South Africa's most iconic destinations.",
+        "prototype_for": "prototype for theroyalportfolio.com",
+        "password": "password plekify",
+        "button": "View The Royal Portfolio"
+      },
+      "matetsi": {
+        "title": "Matetsi Victoria Falls",
+        "description": "Award-winning luxury safari retreat on 15km private Zambezi River frontage near Victoria Falls UNESCO site",
+        "prototype_for": "prototype for matetsivictoriafalls.com",
+        "password": "password plekify",
+        "button": "View Matetsi Victoria Falls"
+      },
+      "governors": {
+        "title": "Governors' Camp Collection",
+        "description": "Pioneer of the ultimate safari experience, on the banks of the Mara River since 1972, fully immersed in the heart of the prime game-viewing areas.",
+        "prototype_for": "prototype for governorscamp.com",
+        "password": "password plekify",
+        "button": "View The Governors' Collection"
+      },
+      "fundu": {
+        "title": "Fundu Lagoon",
+        "description": "Barefoot luxury on Pemba Island with pristine beaches and world-class diving, adventures awaits!",
+        "prototype_for": "prototype for fundulagoon.com",
+        "password": "password plekify",
+        "button": "View Fundu Lagoon"
+      }
+    },
+    "plekify_definition": {
+      "word": "ple·ki·fy",
+      "pronunciation": "/ˈplɛkɪˌfaɪ/",
+      "part_of_speech": "verb",
+      "forms": "(plekified, plekifying)",
+      "definition": "To seamlessly integrate high-end travel bookings with e-commerce functionality; to transform fragmented lodge reservation systems into unified, on-domain Shopify experiences.",
+      "etymology": "From Afrikaans plek (place) + -ify (to make or cause to become), literally \"to make placeable\" or \"to make place bookable on Shopify.\"",
+      "usage_heading": "Usage Examples:",
+      "usage_1": "\"We plekified our entire portfolio of safari lodges last quarter.\"",
+      "usage_2": "\"Since plekifying, the hotel's website bookings grew outrageously\"",
+      "related_forms": "plekification (noun), plekifiable (adjective)",
+      "synonyms": "streamline, integrate, optimize (travel bookings)",
+      "antonyms": "fragment, disconnect, complicate"
+    },
+    "chatgpt": {
+      "title": "ChatGPT and AI-ready.",
+      "description": "Plekify sites integrate directly with ChatGPT. Watch and listen to get the details..."
+    },
+    "contact": {
+      "title": "Get Started Today",
+      "description": "Custom implementations are available through direct consultation with founder Matthew Swart.",
+      "email_heading": "Email",
+      "email_address": "hello@plekify.com",
+      "whatsapp_heading": "WhatsApp",
+      "whatsapp_number": "+27 60 937 4204"
+    },
+    "resrequest": {
+      "intro": "Plekify Integrates full with ResResquest.com to build a Shopify site using your ResRequest data.",
+      "search_booking": "Customers can then search on your site and view live prices and availability, and checkout and pay using Shopify Checkout.",
+      "book_now": "<strong>Book Now </strong>is smooth and fast, with up to <a href=\"https://www.shopify.com/za/checkout\" target=\"_blank\" title=\"https://www.shopify.com/za/checkout\">15% better conversion</a> than other checkouts.",
+      "add_to_cart": "<strong>Add to Cart </strong>enables a customer to make more than one booking or purchase with a single transaction, great for multi-stay trips or buying extras."
+    },
+    "prototypes_intro": {
+      "wetu_integration": "Plekify sites are fully integrated with Wetu's content and itinerary platform.",
+      "site_qualities": "The sites are visually rich, informationally dense, intuitively structured and pleasingly fast.",
+      "also": "also",
+      "feature_multilang": "Multi Language",
+      "feature_ai": "Optimised for AI agents like ChatGPT",
+      "feature_seo": "Optimised for Google SEO",
+      "feature_fast_media": "Fast loading video and images",
+      "feature_own_domain": "Everything on your own domain",
+      "conclusion": "From single AirBnB properties, to large hotel groups, Plekify publishes your information online in an ideal way"
+    },
+    "property_group_sites": {
+      "title": "Property & Group sites",
+      "description_1": "A large comprehensive website with many pages, every entity in your business gets published in the 'Travel & leisure' space.",
+      "description_2": "Optimised for humans, and to easily discoverable on the internet.",
+      "everything_gets_page": "Everything gets its own page",
+      "item_properties": "Properties",
+      "item_accommodation": "Accommodation",
+      "item_seasonal_rates": "Seasonal Rates",
+      "item_travel_docs": "Travel Documents",
+      "item_activities": "Activities",
+      "item_dining": "Dining",
+      "item_spa": "Spa Facilities",
+      "item_videos": "Videos",
+      "item_3d_panoramas": "3D Panoramas",
+      "item_maps": "Maps"
+    },
+    "travel_itinerary_sites": {
+      "title": "Travel Itinerary Sites",
+      "available_soon": "*available soon",
+      "description": "Publish and share your Wetu Itineraries using Plekify for the fastest-loading, most visually impressive version of your product.",
+      "feature_payment": "Take payment easily on your own domain",
+      "feature_multilang": "Multi Language Itineraries and checkout."
+    }
+  }
+}

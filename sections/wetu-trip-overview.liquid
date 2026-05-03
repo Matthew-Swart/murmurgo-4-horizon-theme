@@ -1,0 +1,560 @@
+{% comment %}
+  ============================================================================
+  WETU TRIP OVERVIEW SECTION
+  ============================================================================
+  
+  Displays itinerary summary, highlights, quick facts (days, properties, 
+  flights, nights), pricing preview, and personalized trip information.
+  
+  TEMPLATE: product.wetu-itinerary3.json
+  
+  ============================================================================
+  DATA ACCESS ARCHITECTURE
+  ============================================================================
+  
+  This section accesses WETU data through a nested metaobject reference chain:
+  
+  Product Metafields (namespace: wetu)
+  └── itinerary_metaobject (metaobject_reference) → wetu_itinerary
+      ├── name, days, summary (rich text)
+      ├── price, currency, price_includes, price_excludes
+      ├── legs (list.metaobject_reference) → wetu_itinerary_leg[]
+      │   └── periods (list.metaobject_reference) → wetu_itinerary_period[]
+      │       └── activities (list.metaobject_reference) → wetu_itinerary_activity[]
+      └── routes (list.metaobject_reference) → wetu_itinerary_route[]
+  
+  ACCESS PATTERNS:
+  
+  1. Single metaobject reference:
+     {% assign itinerary = product.metafields.wetu.itinerary_metaobject.value %}
+  
+  2. Metaobject field (use .value for each field):
+     {{ itinerary.name.value }}
+     {{ itinerary.days.value }}
+     {{ itinerary.summary.value }}
+  
+  3. List of metaobject references:
+     {% assign legs = itinerary.legs.value %}
+     {% for leg in legs %}
+       {{ leg.accommodation_name.value }}
+     {% endfor %}
+  
+  4. Quick-access product metafields (for performance):
+     {{ product.metafields.wetu.itinerary_days.value }}
+     {{ product.metafields.wetu.itinerary_type.value }}
+     {{ product.metafields.wetu.itinerary_summary.value }}  (JSON)
+  
+  ============================================================================
+  LINKING TO PIN ID PRODUCTS
+  ============================================================================
+  
+  WETU syncs related content as Shopify products with predictable handles:
+  
+  Handle Format: wetu-{content_entity_id}
+  
+  TO LINK FROM ACTIVITY/LEG DATA:
+  {% assign acc_id = leg.content_entity_id.value %}
+  {% assign acc_handle = 'wetu-' | append: acc_id %}
+  {% assign linked_product = all_products[acc_handle] %}
+  
+  Product Types:
+  - wetu-property        : Accommodations (lodges, hotels, camps)
+  - wetu-accommodation   : Room types within properties
+  - wetu-linked-activity : Activities and experiences
+  
+  ============================================================================
+{% endcomment %}
+
+{% assign itinerary_metaobject = product.metafields.wetu.itinerary_metaobject.value %}
+{% assign itinerary_summary = product.metafields.wetu.itinerary_summary.value %}
+{% assign itinerary_days = product.metafields.wetu.itinerary_days.value %}
+{% assign itinerary_type = product.metafields.wetu.itinerary_type.value %}
+
+{% assign legs_array = itinerary_metaobject.legs.value %}
+{% assign routes_array = itinerary_metaobject.routes.value %}
+
+{% comment %} Calculate trip stats {% endcomment %}
+{% assign total_properties = 0 %}
+{% assign total_nights = 0 %}
+{% assign countries = "" %}
+{% assign destinations = "" %}
+
+{% for leg in legs_array %}
+  {% assign leg_type = leg.type.value | default: "Standard" %}
+  {% if leg_type != "Departure" %}
+    {% assign leg_nights = leg.nights.value | default: 0 %}
+    {% if leg_nights > 0 %}
+      {% assign total_properties = total_properties | plus: 1 %}
+      {% assign total_nights = total_nights | plus: leg_nights %}
+    {% endif %}
+  {% endif %}
+{% endfor %}
+
+{% comment %} Count flights {% endcomment %}
+{% assign total_flights = 0 %}
+{% for route in routes_array %}
+  {% assign route_mode = route.mode.value %}
+  {% if route_mode == "ScheduledFlight" or route_mode == "CharterFlight" %}
+    {% assign total_flights = total_flights | plus: 1 %}
+  {% endif %}
+{% endfor %}
+
+<section 
+  class="wetu-trip-overview color-{{ section.settings.color_scheme }}"
+  style="
+    --section-padding-top: {{ section.settings.padding_top }}px;
+    --section-padding-bottom: {{ section.settings.padding_bottom }}px;
+  "
+>
+  <div class="page-width">
+    {% comment %} Section Header {% endcomment %}
+    <div class="trip-overview__header">
+      <span class="trip-overview__label">Trip Overview</span>
+      <h2 class="trip-overview__title h2">{{ itinerary_metaobject.name.value | default: product.title }}</h2>
+    </div>
+
+    {% comment %} Quick Facts Grid {% endcomment %}
+    {% if section.settings.show_quick_facts %}
+      <div class="trip-overview__facts">
+        <div class="fact-card">
+          <div class="fact-card__icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+          </div>
+          <div class="fact-card__content">
+            <span class="fact-card__value">{{ itinerary_days | default: total_nights | plus: 1 }}</span>
+            <span class="fact-card__label">Days</span>
+          </div>
+        </div>
+
+        <div class="fact-card">
+          <div class="fact-card__icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+          </div>
+          <div class="fact-card__content">
+            <span class="fact-card__value">{{ total_properties }}</span>
+            <span class="fact-card__label">{{ total_properties | pluralize: 'Property', 'Properties' }}</span>
+          </div>
+        </div>
+
+        <div class="fact-card">
+          <div class="fact-card__icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>
+            </svg>
+          </div>
+          <div class="fact-card__content">
+            <span class="fact-card__value">{{ total_flights }}</span>
+            <span class="fact-card__label">{{ total_flights | pluralize: 'Flight', 'Flights' }}</span>
+          </div>
+        </div>
+
+        <div class="fact-card">
+          <div class="fact-card__icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+          </div>
+          <div class="fact-card__content">
+            <span class="fact-card__value">{{ total_nights }}</span>
+            <span class="fact-card__label">{{ total_nights | pluralize: 'Night', 'Nights' }}</span>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+
+    {% comment %} Summary Description {% endcomment %}
+    {% if section.settings.show_summary %}
+      {% comment %} 
+        Try multiple sources for the description:
+        1. Product description (best for rich HTML)
+        2. Product metafield via metafield_tag
+        3. Metaobject summary with rich-text helper
+      {% endcomment %}
+      {% if product.description != blank and product.description != '""' %}
+        <div class="trip-overview__summary">
+          <div class="trip-overview__summary-content rte">
+            {% comment %} 
+              Some WETU descriptions have double-encoded HTML (&lt;p&gt; instead of <p>)
+              Decode them for proper rendering
+            {% endcomment %}
+            {% assign cleaned_desc = product.description 
+              | replace: '&lt;p&gt;', '<p>' 
+              | replace: '&lt;/p&gt;', '</p>'
+              | replace: '&lt;br&gt;', '<br>'
+              | replace: '&lt;br /&gt;', '<br>'
+              | replace: '&lt;strong&gt;', '<strong>'
+              | replace: '&lt;/strong&gt;', '</strong>'
+              | replace: '&lt;em&gt;', '<em>'
+              | replace: '&lt;/em&gt;', '</em>'
+              | replace: '&lt;ul&gt;', '<ul>'
+              | replace: '&lt;/ul&gt;', '</ul>'
+              | replace: '&lt;li&gt;', '<li>'
+              | replace: '&lt;/li&gt;', '</li>'
+            %}
+            {{ cleaned_desc }}
+          </div>
+        </div>
+      {% else %}
+        {% assign summary_metafield = product.metafields.wetu.itinerary_summary %}
+        {% if summary_metafield != blank %}
+          <div class="trip-overview__summary">
+            <div class="trip-overview__summary-content rte">
+              {% render 'wetu-rich-text', content: summary_metafield.value %}
+            </div>
+          </div>
+        {% elsif itinerary_metaobject.summary.value != blank %}
+          <div class="trip-overview__summary">
+            <div class="trip-overview__summary-content rte">
+              {% render 'wetu-rich-text', content: itinerary_metaobject.summary.value %}
+            </div>
+          </div>
+        {% endif %}
+      {% endif %}
+    {% endif %}
+
+    {% comment %} Trip Highlights {% endcomment %}
+    {% if section.settings.show_highlights %}
+      {% assign highlights = "" %}
+      {% for leg in legs_array %}
+        {% assign periods_array = leg.periods.value %}
+        {% for period in periods_array %}
+          {% assign activities_array = period.activities.value %}
+          {% for activity in activities_array %}
+            {% assign is_highlight = activity.is_highlight.value %}
+            {% if is_highlight == true %}
+              {% unless highlights contains activity.name.value %}
+                {% if highlights != "" %}
+                  {% assign highlights = highlights | append: "|||" %}
+                {% endif %}
+                {% assign highlights = highlights | append: activity.name.value %}
+              {% endunless %}
+            {% endif %}
+          {% endfor %}
+        {% endfor %}
+      {% endfor %}
+
+      {% assign highlights_array = highlights | split: "|||" %}
+      {% if highlights_array.size > 0 %}
+        <div class="trip-overview__highlights">
+          <h3 class="trip-overview__highlights-title h4">Trip Highlights</h3>
+          <div class="highlights-grid">
+            {% for highlight in highlights_array limit: 6 %}
+              <div class="highlight-item">
+                <span class="highlight-icon">✦</span>
+                <span class="highlight-text">{{ highlight }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+    {% endif %}
+
+    {% comment %} Pricing Preview {% endcomment %}
+    {% assign price_text = itinerary_metaobject.price.value %}
+    {% assign currency = itinerary_metaobject.currency.value | default: "USD" %}
+    {% if price_text != blank or product.price > 0 %}
+      <div class="trip-overview__pricing">
+        <div class="pricing-card">
+          <span class="pricing-label">Starting From</span>
+          {% if product.price > 0 %}
+            <span class="pricing-value">{{ product.price | money }}</span>
+          {% elsif price_text != blank %}
+            <span class="pricing-value">{{ currency }} {{ price_text }}</span>
+          {% endif %}
+          <span class="pricing-note">per person sharing</span>
+        </div>
+        <a href="#product-details" class="pricing-cta button">
+          View Full Pricing
+        </a>
+      </div>
+    {% endif %}
+  </div>
+</section>
+
+{% stylesheet %}
+  .wetu-trip-overview {
+    padding-top: var(--section-padding-top);
+    padding-bottom: var(--section-padding-bottom);
+    background: var(--color-background);
+  }
+
+  .trip-overview__header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+
+  .trip-overview__label {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--color-primary);
+    margin-bottom: 12px;
+  }
+
+  .trip-overview__title {
+    margin: 0;
+    color: var(--color-foreground);
+  }
+
+  /* Quick Facts Grid */
+  .trip-overview__facts {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-bottom: 48px;
+  }
+
+  @media screen and (min-width: 750px) {
+    .trip-overview__facts {
+      grid-template-columns: repeat(4, 1fr);
+      gap: 24px;
+    }
+  }
+
+  .fact-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px 24px;
+    background: color-mix(in srgb, var(--color-foreground) 3%, transparent);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .fact-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  }
+
+  .fact-card__icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+    border-radius: 12px;
+    color: var(--color-primary);
+    flex-shrink: 0;
+  }
+
+  .fact-card__content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .fact-card__value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--color-foreground);
+    line-height: 1.1;
+  }
+
+  .fact-card__label {
+    font-size: 0.85rem;
+    color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* Summary */
+  .trip-overview__summary {
+    max-width: 800px;
+    margin: 0 auto 48px;
+    text-align: center;
+  }
+
+  .trip-overview__summary-content {
+    font-size: 1.125rem;
+    line-height: 1.7;
+    color: color-mix(in srgb, var(--color-foreground) 80%, transparent);
+  }
+
+  /* Highlights */
+  .trip-overview__highlights {
+    margin-bottom: 48px;
+  }
+
+  .trip-overview__highlights-title {
+    text-align: center;
+    margin-bottom: 24px;
+    color: var(--color-foreground);
+  }
+
+  .highlights-grid {
+    display: grid;
+    grid-template-columns: repeat(1, 1fr);
+    gap: 12px;
+  }
+
+  @media screen and (min-width: 750px) {
+    .highlights-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+  }
+
+  @media screen and (min-width: 990px) {
+    .highlights-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  .highlight-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+    border-radius: 8px;
+  }
+
+  .highlight-icon {
+    color: var(--color-primary);
+    font-size: 1rem;
+  }
+
+  .highlight-text {
+    font-size: 0.95rem;
+    color: var(--color-foreground);
+    font-weight: 500;
+  }
+
+  /* Pricing Preview */
+  .trip-overview__pricing {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    padding: 40px;
+    background: color-mix(in srgb, var(--color-foreground) 3%, transparent);
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+  }
+
+  @media screen and (min-width: 750px) {
+    .trip-overview__pricing {
+      flex-direction: row;
+      justify-content: space-between;
+    }
+  }
+
+  .pricing-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  @media screen and (min-width: 750px) {
+    .pricing-card {
+      align-items: flex-start;
+    }
+  }
+
+  .pricing-label {
+    font-size: 0.85rem;
+    color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .pricing-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--color-foreground);
+    line-height: 1.2;
+  }
+
+  .pricing-note {
+    font-size: 0.9rem;
+    color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+  }
+
+  .pricing-cta {
+    padding: 14px 32px;
+    font-size: 1rem;
+    text-decoration: none;
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Trip Overview",
+  "tag": "section",
+  "class": "section-wetu-trip-overview",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "header",
+      "content": "Content"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_summary",
+      "label": "Show summary description",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_highlights",
+      "label": "Show trip highlights",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_quick_facts",
+      "label": "Show quick facts",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Spacing"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "Top padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 60
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "Bottom padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 60
+    }
+  ],
+  "presets": [
+    {
+      "name": "Trip Overview"
+    }
+  ]
+}
+{% endschema %}
+

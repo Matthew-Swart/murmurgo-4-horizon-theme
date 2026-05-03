@@ -1,0 +1,319 @@
+{% comment %}
+  ============================================================================
+  WETU ACCOMMODATION BENTO SECTION
+  ============================================================================
+  
+  Displays accommodation product with bento-style gallery layout.
+  Images start in left column, description + related content in right column,
+  images wrap below all content.
+  
+  Features:
+  - Hero bottom-aligned image with title and tagline overlay
+  - Bento gallery with 2px gaps
+  - Description + related content (activities, dining, spa, videos) in right column
+  - Full-screen gallery on image click
+  
+  TEMPLATE: product.wetu-accommodation.json
+  
+  ============================================================================
+{% endcomment %}
+
+{% liquid
+  assign acc_product = product
+  if section.settings.product != blank
+    assign acc_product = section.settings.product
+  endif
+  
+  assign hero_image = acc_product.featured_image
+  assign title = acc_product.title
+  assign tagline = acc_product.metafields.wetu.tagline.value | default: acc_product.metafields.plekify.tagline.value
+  
+  # Get property link for accommodation units
+  assign property_product = acc_product.metafields.wetu_room.property_product.value
+%}
+
+<section 
+  id="accommodation-bento-{{ section.id }}"
+  class="wetu-accommodation-section color-{{ section.settings.color_scheme }}"
+  style="
+    --section-padding-top: {{ section.settings.padding_top }}px;
+    --section-padding-bottom: {{ section.settings.padding_bottom }}px;
+  "
+>
+  {% comment %} === HERO BOTTOM ALIGNED === {% endcomment %}
+  {% if section.settings.show_hero %}
+    <div class="wetu-acc-section__hero">
+      {% if hero_image %}
+        <img
+          src="{{ hero_image | image_url: width: 2000 }}"
+          srcset="{{ hero_image | image_url: width: 800 }} 800w, {{ hero_image | image_url: width: 1200 }} 1200w, {{ hero_image | image_url: width: 1600 }} 1600w, {{ hero_image | image_url: width: 2000 }} 2000w, {{ hero_image | image_url: width: 2400 }} 2400w"
+          sizes="100vw"
+          alt="{{ title | escape }}"
+          loading="eager"
+          class="wetu-acc-section__hero-image"
+        >
+      {% else %}
+        <div class="wetu-acc-section__hero-placeholder"></div>
+      {% endif %}
+      
+      <div class="wetu-acc-section__hero-overlay"></div>
+      
+      <div class="wetu-acc-section__hero-content">
+        <div class="wetu-acc-section__hero-left">
+          {% if title != blank %}
+            <h1 class="wetu-acc-section__title">{{ title }}</h1>
+          {% endif %}
+          {% if property_product %}
+            <p class="wetu-acc-section__property-link">
+              at <a href="{{ property_product.url }}">{{ property_product.title }}</a>
+            </p>
+          {% endif %}
+        </div>
+        
+        {% if tagline != blank %}
+          <div class="wetu-acc-section__hero-right">
+            <p class="wetu-acc-section__tagline">{{ tagline }}</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+  
+  {% comment %} === BENTO GALLERY === {% endcomment %}
+  {% render 'wetu-accommodation-bento-gallery',
+    product: acc_product,
+    color_scheme: section.settings.color_scheme,
+    section_id: section.id,
+    show_activities: section.settings.show_activities,
+    show_dining: section.settings.show_dining,
+    show_spa: section.settings.show_spa,
+    show_videos: section.settings.show_videos,
+    show_key_details: section.settings.show_key_details
+  %}
+  
+</section>
+
+<style>
+  .wetu-accommodation-section {
+    padding-top: var(--section-padding-top);
+    padding-bottom: var(--section-padding-bottom);
+    background: var(--color-background);
+    color: var(--color-foreground);
+  }
+  
+  /* === HERO BOTTOM ALIGNED === */
+  .wetu-acc-section__hero {
+    position: relative;
+    width: 100%;
+    height: 70vh;
+    min-height: 400px;
+    max-height: 800px;
+    overflow: hidden;
+    margin-bottom: 2px;
+  }
+  
+  @media (max-width: 749px) {
+    .wetu-acc-section__hero {
+      height: 56vh;
+      min-height: 320px;
+      max-height: 500px;
+    }
+  }
+  
+  .wetu-acc-section__hero-image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center bottom;
+  }
+  
+  .wetu-acc-section__hero-placeholder {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(145deg, rgba(var(--color-foreground-rgb), 0.05) 0%, rgba(var(--color-foreground-rgb), 0.1) 100%);
+  }
+  
+  .wetu-acc-section__hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to top,
+      rgba(0, 0, 0, 0.6) 0%,
+      rgba(0, 0, 0, 0.3) 30%,
+      rgba(0, 0, 0, 0.1) 60%,
+      transparent 100%
+    );
+    pointer-events: none;
+  }
+  
+  .wetu-acc-section__hero-content {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 40px;
+    gap: 24px;
+  }
+  
+  @media (max-width: 749px) {
+    .wetu-acc-section__hero-content {
+      flex-direction: column;
+      align-items: flex-start;
+      padding: 24px;
+      gap: 16px;
+    }
+  }
+  
+  .wetu-acc-section__hero-left {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .wetu-acc-section__title {
+    margin: 0;
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 500;
+    color: #fff;
+    line-height: 1.1;
+    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+  }
+  
+  .wetu-acc-section__property-link {
+    margin: 0;
+    font-size: 0.9375rem;
+    color: rgba(255, 255, 255, 0.85);
+  }
+  
+  .wetu-acc-section__property-link a {
+    color: #fff;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  
+  .wetu-acc-section__property-link a:hover {
+    text-decoration-thickness: 2px;
+  }
+  
+  .wetu-acc-section__hero-right {
+    max-width: 300px;
+    text-align: right;
+  }
+  
+  @media (max-width: 749px) {
+    .wetu-acc-section__hero-right {
+      text-align: left;
+      max-width: 100%;
+    }
+  }
+  
+  .wetu-acc-section__tagline {
+    margin: 0;
+    font-size: 1rem;
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.5;
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.3);
+  }
+</style>
+
+{% schema %}
+{
+  "name": "Accommodation Bento",
+  "tag": "section",
+  "class": "section-accommodation-bento",
+  "settings": [
+    {
+      "type": "product",
+      "id": "product",
+      "label": "Product",
+      "info": "Leave blank to use current product"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-5"
+    },
+    {
+      "type": "header",
+      "content": "Hero"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_hero",
+      "label": "Show hero image",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Related Content"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_activities",
+      "label": "Show activities",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_dining",
+      "label": "Show dining",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_spa",
+      "label": "Show spa & wellness",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_videos",
+      "label": "Show videos",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_key_details",
+      "label": "Show room details/amenities",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Spacing"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "Top padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "Bottom padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 0
+    }
+  ],
+  "presets": [
+    {
+      "name": "Accommodation Bento",
+      "category": "Wetu"
+    }
+  ]
+}
+{% endschema %}

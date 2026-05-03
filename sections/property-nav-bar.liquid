@@ -1,0 +1,340 @@
+{% comment %}
+  Property Navigation Bar
+  ============================================================================
+  A compact, breadcrumb-style navigation bar that sits at the very top of the page.
+  
+  Features:
+  - Dark background (scheme-5) with small text
+  - Store logo as home link (tiny, left-aligned)
+  - Dynamic property menu inline with logo
+  - NOT overlaying hero - sits above content
+  - Hidden on home page (index template)
+  
+  This is the default navigation for all stores EXCEPT Travel 2022 which uses
+  the full wetu-breadcrumbs section.
+  ============================================================================
+{% endcomment %}
+
+{%- liquid
+  assign is_travel_2022 = false
+  if shop.permanent_domain contains 'travel-2022'
+    assign is_travel_2022 = true
+  endif
+  
+  assign is_home_page = false
+  if request.path == '/' or template.name == 'index'
+    assign is_home_page = true
+  endif
+  
+  assign is_integration_page = false
+  if template.name == 'page'
+    if template.suffix == 'resrequest-integration' or template.suffix == 'wetu-integration' or page.handle == 'resrequest-com-integration' or page.handle == 'wetu-com-integration'
+      assign is_integration_page = true
+    endif
+  endif
+  
+  assign is_group_collection = false
+  if template.suffix == 'group'
+    assign is_group_collection = true
+  endif
+
+  assign is_command_center_template = false
+  if template.name == 'product' and template.suffix == 'wetu-itinerary-command-center'
+    assign is_command_center_template = true
+  endif
+  
+  assign color_scheme = section.settings.color_scheme | default: 'scheme-5'
+-%}
+
+{% comment %} 
+  Skip rendering for:
+  - Travel 2022 (uses breadcrumbs instead)
+  - Home page
+  - Integration pages
+  - Group collection template (except on Travel2022, but Travel2022 already uses breadcrumbs)
+{% endcomment %}
+{% unless is_travel_2022 or is_home_page or is_integration_page or is_group_collection or is_command_center_template %}
+<nav 
+  class="property-nav-bar color-{{ color_scheme }}" 
+  aria-label="Property navigation"
+  style="
+    --property-nav-padding-top: {{ section.settings.padding_top }}px;
+    --property-nav-padding-bottom: {{ section.settings.padding_bottom }}px;
+  "
+>
+  <div class="property-nav-bar__inner">
+    {% comment %} Logo/Home Link {% endcomment %}
+    <div class="property-nav-bar__home">
+      <a href="/" class="property-nav-bar__home-link" aria-label="{{ shop.name }} - Home">
+        {%- if settings.logo != blank -%}
+          {{ settings.logo | image_url: width: 200 | image_tag: 
+            widths: '80, 100, 120, 160, 200',
+            alt: shop.name,
+            class: 'property-nav-bar__logo',
+            loading: 'eager'
+          }}
+        {%- else -%}
+          <span class="property-nav-bar__shop-name">{{ shop.name }}</span>
+        {%- endif -%}
+      </a>
+    </div>
+    
+    {% comment %} Separator {% endcomment %}
+    <span class="property-nav-bar__separator" aria-hidden="true">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor">
+        <path fill-rule="evenodd" d="M6.22 4.22a.75.75 0 0 1 1.06 0l3.25 3.25a.75.75 0 0 1 0 1.06l-3.25 3.25a.75.75 0 0 1-1.06-1.06L8.94 8 6.22 5.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd"/>
+      </svg>
+    </span>
+    
+    {% comment %} Property Menu Links {% endcomment %}
+    <div class="property-nav-bar__menu">
+      <ul class="property-nav-bar__list" role="list">
+        {% render 'property-nav-bar-menu' %}
+      </ul>
+    </div>
+  </div>
+</nav>
+{% endunless %}
+
+{% style %}
+  .property-nav-bar {
+    width: 100%;
+    background: rgb(var(--color-background-rgb));
+    color: rgb(var(--color-foreground-rgb));
+    padding-top: var(--property-nav-padding-top, 8px);
+    padding-bottom: var(--property-nav-padding-bottom, 8px);
+    position: relative;
+    z-index: calc(var(--layer-sticky, 500) + 15);
+  }
+  
+  .property-nav-bar__inner {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding-left: 20px;
+    padding-right: 20px;
+    max-width: var(--page-width);
+    margin: 0 auto;
+  }
+  
+  .property-nav-bar__home {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  
+  .property-nav-bar__home-link {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    color: inherit;
+    opacity: 0.9;
+    transition: opacity 0.2s ease;
+  }
+  
+  .property-nav-bar__home-link:hover {
+    opacity: 1;
+  }
+  
+  .property-nav-bar__logo {
+    height: {{ section.settings.logo_height }}px;
+    width: auto;
+    display: block;
+    object-fit: contain;
+  }
+  
+  .property-nav-bar__shop-name {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  .property-nav-bar__separator {
+    display: flex;
+    align-items: center;
+    opacity: 0.5;
+  }
+  
+  .property-nav-bar__separator svg {
+    width: 0.75rem;
+    height: 0.75rem;
+    transform: rotate(0deg);
+  }
+  
+  .property-nav-bar__menu {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .property-nav-bar__list {
+    display: flex;
+    align-items: center;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    gap: 0.5rem;
+  }
+  
+  .property-nav-bar__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+  }
+  
+  .property-nav-bar__item::before {
+    content: '';
+    display: inline-block;
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.4;
+  }
+  
+  .property-nav-bar__item:first-child::before {
+    display: none;
+  }
+  
+  .property-nav-bar__link {
+    font-size: {{ section.settings.font_size }};
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-decoration: none;
+    color: inherit;
+    opacity: 0.8;
+    transition: opacity 0.2s ease;
+    padding: 2px 0;
+  }
+  
+  .property-nav-bar__link:hover {
+    opacity: 1;
+  }
+  
+  .property-nav-bar__link--active {
+    opacity: 1;
+    font-weight: 600;
+  }
+  
+  .property-nav-bar__text {
+    font-size: {{ section.settings.font_size }};
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    opacity: 1;
+    font-weight: 600;
+  }
+  
+  /* Mobile adjustments */
+  @media screen and (max-width: 749px) {
+    .property-nav-bar__inner {
+      padding-left: 15px;
+      padding-right: 15px;
+    }
+    
+    .property-nav-bar__logo {
+      height: {{ section.settings.logo_height_mobile }}px;
+    }
+    
+    .property-nav-bar__menu {
+      mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent);
+    }
+    
+    .property-nav-bar__link,
+    .property-nav-bar__text {
+      font-size: 0.625rem;
+    }
+  }
+{% endstyle %}
+
+{% schema %}
+{
+  "name": "Property Nav Bar",
+  "tag": "section",
+  "class": "section-property-nav-bar",
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "This navigation bar appears at the top of all pages (except home) for stores other than Travel 2022. Travel 2022 uses the Wetu Breadcrumbs section instead."
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-5"
+    },
+    {
+      "type": "header",
+      "content": "Logo"
+    },
+    {
+      "type": "range",
+      "id": "logo_height",
+      "label": "Logo height (desktop)",
+      "min": 12,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 20
+    },
+    {
+      "type": "range",
+      "id": "logo_height_mobile",
+      "label": "Logo height (mobile)",
+      "min": 10,
+      "max": 30,
+      "step": 2,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "header",
+      "content": "Typography"
+    },
+    {
+      "type": "select",
+      "id": "font_size",
+      "label": "Font size",
+      "options": [
+        { "value": "0.625rem", "label": "10px" },
+        { "value": "0.6875rem", "label": "11px" },
+        { "value": "0.75rem", "label": "12px" },
+        { "value": "0.8125rem", "label": "13px" }
+      ],
+      "default": "0.75rem"
+    },
+    {
+      "type": "header",
+      "content": "Spacing"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "Top padding",
+      "min": 0,
+      "max": 24,
+      "step": 2,
+      "unit": "px",
+      "default": 8
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "Bottom padding",
+      "min": 0,
+      "max": 24,
+      "step": 2,
+      "unit": "px",
+      "default": 8
+    }
+  ],
+  "presets": [
+    {
+      "name": "Property Nav Bar"
+    }
+  ]
+}
+{% endschema %}

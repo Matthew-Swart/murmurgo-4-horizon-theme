@@ -1,0 +1,488 @@
+{% comment %}
+  Dynamic Property Mobile Drawer
+  Renders a mobile-friendly version of the dynamic property navigation
+  
+  IMPORTANT: Home page (/) should NOT show any property-specific menu
+  
+  @param {string} class - Additional CSS classes
+  @param {string} data_header_drawer_type - Drawer type identifier
+  @param {object} block_settings - Block settings for color scheme
+{% endcomment %}
+
+{% liquid
+  # Menu Selection Logic (inline to avoid scope issues with render tag)
+  assign selected_menu_handle = ''
+  assign is_home_page = false
+  assign is_wetu_context = false
+  
+  # Check if we're on the home page
+  if request.path == '/' or template.name == 'index'
+    assign is_home_page = true
+  endif
+  
+  # Don't show menu on home page
+  unless is_home_page
+    # Check product pages
+    if product
+      # Check if it's a Wetu property product
+      if product.type == 'wetu-property'
+        assign menu_handle = product.metafields.wetu_property.menu_handle
+        if menu_handle and menu_handle != blank
+          assign selected_menu_handle = menu_handle
+          assign is_wetu_context = true
+        else
+          # Fallback: Try to construct menu handle from pin_id
+          assign pin_id = product.metafields.wetu.pin_id
+          if pin_id and pin_id != blank
+            assign constructed_handle = 'property-menu-' | append: pin_id
+            if linklists[constructed_handle]
+              assign selected_menu_handle = constructed_handle
+              assign is_wetu_context = true
+            endif
+          endif
+        endif
+      endif
+      
+      # Check if it's a Wetu accommodation/room product
+      if product.type == 'wetu-accommodation'
+        # Get parent property and its menu
+        assign parent_property = product.metafields.wetu_room.property_product.value
+        if parent_property
+          assign menu_handle = parent_property.metafields.wetu_property.menu_handle
+          if menu_handle and menu_handle != blank
+            assign selected_menu_handle = menu_handle
+            assign is_wetu_context = true
+          endif
+        endif
+      endif
+      
+      # Check for Wetu asset products (videos, 3d-views, documents, activities, restaurants, spa, etc.)
+      if product.type contains 'wetu-'
+        # Try to get property reference from various metafields
+        assign property_ref = product.metafields.wetu.property_product.value
+        unless property_ref
+          assign property_ref = product.metafields.wetu_video.property_product.value
+        endunless
+        unless property_ref
+          assign property_ref = product.metafields.wetu_panorama.property_product.value
+        endunless
+        unless property_ref
+          assign property_ref = product.metafields.wetu_document.property_product.value
+        endunless
+        unless property_ref
+          assign property_ref = product.metafields.wetu_activity.property_product.value
+        endunless
+        unless property_ref
+          assign property_ref = product.metafields.wetu_restaurant.property_product.value
+        endunless
+        unless property_ref
+          assign property_ref = product.metafields.wetu_spa.property_product.value
+        endunless
+        unless property_ref
+          assign property_ref = product.metafields.wetu_linked_activity.property_product.value
+        endunless
+        unless property_ref
+          assign property_ref = product.metafields.wetu_linked_restaurant.property_product.value
+        endunless
+        unless property_ref
+          assign property_ref = product.metafields.wetu_linked_spa.property_product.value
+        endunless
+        
+        if property_ref
+          assign menu_handle = property_ref.metafields.wetu_property.menu_handle
+          if menu_handle and menu_handle != blank
+            assign selected_menu_handle = menu_handle
+            assign is_wetu_context = true
+          endif
+        endif
+        
+        # Fallback: Check product tags for property pin ID
+        if selected_menu_handle == blank
+          for tag in product.tags
+            if tag contains 'wetu_pin_'
+              assign pin_parts = tag | split: 'wetu_pin_'
+              if pin_parts.size > 1
+                assign pin_id = pin_parts[1]
+                assign potential_handle = 'property-menu-' | append: pin_id
+                if linklists[potential_handle]
+                  assign selected_menu_handle = potential_handle
+                  assign is_wetu_context = true
+                  break
+                endif
+              endif
+            endif
+          endfor
+        endif
+      endif
+    endif
+    
+    # Check collection pages
+    if collection and selected_menu_handle == blank
+      # Check if collection has property reference
+      assign property_ref = collection.metafields.wetu.property_product.value
+      unless property_ref
+        assign property_ref = collection.metafields.wetu_collection.property_product.value
+      endunless
+      
+      if property_ref
+        assign menu_handle = property_ref.metafields.wetu_property.menu_handle
+        if menu_handle and menu_handle != blank
+          assign selected_menu_handle = menu_handle
+          assign is_wetu_context = true
+        endif
+      endif
+      
+      # Fallback: Check collection tags for property pin ID
+      if selected_menu_handle == blank
+        for tag in collection.tags
+          if tag contains 'wetu_pin_'
+            assign pin_parts = tag | split: 'wetu_pin_'
+            if pin_parts.size > 1
+              assign pin_id = pin_parts[1]
+              assign potential_handle = 'property-menu-' | append: pin_id
+              if linklists[potential_handle]
+                assign selected_menu_handle = potential_handle
+                assign is_wetu_context = true
+                break
+              endif
+            endif
+          endif
+        endfor
+      endif
+    endif
+    
+    # Check page objects
+    if page and selected_menu_handle == blank
+      # Check if page has property reference
+      assign property_ref = page.metafields.wetu_page.source_property.value
+      if property_ref
+        assign menu_handle = property_ref.metafields.wetu_property.menu_handle
+        if menu_handle and menu_handle != blank
+          assign selected_menu_handle = menu_handle
+          assign is_wetu_context = true
+        endif
+      endif
+    endif
+    
+    # Fallback to main-menu if not in Wetu context
+    unless is_wetu_context
+      assign selected_menu_handle = 'main-menu'
+    endunless
+  endunless
+  
+  # Get the actual menu from Shopify
+  assign property_menu = nil
+  if selected_menu_handle and selected_menu_handle != blank
+    assign property_menu = linklists[selected_menu_handle]
+  endif
+  
+  # Count renderable menu items (excluding empty collections)
+  assign renderable_menu_count = 0
+  if property_menu and property_menu.links.size > 0
+    for link in property_menu.links
+      assign should_count = true
+      
+      # Check if it's a collection link
+      if link.url contains '/collections/'
+        assign url_parts = link.url | split: '/collections/'
+        if url_parts.size > 1
+          assign collection_handle = url_parts[1] | split: '/' | first | split: '?' | first
+          assign target_collection = collections[collection_handle]
+          
+          # Don't count if collection doesn't exist or is empty
+          if target_collection == blank or target_collection.products_count == 0
+            assign should_count = false
+          endif
+        endif
+      endif
+      
+      if should_count
+        assign renderable_menu_count = renderable_menu_count | plus: 1
+      endif
+    endfor
+  endif
+  
+  # Determine if we should show the drawer at all
+  assign show_drawer = false
+  if renderable_menu_count > 0
+    assign show_drawer = true
+  endif
+  
+  # Set color scheme from block_settings if available
+  assign color_scheme = 'primary'
+  if block_settings and block_settings.color_scheme
+    assign color_scheme = block_settings.color_scheme
+  endif
+%}
+
+<script
+  src="{{ 'header-drawer.js' | asset_url }}"
+  type="module"
+  fetchpriority="low"
+></script>
+
+{% if show_drawer %}
+<header-drawer 
+  class="header-drawer {{ class }}"
+  data-header-drawer-type="{{ data_header_drawer_type }}"
+>
+  <details
+    id="Details-menu-drawer-dynamic"
+    data-skip-node-update="true"
+    class="menu-drawer-container"
+    ref="details"
+    scroll-lock
+  >
+    <summary
+      class="header__icon header__icon--menu header__icon--summary"
+      aria-label="{{ 'accessibility.menu' | t }}"
+      on:click="/toggle"
+    >
+      <span class="svg-wrapper header-drawer-icon header-drawer-icon--open">
+        {{- 'icon-menu.svg' | inline_asset_content -}}
+      </span>
+      <span class="svg-wrapper header-drawer-icon header-drawer-icon--close">
+        {{- 'icon-close.svg' | inline_asset_content -}}
+      </span>
+    </summary>
+    
+    <div
+      data-header-drawer
+      class="menu-drawer motion-reduce color-{{ color_scheme }}"
+    >
+      <div class="header-drawer__inner">
+        <div class="header-drawer__header">
+          <button 
+            type="button" 
+            class="button button-unstyled close-button menu-drawer__close-button"
+            aria-label="{{ 'actions.close' | t }}"
+            on:click="/close"
+          >
+            <span class="svg-wrapper header-drawer-icon header-drawer-icon--close">
+              {{- 'icon-close.svg' | inline_asset_content -}}
+            </span>
+          </button>
+        </div>
+        
+        <nav class="menu-drawer__navigation header-drawer__nav">
+          <ul class="header-drawer__menu-list">
+            {% for link in property_menu.links %}
+              {% liquid
+                # Initialize rendering decision variables
+                assign should_render = true
+                assign final_url = link.url
+                assign final_title = link.title
+                assign product_count = 0
+                assign is_collection_link = false
+                
+                # Detect if this is a collection link by checking the URL pattern
+                if link.url contains '/collections/'
+                  assign is_collection_link = true
+                  # Extract collection handle from URL
+                  assign url_parts = link.url | split: '/collections/'
+                  if url_parts.size > 1
+                    assign collection_handle = url_parts[1] | split: '/' | first | split: '?' | first
+                    assign target_collection = collections[collection_handle]
+                    
+                    if target_collection
+                      assign product_count = target_collection.products_count
+                      
+                      # Skip empty collections
+                      if product_count == 0
+                        assign should_render = false
+                      endif
+                      
+                      # Link to single product if count = 1
+                      if product_count == 1
+                        assign first_product = target_collection.products.first
+                        if first_product
+                          assign final_url = first_product.url
+                        endif
+                      endif
+                    else
+                      # Collection not found, don't render this link
+                      assign should_render = false
+                    endif
+                  endif
+                endif
+              %}
+              
+              {% if should_render %}
+                <li class="header-drawer__menu-item">
+                  <a href="{{ final_url }}" class="header-drawer__link{% if link.active %} header-drawer__link--active{% endif %}"{% if final_title contains '3D' %} target="_blank"{% endif %}>
+                    {{ final_title }}
+                  </a>
+                </li>
+              {% endif %}
+            {% endfor %}
+          </ul>
+        </nav>
+        
+        {% comment %} Language Selector in Mobile Drawer {% endcomment %}
+        {% liquid
+          assign show_language_mobile = section.settings.show_language
+          if localization.available_languages.size <= 1
+            assign show_language_mobile = false
+          endif
+
+          assign show_country_mobile = section.settings.show_country
+          if localization.available_countries.size <= 1
+            assign show_country_mobile = false
+          endif
+        %}
+        {% if show_language_mobile or show_country_mobile %}
+          {% render 'drawer-localization',
+            show_country: show_country_mobile,
+            show_language: show_language_mobile,
+            country_style: section.settings.country_selector_style
+          %}
+        {% endif %}
+      </div>
+    </div>
+    
+    <div
+      class="menu-drawer__backdrop"
+      on:click="/close"
+    ></div>
+  </details>
+</header-drawer>
+{% endif %}
+
+{% stylesheet %}
+  /* Details element to control drawer */
+  details:not([open]) .header__icon--menu .header-drawer-icon--close {
+    display: none;
+  }
+
+  details[open] .header__icon--menu .header-drawer-icon--close {
+    @media screen and (min-width: 750px) {
+      display: none;
+    }
+  }
+
+  /* Menu drawer container */
+  .menu-drawer-container {
+    position: relative;
+  }
+
+  /* Drawer itself */
+  .menu-drawer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    max-width: 400px;
+    height: 100vh;
+    background-color: var(--color-background);
+    z-index: 1000;
+    overflow-y: auto;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
+  }
+
+  details[open] .menu-drawer {
+    transform: translateX(0);
+  }
+
+  /* Backdrop */
+  .menu-drawer__backdrop {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+  }
+
+  details[open] .menu-drawer__backdrop {
+    display: block;
+  }
+
+  /* Header with close button */
+  .header-drawer__inner {
+    min-height: 100vh;
+  }
+
+  .header-drawer__header {
+    display: flex;
+    justify-content: flex-end;
+    padding: var(--padding-md);
+    border-bottom: 1px solid rgba(var(--color-foreground-rgb), 0.08);
+  }
+
+  .menu-drawer__close-button {
+    position: relative;
+    width: fit-content;
+    height: fit-content;
+    padding: var(--padding-xs);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+  }
+
+  /* Navigation area */
+  .header-drawer__nav {
+    padding: var(--padding-xl) var(--padding-lg);
+  }
+  
+  .header-drawer__menu-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  
+  .header-drawer__menu-item {
+    border-bottom: 1px solid rgba(var(--color-foreground-rgb), 0.08);
+  }
+  
+  .header-drawer__link {
+    display: block;
+    padding: var(--padding-lg) 0;
+    font-family: var(--menu-top-level-font-family);
+    font-size: 18px;
+    color: var(--color-foreground);
+    text-decoration: none;
+    transition: color var(--animation-speed) var(--animation-easing);
+  }
+  
+  .header-drawer__link:hover,
+  .header-drawer__link:focus {
+    color: var(--color-accent);
+  }
+  
+  .header-drawer__link--active {
+    color: var(--color-accent);
+    font-weight: 600;
+  }
+
+  /* Icon styling */
+  .header-drawer-icon {
+    display: block;
+    width: 24px;
+    height: 24px;
+  }
+
+  .svg-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Hamburger icon color for transparent/white headers */
+  .header[transparent] .header__icon--menu .header-drawer-icon svg,
+  .header[transparent] .header__icon--menu .header-drawer-icon svg *,
+  .header.header--force-white .header__icon--menu .header-drawer-icon svg,
+  .header.header--force-white .header__icon--menu .header-drawer-icon svg * {
+    color: #fff !important;
+    stroke: #fff !important;
+    fill: none !important;
+  }
+
+  /* Hamburger icon shadow for better visibility on light backgrounds */
+  .header[transparent] .header__icon--menu .header-drawer-icon,
+  .header.header--force-white .header__icon--menu .header-drawer-icon {
+    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.3)) drop-shadow(0 2px 8px rgba(0, 0, 0, 0.2));
+  }
+{% endstylesheet %}

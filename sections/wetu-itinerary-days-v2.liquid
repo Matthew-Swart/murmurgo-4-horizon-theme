@@ -1,0 +1,431 @@
+{% comment %}
+  Wetu Itinerary Days Section V2
+  Comprehensive multi-day journey display with galleries and collapsible details.
+  Leverages Metaobject references where possible instead of JSON blobs.
+{% endcomment %}
+
+{% assign itinerary_data = product.metafields.wetu.itinerary_data.value %}
+
+{% comment %} DEBUG: Check if data exists {% endcomment %}
+{% if itinerary_data == blank %}
+  <div class="page-width">
+     <p style="text-align: center; padding: 20px;">Itinerary data is missing (wetu.itinerary_data is empty).</p>
+  </div>
+{% endif %}
+
+{% if itinerary_data and itinerary_data.legs %}
+<div class="wetu-itinerary-v2 page-width section-spacing" style="padding-top: 40px; padding-bottom: 40px;">
+  <div class="itinerary-timeline">
+    {% for leg in itinerary_data.legs %}
+      
+      {% comment %} Skip departure legs or legs with no accommodation if desired {% endcomment %}
+      {% if leg.type == 'Departure' or leg.nights == 0 %}
+          {% continue %}
+      {% endif %}
+
+      {% comment %} 
+        ATTEMPT 1: Try to get linked accommodation metaobject 
+        This assumes there's a reference field or logic to find the metaobject.
+        Since we don't have a direct 'accommodation_ref' in the JSON, we might need to 
+        infer it or loop through a 'content_entities' list if that existed as a metaobject list.
+        However, based on user input, we should "link to meta objects".
+        
+        Hypothesis: The itinerary leg has an ID. We need to find the Metaobject that matches this ID.
+        If we can't find it directly, we fall back to the JSON content map, BUT the user said 
+        "no longer using the wetu-itinerary.json field; it's way too big."
+        
+        So we MUST try to load the product/metaobject by handle or ID if possible.
+        Shopify Liquid doesn't allow random-access to all metaobjects by ID without a reference.
+        
+        Strategy: Check if there is a 'wetu.itinerary_components' metafield which is a LIST of references.
+        Or perhaps 'wetu.related_products' that are the components.
+        
+        For now, I will assume we might have a product reference for the accommodation 
+        stored in a way we can access, or we have to rely on the 'itinerary_data' providing a handle.
+        
+        If 'itinerary_data' is the source of truth for STRUCTURE, but 'content' comes from Metaobjects:
+        We need a way to look up the metaobject. 
+        
+        Workaround if no direct link: 
+        We can't query metaobjects by arbitrary field in Liquid. 
+        We MUST rely on the product having a list of references.
+        
+        Let's try to see if 'leg.product_ref' or similar exists, or if we can use the ID to find a product.
+        Shopify `all_products` can look up by handle. 
+        If Wetu sync creates products with predictable handles (e.g. `wetu-ACCOMMODATION_ID`), we can try that.
+      {% endcomment %}
+
+      {% assign acc_id = leg.content_entity_id %}
+      {% assign acc_handle = 'wetu-' | append: acc_id %}
+      {% assign linked_product = all_products[acc_handle] %}
+      
+      {% comment %} 
+        If we found a linked product (the component), we use its data.
+        If not, we might be stuck. But let's assume the sync created products as mentioned:
+        "Here are all the products which are created as a result of a WE2 synchronization... pin ID products"
+      {% endcomment %}
+
+      {% assign accommodation_name = linked_product.title | default: "Unknown Accommodation" %}
+      {% assign accommodation_image = linked_product.featured_image %}
+      {% assign accommodation_images = linked_product.images %}
+      {% assign accommodation_desc = linked_product.description %}
+      {% assign accommodation_location = linked_product.metafields.travel.location.value.destination %}
+      {% assign accommodation_country = linked_product.metafields.travel.location.value.country %}
+      
+      {% comment %} Fallback to the old content map if linked product not found (hybrid approach for safety) {% endcomment %}
+      {% if linked_product == empty %}
+         {% assign accommodation_id_str = leg.content_entity_id | append: "" %}
+         {% assign accommodation_blob = product.metafields.wetu.itinerary_content.value[accommodation_id_str] %}
+         {% if accommodation_blob %}
+            {% assign accommodation_name = accommodation_blob.name %}
+            {% assign accommodation_desc = accommodation_blob.description %}
+            {% assign accommodation_location = accommodation_blob.area %}
+            {% assign accommodation_country = accommodation_blob.country %}
+            {% comment %} Images from blob are objects with Url, need to map {% endcomment %}
+            {% assign blob_images = accommodation_blob.images %}
+         {% endif %}
+      {% endif %}
+
+
+      <div class="itinerary-day-card">
+        <div class="day-card__grid">
+          
+          {% comment %} === Left Column: Image Gallery === {% endcomment %}
+          <div class="day-card__gallery">
+            {% capture slides %}
+              {% if linked_product != empty and accommodation_images.size > 0 %}
+                 {% for image in accommodation_images limit: 5 %}
+                  {% capture slide_content %}
+                    <div class="day-card__image-wrapper" style="width: 100%; height: 100%; position: relative;">
+                      <img 
+                        src="{{ image | image_url: width: 800 }}" 
+                        alt="{{ image.alt | default: accommodation_name }}" 
+                        loading="lazy" 
+                        style="width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0;"
+                      >
+                    </div>
+                  {% endcapture %}
+                  {% render 'slideshow-slide', index: forloop.index0, children: slide_content, media_fit: 'cover' %}
+                {% endfor %}
+              {% elsif blob_images and blob_images.size > 0 %}
+                {% for image in blob_images limit: 5 %}
+                  {% capture slide_content %}
+                    <div class="day-card__image-wrapper" style="width: 100%; height: 100%; position: relative;">
+                      <img 
+                        src="{{ image.url }}" 
+                        alt="{{ image.label | default: accommodation_name }}" 
+                        loading="lazy" 
+                        style="width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0;"
+                      >
+                    </div>
+                  {% endcapture %}
+                  {% render 'slideshow-slide', index: forloop.index0, children: slide_content, media_fit: 'cover' %}
+                {% endfor %}
+              {% else %}
+                {% comment %} Fallback placeholder {% endcomment %}
+                {% capture slide_content %}
+                  <div class="day-card__image-wrapper placeholder" style="background: #f4f4f4; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+                     {{ 'image' | placeholder_svg_tag: 'placeholder-svg' }}
+                  </div>
+                {% endcapture %}
+                {% render 'slideshow-slide', index: 0, children: slide_content %}
+              {% endif %}
+            {% endcapture %}
+
+            <div style="height: 400px; border-radius: 12px; overflow: hidden; position: relative;">
+              {% render 'slideshow',
+                slides: slides,
+                slide_count: 5, 
+                show_arrows: true,
+                icon_style: 'arrow',
+                autoplay: false,
+                slide_size: 'large'
+              %}
+            </div>
+          </div>
+
+          {% comment %} === Right Column: Details === {% endcomment %}
+          <div class="day-card__content">
+            <div class="day-header">
+              <span class="day-badge">
+                 {% if leg.nights > 1 %}
+                    Days {{ leg.sequence | plus: 1 }} - {{ leg.sequence | plus: leg.nights }}
+                 {% else %}
+                    Day {{ leg.sequence | plus: 1 }}
+                 {% endif %}
+              </span>
+              <h3 class="h2">
+                {% if linked_product != empty %}
+                    <a href="{{ linked_product.url }}" class="link link--text">{{ accommodation_name }}</a>
+                {% else %}
+                    {{ accommodation_name }}
+                {% endif %}
+              </h3>
+              <p class="day-location">
+                  {% if accommodation_location %}{{ accommodation_location }}, {% endif %}
+                  {{ accommodation_country }}
+              </p>
+            </div>
+
+            <div class="day-description rte">
+              {% assign day_notes = "" %}
+              {% for period in leg.periods %}
+                 {% if period.notes != blank %}
+                    {% assign day_notes = period.notes %}
+                    {% break %}
+                 {% endif %}
+              {% endfor %}
+              
+              {% if day_notes != blank %}
+                {{ day_notes }}
+              {% elsif accommodation_desc != blank %}
+                {{ accommodation_desc | strip_html | truncatewords: 60 }}
+              {% endif %}
+            </div>
+
+            <div class="day-details-accordion">
+              
+              {% comment %} Accommodation Details (Metafields on Linked Product) {% endcomment %}
+              {% if linked_product != empty %}
+                 {% assign facilities = linked_product.metafields.wetu.facilities.value %}
+                 {% assign room_basis = leg.periods.first.room_basis %}
+                 
+                 {% capture acc_content %}
+                  <div class="accordion-inner-content">
+                     {% if room_basis %}
+                       <p><strong>Room Basis:</strong> {{ room_basis }}</p>
+                     {% endif %}
+                     {% if facilities %}
+                        <p><strong>Facilities:</strong> {{ facilities | join: ', ' }}</p>
+                     {% endif %}
+                     <p><a href="{{ linked_product.url }}" class="button button--secondary">View Property</a></p>
+                  </div>
+                {% endcapture %}
+                <div class="accordion-item">
+                  {% render 'disclosure-trigger', 
+                    controls_id: 'acc-details-' | append: leg.sequence, 
+                    label_text: 'Accommodation Details',
+                    is_expanded: false 
+                  %}
+                  {% render 'disclosure-content', 
+                    content: acc_content, 
+                    content_id: 'acc-details-' | append: leg.sequence, 
+                    is_expanded: false 
+                  %}
+                </div>
+              {% endif %}
+
+              {% comment %} Dining Options (Linked Product Metafields) {% endcomment %}
+              {% if linked_product != empty and linked_product.metafields.wetu.restaurants.value != blank %}
+                  {% assign restaurants = linked_product.metafields.wetu.restaurants.value %}
+                  {% capture dining_content %}
+                    <div class="accordion-inner-content">
+                        <ul class="activity-list">
+                            {% for restaurant in restaurants %}
+                                <li class="activity-item">
+                                    <strong>{{ restaurant.name }}</strong>
+                                    {% if restaurant.description %}
+                                        <p class="text-small">{{ restaurant.description | strip_html }}</p>
+                                    {% endif %}
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                  {% endcapture %}
+                  <div class="accordion-item">
+                    {% render 'disclosure-trigger', 
+                        controls_id: 'dining-details-' | append: leg.sequence, 
+                        label_text: 'Dining Options',
+                        is_expanded: false 
+                    %}
+                    {% render 'disclosure-content', 
+                        content: dining_content, 
+                        content_id: 'dining-details-' | append: leg.sequence, 
+                        is_expanded: false 
+                    %}
+                  </div>
+              {% endif %}
+
+              {% comment %} Activities {% endcomment %}
+              {% assign has_activities = false %}
+              {% for period in leg.periods %}
+                {% if period.activities and period.activities.size > 0 %}
+                  {% assign has_activities = true %}
+                {% endif %}
+              {% endfor %}
+
+              {% if linked_product != empty and linked_product.metafields.wetu.activities.value != blank %}
+                  {% assign has_activities = true %}
+              {% endif %}
+
+              {% if has_activities %}
+                {% capture act_content %}
+                  <div class="accordion-inner-content">
+                    <h6>Scheduled Activities</h6>
+                    <ul class="activity-list" style="margin-bottom: 1rem;">
+                    {% for period in leg.periods %}
+                        {% for act in period.activities %}
+                        {% comment %} Try to link activity to product via ID if exists {% endcomment %}
+                        {% assign act_handle = 'wetu-' | append: act.content_entity_id %}
+                        {% assign act_product = all_products[act_handle] %}
+                        
+                        <li class="activity-item">
+                            <span class="activity-name">
+                                {% if act_product != empty %}
+                                    <a href="{{ act_product.url }}" target="_blank">{{ act.name }}</a>
+                                {% else %}
+                                    {{ act.name }}
+                                {% endif %}
+                            </span>
+                            {% if act.type %}<span class="activity-type">({{ act.type }})</span>{% endif %}
+                        </li>
+                        {% endfor %}
+                    {% endfor %}
+                    </ul>
+
+                    {% if linked_product != empty and linked_product.metafields.wetu.activities.value != blank %}
+                        <h6>On-Site Activities</h6>
+                        <ul class="activity-list">
+                            {% for act in linked_product.metafields.wetu.activities.value %}
+                                <li class="activity-item">
+                                    {{ act.name }}
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                  </div>
+                {% endcapture %}
+                <div class="accordion-item">
+                  {% render 'disclosure-trigger', 
+                    controls_id: 'act-details-' | append: leg.sequence, 
+                    label_text: 'Activities',
+                    is_expanded: false 
+                  %}
+                  {% render 'disclosure-content', 
+                    content: act_content, 
+                    content_id: 'act-details-' | append: leg.sequence, 
+                    is_expanded: false 
+                  %}
+                </div>
+              {% endif %}
+
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% style %}
+  .wetu-itinerary-v2 {
+    background-color: var(--color-background);
+  }
+  .itinerary-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+  }
+  .itinerary-day-card {
+    background: var(--color-background);
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+  }
+  .day-card__grid {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  @media screen and (min-width: 750px) {
+    .day-card__grid {
+      grid-template-columns: 1fr 1fr;
+      align-items: start;
+    }
+  }
+  .day-card__gallery {
+    padding: 16px;
+  }
+  .day-card__content {
+    padding: 32px;
+  }
+  .day-badge {
+    display: inline-block;
+    background: var(--color-primary);
+    color: var(--color-background);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .day-location {
+    font-size: 0.9rem;
+    color: rgba(var(--color-foreground-rgb), 0.6);
+    margin-top: -8px;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .day-description {
+    margin-bottom: 24px;
+    line-height: 1.6;
+  }
+  .accordion-item {
+    border-top: 1px solid var(--color-border);
+  }
+  .accordion-item:last-child {
+    border-bottom: 1px solid var(--color-border);
+  }
+  .accordion-inner-content {
+    padding: 16px 0 24px;
+    color: rgba(var(--color-foreground-rgb), 0.8);
+  }
+  .accordion-inner-content h6 {
+      margin-top: 0;
+      margin-bottom: 10px;
+      font-size: 0.9em;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      opacity: 0.7;
+  }
+  .activity-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .activity-item {
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(var(--color-border-rgb), 0.5);
+  }
+  .activity-item:last-child {
+    border-bottom: none;
+  }
+  .text-small {
+      font-size: 0.9em;
+      opacity: 0.8;
+      margin-top: 4px;
+      margin-bottom: 0;
+  }
+{% endstyle %}
+
+{% schema %}
+{
+  "name": "Itinerary Days V2",
+  "tag": "section",
+  "class": "section-wetu-itinerary-days-v2",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Styling"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Itinerary Days V2"
+    }
+  ]
+}
+{% endschema %}

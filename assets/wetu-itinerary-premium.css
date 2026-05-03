@@ -1,0 +1,413 @@
+/**
+ * ============================================================================
+ * WETU ITINERARY PREMIUM STYLES
+ * ============================================================================
+ * 
+ * Apple-caliber micro-interactions, typography refinements, and polish layer.
+ * Builds on top of wetu-itinerary.css base styles.
+ * 
+ * Table of Contents:
+ * 1. Smooth Scroll
+ * 2. Typography Refinements
+ * 3. Card Hover Effects
+ * 4. Image & Lightbox Interactions
+ * 5. Link Animations
+ * 6. Button Polish
+ * 7. Scroll Reveal Animations
+ * 8. Frosted Glass Utilities
+ * 9. Loading/Skeleton States
+ * 10. Focus States (Accessibility)
+ * 11. Reduced Motion
+ * 
+ * ============================================================================
+ */
+
+/* ============================================
+   1. SMOOTH SCROLL
+   ============================================ */
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* ============================================
+   2. TYPOGRAPHY REFINEMENTS
+   ============================================ */
+
+/* Tighter heading spacing for editorial feel */
+.itinerary-leg__hero-title,
+.itinerary-overview__heading,
+.itinerary-story-hero__title,
+.wetu-itinerary-story__title {
+  letter-spacing: -0.02em;
+  font-weight: 600;
+}
+
+/* Refined body text */
+.itinerary-leg__description,
+.itinerary-overview__introduction-content,
+.wetu-itinerary-story__description {
+  font-size: 1.0625rem;
+  line-height: 1.7;
+  color: var(--wetu-text-secondary);
+}
+
+/* Subheadings */
+.itinerary-leg__section-title,
+.itinerary-overview__section-heading {
+  letter-spacing: -0.01em;
+  font-weight: 600;
+}
+
+/* ============================================
+   3. CARD HOVER EFFECTS
+   ============================================ */
+
+/* Card lift effect - clickable elements only */
+.itinerary-card,
+.itinerary-overview__destination-card,
+.itinerary-leg__activity-card,
+.wetu-itinerary-story__leg-card {
+  transition: 
+    transform var(--wetu-transition-base),
+    box-shadow var(--wetu-transition-base);
+}
+
+.itinerary-card:hover,
+.itinerary-overview__destination-card:hover,
+.itinerary-leg__activity-card:hover,
+.wetu-itinerary-story__leg-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--wetu-shadow-lg);
+}
+
+/* Card press state */
+.itinerary-card:active,
+.itinerary-overview__destination-card:active,
+.itinerary-leg__activity-card:active {
+  transform: translateY(-2px);
+}
+
+/* ============================================
+   4. IMAGE & LIGHTBOX INTERACTIONS
+   ============================================ */
+
+/* Image glow for clickable images (lightbox triggers) */
+.itinerary-leg__media-item[onclick],
+.itinerary-leg__gallery-thumb[data-lightbox],
+[data-pswp-trigger],
+.wetu-gallery__item {
+  transition: 
+    transform var(--wetu-transition-base),
+    box-shadow var(--wetu-transition-base);
+  cursor: pointer;
+}
+
+.itinerary-leg__media-item[onclick]:hover,
+.itinerary-leg__gallery-thumb[data-lightbox]:hover,
+[data-pswp-trigger]:hover,
+.wetu-gallery__item:hover {
+  transform: scale(1.02);
+  box-shadow: 0 0 20px rgba(var(--color-primary-rgb, 0, 0, 0), 0.3);
+}
+
+/* Gallery thumbnail active state */
+.itinerary-leg__gallery-thumb:active,
+.wetu-gallery__item:active {
+  transform: scale(0.98);
+}
+
+/* ============================================
+   5. LINK ANIMATIONS
+   ============================================ */
+
+/* Animated underline on hover */
+.itinerary-leg__acc-link,
+.wetu-inline-link,
+.itinerary-overview__read-more {
+  text-decoration: none;
+  background-image: linear-gradient(currentColor, currentColor);
+  background-size: 0% 1px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  transition: background-size var(--wetu-transition-base);
+}
+
+.itinerary-leg__acc-link:hover,
+.wetu-inline-link:hover,
+.itinerary-overview__read-more:hover {
+  background-size: 100% 1px;
+}
+
+/* Inline link color */
+.wetu-inline-link {
+  color: var(--wetu-accent);
+}
+
+.wetu-inline-link:hover {
+  color: var(--wetu-accent-hover);
+}
+
+/* ============================================
+   6. BUTTON POLISH
+   ============================================ */
+
+/* Primary action buttons */
+.sticky-bar__book-btn,
+.booking-widget__submit,
+.wetu-btn--primary {
+  transition: 
+    transform var(--wetu-transition-fast),
+    box-shadow var(--wetu-transition-base),
+    background-color var(--wetu-transition-base);
+}
+
+.sticky-bar__book-btn:hover:not(:disabled),
+.booking-widget__submit:hover:not(:disabled),
+.wetu-btn--primary:hover:not(:disabled) {
+  transform: scale(1.02);
+  box-shadow: 0 4px 20px rgba(var(--color-primary-rgb, 0, 0, 0), 0.4);
+}
+
+.sticky-bar__book-btn:active,
+.booking-widget__submit:active,
+.wetu-btn--primary:active {
+  transform: scale(0.98);
+}
+
+/* Secondary buttons */
+.wetu-btn--secondary {
+  transition: 
+    transform var(--wetu-transition-fast),
+    border-color var(--wetu-transition-base),
+    color var(--wetu-transition-base);
+}
+
+.wetu-btn--secondary:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+/* ============================================
+   7. SCROLL REVEAL ANIMATIONS
+   ============================================ */
+
+/* Fade up animation - triggered by IntersectionObserver */
+.wetu-fade-up {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: 
+    opacity 0.6s ease,
+    transform 0.6s ease;
+}
+
+.wetu-fade-up.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Fade in (no translate) */
+.wetu-fade-in {
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+
+.wetu-fade-in.is-visible {
+  opacity: 1;
+}
+
+/* Scale up animation */
+.wetu-scale-up {
+  opacity: 0;
+  transform: scale(0.95);
+  transition: 
+    opacity 0.6s ease,
+    transform 0.6s ease;
+}
+
+.wetu-scale-up.is-visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Stagger children delays */
+.wetu-stagger-children > * {
+  transition-delay: calc(var(--child-index, 0) * 50ms);
+}
+
+/* Stagger utility classes */
+.wetu-stagger-children > *:nth-child(1) { --child-index: 0; }
+.wetu-stagger-children > *:nth-child(2) { --child-index: 1; }
+.wetu-stagger-children > *:nth-child(3) { --child-index: 2; }
+.wetu-stagger-children > *:nth-child(4) { --child-index: 3; }
+.wetu-stagger-children > *:nth-child(5) { --child-index: 4; }
+.wetu-stagger-children > *:nth-child(6) { --child-index: 5; }
+.wetu-stagger-children > *:nth-child(7) { --child-index: 6; }
+.wetu-stagger-children > *:nth-child(8) { --child-index: 7; }
+
+/* ============================================
+   8. FROSTED GLASS UTILITIES
+   ============================================ */
+
+/* Dark frosted glass */
+.wetu-frosted {
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Light frosted glass */
+.wetu-frosted--light {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Day badge with frosted effect */
+.itinerary-leg__days-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 16px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: var(--wetu-radius-sm);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Navigation bar frosted effect */
+.itinerary-sticky-nav.wetu-frosted,
+.sticky-bar.wetu-frosted {
+  background: rgba(var(--color-background-rgb, 255, 255, 255), 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--wetu-border);
+}
+
+/* ============================================
+   9. LOADING/SKELETON STATES
+   ============================================ */
+
+/* Shimmer animation for loading states */
+.wetu-skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--wetu-bg-secondary) 25%,
+    var(--wetu-bg-tertiary) 50%,
+    var(--wetu-bg-secondary) 75%
+  );
+  background-size: 200% 100%;
+  animation: wetu-shimmer 1.5s infinite;
+  border-radius: var(--wetu-radius-sm);
+}
+
+@keyframes wetu-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Skeleton sizing utilities */
+.wetu-skeleton--text {
+  height: 1em;
+  width: 100%;
+}
+
+.wetu-skeleton--title {
+  height: 1.5em;
+  width: 60%;
+}
+
+.wetu-skeleton--image {
+  aspect-ratio: 16 / 9;
+  width: 100%;
+}
+
+.wetu-skeleton--circle {
+  border-radius: 50%;
+}
+
+/* ============================================
+   10. FOCUS STATES (ACCESSIBILITY)
+   ============================================ */
+
+/* Visible focus ring for keyboard navigation */
+.itinerary-card:focus-visible,
+.itinerary-leg__acc-link:focus-visible,
+.sticky-bar__book-btn:focus-visible,
+.day-navigator__tab:focus-visible,
+.wetu-btn--primary:focus-visible,
+.wetu-btn--secondary:focus-visible,
+.itinerary-leg__gallery-thumb:focus-visible,
+.wetu-inline-link:focus-visible {
+  outline: 2px solid var(--wetu-accent);
+  outline-offset: 2px;
+}
+
+/* Focus within for card containers */
+.itinerary-card:focus-within {
+  box-shadow: var(--wetu-shadow-lg);
+}
+
+/* High contrast mode support */
+@media (forced-colors: active) {
+  .itinerary-card:focus-visible,
+  .wetu-btn--primary:focus-visible {
+    outline: 3px solid CanvasText;
+  }
+}
+
+/* ============================================
+   11. REDUCED MOTION
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  /* Disable smooth scroll */
+  html {
+    scroll-behavior: auto;
+  }
+
+  /* Disable all transitions and animations */
+  .wetu-fade-up,
+  .wetu-fade-in,
+  .wetu-scale-up,
+  .wetu-stagger-children > *,
+  .itinerary-card,
+  .itinerary-leg__media-item,
+  .itinerary-leg__gallery-thumb,
+  .wetu-gallery__item,
+  .sticky-bar__book-btn,
+  .booking-widget__submit,
+  .wetu-btn--primary,
+  .wetu-btn--secondary,
+  .itinerary-leg__acc-link,
+  .wetu-inline-link {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  /* Show fade elements immediately */
+  .wetu-fade-up,
+  .wetu-fade-in,
+  .wetu-scale-up {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* Disable shimmer animation */
+  .wetu-skeleton {
+    animation: none;
+    background: var(--wetu-bg-secondary);
+  }
+
+  /* Disable hover transforms */
+  .itinerary-card:hover,
+  .itinerary-overview__destination-card:hover,
+  .itinerary-leg__activity-card:hover,
+  .itinerary-leg__media-item[onclick]:hover,
+  .sticky-bar__book-btn:hover,
+  .wetu-btn--primary:hover {
+    transform: none !important;
+  }
+}

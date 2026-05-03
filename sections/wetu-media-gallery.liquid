@@ -1,0 +1,1228 @@
+{% comment %}
+  ============================================================================
+  WETU MEDIA GALLERY SECTION
+  ============================================================================
+  
+  Aggregates ALL media from ALL linked products into categorized galleries.
+  Includes photos, videos, and 360° panoramic tours.
+  
+  TEMPLATE: product.wetu-itinerary3.json
+  
+  ============================================================================
+  DATA ACCESS
+  ============================================================================
+  
+  MEDIA SOURCES:
+  1. Property Products - product.images, wetu.videos, wetu.panoramas
+  2. Activity Products - Images and videos
+  3. Itinerary Product - Any directly attached media
+  
+  Uses wetu-itinerary-data snippet for centralized data loading.
+  Collects media from all unique properties in the itinerary.
+  
+  ============================================================================
+{% endcomment %}
+
+{% comment %} 
+  Load data directly (render snippet variables don't persist to parent scope)
+{% endcomment %}
+
+{% comment %} 
+  Load linked products from metafields
+  Type: list.product_reference - returns actual product objects
+{% endcomment %}
+{% assign accommodation_products = product.metafields.wetu_itinerary.accommodations.value %}
+{% assign activity_products = product.metafields.wetu_itinerary.activities.value %}
+{% assign destination_products = product.metafields.wetu_itinerary.destinations.value %}
+
+{% comment %} Collect all media using string concatenation (Liquid doesn't have push filter) {% endcomment %}
+{% assign all_images_string = '' %}
+{% assign all_videos_string = '' %}
+{% assign all_panoramas_string = '' %}
+
+{% comment %} First, add itinerary product images {% endcomment %}
+{% for image in product.images %}
+  {% assign image_data = image | image_url: width: 1600 | append: '|' | append: product.title | append: '|' | append: image.alt | append: '|itinerary' %}
+  {% if all_images_string != '' %}{% assign all_images_string = all_images_string | append: '|||' %}{% endif %}
+  {% assign all_images_string = all_images_string | append: image_data %}
+{% endfor %}
+
+{% comment %} Collect from accommodation products {% endcomment %}
+{% if accommodation_products.size > 0 %}
+  {% for property in accommodation_products %}
+    {% comment %} Collect property images {% endcomment %}
+    {% for image in property.images %}
+      {% assign image_data = image | image_url: width: 1600 | append: '|' | append: property.title | append: '|' | append: image.alt | append: '|property' %}
+      {% if all_images_string != '' %}{% assign all_images_string = all_images_string | append: '|||' %}{% endif %}
+      {% assign all_images_string = all_images_string | append: image_data %}
+    {% endfor %}
+    
+    {% comment %} Collect videos {% endcomment %}
+    {% assign videos = property.metafields.wetu.videos.value %}
+    {% if videos and videos.size > 0 %}
+      {% for video in videos %}
+        {% assign video_data = video.embed_url.value | append: '|' | append: video.title.value | append: '|' | append: video.thumbnail_url.value | append: '|' | append: property.title | append: '|' | append: video.provider.value %}
+        {% if all_videos_string != '' %}{% assign all_videos_string = all_videos_string | append: '|||' %}{% endif %}
+        {% assign all_videos_string = all_videos_string | append: video_data %}
+      {% endfor %}
+    {% endif %}
+    
+    {% comment %} Collect panoramas {% endcomment %}
+    {% assign panoramas = property.metafields.wetu.panoramas.value %}
+    {% if panoramas and panoramas.size > 0 %}
+      {% for panorama in panoramas %}
+        {% assign panorama_data = panorama.url.value | append: '|' | append: panorama.title.value | append: '|' | append: panorama.thumbnail_url.value | append: '|' | append: property.title | append: '|' | append: panorama.mobile_compatible.value %}
+        {% if all_panoramas_string != '' %}{% assign all_panoramas_string = all_panoramas_string | append: '|||' %}{% endif %}
+        {% assign all_panoramas_string = all_panoramas_string | append: panorama_data %}
+      {% endfor %}
+    {% endif %}
+  {% endfor %}
+{% endif %}
+
+{% comment %} Collect from activity products {% endcomment %}
+{% if activity_products.size > 0 %}
+  {% for activity in activity_products %}
+    {% for image in activity.images %}
+      {% assign image_data = image | image_url: width: 1600 | append: '|' | append: activity.title | append: '|' | append: image.alt | append: '|activity' %}
+      {% if all_images_string != '' %}{% assign all_images_string = all_images_string | append: '|||' %}{% endif %}
+      {% assign all_images_string = all_images_string | append: image_data %}
+    {% endfor %}
+    
+    {% comment %} Activity videos {% endcomment %}
+    {% assign activity_videos = activity.metafields.wetu.videos.value %}
+    {% if activity_videos and activity_videos.size > 0 %}
+      {% for video in activity_videos %}
+        {% assign video_data = video.embed_url.value | append: '|' | append: video.title.value | append: '|' | append: video.thumbnail_url.value | append: '|' | append: activity.title | append: '|' | append: video.provider.value %}
+        {% if all_videos_string != '' %}{% assign all_videos_string = all_videos_string | append: '|||' %}{% endif %}
+        {% assign all_videos_string = all_videos_string | append: video_data %}
+      {% endfor %}
+    {% endif %}
+  {% endfor %}
+{% endif %}
+
+{% comment %} Collect from destination products {% endcomment %}
+{% if destination_products.size > 0 %}
+  {% for dest in destination_products %}
+    {% for image in dest.images %}
+      {% assign image_data = image | image_url: width: 1600 | append: '|' | append: dest.title | append: '|' | append: image.alt | append: '|destination' %}
+      {% if all_images_string != '' %}{% assign all_images_string = all_images_string | append: '|||' %}{% endif %}
+      {% assign all_images_string = all_images_string | append: image_data %}
+    {% endfor %}
+  {% endfor %}
+{% endif %}
+
+{% comment %} Convert strings to arrays {% endcomment %}
+{% assign all_images = all_images_string | split: '|||' %}
+{% assign all_videos = all_videos_string | split: '|||' %}
+{% assign all_panoramas = all_panoramas_string | split: '|||' %}
+{% assign total_media = all_images.size | plus: all_videos.size %}
+
+<section 
+  id="gallery"
+  class="wetu-gallery color-{{ section.settings.color_scheme }}"
+  style="
+    --section-padding-top: {{ section.settings.padding_top }}px;
+    --section-padding-bottom: {{ section.settings.padding_bottom }}px;
+    --gallery-columns: {{ section.settings.columns }};
+  "
+  data-section-type="media-gallery"
+>
+  <div class="page-width">
+    {% comment %} Section Header {% endcomment %}
+    <header class="wetu-gallery__header">
+      {% if section.settings.subheading != blank %}
+        <span class="wetu-gallery__subheading">{{ section.settings.subheading }}</span>
+      {% endif %}
+      <h2 class="wetu-gallery__heading h2">{{ section.settings.heading }}</h2>
+      
+      {% if section.settings.description != blank %}
+        <p class="wetu-gallery__description">{{ section.settings.description }}</p>
+      {% endif %}
+    </header>
+
+    {% if total_media > 0 or all_panoramas.size > 0 %}
+      {% comment %} Category Tabs {% endcomment %}
+      {% if section.settings.show_tabs %}
+        <div class="wetu-gallery__tabs" role="tablist" aria-label="Gallery categories">
+          <button 
+            class="wetu-gallery__tab is-active" 
+            data-tab="all" 
+            role="tab" 
+            aria-selected="true"
+            aria-controls="gallery-all"
+          >
+            All ({{ total_media }})
+          </button>
+          <button 
+            class="wetu-gallery__tab" 
+            data-tab="photos" 
+            role="tab" 
+            aria-selected="false"
+            aria-controls="gallery-photos"
+          >
+            Photos ({{ all_images.size }})
+          </button>
+          {% if all_videos.size > 0 %}
+            <button 
+              class="wetu-gallery__tab" 
+              data-tab="videos" 
+              role="tab" 
+              aria-selected="false"
+              aria-controls="gallery-videos"
+            >
+              Videos ({{ all_videos.size }})
+            </button>
+          {% endif %}
+          {% if all_panoramas.size > 0 %}
+            <button 
+              class="wetu-gallery__tab" 
+              data-tab="tours" 
+              role="tab" 
+              aria-selected="false"
+              aria-controls="gallery-tours"
+            >
+              360° Tours ({{ all_panoramas.size }})
+            </button>
+          {% endif %}
+        </div>
+      {% endif %}
+
+      {% comment %} Photo & Video Grid {% endcomment %}
+      <div 
+        class="wetu-gallery__grid wetu-gallery__grid--{{ section.settings.layout }}" 
+        id="gallery-all"
+        data-tab-content="all"
+        data-layout="{{ section.settings.layout }}"
+        role="tabpanel"
+      >
+        {% comment %} Photos {% endcomment %}
+        {% for image_data in all_images limit: section.settings.initial_count %}
+          {% assign image_parts = image_data | split: '|' %}
+          {% assign image_url = image_parts[0] %}
+          {% assign image_property = image_parts[1] %}
+          {% assign image_alt = image_parts[2] | default: image_property %}
+          {% assign image_source = image_parts[3] %}
+          
+          <div class="wetu-gallery__item" data-type="photo" data-index="{{ forloop.index0 }}">
+            <button 
+              type="button" 
+              class="gallery-item__trigger"
+              data-lightbox-trigger
+              data-full-src="{{ image_url }}"
+              data-caption="{{ image_alt }}"
+              data-property="{{ image_property }}"
+              aria-label="View {{ image_alt | default: 'image' }} in fullscreen"
+            >
+              <img 
+                src="{{ image_url | replace: 'width=1600', 'width=400' }}"
+                alt="{{ image_alt }}"
+                loading="lazy"
+                class="gallery-item__image"
+              >
+              <div class="gallery-item__overlay">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+                </svg>
+              </div>
+              <span class="gallery-item__caption">{{ image_property }}</span>
+            </button>
+          </div>
+        {% endfor %}
+
+        {% comment %} Videos {% endcomment %}
+        {% for video_data in all_videos %}
+          {% assign video_parts = video_data | split: '|' %}
+          {% assign video_embed = video_parts[0] %}
+          {% assign video_title = video_parts[1] %}
+          {% assign video_thumb = video_parts[2] %}
+          {% assign video_property = video_parts[3] %}
+          {% assign video_provider = video_parts[4] %}
+          
+          <div class="wetu-gallery__item wetu-gallery__item--video" data-type="video">
+            <button 
+              type="button" 
+              class="gallery-item__trigger"
+              data-video-trigger
+              data-embed="{{ video_embed }}"
+              data-title="{{ video_title }}"
+              data-provider="{{ video_provider }}"
+              aria-label="Play video: {{ video_title }}"
+            >
+              {% if video_thumb != blank %}
+                <img src="{{ video_thumb }}" alt="{{ video_title }}" loading="lazy" class="gallery-item__image">
+              {% else %}
+                <div class="gallery-item__placeholder">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>
+                    <line x1="7" y1="2" x2="7" y2="22"/>
+                    <line x1="17" y1="2" x2="17" y2="22"/>
+                    <line x1="2" y1="12" x2="22" y2="12"/>
+                    <line x1="2" y1="7" x2="7" y2="7"/>
+                    <line x1="2" y1="17" x2="7" y2="17"/>
+                    <line x1="17" y1="17" x2="22" y2="17"/>
+                    <line x1="17" y1="7" x2="22" y2="7"/>
+                  </svg>
+                </div>
+              {% endif %}
+              <div class="gallery-item__play-btn">
+                {% render 'icon-play', size: 48 %}
+              </div>
+              <span class="gallery-item__caption">{{ video_title | default: video_property }}</span>
+            </button>
+          </div>
+        {% endfor %}
+      </div>
+
+      {% comment %} Load More Button {% endcomment %}
+      {% assign remaining_images = all_images.size | minus: section.settings.initial_count %}
+      {% if remaining_images > 0 %}
+        <div class="wetu-gallery__load-more-container">
+          <button type="button" class="wetu-gallery__load-more button button--secondary" data-load-more>
+            <span>Load More</span>
+            <span class="load-more__count">({{ remaining_images }} remaining)</span>
+          </button>
+        </div>
+        
+        {% comment %} Hidden images for load more {% endcomment %}
+        <div class="wetu-gallery__hidden-items" hidden>
+          {% for image_data in all_images offset: section.settings.initial_count %}
+            {% assign image_parts = image_data | split: '|' %}
+            {% assign image_url = image_parts[0] %}
+            {% assign image_property = image_parts[1] %}
+            {% assign image_alt = image_parts[2] | default: image_property %}
+            
+            <div class="wetu-gallery__item" data-type="photo" data-index="{{ forloop.index0 | plus: section.settings.initial_count }}">
+              <button 
+                type="button" 
+                class="gallery-item__trigger"
+                data-lightbox-trigger
+                data-full-src="{{ image_url }}"
+                data-caption="{{ image_alt }}"
+                data-property="{{ image_property }}"
+              >
+                <img 
+                  src="{{ image_url | replace: 'width=1600', 'width=400' }}"
+                  alt="{{ image_alt }}"
+                  loading="lazy"
+                  class="gallery-item__image"
+                >
+                <div class="gallery-item__overlay">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+                  </svg>
+                </div>
+                <span class="gallery-item__caption">{{ image_property }}</span>
+              </button>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      {% comment %} 360° Tours Section {% endcomment %}
+      {% if all_panoramas.size > 0 %}
+        <div class="wetu-gallery__panoramas" id="gallery-tours" data-tab-content="tours" role="tabpanel" hidden>
+          <h3 class="panoramas__title">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/>
+              <path d="M2 12h20"/>
+            </svg>
+            Virtual Tours
+          </h3>
+          <div class="panoramas__grid">
+            {% for panorama_data in all_panoramas %}
+              {% assign panorama_parts = panorama_data | split: '|' %}
+              {% assign panorama_url = panorama_parts[0] %}
+              {% assign panorama_title = panorama_parts[1] %}
+              {% assign panorama_thumb = panorama_parts[2] %}
+              {% assign panorama_property = panorama_parts[3] %}
+              {% assign panorama_mobile = panorama_parts[4] %}
+              
+              <article class="panorama-card">
+                <div class="panorama-card__image">
+                  {% if panorama_thumb != blank %}
+                    <img src="{{ panorama_thumb }}" alt="{{ panorama_title }}" loading="lazy">
+                  {% else %}
+                    <div class="panorama-card__placeholder">
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/>
+                        <path d="M2 12h20"/>
+                      </svg>
+                    </div>
+                  {% endif %}
+                  <span class="panorama-card__badge">360°</span>
+                </div>
+                <div class="panorama-card__content">
+                  <h4 class="panorama-card__title">{{ panorama_title }}</h4>
+                  <p class="panorama-card__property">{{ panorama_property }}</p>
+                  
+                  {% if panorama_mobile == 'true' %}
+                    <a href="{{ panorama_url }}" target="_blank" rel="noopener" class="panorama-card__btn button button--primary">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/>
+                        <path d="M2 12h20"/>
+                      </svg>
+                      Explore 360°
+                    </a>
+                  {% else %}
+                    <p class="panorama-card__note">Best viewed on desktop</p>
+                    <a href="{{ panorama_url }}" target="_blank" rel="noopener" class="panorama-card__btn button button--secondary">
+                      Open Tour
+                    </a>
+                  {% endif %}
+                </div>
+              </article>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+    {% else %}
+      <p class="wetu-gallery__empty">No media available for this itinerary.</p>
+    {% endif %}
+  </div>
+
+  {% comment %} Lightbox Container {% endcomment %}
+  <div class="wetu-lightbox" id="wetu-lightbox" hidden aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="lightbox__backdrop"></div>
+    <div class="lightbox__container">
+      <button type="button" class="lightbox__close" aria-label="Close lightbox">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+      
+      <button type="button" class="lightbox__nav lightbox__nav--prev" aria-label="Previous image">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M15 18l-6-6 6-6"/>
+        </svg>
+      </button>
+      
+      <div class="lightbox__content">
+        <img class="lightbox__image" src="" alt="">
+        <div class="lightbox__video-container" hidden>
+          <iframe class="lightbox__video" frameborder="0" allowfullscreen allow="autoplay"></iframe>
+        </div>
+      </div>
+      
+      <button type="button" class="lightbox__nav lightbox__nav--next" aria-label="Next image">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 18l6-6-6-6"/>
+        </svg>
+      </button>
+      
+      <div class="lightbox__footer">
+        <p class="lightbox__caption"></p>
+        <span class="lightbox__counter"></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% stylesheet %}
+  .wetu-gallery {
+    padding-top: var(--section-padding-top);
+    padding-bottom: var(--section-padding-bottom);
+    background: var(--color-background);
+    color: var(--color-foreground);
+  }
+
+  /* Header */
+  .wetu-gallery__header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+
+  .wetu-gallery__subheading {
+    display: inline-block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--color-primary);
+    margin-bottom: 12px;
+  }
+
+  .wetu-gallery__heading {
+    margin: 0 0 12px;
+    color: var(--color-foreground);
+  }
+
+  .wetu-gallery__description {
+    max-width: 600px;
+    margin: 0 auto;
+    font-size: 1.1rem;
+    color: color-mix(in srgb, var(--color-foreground) 70%, transparent);
+  }
+
+  /* Tabs */
+  .wetu-gallery__tabs {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 32px;
+  }
+
+  .wetu-gallery__tab {
+    padding: 10px 20px;
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: 24px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--color-foreground);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .wetu-gallery__tab:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+  }
+
+  .wetu-gallery__tab.is-active {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: var(--color-background);
+  }
+
+  /* Grid Layout */
+  .wetu-gallery__grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media screen and (min-width: 750px) {
+    .wetu-gallery__grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  @media screen and (min-width: 1024px) {
+    .wetu-gallery__grid {
+      grid-template-columns: repeat(var(--gallery-columns), 1fr);
+    }
+  }
+
+  /* Masonry Layout */
+  .wetu-gallery__grid--masonry {
+    grid-auto-rows: 200px;
+  }
+
+  .wetu-gallery__grid--masonry .wetu-gallery__item:nth-child(5n+1) {
+    grid-row: span 2;
+  }
+
+  .wetu-gallery__grid--masonry .wetu-gallery__item:nth-child(7n+3) {
+    grid-column: span 2;
+  }
+
+  @media screen and (max-width: 749px) {
+    .wetu-gallery__grid--masonry .wetu-gallery__item:nth-child(7n+3) {
+      grid-column: span 1;
+    }
+  }
+
+  /* Gallery Item */
+  .wetu-gallery__item {
+    position: relative;
+    overflow: hidden;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--color-foreground) 5%, transparent);
+  }
+
+  .gallery-item__trigger {
+    display: block;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+  }
+
+  .gallery-item__image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+  }
+
+  .wetu-gallery__item:hover .gallery-item__image {
+    transform: scale(1.05);
+  }
+
+  .gallery-item__placeholder {
+    width: 100%;
+    height: 100%;
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--color-foreground) 10%, transparent);
+    color: color-mix(in srgb, var(--color-foreground) 40%, transparent);
+  }
+
+  .gallery-item__overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.4);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    color: white;
+  }
+
+  .wetu-gallery__item:hover .gallery-item__overlay {
+    opacity: 1;
+  }
+
+  .gallery-item__caption {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 40px 16px 16px;
+    background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%);
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-align: left;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.3s ease;
+  }
+
+  .wetu-gallery__item:hover .gallery-item__caption {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Video Item */
+  .wetu-gallery__item--video .gallery-item__play-btn {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 64px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.9);
+    border-radius: 50%;
+    color: var(--color-primary);
+    transition: all 0.3s ease;
+    pointer-events: none;
+  }
+
+  .wetu-gallery__item--video:hover .gallery-item__play-btn {
+    transform: translate(-50%, -50%) scale(1.1);
+    background: white;
+  }
+
+  /* Load More */
+  .wetu-gallery__load-more-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 40px;
+  }
+
+  .wetu-gallery__load-more {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 28px;
+  }
+
+  .load-more__count {
+    opacity: 0.7;
+    font-weight: normal;
+  }
+
+  /* Panoramas Section */
+  .wetu-gallery__panoramas {
+    margin-top: 60px;
+    padding-top: 60px;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .wetu-gallery__panoramas[hidden] {
+    display: none;
+  }
+
+  .panoramas__title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 1.5rem;
+    margin: 0 0 32px;
+    color: var(--color-foreground);
+  }
+
+  .panoramas__title svg {
+    color: var(--color-primary);
+  }
+
+  .panoramas__grid {
+    display: grid;
+    gap: 24px;
+    grid-template-columns: 1fr;
+  }
+
+  @media screen and (min-width: 750px) {
+    .panoramas__grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media screen and (min-width: 1024px) {
+    .panoramas__grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  /* Panorama Card */
+  .panorama-card {
+    background: color-mix(in srgb, var(--color-foreground) 3%, transparent);
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .panorama-card__image {
+    position: relative;
+    aspect-ratio: 16/9;
+    overflow: hidden;
+  }
+
+  .panorama-card__image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .panorama-card__placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--color-foreground) 8%, transparent);
+    color: color-mix(in srgb, var(--color-foreground) 30%, transparent);
+  }
+
+  .panorama-card__badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    padding: 4px 10px;
+    background: var(--color-primary);
+    color: var(--color-background);
+    font-size: 0.75rem;
+    font-weight: 700;
+    border-radius: 4px;
+  }
+
+  .panorama-card__content {
+    padding: 20px;
+  }
+
+  .panorama-card__title {
+    margin: 0 0 4px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--color-foreground);
+  }
+
+  .panorama-card__property {
+    margin: 0 0 16px;
+    font-size: 0.9rem;
+    color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+  }
+
+  .panorama-card__note {
+    margin: 0 0 12px;
+    font-size: 0.85rem;
+    color: color-mix(in srgb, var(--color-foreground) 50%, transparent);
+    font-style: italic;
+  }
+
+  .panorama-card__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+  }
+
+  /* Empty State */
+  .wetu-gallery__empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: color-mix(in srgb, var(--color-foreground) 50%, transparent);
+    font-style: italic;
+  }
+
+  /* Lightbox */
+  .wetu-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .wetu-lightbox[hidden] {
+    display: none;
+  }
+
+  .lightbox__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.95);
+  }
+
+  .lightbox__container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px 80px;
+  }
+
+  .lightbox__close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.1);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    z-index: 10;
+  }
+
+  .lightbox__close:hover {
+    background: rgba(255,255,255,0.2);
+  }
+
+  .lightbox__nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.1);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    z-index: 10;
+  }
+
+  .lightbox__nav:hover {
+    background: rgba(255,255,255,0.2);
+  }
+
+  .lightbox__nav--prev {
+    left: 20px;
+  }
+
+  .lightbox__nav--next {
+    right: 20px;
+  }
+
+  .lightbox__content {
+    max-width: 90%;
+    max-height: 80vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .lightbox__image {
+    max-width: 100%;
+    max-height: 80vh;
+    object-fit: contain;
+    border-radius: 8px;
+  }
+
+  .lightbox__video-container {
+    width: 100%;
+    max-width: 900px;
+    aspect-ratio: 16/9;
+  }
+
+  .lightbox__video-container[hidden] {
+    display: none;
+  }
+
+  .lightbox__video {
+    width: 100%;
+    height: 100%;
+    border-radius: 8px;
+  }
+
+  .lightbox__footer {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: white;
+  }
+
+  .lightbox__caption {
+    margin: 0;
+    font-size: 1rem;
+    opacity: 0.9;
+  }
+
+  .lightbox__counter {
+    font-size: 0.9rem;
+    opacity: 0.7;
+  }
+
+  @media screen and (max-width: 749px) {
+    .lightbox__nav {
+      width: 40px;
+      height: 40px;
+    }
+
+    .lightbox__nav--prev {
+      left: 10px;
+    }
+
+    .lightbox__nav--next {
+      right: 10px;
+    }
+  }
+{% endstylesheet %}
+
+{% javascript %}
+  class WetuMediaGallery {
+    constructor(section) {
+      this.section = section;
+      this.grid = section.querySelector('.wetu-gallery__grid');
+      this.tabs = section.querySelectorAll('.wetu-gallery__tab');
+      this.tabContents = section.querySelectorAll('[data-tab-content]');
+      this.loadMoreBtn = section.querySelector('[data-load-more]');
+      this.hiddenItems = section.querySelector('.wetu-gallery__hidden-items');
+      this.lightbox = section.querySelector('.wetu-lightbox');
+      
+      this.currentIndex = 0;
+      this.images = [];
+      
+      this.init();
+    }
+
+    init() {
+      this.collectImages();
+      this.setupTabs();
+      this.setupLoadMore();
+      this.setupLightbox();
+      this.setupVideoTriggers();
+    }
+
+    collectImages() {
+      this.images = Array.from(this.section.querySelectorAll('[data-lightbox-trigger]')).map(trigger => ({
+        src: trigger.dataset.fullSrc,
+        caption: trigger.dataset.caption,
+        property: trigger.dataset.property
+      }));
+    }
+
+    setupTabs() {
+      this.tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          const tabName = tab.dataset.tab;
+          
+          // Update tab states
+          this.tabs.forEach(t => {
+            t.classList.remove('is-active');
+            t.setAttribute('aria-selected', 'false');
+          });
+          tab.classList.add('is-active');
+          tab.setAttribute('aria-selected', 'true');
+          
+          // Filter items or show tab content
+          if (tabName === 'all') {
+            this.grid.hidden = false;
+            this.section.querySelector('.wetu-gallery__panoramas')?.setAttribute('hidden', '');
+            this.filterItems('all');
+          } else if (tabName === 'photos') {
+            this.grid.hidden = false;
+            this.section.querySelector('.wetu-gallery__panoramas')?.setAttribute('hidden', '');
+            this.filterItems('photo');
+          } else if (tabName === 'videos') {
+            this.grid.hidden = false;
+            this.section.querySelector('.wetu-gallery__panoramas')?.setAttribute('hidden', '');
+            this.filterItems('video');
+          } else if (tabName === 'tours') {
+            this.grid.hidden = true;
+            this.section.querySelector('.wetu-gallery__panoramas')?.removeAttribute('hidden');
+          }
+        });
+      });
+    }
+
+    filterItems(type) {
+      const items = this.grid.querySelectorAll('.wetu-gallery__item');
+      items.forEach(item => {
+        if (type === 'all' || item.dataset.type === type) {
+          item.style.display = '';
+        } else {
+          item.style.display = 'none';
+        }
+      });
+    }
+
+    setupLoadMore() {
+      if (!this.loadMoreBtn || !this.hiddenItems) return;
+      
+      this.loadMoreBtn.addEventListener('click', () => {
+        const items = this.hiddenItems.querySelectorAll('.wetu-gallery__item');
+        items.forEach(item => {
+          this.grid.appendChild(item.cloneNode(true));
+        });
+        
+        // Re-collect images and setup lightbox triggers
+        this.collectImages();
+        this.setupLightboxTriggers();
+        
+        // Hide load more button and hidden container
+        this.loadMoreBtn.parentElement.style.display = 'none';
+        this.hiddenItems.remove();
+      });
+    }
+
+    setupLightbox() {
+      if (!this.lightbox) return;
+      
+      this.lightboxImage = this.lightbox.querySelector('.lightbox__image');
+      this.lightboxVideo = this.lightbox.querySelector('.lightbox__video');
+      this.lightboxVideoContainer = this.lightbox.querySelector('.lightbox__video-container');
+      this.lightboxCaption = this.lightbox.querySelector('.lightbox__caption');
+      this.lightboxCounter = this.lightbox.querySelector('.lightbox__counter');
+      this.closeBtn = this.lightbox.querySelector('.lightbox__close');
+      this.prevBtn = this.lightbox.querySelector('.lightbox__nav--prev');
+      this.nextBtn = this.lightbox.querySelector('.lightbox__nav--next');
+      this.backdrop = this.lightbox.querySelector('.lightbox__backdrop');
+      
+      this.setupLightboxTriggers();
+      
+      this.closeBtn?.addEventListener('click', () => this.closeLightbox());
+      this.backdrop?.addEventListener('click', () => this.closeLightbox());
+      this.prevBtn?.addEventListener('click', () => this.navigate(-1));
+      this.nextBtn?.addEventListener('click', () => this.navigate(1));
+      
+      document.addEventListener('keydown', (e) => {
+        if (this.lightbox.hidden) return;
+        if (e.key === 'Escape') this.closeLightbox();
+        if (e.key === 'ArrowLeft') this.navigate(-1);
+        if (e.key === 'ArrowRight') this.navigate(1);
+      });
+    }
+
+    setupLightboxTriggers() {
+      this.section.querySelectorAll('[data-lightbox-trigger]').forEach((trigger, index) => {
+        trigger.addEventListener('click', () => this.openLightbox(index));
+      });
+    }
+
+    openLightbox(index) {
+      this.currentIndex = index;
+      this.updateLightbox();
+      this.lightbox.hidden = false;
+      this.lightbox.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+    }
+
+    closeLightbox() {
+      this.lightbox.hidden = true;
+      this.lightbox.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+      
+      // Stop video if playing
+      if (this.lightboxVideo) {
+        this.lightboxVideo.src = '';
+      }
+    }
+
+    navigate(direction) {
+      this.currentIndex = (this.currentIndex + direction + this.images.length) % this.images.length;
+      this.updateLightbox();
+    }
+
+    updateLightbox() {
+      const image = this.images[this.currentIndex];
+      if (!image) return;
+      
+      this.lightboxImage.src = image.src;
+      this.lightboxImage.alt = image.caption || '';
+      this.lightboxCaption.textContent = image.caption || image.property || '';
+      this.lightboxCounter.textContent = `${this.currentIndex + 1} / ${this.images.length}`;
+      
+      // Show image, hide video
+      this.lightboxImage.hidden = false;
+      if (this.lightboxVideoContainer) {
+        this.lightboxVideoContainer.hidden = true;
+      }
+    }
+
+    setupVideoTriggers() {
+      this.section.querySelectorAll('[data-video-trigger]').forEach(trigger => {
+        trigger.addEventListener('click', () => {
+          const embedUrl = trigger.dataset.embed;
+          const title = trigger.dataset.title;
+          
+          if (!embedUrl || !this.lightbox) return;
+          
+          // Show video in lightbox
+          this.lightboxImage.hidden = true;
+          this.lightboxVideoContainer.hidden = false;
+          this.lightboxVideo.src = embedUrl + '?autoplay=1';
+          this.lightboxCaption.textContent = title || '';
+          this.lightboxCounter.textContent = '';
+          
+          this.lightbox.hidden = false;
+          this.lightbox.setAttribute('aria-hidden', 'false');
+          document.body.style.overflow = 'hidden';
+        });
+      });
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const gallerySection = document.querySelector('[data-section-type="media-gallery"]');
+    if (gallerySection) {
+      new WetuMediaGallery(gallerySection);
+    }
+  });
+{% endjavascript %}
+
+{% schema %}
+{
+  "name": "Itinerary Media Gallery",
+  "tag": "section",
+  "class": "section-wetu-media-gallery",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-5"
+    },
+    {
+      "type": "header",
+      "content": "Header"
+    },
+    {
+      "type": "text",
+      "id": "subheading",
+      "label": "Subheading",
+      "default": "Explore"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Trip Gallery"
+    },
+    {
+      "type": "textarea",
+      "id": "description",
+      "label": "Description"
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "layout",
+      "label": "Layout style",
+      "options": [
+        { "value": "grid", "label": "Grid" },
+        { "value": "masonry", "label": "Masonry" }
+      ],
+      "default": "masonry"
+    },
+    {
+      "type": "range",
+      "id": "columns",
+      "label": "Columns (Desktop)",
+      "min": 2,
+      "max": 5,
+      "step": 1,
+      "default": 3
+    },
+    {
+      "type": "range",
+      "id": "initial_count",
+      "label": "Initial images to show",
+      "min": 6,
+      "max": 30,
+      "step": 3,
+      "default": 12
+    },
+    {
+      "type": "checkbox",
+      "id": "show_tabs",
+      "label": "Show category tabs",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Spacing"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "Top padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 80
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "Bottom padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 80
+    }
+  ],
+  "presets": [
+    {
+      "name": "Itinerary Media Gallery"
+    }
+  ]
+}
+{% endschema %}

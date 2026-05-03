@@ -1,0 +1,600 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin language editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "accessibility": {
+    "account": "I-akhawunti",
+    "cart": "Inqola",
+    "cart_count": "Inani lezinto ezisenqoleni",
+    "close_dialog": "Vala ibhokisi lengxoxo",
+    "country_region": "Izwe/Isifunda",
+    "country_results_count": "{{ count }} imiphumela",
+    "decrease_quantity": "Nciphisa inani",
+    "discount": "Faka ikhodi yesaphulelo",
+    "discount_menu": "Amakhodi Esaphulelo",
+    "discount_applied": "Ikhodi yesaphulelo esifakiwe: {{ code }}",
+    "filters": "Izihlungi",
+    "filter_count": {
+      "one": "{{ count }} isihlungi sifakiwe",
+      "other": "{{ count }} izihlungi zifakiwe"
+    },
+    "increase_quantity": "Khulisa inani",
+    "inventory_status": "Isimo sempahla",
+    "localization_region_and_language": "Isikhethi sesifunda nolimi",
+    "menu": "Imenyu",
+    "nested_product": "{{ product_title }} ye-{{ parent_title }}",
+    "new_window": "Ivula efasiteleni elisha.",
+    "quantity": "Inani",
+    "pause_video": "Misa isikhashana ividiyo",
+    "play_model": "Dlala imodeli ye-3D",
+    "play_video": "Dlala ividiyo",
+    "loading_product_recommendations": "Iyalayisha izincomo zomkhiqizo",
+    "rating": "Isilinganiso salo mkhiqizo ngu-{{ rating }} koku-5",
+    "remove_item": "Susa {{ title}}",
+    "reset_search": "Setha kabusha usesho",
+    "scroll_to": "Skrolela ku-{{ title }}",
+    "search_results_count": "{{ count }} imiphumela yosesho itholakele nge-\"{{ query }}\"",
+    "search_results_no_results": "Ayikho imiphumela etholakele nge-\"{{ query }}\"",
+    "skip_to_product_info": "Yeqa uye olwazini lomkhiqizo",
+    "skip_to_results_list": "Yeqa uye ohlwini lwemiphumela",
+    "skip_to_text": "Yeqa uye kokuqukethwe",
+    "slide_status": "Isilayidi {{ index }} koku-{{ length }}",
+    "slideshow_next": "Isilayidi esilandelayo",
+    "slideshow_pause": "Misa isikhashana umbukiso wesilayidi",
+    "slideshow_play": "Dlala umbukiso wesilayidi",
+    "slideshow_previous": "Isilayidi esedlule",
+    "unit_price": "Intengo yeyunithi",
+    "find_country": "Thola izwe"
+  },
+  "actions": {
+    "add": "Faka",
+    "add_to_cart": "Faka enqoleni",
+    "added": "Kufakiwe",
+    "apply": "Faka",
+    "back": "Emuva",
+    "choose": "Khetha",
+    "clear": "Sula",
+    "clear_all": "Sula konke",
+    "close": "Vala",
+    "open": "Vula",
+    "continue_shopping": "Qhubeka nokuthenga",
+    "enter_password": "Faka iphasiwedi",
+    "log_in_html": "Unayo i-akhawunti? <a href=\"{{ link }}\">Ngena</a> ukuze ukhokhe ngokushesha.",
+    "log_in": "Ngena",
+    "log_out": "Phuma",
+    "open_image_in_full_screen": "Vula isithombe esigcwele isikrini",
+    "remove": "Susa",
+    "remove_discount": "Susa isaphulelo {{ code }}",
+    "show_all_options": "Bonisa zonke izinketho",
+    "see_items": {
+      "one": "Bona into engu-{{ count }}",
+      "other": "Bona izinto ezi-{{ count }}"
+    },
+    "show_filters": "Hlunga",
+    "show_less": "Bonisa okuncane",
+    "show_more": "Bonisa okwengeziwe",
+    "sign_in_options": "Ezinye izinketho zokungena",
+    "view_in_your_space": "Buka endaweni yakho",
+    "view_all": "Buka konke",
+    "more": "Okwengeziwe",
+    "zoom": "Sondeza",
+    "close_dialog": "Vala ibhokisi lengxoxo",
+    "reset": "Setha kabusha",
+    "enter_using_password": "Ngena usebenzisa iphasiwedi",
+    "sign_up": "Bhalisa",
+    "submit": "Thumela",
+    "view_store_information": "Buka ulwazi lwesitolo",
+    "sort": "Hlela"
+  },
+  "blocks": {
+    "contact_form": {
+      "name": "Igama",
+      "email": "I-imeyili",
+      "phone": "Ifoni",
+      "comment": "Amazwana",
+      "post_success": "Siyabonga ngokusithinta. Sizobuyela kuwe ngokushesha okukhulu.",
+      "error_heading": "Sicela ulungise okulandelayo:"
+    },
+    "email_signup": {
+      "label": "I-imeyili",
+      "placeholder": "Ikheli le-imeyili",
+      "success": "Siyabonga ngokubhalisa!"
+    },
+    "filter": "Hlunga",
+    "load_video": "Layisha ividiyo: {{ description }}",
+    "sold_out": "Kuphelile",
+    "payment_methods": "Izindlela zokukhokha"
+  },
+  "blogs": {
+    "article": {
+      "comments_heading": {
+        "one": "Amazwana angu-{{ count }}",
+        "other": "Amazwana angu-{{ count }}"
+      },
+      "comment_author_separator": "•"
+    },
+    "comment_form": {
+      "email": "I-imeyili",
+      "error": "Amazwana ahlulekile ukuthunyelwa, sicela ulungise okulandelayo:",
+      "heading": "Shiya amazwana",
+      "message": "Umlayezo",
+      "moderated": "Sicela uqaphele, amazwana adinga ukugunyazwa ngaphambi kokuba ashicilelwe.",
+      "name": "Igama",
+      "post": "Thumela amazwana",
+      "success_moderated": "Amazwana athunyelwe, alindele ukugunyazwa",
+      "success": "Amazwana athunyelwe"
+    }
+  },
+  "content": {
+    "discount": "Isaphulelo",
+    "account_title": "I-akhawunti",
+    "terms_and_policies": "Imigomo Nezinqubomgomo",
+    "account_title_personalized": "Sawubona {{ first_name }}",
+    "account_orders": "Ama-oda",
+    "account_profile": "Iphrofayela",
+    "blog_details_separator": "|",
+    "cart_estimated_total": "Isamba esilinganiselwe",
+    "cart_title": "Inqola",
+    "cart_subtotal": "Isamba esincane",
+    "cart_total": "Isamba senqola",
+    "checkout": "Qhubeka uyokhokha",
+    "collection_placeholder": "Isihloko seqoqo",
+    "discount_code": "Ikhodi yesaphulelo",
+    "shipping_discount_error": "Izaphulelo zokuthumela ziboniswa lapho ukhokha ngemuva kokufaka ikheli",
+    "discount_code_error": "Ikhodi yesaphulelo ayikwazi ukufakwa enqoleni yakho",
+    "discounts": "Izaphulelo",
+    "duties_and_taxes_included": "Imisebenzi nentela kufakiwe.",
+    "duties_and_taxes_included_shipping_at_checkout_with_policy_html": "Imisebenzi nentela kufakiwe. Izaphulelo kanye <a href=\"{{ link }}\">nokuthumela</a> kubalwa lapho ukhokha.",
+    "duties_and_taxes_included_shipping_at_checkout_with_policy_without_discounts_html": "Imisebenzi nentela kufakiwe. Ukuthumela kubalwa lapho ukhokha.",
+    "duties_and_taxes_included_shipping_at_checkout_without_policy": "Imisebenzi nentela kufakiwe. Izaphulelo nokuthumela kubalwa lapho ukhokha.",
+    "duties_and_taxes_included_shipping_at_checkout_without_policy_without_discounts": "Imisebenzi nentela kufakiwe. Ukuthumela kubalwa lapho ukhokha.",
+    "duties_included": "Imisebenzi ifakiwe.",
+    "duties_included_taxes_at_checkout_shipping_at_checkout_with_policy_html": "Imisebenzi ifakiwe. Intela, izaphulelo kanye <a href=\"{{ link }}\">nokuthumela</a> kubalwa lapho ukhokha.",
+    "duties_included_taxes_at_checkout_shipping_at_checkout_with_policy_without_discounts_html": "Imisebenzi ifakiwe. Ukuthumela kubalwa lapho ukhokha.",
+    "duties_included_taxes_at_checkout_shipping_at_checkout_without_policy": "Imisebenzi ifakiwe. Intela, izaphulelo nokuthumela kubalwa lapho ukhokha.",
+    "duties_included_taxes_at_checkout_shipping_at_checkout_without_policy_without_discounts": "Imisebenzi ifakiwe. Ukuthumela kubalwa lapho ukhokha.",
+    "featured_products": "Imikhiqizo efakiwe",
+    "filters": "Izihlungi",
+    "grid_view": {
+      "default_view": "Okuzenzakalelayo",
+      "grid_fieldset": "Igridi yekholomu",
+      "single_item": "Okukodwa",
+      "zoom_out": "Hlehlisa"
+    },
+    "inventory_low_stock_show_count": {
+      "one": "{{ count }} kusele",
+      "other": "{{ count }} kusele"
+    },
+    "inventory_low_stock": "Isitoko esincane",
+    "inventory_in_stock": "Kukhona esitokweni",
+    "inventory_out_of_stock": "Akukho esitokweni",
+    "item_count": {
+      "one": "Into engu-{{ count }}",
+      "other": "Izinto ezingu-{{ count }}"
+    },
+    "language": "Ulimi",
+    "localization_region_and_language": "Isifunda nolimi",
+    "no_products_found": "Ayikho imikhiqizo etholakele.",
+    "no_results_found": "Ayikho imiphumela etholakele",
+    "page_placeholder_title": "Isihloko sekhasi",
+    "page_placeholder_content": "Khetha ikhasi ukuze ubonise okuqukethwe kwalo.",
+    "pagination": {
+      "nav_label": "Ukuzulazula kwamakhasi",
+      "previous": "Okwedlule",
+      "next": "Okulandelayo",
+      "page": "Ikhasi {{ page }}"
+    },
+    "pickup_available_at_html": "Ukulandwa kuyatholakala e<b>{{ location }}</b>",
+    "pickup_available_in": "Ukulandwa kuyatholakala, {{ pickup_time }}",
+    "pickup_not_available": "Ukulandwa okwamanje akutholakali",
+    "pickup_ready_in": "{{ pickup_time }}",
+    "powered_by": "Lesi sitolo sizosebenza nge",
+    "price": "Intengo",
+    "price_compare_at": "Qhathanisa intengo",
+    "price_from": "Kusuka ku {{ price }}",
+    "price_regular": "Intengo ejwayelekile",
+    "price_sale": "Intengo yesaphulelo",
+    "price_filter_html": "Intengo ephakeme kakhulu ngu {{ price }}",
+    "product_image": "Isithombe somkhiqizo",
+    "product_information": "Ulwazi lomkhiqizo",
+    "product_total": "Ingqikithi yomkhiqizo",
+    "product_badge_sold_out": "Kuphelile",
+    "product_badge_sale": "Isaphulelo",
+    "product_card_placeholder": "Isihloko somkhiqizo",
+    "placeholder_image": "Isithombe esibambelelayo",
+    "quantity": "Inani",
+    "recently_viewed_products": "Okubukwe muva nje",
+    "reviews": "izibuyekezo",
+    "read_more": "Funda kabanzi...",
+    "search_input_label": "Sesha",
+    "search_input_placeholder": "Sesha",
+    "search": "Sesha",
+    "search_results": "Imiphumela yosesho",
+    "search_results_label": "Imiphumela yosesho",
+    "search_results_no_results": "Ayikho imiphumela etholakele ye \"{{ terms }}\". Zama ukusesha okunye.",
+    "search_results_no_results_check_spelling": "Ayikho imiphumela etholakele ye \"{{ terms }}\". Hlola isipelingi noma sebenzisa igama noma ibinzana elihlukile.",
+    "search_results_resource_articles": "Okuthunyelwe kubhulogi",
+    "search_results_resource_collections": "Amaqoqo",
+    "search_results_resource_pages": "Amakhasi",
+    "search_results_resource_products": "Imikhiqizo",
+    "search_results_resource_products_count": {
+      "one": "{{ count }} umkhiqizo",
+      "other": "{{ count }} imikhiqizo"
+    },
+    "search_results_resource_queries": "Iziphakamiso zosesho",
+    "search_results_view_all": "Buka konke",
+    "search_results_view_all_button": "Buka konke",
+    "seller_note": "Imiyalo ekhethekile",
+    "shipping_policy": "Ukuthunyelwa kubalwa lapho ukhokha.",
+    "shipping_policy_html": "<a href=\"{{ link }}\">Ukuthunyelwa</a> kubalwa lapho ukhokha.",
+    "store_owner_link_html": "Ingabe ungumnikazi wesitolo? <a href=\"{{ link }}\">Ngena lapha</a>",
+    "taxes_at_checkout_shipping_at_checkout_with_policy_html": "Izintela, izaphulelo kanye ne <a href=\"{{ link }}\">ukuthunyelwa</a> kubalwa lapho ukhokha.",
+    "taxes_at_checkout_shipping_at_checkout_with_policy_without_discounts_html": "Izintela kanye ne <a href=\"{{ link }}\">ukuthunyelwa</a> kubalwa lapho ukhokha.",
+    "taxes_at_checkout_shipping_at_checkout_without_policy": "Izintela, izaphulelo kanye nokuthunyelwa kubalwa lapho ukhokha.",
+    "taxes_at_checkout_shipping_at_checkout_without_policy_without_discounts": "Izintela kanye nokuthunyelwa kubalwa lapho ukhokha.",
+    "taxes_included": "Izintela zifakiwe.",
+    "taxes_included_shipping_at_checkout_with_policy_html": "Izintela zifakiwe. Izaphulelo kanye ne <a href=\"{{ link }}\">ukuthunyelwa</a> kubalwa lapho ukhokha.",
+    "taxes_included_shipping_at_checkout_with_policy_without_discounts_html": "Izintela zifakiwe. Ukuthunyelwa kubalwa lapho ukhokha.",
+    "taxes_included_shipping_at_checkout_without_policy": "Intela ifakiwe. Izaphulelo nokuthunyelwa kubalwa lapho ukhokha.",
+    "taxes_included_shipping_at_checkout_without_policy_without_discounts": "Intela ifakiwe. Ukuthunyelwa kubalwa lapho ukhokha.",
+    "unavailable": "Akutholakali",
+    "use_fewer_filters_html": "Zama ukusebenzisa izihlungi ezimbalwa, noma <a class=\"{{ class }}\" href=\"{{ link }}\">susa zonke izihlungi</a>.",
+    "view_more_details": "Buka imininingwane eyengeziwe",
+    "your_cart_is_empty": "Inqola yakho ayinalutho",
+    "product_count": "Inani lemikhiqizo",
+    "errors": "Amaphutha",
+    "wrong_password": "Iphasiwedi engalungile",
+    "recipient_form_send_to": "Thumela ku",
+    "recipient_form_email_label": "I-imeyili yomamukeli",
+    "recipient_form_email_label_my_email": "I-imeyili yami",
+    "recipient_form_email_address": "Ikheli le-imeyili lomamukeli",
+    "recipient_form_name_label": "Igama lomamukeli (ongakukhetha)",
+    "recipient_form_message": "Umlayezo (ongakukhetha)",
+    "recipient_form_characters_used": "{{ used_chars }}/{{ max_chars }} izinhlamvu ezisetshenzisiwe",
+    "recipient_form_send_on": "YYYY-MM-DD",
+    "recipient_form_send_on_label": "Thumela ngosuku (ongakukhetha)",
+    "recipient_form_fields_visible": "Izinkambu zefomu lomamukeli sezibonakala",
+    "recipient_form_fields_hidden": "Izinkambu zefomu lomamukeli manje zifihliwe",
+    "recipient_form_error": "Kube nephutha ekuhanjisweni kwefomu",
+    "product_custom_property_character_count": "{{ used_chars }}/{{ max_chars }} izinhlamvu ezisetshenzisiwe"
+  },
+  "fields": {
+    "separator": "ku"
+  },
+  "gift_cards": {
+    "issued": {
+      "how_to_use_gift_card": "Sebenzisa ikhodi yekhadi lesipho ku-inthanethi noma ikhodi ye-QR esitolo",
+      "title": "Nansi ibhalansi yekhadi lakho lesipho le-{{ value }} le-{{ shop }}!",
+      "subtext": "Ikhadi lakho lesipho",
+      "shop_link": "Vakashela isitolo esiku-inthanethi",
+      "add_to_apple_wallet": "Faka ku-Apple Wallet",
+      "qr_image_alt": "Ikhodi ye-QR — skena ukuze usebenzise ikhadi lesipho",
+      "copy_code": "Kopisha ikhodi yekhadi lesipho",
+      "expiration_date": "Iphelelwa yisikhathi {{ expires_on }}",
+      "copy_code_success": "Ikhodi ikopishwe ngempumelelo",
+      "expired": "Iphelelwe yisikhathi"
+    }
+  },
+  "placeholders": {
+    "password": "Iphasiwedi",
+    "search": "Sesha",
+    "product_title": "Isihloko somkhiqizo",
+    "collection_title": "Isihloko seqoqo",
+    "blog_posts": "Okuthunyelwe Kwebhulogi",
+    "blog_post_title": "Isihloko",
+    "blog_post_author": "Umbhali",
+    "blog_post_date": "Usuku",
+    "blog_post_description": "Ingcaphuno yokuqukethwe okuthunyelwe kubhulogi lakho"
+  },
+  "products": {
+    "product": {
+      "add_to_cart": "Faka enqoleni",
+      "adding_to_cart": "Iyafaka...",
+      "added_to_cart": "Kufakiwe enqoleni",
+      "add_to_cart_error": "Iphutha ekufakeni enqoleni",
+      "quantity_error_max": "Le nto inenani eliphezulu elingu-{{ maximum }}",
+      "sold_out": "Kuphelile",
+      "unavailable": "Akutholakali",
+      "quantity": "Inani",
+      "quantity_increments": "Ukukhushulwa kwe-{{ increment }}",
+      "quantity_minimum": "Ubuncane be-{{ minimum }}",
+      "quantity_maximum": "Ubukhulu be-{{ maximum }}",
+      "in_cart": "ekalishini",
+      "from": "Kusuka",
+      "per_person_sharing": "umuntu ngamunye owabelanayo",
+      "single": "okukodwa",
+      "per_room": "ngegumbi ngalinye",
+      "per_night": "ngobusuku ngabunye"
+    },
+    "general": {
+      "no_video": "Ayikho ividiyo etholakalayo yalo mkhiqizo."
+    }
+  },
+  "general": {
+    "redirecting": "Iqondisa kabusha endaweni..."
+  },
+  "collections": {
+    "no_products": "Azikho izindawo ezitholakalayo okwamanje."
+  },
+  "travel_search": {
+    "title": "Thola Indawo Yakho Ephelele Yokuhlala",
+    "subtitle": "Sesha izindawo zokuhlala ngendawo, izinsuku, nezivakashi",
+    "placeholder": "Uyaphi?",
+    "dates_label": "Izinsuku zokuhamba",
+    "check_in": "Ukungena",
+    "check_out": "Ukuphuma",
+    "guests": "Izivakashi",
+    "search_button": "Sesha Izindawo",
+    "searching": "Iyasesha...",
+    "no_results": "Azikho izindawo noma izindawo ezitholakele",
+    "error": "Kube nephutha. Sicela uzame futhi.",
+    "destinations": "Izindawo Okuya Kuzo",
+    "properties": "Izindawo",
+    "select_checkin": "Khetha usuku lwakho lokungena",
+    "select_checkout": "Khetha usuku lwakho lokuphuma",
+    "hover_for_nights": "Hambisa isikhombi phezu kwezinsuku ukuze ubone inani lobusuku",
+    "one_night": "Ubusuku obu-1",
+    "nights_count": "Ubusuku obu-{{ count }}",
+    "guest_options": {
+      "one_adult": "Umuntu omdala o-1, Igumbi eli-1",
+      "two_adults": "Abantu abadala aba-2, Igumbi eli-1",
+      "three_adults": "Abantu abadala aba-3, Igumbi eli-1",
+      "four_adults_one": "Abantu abadala aba-4, Igumbi eli-1",
+      "four_adults_two": "Abantu abadala aba-4, Amagumbi ama-2",
+      "six_adults_two": "Abantu abadala aba-6, Amagumbi ama-2",
+      "six_adults_three": "Abantu abadala aba-6, Amagumbi ama-3"
+    }
+  },
+  "wetu": {
+    "property": {
+      "total_rooms": "Inani Lamagumbi",
+      "perfect_for": "Ilungele",
+      "key_details": "Imininingwane Ebalulekile",
+      "property_facilities": "Izinsiza Zendawo",
+      "available_services": "Izinsizakalo Ezitholakalayo",
+      "check_times": "Ukungena Nokuphuma",
+      "check_in": "Isikhathi Sokungena",
+      "check_out": "Isikhathi Sokuphuma",
+      "languages_spoken": "Izilimi Ezikhulunywayo",
+      "contact": "Xhumana",
+      "telephone": "Ucingo",
+      "email": "I-imeyili"
+    },
+    "accommodation": {
+      "room": "Igumbi",
+      "occupancy": "Ukuhlala",
+      "guests_count": "Izivakashi eziyi-{{ count }}",
+      "adults_children": "Abadala abayi-{{ adults }}, izingane eziyi-{{ children }}",
+      "bed_configuration": "Ukuhlelwa Kwemibhede",
+      "meal_plan": "Uhlelo Lokudla",
+      "key_details": "Imininingwane Yegumbi",
+      "room_amenities": "Izinsiza Zegumbi",
+      "special_features": "Izici Ezikhethekile",
+      "room_features": "Izici Zegumbi",
+      "view": "Ukubuka",
+      "has_balcony": "Ibhalkoni Yangasese",
+      "has_jacuzzi": "I-Jacuzzi Yangasese",
+      "property": "Indawo",
+      "view_property": "Buka imininingwane ye-{{ property }}"
+    },
+    "rates": {
+      "title": "Amanani & Intengo",
+      "from": "kusukela",
+      "to": "kuya",
+      "view_details": "Buka amanani anemininingwane nokutholakala",
+      "view_full_details": "Buka Imininingwane Egcwele",
+      "special_offers": "Izipesheli",
+      "valid_from": "Kusebenza kusukela",
+      "valid_to": "Kusebenza kuze",
+      "valid_dates": "Izinsuku ezisebenzayo",
+      "terms_conditions": "Imigomo Nemibandela",
+      "per_person_sharing": "Umuntu Ngamunye Ohlanganyelayo",
+      "single_occupancy": "Ukuhlala Komuntu Oyedwa",
+      "per_room": "Igumbi Ngamunye",
+      "pricing": "Intengo",
+      "seasonal_pricing": "Amanani Esizini",
+      "room_rates": "Amanani Amagumbi",
+      "included": "Kufakiwe",
+      "conditions": "Imibandela",
+      "amenities": "Izinsiza",
+      "rates": "amanani",
+      "items": "izinto"
+    },
+    "pricing": {
+      "title": "Amanani nezipesheli",
+      "from": "Kusukela",
+      "range_note": "Amanani asukela ku-{{ min }} kuya ku-{{ max }} umuntu ngamunye ngobusuku, kuye ngohlobo lwendawo yokuhlala nesizini.",
+      "special_offers": "Izipesheli",
+      "current_offers": "Izipesheli zamanje",
+      "all_accommodation_rates": "Zonke izinketho zokuhlala namanani esizini",
+      "accommodation_options": "Izinketho zokuhlala namanani esizini",
+      "valid_dates": "Kusebenza:",
+      "terms_conditions": "Imigomo nemibandela",
+      "accommodation_rates": "Amanani Okuhlala",
+      "per_unit_night": "iyunithi ngalinye ngobusuku",
+      "per_person_night": "umuntu ngamunye ngobusuku",
+      "per_person_sharing": "Umuntu ngamunye ngobusuku, ehlanganyela",
+      "view_rates": "Buka amanani esizini",
+      "notice_title": "Ulwazi olubalulekile lwentengo",
+      "notice_text": "Wonke amanani angaphansi kokutholakala futhi angashintsha ngaphandle kwesaziso. Izimali ezengeziwe zokulondoloza kanye nezokuthutha zingase zisebenze. Sicela usithinte ukuze uthole isilinganiso esinemininingwane esihambisana nezinsuku zakho zokuhamba nezidingo zakho.",
+      "seasonal_rates": "Amanani esizini",
+      "rates_intro": "Wonke amanani akhonjiswa ngokulandelana kwesizini. Khetha isikhathi ukuze ubone amanani nemibandela enemininingwane.",
+      "rate_periods": "Izikhathi zamanani",
+      "rate_includes": "Intengo ihlanganisa",
+      "available_offers": "Izipesheli ezitholakalayo",
+      "view_details": "Buka imininingwane"
+    },
+    "videos": {
+      "heading": "Amavidiyo ahlobene"
+    },
+    "documents": {
+      "heading": "Amadokhumenti Nezinsiza",
+      "opens_new_window": "Ivula i-PDF efasiteleni elisha",
+      "other": "Amanye Amadokhumenti"
+    }
+  },
+  "sections": {
+    "collection": {
+      "empty": "Ayikho imikhiqizo etholakale kuleli qoqo.",
+      "view_all": "Buka konke"
+    },
+    "property_highlights": {
+      "name": "Okuvelele Kwendawo",
+      "collection_summary": "Iqoqo lethu liqukethe izindawo ezinhlanu ezikhethwe ngokucophelela, ngayinye ibekwe ngobuchule ukuze inikeze ukufinyelela okungenakuphikiswa ezindaweni zezilwane zasendle ezidume kakhulu eKenya futhi inikeza inani elihlanganisiwe lezindawo zokuhlala ezingama-68 ezihlotshiswe kahle.",
+      "masai_mara_detail": "Izindawo ezintathu ngaphakathi kohlelo lweMasai Mara, kuhlanganise neGovernors' Camp yethu eyinhloko eyasungulwa ngo-1972",
+      "naivasha_detail": "I-Loldia House emaphethelweni eLake Naivasha, inikeza izindawo ezahlukene kanye nemisebenzi",
+      "laikipia_detail": "I-Governors' Mugie House eLaikipia Plateau, inikeza ukufinyelela okukhethekile endaweni yasendle yasenyakatho yeKenya",
+      "experience_summary": "Kusukela ku-Great Migration edumile kuya ekuhlanganyeleni okuseduze nezilwane zasendle, ukucwiliswa kwamasiko, kanye nezinhlelo zokulondoloza, indawo ngayinye inikeza ulwazi lwangempela lwe-safari olucwengisiswe emashumini amahlanu eminyaka yokusebenza.",
+      "settings": {
+        "heading": {
+          "label": "Isihloko"
+        },
+        "description": {
+          "label": "Incazelo"
+        },
+        "button_text": {
+          "label": "Umbhalo wenkinobho"
+        },
+        "button_url": {
+          "label": "I-URL yenkinobho"
+        }
+      },
+      "presets": {
+        "property_highlights": {
+          "name": "Okuvelele Kwendawo"
+        }
+      }
+    },
+    "property_collection_highlights": {
+      "properties": "Izindawo",
+      "accommodations": "Izindawo zokuhlala",
+      "activities": "Imisebenzi",
+      "dining": "Izindawo zokudlela",
+      "wellness": "Impilo enhle",
+      "room_types": "Izinhlobo zamagumbi",
+      "dining_venues": "Ukudla",
+      "spa": "I-Spa",
+      "geography_intro": "Ibhekwe ezifundeni ezihlukile:",
+      "view_property": "Buka indawo",
+      "view_all_properties": "Buka zonke izindawo",
+      "no_properties": "Azikho izindawo ezitholakalayo"
+    },
+    "group_highlights": {
+      "unique_properties": "Izindawo Eziyingqayizivele",
+      "luxury_spaces": "Amatende Okunethezeka, Ama-Suites & Ama-Cottages",
+      "iconic_destinations": "Izindawo Ezidumile",
+      "explore": "Hlola",
+      "view_collection": "Buka iqoqo"
+    }
+  },
+  "plekify_homepage": {
+    "hero": {
+      "title": "I-Shopify Yezokuvakasha",
+      "subtitle": "idalwe e-CAPE TOWN",
+      "tagline": "Guqula ibhizinisi lakho lezokuvakasha nge-Shopify eCommerce platform kanye ne-Plekify App."
+    },
+    "intro": {
+      "paragraph_1": "I-Plekify ihlanganisa izinhlelo zakho zokuvakasha ezikhona—njenge-ResRequest noma i-Wetu—namandla e-Shopify, inkundla ehamba phambili emhlabeni ye-e-commerce.",
+      "paragraph_2": "I-Plekify isebenzisa ngokuzenzakalelayo ukudalwa nokuvuselelwa kwesitolo se-Shopify sangokwezifiso kusizindalwazi sakho, esiklanyelwe ezokuvakasha, kusetshenziswa ulwazi oluvela endaweni yakho yokubhuka ekhona."
+    },
+    "features": {
+      "own_data": {
+        "title": "Zithathele Okwakho Ukubhuka, Zithathele Okwakho Idatha",
+        "description": "Thwebula konke ukubhuka okuqondile kusizindalwazi sakho, kufaka phakathi inkokhelo. Zigcinele ukufinyelela okukhethekile kudatha yakho yezivakashi ukuze uthengise kabusha okwenziwe ngezifiso, ngenkathi uhlanganisa kalula nohlelo lwakho lwe-PMS olukhona. Umphumela: Inzuzo ephezulu evela kumakhomishini ancishisiwe kanye nebhizinisi eliphindayo."
+      },
+      "multilanguage": {
+        "title": "Ukufinyelela Kwezilimi Eziningi Ngokungenazinkinga",
+        "description": "Finyelela izihambi zomhlaba wonke ngezilimi ezingafika kwengama-20, kufaka phakathi isiNgisi, isiJalimane, isiFulentshi, isiDashi, isiNtaliyane, iSpanishi, isiPutukezi, nesiMandarin. Amathuluzi akhelwe ngaphakathi e-Shopify aphatha ukuhumusha, i-SEO, nezimali zendawo—zilungele ama-safari aphezulu nezindawo zokuhlala ezisezingeni eliphezulu eziqondise izimakethe zamazwe ngamazwe."
+      },
+      "addons": {
+        "title": "Thengisa Okuningi Ngezi-Add-Ons Nezengezo",
+        "description": "Nikeza ngemisebenzi ekhethiwe engaphezu kwamagumbi: ukwelashwa kwe-spa, ukushayela umdlalo, ukudluliselwa, ukunambitha iwayini, nokuningi. Izivakashi zengeza izengezo lapho zikhokha, zikhulisa inani elijwayelekile le-oda ngama-20-30%."
+      },
+      "marketing": {
+        "title": "Ukumaketha Okunamandla Okwakhelwe Ngaphakathi",
+        "description_1": "Vuselela futhi uxhumane ngendlela eyenziwe yaba ngeyakho namakhasimende akho angaphambilini.",
+        "description_2": "Hlukanisa futhi wenze ama-imeyili ngokuzenzakalela ngokuhlanganiswa kwe-Klaviyo.",
+        "description_3": "Buyisa izinqola ezilahlwayo, thumela ukubuyekezwa kwangemva kokuhlala, futhi usebenzise izinhlelo zokwethembeka.",
+        "description_4": "Landelela imikhankaso kuzo zonke iziteshi—isayithi lakho, i-Instagram, i-Google—kusuka kudeshibhodi eyodwa."
+      },
+      "financial": {
+        "title": "Ukucaca Kwezezimali Nokukala",
+        "description_1": "Xhuma kumageyithi afana ne-Peach Payments ukuze uthole izimali eziya ngqo ebhange lakho.",
+        "description_2": "Xhuma kalula ezinkundleni zesimanje ze-ERP ezifana ne-Acumatica Cloud ERP noma i-Oracle Netsuite.",
+        "description_3": "Ama-AirBnB angaxhuma kalula ukubalwa kwezimali ku-QuickBooks noma ku-Xero."
+      },
+      "delight": {
+        "title": "Jabulela Ukusetshenziswa Kwansuku Zonke",
+        "description": "Ukusebenziseka okunembile kwabasebenzisi abangeyona eyezobuchwepheshe, ukuhlaziywa kwesikhathi sangempela, nokusekelwa okungu-24/7. I-Shopify iyajabulisa—iyashesha, ithembekile, futhi iklanywe kahle."
+      }
+    },
+    "founder": {
+      "title": "Isungulwe YiPhayona Lokuvakasha",
+      "description": "I-Plekify idalwe ngu-Matthew Swart owasungula i-SafariNow.com ngo-1999, inkundla yokuqala yokubhuka yaseNingizimu Afrika. Funda uhambo lwakhe.",
+      "quote": "Ngidale i-Plekify ngo-2025 ngoba ngikholelwa ukuthi i-Shopify manje iyindlela ehlakaniphe kunazo zonke zokuvakasha nezokuvakasha kunoma iyiphi indawo—iyalinganiseka, ivikelekile, futhi yakhelwe inzuzo."
+    },
+    "prototypes": {
+      "heading": "Amasayithi Ayisibonelo",
+      "royal": {
+        "title": "I-The Royal Portfolio",
+        "description": "Zitholele iqoqo elikhethekile lamahhotela aphefumulelwe ukuklama, izindawo zokuhlala zikanokusho ze-safari, namavilla azimele anikeza okuhlangenwe nakho okwenziwe ngezifiso ezindaweni ezidumile zaseNingizimu Afrika.",
+        "prototype_for": "isibonelo se-theroyalportfolio.com",
+        "password": "iphasiwedi plekify",
+        "button": "Buka I-The Royal Portfolio"
+      },
+      "matetsi": {
+        "title": "I-Matetsi Victoria Falls",
+        "description": "Indawo yokucasha ekanokusho ye-safari ewina imiklomelo engu-15km yangasese yaseZambezi River eduze nendawo ye-Victoria Falls UNESCO",
+        "prototype_for": "isibonelo se-matetsivictoriafalls.com",
+        "password": "iphasiwedi plekify",
+        "button": "Buka I-Matetsi Victoria Falls"
+      },
+      "governors": {
+        "title": "Iqoqo le-Governors' Camp",
+        "description": "Iphayona lokuhlangenwe nakho kokugcina kwe-safari, osebeni loMfula iMara kusukela ngo-1972, ligxile ngokuphelele enhliziyweni yezindawo ezinhle zokubuka umdlalo.",
+        "prototype_for": "isibonelo se-governorscamp.com",
+        "password": "iphasiwedi plekify",
+        "button": "Buka Iqoqo Le-Governors'"
+      },
+      "fundu": {
+        "title": "I-Fundu Lagoon",
+        "description": "Ukunethezeka ongafanele e-Pemba Island enamabhishi acwebile nokuntywila kwezinga lomhlaba, ukuzidela kulindile!",
+        "prototype_for": "isibonelo se-fundulagoon.com",
+        "password": "iphasiwedi plekify",
+        "button": "Buka I-Fundu Lagoon"
+      }
+    },
+    "plekify_definition": {
+      "word": "ple·ki·fy",
+      "pronunciation": "/ˈplɛkɪˌfaɪ/",
+      "part_of_speech": "isenzo",
+      "forms": "(plekified, plekifying)",
+      "definition": "Ukuhlanganisa ngaphandle komthungo ukubhukha okusezingeni eliphezulu kwezokuvakasha nokusebenza kwe-e-commerce; ukuguqula izinhlelo zokubhuka zendawo eziqhekekile zibe yizinto ezihlanganisiwe, ezikusizindalwazi se-Shopify.",
+      "etymology": "Kusuka ku-Afrikaans plek (indawo) + -ify (ukwenza noma ukubangela ukuthi kube), ngokoqobo \"ukwenza indawo ibekeke\" noma \"ukwenza indawo ibhukheke ku-Shopify.\"",
+      "usage_heading": "Izibonelo Zokusetshenziswa:",
+      "usage_1": "\"Siphekifeze yonke iphothifoliyo yethu yezindawo zokuhlala ze-safari ngekota edlule.\"",
+      "usage_2": "\"Kusukela ngiphekifa, ukubhuka kwewebhusayithi yehhotela kukhule ngendlela exakile\"",
+      "related_forms": "plekification (ibizo), plekifiable (isichasiso)",
+      "synonyms": "hlela, hlanganisa, lungiselela (ukubhuka kokuvakasha)",
+      "antonyms": "hlukana, nqamula, yenza kube nzima"
+    },
+    "chatgpt": {
+      "title": "I-ChatGPT ne-AI-ilungele.",
+      "description": "Amasayithi e-Plekify ahlanganisa ngqo ne-ChatGPT. Buka futhi ulalele ukuze uthole imininingwane..."
+    },
+    "contact": {
+      "title": "Qala Namuhla",
+      "description": "Ukuqaliswa ngokwezifiso kuyatholakala ngokubonisana okuqondile nomsunguli u-Matthew Swart.",
+      "email_heading": "I-imeyili",
+      "email_address": "hello@plekify.com",
+      "whatsapp_heading": "WhatsApp",
+      "whatsapp_number": "+27 60 937 4204"
+    }
+  }
+}

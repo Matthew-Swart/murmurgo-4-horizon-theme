@@ -1,0 +1,36 @@
+{
+  "sections": {
+    "place-hero": {
+      "type": "place-hero",
+      "settings": {}
+    },
+    "place-summary-and-claim": {
+      "type": "place-summary-and-claim",
+      "settings": {}
+    },
+    "place-gallery": {
+      "type": "place-gallery",
+      "settings": {}
+    },
+    "place-amenities": {
+      "type": "place-amenities",
+      "settings": {}
+    },
+    "place-mini-map": {
+      "type": "place-mini-map",
+      "settings": {}
+    },
+    "place-jsonld": {
+      "type": "place-jsonld",
+      "settings": {}
+    }
+  },
+  "order": [
+    "place-hero",
+    "place-summary-and-claim",
+    "place-gallery",
+    "place-amenities",
+    "place-mini-map",
+    "place-jsonld"
+  ]
+}

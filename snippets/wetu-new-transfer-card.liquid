@@ -1,0 +1,549 @@
+{% comment %}
+  ============================================================================
+  WETU NEW TRANSFER CARD
+  ============================================================================
+  
+  Displays transfer/route information with:
+  - Mode (Self-Drive, Flight, Transfer)
+  - From/To locations with thumbnails
+  - Duration and distance
+  - Expandable driving directions
+  - Google Maps link
+  
+  Parameters:
+  - route: The itinerary_route metaobject
+  - wetu_legs: Array of legs
+  - wetu_pin_ids_array: Array of pin IDs
+  - wetu_handles_array: Array of handles
+  - show_directions: Boolean to show directions section
+  
+  ============================================================================
+{% endcomment %}
+
+{%- liquid
+  assign mode = route.mode.value | default: 'Transfer'
+  assign route_type = route.type.value | default: 'InterLeg'
+  assign distance = route.distance.value | default: 0 | plus: 0
+  assign duration = route.duration.value
+  assign directions = route.directions.value
+  assign points = route.points.value
+  assign label = route.label.value
+  assign vehicle = route.vehicle.value
+  assign agency = route.agency.value
+  assign reference_codes = route.reference_codes.value
+  assign via_points = route.via_points.value
+  
+  assign start_pin_id = route.start_content_entity_id.value
+  assign end_pin_id = route.end_content_entity_id.value
+  assign start_name = route.start_location.value | default: label
+  assign end_name = route.end_location.value
+  
+  # Format distance
+  if distance > 0
+    assign distance_km = distance | divided_by: 1000.0 | round: 1
+  else
+    assign distance_km = 0
+  endif
+  
+  # Find start product
+  assign start_product = nil
+  if start_pin_id != blank
+    for check_pin in wetu_pin_ids_array
+      if check_pin == start_pin_id
+        assign start_handle = wetu_handles_array[forloop.index0]
+        assign start_product = all_products[start_handle]
+        if start_name == blank
+          assign start_name = start_product.title
+        endif
+        break
+      endif
+    endfor
+  endif
+  
+  # Find end product
+  assign end_product = nil
+  if end_pin_id != blank
+    for check_pin in wetu_pin_ids_array
+      if check_pin == end_pin_id
+        assign end_handle = wetu_handles_array[forloop.index0]
+        assign end_product = all_products[end_handle]
+        if end_name == blank
+          assign end_name = end_product.title
+        endif
+        break
+      endif
+    endfor
+  endif
+  
+  # Determine if flight
+  assign is_flight = false
+  if mode contains 'Flight'
+    assign is_flight = true
+  endif
+  
+  # Get coordinates for Google Maps
+  assign start_lat = ''
+  assign start_lng = ''
+  assign end_lat = ''
+  assign end_lng = ''
+  
+  if start_product
+    assign start_position = start_product.metafields.wetu.position.value
+    if start_position
+      assign start_lat = start_position.latitude
+      assign start_lng = start_position.longitude
+    endif
+  endif
+  
+  if end_product
+    assign end_position = end_product.metafields.wetu.position.value
+    if end_position
+      assign end_lat = end_position.latitude
+      assign end_lng = end_position.longitude
+    endif
+  endif
+-%}
+
+<div class="itin-transfer {% if is_flight %}itin-transfer--flight{% endif %}">
+  {% comment %} Header with mode {% endcomment %}
+  <div class="itin-transfer__header">
+    {% if is_flight %}
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M22 2L11 13"/>
+        <path d="M22 2l-7 20-4-9-9-4 20-7z"/>
+      </svg>
+      <span>Flight</span>
+    {% else %}
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.5 2.8c-.2.5-.1 1.1.3 1.5L5 14.5c.3.3.7.5 1.2.5H8l3 3h10Z"/>
+        <circle cx="7" cy="17" r="2"/>
+        <circle cx="17" cy="17" r="2"/>
+      </svg>
+      <span>{{ mode }}</span>
+    {% endif %}
+    {% if label != blank and label != mode %}
+      <span class="itin-transfer__header-badge">{{ label }}</span>
+    {% endif %}
+    {% if reference_codes != blank %}
+      <span class="itin-transfer__header-ref">Ref: {{ reference_codes }}</span>
+    {% endif %}
+  </div>
+  
+  {% comment %} Route visualization {% endcomment %}
+  <div class="itin-transfer__route">
+    <div class="itin-transfer__points">
+      {% comment %} Start point {% endcomment %}
+      {% if start_product %}
+        <a href="{{ start_product.url }}" class="itin-transfer__point">
+          {% if start_product.featured_image %}
+            <img 
+              src="{{ start_product.featured_image | image_url: width: 80 }}"
+              alt="{{ start_name }}"
+              class="itin-transfer__thumb"
+              loading="lazy"
+            >
+          {% else %}
+            <div class="itin-transfer__thumb itin-transfer__thumb--placeholder">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="10" r="3"/>
+                <path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 7 8 11.7z"/>
+              </svg>
+            </div>
+          {% endif %}
+          <div class="itin-transfer__point-info">
+            <span class="itin-transfer__point-label">Depart</span>
+            <span class="itin-transfer__point-name">{{ start_name }}</span>
+          </div>
+        </a>
+      {% else %}
+        <div class="itin-transfer__point">
+          <div class="itin-transfer__thumb itin-transfer__thumb--placeholder">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="10" r="3"/>
+              <path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 7 8 11.7z"/>
+            </svg>
+          </div>
+          <div class="itin-transfer__point-info">
+            <span class="itin-transfer__point-label">Depart</span>
+            <span class="itin-transfer__point-name">{{ start_name }}</span>
+          </div>
+        </div>
+      {% endif %}
+      
+      {% comment %} Stats between {% endcomment %}
+      <div class="itin-transfer__stats">
+        {% if duration != blank %}
+          <span class="itin-transfer__stat">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+            {{ duration }}
+          </span>
+        {% endif %}
+        {% if distance_km > 0 %}
+          <span class="itin-transfer__stat">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 6L6 18"/>
+              <path d="M6 6l12 12"/>
+            </svg>
+            {{ distance_km }} km
+          </span>
+        {% endif %}
+      </div>
+      
+      {% comment %} End point {% endcomment %}
+      {% if end_product %}
+        <a href="{{ end_product.url }}" class="itin-transfer__point">
+          {% if end_product.featured_image %}
+            <img 
+              src="{{ end_product.featured_image | image_url: width: 80 }}"
+              alt="{{ end_name }}"
+              class="itin-transfer__thumb"
+              loading="lazy"
+            >
+          {% else %}
+            <div class="itin-transfer__thumb itin-transfer__thumb--placeholder">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="10" r="3"/>
+                <path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 7 8 11.7z"/>
+              </svg>
+            </div>
+          {% endif %}
+          <div class="itin-transfer__point-info">
+            <span class="itin-transfer__point-label">Arrive</span>
+            <span class="itin-transfer__point-name">{{ end_name }}</span>
+          </div>
+        </a>
+      {% else %}
+        <div class="itin-transfer__point">
+          <div class="itin-transfer__thumb itin-transfer__thumb--placeholder">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="10" r="3"/>
+              <path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 7 8 11.7z"/>
+            </svg>
+          </div>
+          <div class="itin-transfer__point-info">
+            <span class="itin-transfer__point-label">Arrive</span>
+            <span class="itin-transfer__point-name">{{ end_name }}</span>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+    
+    {% comment %} Meta Details {% endcomment %}
+    {% if agency != blank or vehicle != blank or via_points != blank %}
+      <div class="itin-transfer__meta" style="width: 100%; padding: 12px 0 0; border-top: 1px solid rgba(var(--color-foreground), 0.05); margin-top: 16px; font-size: 0.85rem; color: rgba(var(--color-foreground), 0.7);">
+        {% if agency != blank %}
+          <div class="itin-transfer__meta-item"><strong>{% if is_flight %}Airline{% else %}Provider{% endif %}:</strong> {{ agency }}</div>
+        {% endif %}
+        {% if vehicle != blank %}
+          <div class="itin-transfer__meta-item"><strong>{% if is_flight %}Flight{% else %}Vehicle{% endif %}:</strong> {{ vehicle }}</div>
+        {% endif %}
+        {% if via_points != blank %}
+          <div class="itin-transfer__meta-item"><strong>Via:</strong> {{ via_points }}</div>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {% comment %} Route Map Link {% endcomment %}
+    {% if points != blank or start_lat != blank %}
+      <a 
+        href="https://www.google.com/maps/dir/?api=1{% if start_lat != blank %}&origin={{ start_lat }},{{ start_lng }}{% endif %}{% if end_lat != blank %}&destination={{ end_lat }},{{ end_lng }}{% endif %}&travelmode={% if is_flight %}transit{% else %}driving{% endif %}"
+        target="_blank"
+        rel="noopener"
+        class="itin-transfer__map-link"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
+          <line x1="8" y1="2" x2="8" y2="18"/>
+          <line x1="16" y1="6" x2="16" y2="22"/>
+        </svg>
+        <span>Route Map</span>
+      </a>
+    {% endif %}
+  </div>
+  
+  {% comment %} Driving Directions (Collapsible) {% endcomment %}
+  {% if show_directions and directions != blank and is_flight == false %}
+    <details class="itin-transfer__directions">
+      <summary class="itin-transfer__directions-toggle">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+          <polyline points="10 9 9 9 8 9"/>
+        </svg>
+        <span>View Driving Directions</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="itin-transfer__chevron">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </summary>
+      <div class="itin-transfer__directions-content">
+        <div class="itin-transfer__directions-text">
+          {{ directions | newline_to_br }}
+        </div>
+        {% if start_lat != blank and end_lat != blank %}
+          <a 
+            href="https://www.google.com/maps/dir/?api=1&origin={{ start_lat }},{{ start_lng }}&destination={{ end_lat }},{{ end_lng }}&travelmode=driving"
+            target="_blank"
+            rel="noopener"
+            class="itin-transfer__google-link"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
+              <line x1="8" y1="2" x2="8" y2="18"/>
+              <line x1="16" y1="6" x2="16" y2="22"/>
+            </svg>
+            Open in Google Maps
+          </a>
+        {% endif %}
+      </div>
+    </details>
+  {% endif %}
+</div>
+
+<style>
+/* Transfer Card Styles */
+.itin-transfer {
+  background: rgba(var(--color-foreground), 0.03);
+  border: 1px solid rgba(var(--color-foreground), 0.08);
+  border-radius: 12px;
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+
+.itin-transfer--flight {
+  background: rgba(var(--color-primary-rgb, 212, 165, 116), 0.05);
+  border-color: rgba(var(--color-primary-rgb, 212, 165, 116), 0.15);
+}
+
+.itin-transfer__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: rgba(var(--color-foreground), 0.7);
+  background: rgba(var(--color-foreground), 0.02);
+  border-bottom: 1px solid rgba(var(--color-foreground), 0.05);
+}
+
+.itin-transfer--flight .itin-transfer__header {
+  color: var(--color-primary, #d4a574);
+}
+
+.itin-transfer__header-badge {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  background: rgba(var(--color-foreground), 0.1);
+  border-radius: 4px;
+  margin-left: 8px;
+}
+
+.itin-transfer__header-ref {
+  font-size: 0.7rem;
+  font-family: monospace;
+  padding: 2px 8px;
+  background: rgba(var(--color-foreground), 0.05);
+  border: 1px solid rgba(var(--color-foreground), 0.1);
+  border-radius: 4px;
+  margin-left: auto;
+}
+
+.itin-transfer__route {
+  padding: 20px 16px;
+}
+
+.itin-transfer__points {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.itin-transfer__point {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: inherit;
+  flex: 1;
+  min-width: 150px;
+}
+
+a.itin-transfer__point:hover {
+  opacity: 0.8;
+}
+
+.itin-transfer__thumb {
+  width: 50px;
+  height: 50px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.itin-transfer__thumb--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(var(--color-foreground), 0.1);
+  color: rgba(var(--color-foreground), 0.4);
+}
+
+.itin-transfer__point-info {
+  min-width: 0;
+}
+
+.itin-transfer__point-label {
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: rgba(var(--color-foreground), 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 2px;
+}
+
+.itin-transfer__point-name {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgb(var(--color-foreground));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.itin-transfer__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.itin-transfer__meta-item {
+  display: flex;
+  gap: 6px;
+}
+
+.itin-transfer__stats {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px;
+  flex-shrink: 0;
+}
+
+.itin-transfer__stat {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: rgba(var(--color-foreground), 0.6);
+  white-space: nowrap;
+}
+
+.itin-transfer__map-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 16px;
+  padding: 10px 16px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-primary, #d4a574);
+  background: rgba(var(--color-foreground), 0.03);
+  border: 1px solid rgba(var(--color-foreground), 0.08);
+  border-radius: 8px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.itin-transfer__map-link:hover {
+  background: rgba(var(--color-foreground), 0.06);
+}
+
+/* Directions */
+.itin-transfer__directions {
+  border-top: 1px solid rgba(var(--color-foreground), 0.08);
+}
+
+.itin-transfer__directions-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 16px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: rgba(var(--color-foreground), 0.7);
+  cursor: pointer;
+  list-style: none;
+}
+
+.itin-transfer__directions-toggle::-webkit-details-marker {
+  display: none;
+}
+
+.itin-transfer__chevron {
+  margin-left: auto;
+  transition: transform 0.2s ease;
+}
+
+.itin-transfer__directions[open] .itin-transfer__chevron {
+  transform: rotate(180deg);
+}
+
+.itin-transfer__directions-content {
+  padding: 0 16px 16px;
+}
+
+.itin-transfer__directions-text {
+  font-size: 0.8125rem;
+  line-height: 1.8;
+  color: rgba(var(--color-foreground), 0.7);
+  padding: 16px;
+  background: rgba(var(--color-foreground), 0.02);
+  border-radius: 8px;
+  margin-bottom: 12px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.itin-transfer__google-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--color-primary, #d4a574);
+  border-radius: 8px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.itin-transfer__google-link:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* Mobile */
+@media (max-width: 600px) {
+  .itin-transfer__points {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .itin-transfer__stats {
+    flex-direction: row;
+    justify-content: center;
+    padding: 12px 0;
+  }
+}
+</style>

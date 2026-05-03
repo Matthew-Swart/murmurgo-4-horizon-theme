@@ -1,0 +1,31 @@
+{% comment %}
+  place-mini-map.liquid
+  MapLibre point map for place pages.
+{% endcomment %}
+{% include 'murmurgo-resolve-place' %}
+
+<section class="murmurgo-place-mini-map page-width" data-section-id="{{ section.id }}">
+  {% if m_place_lat and m_place_lon %}
+    <div id="place-mini-map-{{ section.id }}"
+         class="place-mini-map__container"
+         data-lat="{{ m_place_lat }}"
+         data-lon="{{ m_place_lon }}"
+         data-name="{{ m_place_name | escape }}"
+         style="width:100%;height:300px;background:#f0f0f0;">
+      <p style="padding:1rem;">Map loading for {{ m_place_name }} ({{ m_place_lat }}, {{ m_place_lon }})</p>
+    </div>
+  {% endif %}
+</section>
+
+{% schema %}
+{
+  "name": "Place Mini Map",
+  "class": "section-place-mini-map",
+  "settings": [],
+  "presets": [
+    {
+      "name": "Place Mini Map"
+    }
+  ]
+}
+{% endschema %}

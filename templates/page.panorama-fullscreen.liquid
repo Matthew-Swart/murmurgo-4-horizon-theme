@@ -1,0 +1,49 @@
+{% comment %}
+  3D Panorama Full-Screen Template
+  
+  Template suffix: 3d-pano
+  
+  This template bypasses the standard Shopify theme layout to provide
+  an immersive full-screen panorama experience. No header, footer, or
+  navigation elements are displayed.
+  
+  The page content (created programmatically by Wetu sync) contains:
+  - Full-viewport iframe loading the remote 3D panorama
+  - Fixed overlay in bottom-left with property name linking back to product
+  
+  Usage: Assigned automatically to pages created during Wetu property sync
+  when panoramas are available.
+{% endcomment %}
+{% layout none %}
+<!doctype html>
+<html lang="{{ request.locale.iso_code }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{ page.title | escape }}</title>
+  
+  {%- if settings.favicon != blank -%}
+    <link rel="icon" type="image/png" href="{{ settings.favicon | image_url: width: 32, height: 32 }}">
+  {%- endif -%}
+  
+  {{ content_for_header }}
+  
+  <style>
+    /* Reset and full-viewport setup */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+  {{ content_for_layout }}
+</body>
+</html>

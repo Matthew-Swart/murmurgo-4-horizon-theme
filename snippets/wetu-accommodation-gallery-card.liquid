@@ -1,0 +1,460 @@
+{% comment %}
+  ============================================================================
+  WETU ACCOMMODATION GALLERY CARD SNIPPET
+  ============================================================================
+  
+  Displays a property card for the All Accommodations section.
+  Features hero image, gallery button, video/panorama buttons.
+  
+  PARAMETERS:
+  - property: The Shopify product for this property
+  - nights: Total nights at this property
+  - first_day: First day number at this property
+  - last_day: Last day number at this property
+  - content_id: WETU content entity ID
+  - index: Card index for animation
+  - show_gallery_button: Boolean
+  - show_video_button: Boolean
+  - show_panorama_button: Boolean
+  
+  ============================================================================
+{% endcomment %}
+
+{% assign features = property.metafields.wetu.features.value %}
+{% assign videos = property.metafields.wetu.videos.value %}
+{% assign panoramas = property.metafields.wetu.panoramas.value %}
+{% assign position = property.metafields.wetu.position.value %}
+{% assign star_rating = features.star_rating | default: property.metafields.wetu.star_rating.value %}
+{% assign highlights = features.highlights | default: features.property_highlights %}
+
+<article class="wetu-accommodation-card" style="--animation-delay: {{ index | minus: 1 | times: 0.1 }}s;">
+  {% comment %} Image Container {% endcomment %}
+  <div class="accommodation-card__image">
+    {% if property.featured_image %}
+      <img 
+        src="{{ property.featured_image | image_url: width: 800 }}"
+        srcset="{{ property.featured_image | image_url: width: 400 }} 400w,
+                {{ property.featured_image | image_url: width: 600 }} 600w,
+                {{ property.featured_image | image_url: width: 800 }} 800w,
+                {{ property.featured_image | image_url: width: 1200 }} 1200w"
+        sizes="(max-width: 749px) 100vw, (max-width: 1199px) 50vw, 33vw"
+        alt="{{ property.title | escape }}"
+        loading="lazy"
+        width="800"
+        height="500"
+      >
+    {% else %}
+      <div class="accommodation-card__placeholder">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+      </div>
+    {% endif %}
+    
+    {% comment %} Image Overlay with Actions {% endcomment %}
+    <div class="accommodation-card__image-overlay">
+      {% comment %} Gallery Button {% endcomment %}
+      {% if show_gallery_button and property.images.size > 1 %}
+        <button 
+          type="button"
+          class="accommodation-card__gallery-btn"
+          data-gallery-trigger="{{ property.handle }}"
+          aria-label="View gallery for {{ property.title }}"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+            <circle cx="8.5" cy="8.5" r="1.5"/>
+            <polyline points="21 15 16 10 5 21"/>
+          </svg>
+          <span>{{ property.images.size }} Photos</span>
+        </button>
+      {% endif %}
+      
+      {% comment %} Media Buttons {% endcomment %}
+      <div class="accommodation-card__media-buttons">
+        {% if show_video_button and videos and videos.size > 0 %}
+          <button 
+            type="button"
+            class="media-btn media-btn--video"
+            data-video-trigger="{{ property.handle }}"
+            aria-label="Watch video of {{ property.title }}"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <polygon points="5 3 19 12 5 21 5 3"/>
+            </svg>
+          </button>
+        {% endif %}
+        
+        {% if show_panorama_button and panoramas and panoramas.size > 0 %}
+          <button 
+            type="button"
+            class="media-btn media-btn--panorama"
+            data-panorama-trigger="{{ property.handle }}"
+            aria-label="View 360° tour of {{ property.title }}"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/>
+              <path d="M2 12h20"/>
+            </svg>
+          </button>
+        {% endif %}
+      </div>
+    </div>
+    
+    {% comment %} Location Badge {% endcomment %}
+    {% if position.destination != blank or position.region != blank %}
+      <span class="accommodation-card__location-badge">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+          <circle cx="12" cy="10" r="3"/>
+        </svg>
+        {{ position.destination | default: position.region }}
+      </span>
+    {% endif %}
+  </div>
+
+  {% comment %} Content {% endcomment %}
+  <div class="accommodation-card__content">
+    {% comment %} Meta Info {% endcomment %}
+    <div class="accommodation-card__meta">
+      <span class="stay-badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/>
+          <line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+        {% if first_day == last_day %}
+          Day {{ first_day }}
+        {% else %}
+          Days {{ first_day }}-{{ last_day }}
+        {% endif %}
+        • {{ nights }} {{ nights | pluralize: 'Night', 'Nights' }}
+      </span>
+      
+      {% comment %} Star Rating {% endcomment %}
+      {% if star_rating and star_rating > 0 %}
+        <div class="star-rating" aria-label="{{ star_rating }} star rating">
+          {% for i in (1..5) %}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="{% if i <= star_rating %}currentColor{% else %}none{% endif %}" stroke="currentColor" stroke-width="2">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    {% comment %} Title {% endcomment %}
+    <h3 class="accommodation-card__title">
+      <a href="{{ property.url }}">{{ property.title }}</a>
+    </h3>
+
+    {% comment %} Description Excerpt {% endcomment %}
+    {% if property.description != blank %}
+      <p class="accommodation-card__excerpt">
+        {{ property.description | strip_html | truncatewords: 25 }}
+      </p>
+    {% endif %}
+
+    {% comment %} Quick Highlights {% endcomment %}
+    {% if highlights and highlights.size > 0 %}
+      <ul class="accommodation-card__highlights">
+        {% for highlight in highlights limit: 3 %}
+          <li>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+            </svg>
+            {{ highlight }}
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    {% comment %} Actions {% endcomment %}
+    <div class="accommodation-card__actions">
+      <a href="{{ property.url }}" class="btn btn--primary">
+        View Property
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+      </a>
+    </div>
+  </div>
+
+  {% comment %} Hidden Gallery Source for Lightbox {% endcomment %}
+  {% if property.images.size > 0 %}
+    <div class="wetu-gallery-source" id="gallery-{{ property.handle }}" hidden aria-hidden="true">
+      {% for image in property.images %}
+        <img 
+          src="{{ image | image_url: width: 1600 }}" 
+          alt="{{ image.alt | default: property.title | escape }}"
+          data-caption="{{ image.alt | escape }}"
+        >
+      {% endfor %}
+    </div>
+  {% endif %}
+</article>
+
+<style>
+  .wetu-accommodation-card {
+    background: var(--color-background);
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    animation: fadeInUp 0.5s ease-out both;
+    animation-delay: var(--animation-delay, 0s);
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Image Container */
+  .accommodation-card__image {
+    position: relative;
+    aspect-ratio: 16/10;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--color-foreground) 5%, transparent);
+  }
+
+  .accommodation-card__image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+  }
+
+  .wetu-accommodation-card:hover .accommodation-card__image img {
+    transform: scale(1.05);
+  }
+
+  .accommodation-card__placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: color-mix(in srgb, var(--color-foreground) 30%, transparent);
+  }
+
+  /* Image Overlay */
+  .accommodation-card__image-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 50%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 16px;
+  }
+
+  .wetu-accommodation-card:hover .accommodation-card__image-overlay {
+    opacity: 1;
+  }
+
+  /* Gallery Button */
+  .accommodation-card__gallery-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: rgba(255,255,255,0.95);
+    color: #1a1a1a;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    align-self: flex-start;
+  }
+
+  .accommodation-card__gallery-btn:hover {
+    background: white;
+    transform: translateY(-2px);
+  }
+
+  /* Media Buttons */
+  .accommodation-card__media-buttons {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    display: flex;
+    gap: 8px;
+  }
+
+  .media-btn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.5);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+    transition: all 0.2s ease;
+  }
+
+  .media-btn:hover {
+    background: var(--color-primary);
+    transform: scale(1.1);
+  }
+
+  /* Location Badge */
+  .accommodation-card__location-badge {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    background: rgba(0,0,0,0.6);
+    color: white;
+    font-size: 0.8rem;
+    font-weight: 500;
+    border-radius: 20px;
+    backdrop-filter: blur(4px);
+  }
+
+  /* Content */
+  .accommodation-card__content {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex-grow: 1;
+  }
+
+  /* Meta */
+  .accommodation-card__meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .stay-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--color-primary);
+  }
+
+  .stay-badge svg {
+    flex-shrink: 0;
+  }
+
+  .star-rating {
+    display: flex;
+    gap: 2px;
+    color: #f59e0b;
+  }
+
+  /* Title */
+  .accommodation-card__title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  .accommodation-card__title a {
+    color: var(--color-foreground);
+    text-decoration: none;
+    transition: color 0.2s ease;
+  }
+
+  .accommodation-card__title a:hover {
+    color: var(--color-primary);
+  }
+
+  /* Excerpt */
+  .accommodation-card__excerpt {
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: color-mix(in srgb, var(--color-foreground) 70%, transparent);
+  }
+
+  /* Highlights */
+  .accommodation-card__highlights {
+    margin: 8px 0 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .accommodation-card__highlights li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    color: var(--color-foreground);
+  }
+
+  .accommodation-card__highlights svg {
+    flex-shrink: 0;
+    color: var(--color-primary);
+  }
+
+  /* Actions */
+  .accommodation-card__actions {
+    margin-top: auto;
+    padding-top: 16px;
+    border-top: 1px solid var(--color-border);
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .accommodation-card__actions .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+  }
+
+  .accommodation-card__actions .btn--primary {
+    background: var(--color-primary);
+    color: var(--color-background);
+    border: none;
+  }
+
+  .accommodation-card__actions .btn--primary:hover {
+    opacity: 0.9;
+    gap: 12px;
+  }
+
+  /* Hidden gallery source */
+  .wetu-gallery-source {
+    display: none;
+  }
+</style>
+

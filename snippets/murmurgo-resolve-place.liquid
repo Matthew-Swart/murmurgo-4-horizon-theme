@@ -1,0 +1,48 @@
+{% comment %}
+  murmurgo-resolve-place.liquid
+  Unified data resolver for all Murmurgo place page templates.
+  Include at the top of each section: {% include 'murmurgo-resolve-place' %}
+  Exposes normalized m_* variables in the calling section scope.
+{% endcomment %}
+
+{% assign murmurgo_place = page.metafields.murmurgo.place_ref.value %}
+{% assign murmurgo_polygon = page.metafields.murmurgo.polygon_ref.value %}
+
+{% if murmurgo_place %}
+  {% assign m_place_name = murmurgo_place.name | default: page.title %}
+  {% assign m_place_tagline = murmurgo_place.tagline | default: '' %}
+  {% assign m_place_lat = murmurgo_place.lat %}
+  {% assign m_place_lon = murmurgo_place.lon %}
+  {% assign m_place_country = murmurgo_place.country_iso %}
+  {% assign m_place_type = murmurgo_place.primary_type %}
+  {% assign m_place_tier = murmurgo_place.quality_tier %}
+  {% assign m_place_status = murmurgo_place.status %}
+  {% assign m_place_price = murmurgo_place.price_band %}
+  {% assign m_place_rating = murmurgo_place.rating_avg %}
+  {% assign m_place_rating_count = murmurgo_place.rating_count %}
+  {% assign m_place_ai_snippet = murmurgo_place.ai_snippet %}
+  {% assign m_place_description = murmurgo_place.description %}
+  {% assign m_place_claim = murmurgo_place.claim_state %}
+  {% assign m_place_hero = murmurgo_place.hero_image_ref.value %}
+  {% assign m_place_gallery = murmurgo_place.gallery_refs.value %}
+  {% assign m_place_amenities = murmurgo_place.amenity_flags.value %}
+  {% assign m_place_check_in = murmurgo_place.check_in_time %}
+  {% assign m_place_check_out = murmurgo_place.check_out_time %}
+  {% assign m_place_slug = murmurgo_place.slug %}
+  {% assign m_place_canonical = murmurgo_place.canonical_url %}
+  {% assign m_place_region = murmurgo_place.region_polygon_ref.value %}
+  {% assign m_place_park = murmurgo_place.park_polygon_ref.value %}
+{% endif %}
+
+{% if murmurgo_polygon %}
+  {% assign m_poly_name = murmurgo_polygon.name | default: page.title %}
+  {% assign m_poly_slug = murmurgo_polygon.slug %}
+  {% assign m_poly_tier = murmurgo_polygon.tier %}
+  {% assign m_poly_country = murmurgo_polygon.country_iso %}
+  {% assign m_poly_centroid_lat = murmurgo_polygon.centroid_lat %}
+  {% assign m_poly_centroid_lon = murmurgo_polygon.centroid_lon %}
+  {% assign m_poly_bbox = murmurgo_polygon.bbox.value %}
+  {% assign m_poly_geometry = murmurgo_polygon.geometry_inline.value %}
+  {% assign m_poly_geo_url = murmurgo_polygon.geometry_simplified_url %}
+  {% assign m_poly_area = murmurgo_polygon.area_km2 %}
+{% endif %}

@@ -1,0 +1,117 @@
+{% style %}
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Inter:wght@300;400;500&display=swap');
+  body { background-color: #fff !important; }
+{% endstyle %}
+
+<div class="plekify-v6">
+  <section class="plekify-v6-hero" id="hero">
+    {%- if section.settings.eyebrow != blank -%}
+      <span class="plekify-v6-hero__eyebrow">{{ section.settings.eyebrow }}</span>
+    {%- endif -%}
+
+    <h1 class="plekify-v6-hero__heading">
+      {{- section.settings.headline -}}
+      {%- if section.settings.headline_italic != blank -%}
+        <br><em>{{ section.settings.headline_italic }}</em>
+      {%- endif -%}
+    </h1>
+
+    {%- if section.settings.subheadline != blank -%}
+      <p class="plekify-v6-hero__lead">{{ section.settings.subheadline }}</p>
+    {%- endif -%}
+
+  </section>
+</div>
+
+{% stylesheet %}
+  .plekify-v6 {
+    font-family: 'Inter', sans-serif;
+    font-weight: 300;
+    color: #1a1a1a;
+    background: #fff;
+    max-width: 940px;
+    margin: 0 auto;
+    padding: 0 2rem 4rem;
+  }
+
+  .plekify-v6-hero {
+    padding: 1rem 0 2rem;
+  }
+
+  .plekify-v6-hero__eyebrow {
+    font-size: 10px;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: #888;
+    font-weight: 400;
+  }
+
+  .plekify-v6-hero__heading {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 300;
+    font-size: clamp(38px, 5vw, 60px);
+    line-height: 1.08;
+    letter-spacing: -.01em;
+    color: #111;
+    margin: 1.1rem 0 1.4rem;
+  }
+
+  .plekify-v6-hero__heading em {
+    font-style: italic;
+    color: #555;
+  }
+
+  .plekify-v6-hero__lead {
+    font-size: 15px;
+    line-height: 1.8;
+    color: #444;
+    font-weight: 300;
+    max-width: 620px;
+  }
+
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Plekify V6 Hero",
+  "tag": "section",
+  "class": "plekify-v6-hero-section",
+  "limit": 1,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Hero content"
+    },
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Eyebrow",
+      "default": "Travel commerce · AI itinerary design · Built on Shopify"
+    },
+    {
+      "type": "text",
+      "id": "headline",
+      "label": "Headline",
+      "default": "Design. Present. Transact."
+    },
+    {
+      "type": "text",
+      "id": "headline_italic",
+      "label": "Headline italic line",
+      "default": "On your own domain."
+    },
+    {
+      "type": "textarea",
+      "id": "subheadline",
+      "label": "Subheadline",
+      "default": "Plekify does two things that no single platform has done before. It designs and enhances travel itineraries using a governed pipeline of purpose-built AI agents — and it publishes those itineraries to a Shopify storefront where guests can view, decide, and pay without leaving the operator's own domain. The AI designs the journey. Shopify sells it. Everything already in use keeps running."
+    }
+  ],
+  "presets": [
+    {
+      "name": "Plekify V6 Hero",
+      "category": "Plekify"
+    }
+  ]
+}
+{% endschema %}

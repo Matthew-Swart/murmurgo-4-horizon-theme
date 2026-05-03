@@ -1,0 +1,3452 @@
+/* ============================================================================
+   WETU FULLSCREEN MAP V2 - SPLIT LAYOUT
+   ============================================================================
+   
+   Desktop: 30% timeline (left) | 70% map (right) - white/grey minimalist
+   Mobile: 50% map (top) | 50% timeline (bottom)
+   
+   Color palette:
+   - Primary text: #333333
+   - Secondary text: #666666
+   - Muted text: #999999
+   - Border/pin lines: #e5e5e5
+   - Card background: #ffffff
+   - Panel background: #f5f5f5
+   - Map overlay icons: white
+   
+   ============================================================================ */
+
+/* Hide default Shopify header (except unified nav strip) and footer on this fullscreen template */
+body:has(.wetu-fullscreen-map-v2) header.header,
+body:has(.wetu-fullscreen-map-v2) .header-wrapper,
+body:has(.wetu-fullscreen-map-v2) .header-section,
+body:has(.wetu-fullscreen-map-v2) .header-announcements,
+body:has(.wetu-fullscreen-map-v2) .shopify-section-group-footer-group,
+body:has(.wetu-fullscreen-map-v2) footer.footer,
+body.template-product.template-product-wetu-itinerary-map header.header,
+body.template-product.template-product-wetu-itinerary-map .header-wrapper,
+body.template-product.template-product-wetu-itinerary-map .header-section,
+body.template-product.template-product-wetu-itinerary-map .header-announcements,
+body.template-product.template-product-wetu-itinerary-map .shopify-section-group-footer-group,
+body.template-product.template-product-wetu-itinerary-map footer.footer {
+  display: none !important;
+}
+
+/* Ensure unified nav strip is visible on itinerary map */
+body:has(.wetu-fullscreen-map-v2) .unified-nav-strip,
+body:has(.wetu-fullscreen-map-v2) .section-unified-nav-strip,
+body.template-product.template-product-wetu-itinerary-map .unified-nav-strip,
+body.template-product.template-product-wetu-itinerary-map .section-unified-nav-strip {
+  display: block !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 10001 !important;
+  background: rgba(0, 0, 0, 0.95) !important;
+}
+
+/* Keep header group visible but only show nav strip */
+body:has(.wetu-fullscreen-map-v2) #header-group,
+body:has(.wetu-fullscreen-map-v2) .shopify-section-group-header-group,
+body.template-product.template-product-wetu-itinerary-map #header-group,
+body.template-product.template-product-wetu-itinerary-map .shopify-section-group-header-group {
+  display: block !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 10000 !important;
+  height: auto !important;
+  background: transparent !important;
+}
+
+body:has(.wetu-fullscreen-map-v2) {
+  overflow: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* ============================================================================
+   BASE CONTAINER - SPLIT LAYOUT
+   ============================================================================ */
+
+/* CSS variable for unified nav strip height (set by JS or use default) */
+:root {
+  --unified-nav-strip-height: 36px;
+}
+
+.wetu-fullscreen-map-v2 {
+  position: fixed;
+  top: var(--unified-nav-strip-height);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: calc(100vh - var(--unified-nav-strip-height));
+  height: calc(100dvh - var(--unified-nav-strip-height));
+  z-index: 9999;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+  background: #f5f5f5;
+}
+
+/* ============================================================================
+   MAP SECTION - RIGHT 70% ON DESKTOP
+   ============================================================================ */
+
+.wetu-fullscreen-map-v2__map-section {
+  position: relative;
+  flex: 0 0 70%;
+  width: 70%;
+  height: 100%;
+  order: 2; /* Map on right */
+  background: #1a1a2e;
+}
+
+.wetu-fullscreen-map-v2__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.wetu-fullscreen-map-v2__loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  color: #fff;
+  font-size: 14px;
+  z-index: 10;
+}
+
+.wetu-fullscreen-map-v2__loading .loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================================================
+   SHOPIFY CONTROLS OVERLAY ON MAP - WHITE ICONS (Horizon Style)
+   ============================================================================ */
+
+.wetu-fullscreen-map-v2__map-controls-overlay {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* White icon style - matching Horizon theme header overlay */
+.wetu-fullscreen-map-v2__map-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  text-decoration: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  /* Text shadow for visibility over any map */
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+}
+
+.wetu-fullscreen-map-v2__map-icon:hover {
+  opacity: 0.8;
+  transform: scale(1.05);
+}
+
+.wetu-fullscreen-map-v2__map-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* Cart icon with count badge */
+.wetu-fullscreen-map-v2__map-cart {
+  position: relative;
+}
+
+.wetu-fullscreen-map-v2__map-cart-count {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  background: #fff;
+  border-radius: 8px;
+  color: #333;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+  filter: none;
+}
+
+/* Language selector on map overlay */
+.wetu-fullscreen-map-v2__localization--map {
+  position: relative;
+}
+
+.wetu-fullscreen-map-v2__localization--map select,
+.wetu-fullscreen-map-v2__localization--map .dropdown-localization {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  color: #fff;
+  padding: 4px 8px;
+  font-size: 13px;
+  cursor: pointer;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.wetu-fullscreen-map-v2__localization--map select:focus,
+.wetu-fullscreen-map-v2__localization--map .dropdown-localization:focus {
+  outline: 2px solid rgba(255, 255, 255, 0.5);
+  outline-offset: 2px;
+}
+
+/* Style the dropdown-localization component for map overlay */
+.wetu-fullscreen-map-v2__localization--map .dropdown-localization__button {
+  background: transparent !important;
+  border: none !important;
+  color: #fff !important;
+  padding: 4px 8px !important;
+  font-size: 13px;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+}
+
+.wetu-fullscreen-map-v2__localization--map .dropdown-localization__button:hover {
+  opacity: 0.8;
+}
+
+.wetu-fullscreen-map-v2__localization--map .dropdown-localization__button svg {
+  color: #fff !important;
+}
+
+/* Logo overlay - HIDDEN by default */
+.wetu-fullscreen-map-v2__logo-overlay {
+  display: none;
+}
+
+/* Map controls */
+.wetu-fullscreen-map-v2__controls {
+  position: absolute;
+  bottom: 24px;
+  left: 24px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wetu-fullscreen-map-v2__control {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #e5e5e5;
+  border-radius: 0;
+  color: #333;
+  cursor: pointer;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.wetu-fullscreen-map-v2__control:hover {
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.wetu-fullscreen-map-v2__control svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* View Toggle Wrapper - positioned at top center of map */
+.wetu-fullscreen-map-v2__view-toggle-wrapper {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 150;
+}
+
+/* Override the floating toggle's fixed positioning when inside map wrapper */
+.wetu-fullscreen-map-v2__view-toggle-wrapper .view-toggle--floating {
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  transform: none !important;
+}
+
+/* ============================================================================
+   TIMELINE SECTION - LEFT 30% ON DESKTOP
+   ============================================================================ */
+
+.wetu-fullscreen-map-v2__timeline-section {
+  flex: 0 0 30%;
+  width: 30%;
+  height: 100%;
+  background: #f5f5f5;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-right: 1px solid #e5e5e5;
+  order: 1; /* Timeline on left */
+}
+
+/* Journey info card - scrolls with timeline - full width */
+.wetu-fullscreen-map-v2__journey-card {
+  margin: 0; /* Full width - no margin */
+  padding: 16px;
+  background: #fff;
+  border: none;
+  border-bottom: 1px solid #e5e5e5;
+  transition: all 0.3s ease;
+  flex-shrink: 0; /* Prevent compression in flex container */
+}
+
+.wetu-fullscreen-map-v2__journey-card--clickable {
+  cursor: pointer;
+}
+
+.wetu-fullscreen-map-v2__journey-card--clickable:hover,
+.wetu-fullscreen-map-v2__journey-card--clickable:focus {
+  border-color: #333;
+  box-shadow: 
+    0 0 0 1px #333,
+    0 0 15px rgba(51, 51, 51, 0.15),
+    0 4px 20px rgba(0, 0, 0, 0.1);
+  outline: none;
+}
+
+.wetu-fullscreen-map-v2__journey-card--clickable:active {
+  transform: scale(0.99);
+}
+
+.wetu-fullscreen-map-v2__journey-card--active {
+  border-color: #333;
+  box-shadow: 
+    0 0 0 2px #333,
+    0 0 20px rgba(51, 51, 51, 0.2);
+}
+
+.wetu-fullscreen-map-v2__title {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: #333333;
+}
+
+.wetu-fullscreen-map-v2__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #666666;
+}
+
+.wetu-fullscreen-map-v2__divider {
+  color: #ccc;
+}
+
+/* ============================================================================
+   BOOKING SECTION - Price, Quantity & Book Button (At End of Journey)
+   ============================================================================ */
+
+.wetu-fullscreen-map-v2__booking-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px 16px;
+  margin-top: 16px;
+  border-top: 1px solid #e5e5e5;
+  background: #ffffff;
+}
+
+/* Price Display - Per Person (smaller) */
+.wetu-fullscreen-map-v2__price-display {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.wetu-fullscreen-map-v2__price {
+  font-family: var(--font-accent--family, -apple-system, BlinkMacSystemFont, sans-serif);
+  font-size: 14px;
+  font-weight: 600;
+  color: #666666;
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+
+.wetu-fullscreen-map-v2__price-label {
+  font-size: 11px;
+  color: #888888;
+  font-weight: 400;
+}
+
+/* Quantity Selector Row */
+.wetu-fullscreen-map-v2__quantity-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wetu-fullscreen-map-v2__quantity-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #666666;
+}
+
+.wetu-fullscreen-map-v2__quantity-selector {
+  display: flex;
+  align-items: center;
+  border: 1px solid #d1d1d1;
+  border-radius: 3px;
+  background: #ffffff;
+}
+
+.wetu-fullscreen-map-v2__quantity-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #333333;
+  transition: background 0.2s ease;
+}
+
+.wetu-fullscreen-map-v2__quantity-btn:hover {
+  background: #f5f5f5;
+}
+
+.wetu-fullscreen-map-v2__quantity-btn:active {
+  background: #eeeeee;
+}
+
+.wetu-fullscreen-map-v2__quantity-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.wetu-fullscreen-map-v2__quantity-input {
+  width: 36px;
+  height: 28px;
+  text-align: center;
+  border: none;
+  border-left: 1px solid #d1d1d1;
+  border-right: 1px solid #d1d1d1;
+  font-size: 13px;
+  font-weight: 600;
+  color: #333333;
+  -moz-appearance: textfield;
+}
+
+.wetu-fullscreen-map-v2__quantity-input::-webkit-outer-spin-button,
+.wetu-fullscreen-map-v2__quantity-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.wetu-fullscreen-map-v2__quantity-input:focus {
+  outline: none;
+  background: #fafafa;
+}
+
+/* Total Row - Larger, prominent */
+.wetu-fullscreen-map-v2__total-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.wetu-fullscreen-map-v2__total-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #666666;
+}
+
+.wetu-fullscreen-map-v2__total-price {
+  font-family: var(--font-accent--family, -apple-system, BlinkMacSystemFont, sans-serif);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  letter-spacing: -0.02em;
+}
+
+/* Book Now Button - Horizon Theme Style */
+.wetu-fullscreen-map-v2__book-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 28px;
+  background: #333333;
+  border: none;
+  border-radius: 0;
+  font-family: var(--font-body--family, -apple-system, BlinkMacSystemFont, sans-serif);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #ffffff;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.2s ease, opacity 0.2s ease;
+}
+
+.wetu-fullscreen-map-v2__book-btn:hover {
+  background: #1a1a1a;
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.wetu-fullscreen-map-v2__book-btn:active {
+  opacity: 0.9;
+}
+
+/* Responsive adjustments for booking section */
+@media (max-width: 480px) {
+  .wetu-fullscreen-map-v2__booking-section {
+    padding: 20px 16px;
+    gap: 14px;
+  }
+  
+  .wetu-fullscreen-map-v2__price-display {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 4px;
+  }
+  
+  .wetu-fullscreen-map-v2__price {
+    font-size: 14px;
+  }
+  
+  .wetu-fullscreen-map-v2__total-price {
+    font-size: 1.5rem;
+  }
+  
+  .wetu-fullscreen-map-v2__book-btn {
+    width: 100%;
+    padding: 14px 24px;
+    font-size: 13px;
+  }
+  
+  .wetu-fullscreen-map-v2__total-row {
+    padding-top: 8px;
+    border-top: 1px solid #e5e5e5;
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* ============================================================================
+   END OF JOURNEY - Light style indicator (now inside a day events container)
+   ============================================================================ */
+
+.wetu-end-of-journey {
+  padding: 0;
+  margin: 0;
+  background: transparent;
+}
+
+.wetu-end-of-journey__content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: linear-gradient(135deg, #f8fffe 0%, #f0fdf4 100%);
+  border: 1px solid #d1fae5;
+  border-radius: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.wetu-end-of-journey__icon {
+  flex-shrink: 0;
+  color: #10b981;
+}
+
+.wetu-end-of-journey__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wetu-end-of-journey__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333333;
+}
+
+.wetu-end-of-journey__subtitle {
+  font-size: 12px;
+  color: #666666;
+}
+
+/* Timeline content - scrollable - contains title, journey, and booking at bottom */
+.wetu-fullscreen-map-v2__timeline-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0; /* Removed horizontal padding - day headers now full width */
+  scrollbar-width: thin;
+  scrollbar-color: #ccc #f5f5f5;
+  display: flex;
+  flex-direction: column;
+}
+
+.wetu-fullscreen-map-v2__timeline-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.wetu-fullscreen-map-v2__timeline-content::-webkit-scrollbar-track {
+  background: #f5f5f5;
+}
+
+.wetu-fullscreen-map-v2__timeline-content::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 0;
+}
+
+.wetu-fullscreen-map-v2__timeline-content::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}
+
+/* ============================================================================
+   JOURNEY TIMELINE - DENSE MINIMALIST LAYOUT
+   ============================================================================ */
+
+.wetu-fullscreen-map-v2__journey-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0; /* No gap between days */
+  flex: 1; /* Allow timeline to grow and push booking to bottom */
+}
+
+/* Day section - simplified container */
+.wetu-journey-day {
+  background: transparent; /* Remove card-like appearance */
+  border: none; /* Remove border for cleaner look */
+  overflow: visible;
+}
+
+/* Day header - full width, subtle grayscale design */
+.wetu-journey-day__header {
+  padding: 8px 12px;
+  margin: 0; /* Full width - no margin */
+  background: #fafafa; /* Light subtle background */
+  border: none;
+  border-bottom: 1px solid #e0e0e0;
+  border-top: 1px solid #e0e0e0;
+}
+
+.wetu-journey-day__date-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.wetu-journey-day__day-number {
+  font-size: 12px;
+  font-weight: 700;
+  color: #333333; /* Dark text on light bg */
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.wetu-journey-day__date-divider {
+  color: #ccc;
+}
+
+.wetu-journey-day__weekday,
+.wetu-journey-day__date {
+  font-size: 11px;
+  color: #666666; /* Subtle text */
+}
+
+/* Events container - 2px padding on all sides */
+.wetu-journey-day__events {
+  padding: 2px; /* 2px padding on all sides as requested */
+  display: flex;
+  flex-direction: column;
+  gap: 2px; /* Minimal gap between events */
+  background: #f5f5f5; /* Light background to contrast cards */
+}
+
+/* ============================================================================
+   EVENT CARDS - DENSE GRAYSCALE WITH PRONOUNCED HOVER GLOW
+   ============================================================================ */
+
+.wetu-event-card {
+  background: #ffffff;
+  border: 1px solid #e5e5e5;
+  overflow: hidden;
+  transition: all 0.2s ease;
+  /* Cards now fill full width due to 2px padding in parent */
+}
+
+.wetu-event-card:hover {
+  border-color: #999;
+  box-shadow: 
+    0 0 0 3px rgba(0, 0, 0, 0.08),
+    0 4px 12px rgba(0, 0, 0, 0.12),
+    0 0 20px rgba(0, 0, 0, 0.06);
+  transform: translateY(-1px);
+}
+
+/* Accommodation card */
+.wetu-event-card--accommodation .wetu-event-card__accommodation-content {
+  display: flex;
+  gap: 0;
+}
+
+.wetu-event-card__accommodation-image {
+  flex-shrink: 0;
+  width: 100px;
+  height: 80px;
+  overflow: hidden;
+  border-right: 1px solid #e5e5e5;
+}
+
+.wetu-event-card__accommodation-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: grayscale(20%);
+  transition: filter 0.3s ease;
+}
+
+.wetu-event-card--accommodation:hover .wetu-event-card__accommodation-image img {
+  filter: grayscale(0%);
+}
+
+.wetu-event-card__accommodation-details {
+  flex: 1;
+  padding: 8px 10px; /* Reduced padding for denser layout */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  background: #fff;
+}
+
+.wetu-event-card__accommodation-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333333;
+  margin: 0 0 4px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wetu-event-card__accommodation-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #666666;
+}
+
+.wetu-event-card__accommodation-nights {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Transit/route card - compact layout */
+.wetu-event-card--transit-compact {
+  background: #fff;
+}
+
+.wetu-event-card--transit-compact .wetu-event-card__media {
+  display: none;
+}
+
+/* Transit/route card */
+.wetu-event-card--transit .wetu-event-card__transit-content {
+  padding: 8px 10px; /* Reduced padding for denser layout */
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+}
+
+/* Route flow - from/to layout - STACKED VERTICALLY */
+.wetu-event-card__route-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+.wetu-event-card__from,
+.wetu-event-card__to {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wetu-event-card__route-label {
+  font-size: 10px;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+}
+
+.wetu-event-card__route-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  line-height: 1.3;
+}
+
+.wetu-event-card__route-divider {
+  display: flex;
+  align-items: center;
+  color: #ccc;
+  padding-left: 2px;
+}
+
+/* Transit header - inline style with icon */
+.wetu-event-card__transit-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: #fafafa;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.wetu-event-card__transit-type {
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+}
+
+.wetu-event-card__transit-stats-inline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+  font-size: 11px;
+  color: #666;
+}
+
+.wetu-event-card__duration-inline {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.wetu-event-card__distance-inline {
+  color: #999;
+}
+
+.wetu-event-card__transit-body {
+  padding: 10px;
+}
+
+/* Hide duplicate drive details paragraph - stats shown in header */
+.wetu-event-card__drive-details {
+  display: none;
+}
+
+.wetu-event-card__transit-icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  color: #333;
+}
+
+.wetu-event-card__transit-icon--flight {
+  background: transparent;
+  color: #333;
+}
+
+.wetu-event-card__transit-icon--driving {
+  background: transparent;
+  color: #333;
+}
+
+.wetu-event-card__transit-icon--transfer {
+  background: transparent;
+  color: #333;
+}
+
+.wetu-event-card__transit-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.wetu-event-card__transit-route {
+  font-size: 13px;
+  font-weight: 500;
+  color: #333333;
+  margin: 0 0 2px 0;
+}
+
+.wetu-event-card__transit-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #666666;
+}
+
+/* ============================================================================
+   DESTINATION ARRIVAL - With dual actions
+   ============================================================================ */
+
+.wetu-destination-arrival {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  transition: all 0.2s ease;
+}
+
+.wetu-destination-arrival:hover {
+  border-color: #999;
+  box-shadow: 
+    0 0 0 3px rgba(0, 0, 0, 0.08),
+    0 4px 12px rgba(0, 0, 0, 0.12),
+    0 0 20px rgba(0, 0, 0, 0.06);
+  transform: translateY(-1px);
+}
+
+.wetu-destination-arrival__main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px; /* Reduced padding for denser layout */
+  min-width: 0;
+}
+
+.wetu-destination-arrival__icon {
+  flex-shrink: 0;
+  color: #666;
+}
+
+.wetu-destination-arrival__content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.wetu-destination-arrival__label {
+  font-size: 10px;
+  color: #999999;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.wetu-destination-arrival__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333333;
+}
+
+.wetu-destination-arrival__actions {
+  display: flex;
+  flex-shrink: 0;
+  border-left: 1px solid #e5e5e5;
+}
+
+.wetu-destination-arrival__action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 100%;
+  min-height: 44px;
+  background: transparent;
+  border: none;
+  border-left: 1px solid #e5e5e5;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.wetu-destination-arrival__action:first-child {
+  border-left: none;
+}
+
+.wetu-destination-arrival__action:hover {
+  background: #f5f5f5;
+  color: #333;
+}
+
+.wetu-destination-arrival__action--primary {
+  background: #333;
+  color: #fff;
+}
+
+.wetu-destination-arrival__action--primary:hover {
+  background: #1a1a1a;
+  color: #fff;
+}
+
+/* ============================================================================
+   COMPACT ACCOMMODATION CARDS - With 16:9 thumbnail and dual actions
+   ============================================================================ */
+
+.wetu-event-card--compact {
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.wetu-event-card--compact:hover {
+  border-color: #999;
+  box-shadow: 
+    0 0 0 3px rgba(0, 0, 0, 0.08),
+    0 4px 12px rgba(0, 0, 0, 0.12),
+    0 0 20px rgba(0, 0, 0, 0.06);
+  transform: translateY(-1px);
+}
+
+.wetu-event-card__compact-layout {
+  display: flex;
+  align-items: stretch;
+}
+
+.wetu-event-card__compact-thumb {
+  flex-shrink: 0;
+  width: 100px;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: #f5f5f5;
+}
+
+.wetu-event-card__compact-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.wetu-event-card__thumb-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f0f0f0;
+  color: #999;
+}
+
+.wetu-event-card__compact-content {
+  flex: 1;
+  padding: 8px 10px; /* Reduced padding for denser layout */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+
+.wetu-event-card__compact-header {
+  margin-bottom: 4px;
+}
+
+.wetu-event-card__compact-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.wetu-event-card__compact-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  background: #f5f5f5;
+  border: 1px solid #e5e5e5;
+  font-size: 9px;
+  font-weight: 600;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.wetu-event-card__compact-badge--nights {
+  background: #333;
+  border-color: #333;
+  color: #fff;
+}
+
+.wetu-event-card__compact-title {
+  margin: 0 0 2px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wetu-event-card__compact-rating {
+  display: flex;
+  gap: 1px;
+  margin-bottom: 2px;
+}
+
+.wetu-event-card__compact-rating svg {
+  color: #f59e0b;
+}
+
+.wetu-event-card__compact-location {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 0 2px 0;
+  font-size: 11px;
+  color: #666;
+}
+
+.wetu-event-card__compact-location svg {
+  flex-shrink: 0;
+  color: #999;
+}
+
+.wetu-event-card__compact-category {
+  font-size: 10px;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.wetu-event-card__compact-actions {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  border-left: 1px solid #e5e5e5;
+}
+
+.wetu-event-card__action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-top: 1px solid #e5e5e5;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.wetu-event-card__action:first-child {
+  border-top: none;
+}
+
+.wetu-event-card__action:hover {
+  background: #f5f5f5;
+  color: #333;
+}
+
+.wetu-event-card__action--primary {
+  background: #333;
+  color: #fff;
+}
+
+.wetu-event-card__action--primary:hover {
+  background: #1a1a1a;
+  color: #fff;
+}
+
+/* ============================================================================
+   CLICKABLE CARD STYLES - Cards that load product on click
+   ============================================================================ */
+
+.wetu-event-card--clickable-card {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.wetu-event-card--clickable-card:hover {
+  transform: translateX(2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.wetu-event-card--clickable-card:focus {
+  outline: 2px solid #333;
+  outline-offset: 2px;
+}
+
+/* Arrow indicator for clickable cards */
+.wetu-event-card__compact-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  flex-shrink: 0;
+  color: #999;
+  transition: all 0.2s ease;
+}
+
+.wetu-event-card--clickable-card:hover .wetu-event-card__compact-arrow {
+  color: #333;
+  transform: translateX(2px);
+}
+
+/* ============================================================================
+   DESTINATION ARRIVAL CARD - Consistent with accommodation cards
+   ============================================================================ */
+
+.wetu-event-card--destination-arrival {
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  transition: all 0.2s ease;
+}
+
+.wetu-event-card--destination-arrival:hover {
+  border-color: #999;
+  box-shadow: 
+    0 0 0 3px rgba(0, 0, 0, 0.08),
+    0 4px 12px rgba(0, 0, 0, 0.12),
+    0 0 20px rgba(0, 0, 0, 0.06);
+  transform: translateY(-1px);
+}
+
+/* Destination arrival badge - subtle style without green background */
+.wetu-event-card--destination-arrival .wetu-event-card__compact-badge--destination,
+.wetu-event-card__compact-badge--destination {
+  background: transparent;
+  border-color: transparent;
+  color: #666;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 0;
+}
+
+.wetu-event-card__thumb-placeholder--destination {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  color: #059669;
+}
+
+/* ============================================================================
+   PROPERTY ACTIVITIES - 16:9 Thumbnail Grid with Overlay Titles
+   ============================================================================ */
+
+.wetu-event-card--property-activities {
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  padding: 0;
+  transition: all 0.2s ease;
+}
+
+.wetu-event-card--property-activities:hover {
+  border-color: #999;
+  box-shadow: 
+    0 0 0 3px rgba(0, 0, 0, 0.08),
+    0 4px 12px rgba(0, 0, 0, 0.12),
+    0 0 20px rgba(0, 0, 0, 0.06);
+  transform: translateY(-1px);
+}
+
+.wetu-event-card__property-activities-content {
+  padding: 0; /* Remove padding for full-width images */
+}
+
+.wetu-event-card__property-activities-header {
+  margin-bottom: 0;
+  padding: 10px 10px 8px 10px;
+}
+
+.wetu-event-card__property-activities-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #333333;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.wetu-event-card__property-activities-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2px; /* Minimal gap between images */
+}
+
+.wetu-event-card__property-activity-thumb {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: #f5f5f5;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.wetu-event-card__property-activity-thumb:hover {
+  /* No transform on container to maintain grid layout - image zooms inside instead */
+}
+
+.wetu-event-card__property-activity-thumb:focus {
+  outline: 2px solid #333;
+  outline-offset: 2px;
+}
+
+.wetu-event-card__property-activity-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.wetu-event-card__property-activity-thumb:hover .wetu-event-card__property-activity-image {
+  transform: scale(1.05);
+}
+
+.wetu-event-card__property-activity-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f5f5f5 0%, #e5e5e5 100%);
+  color: #999;
+}
+
+.wetu-event-card__property-activity-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 8px 10px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.4) 60%, transparent 100%);
+}
+
+.wetu-event-card__property-activity-title {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  text-align: left;
+  line-height: 1.3;
+  text-shadow: 
+    0 1px 3px rgba(0, 0, 0, 0.8),
+    0 0 8px rgba(0, 0, 0, 0.5),
+    0 0 15px rgba(0, 0, 0, 0.3);
+  /* Outer glow effect */
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.5));
+}
+
+/* Mobile adjustments for property activities grid */
+@media screen and (max-width: 900px) {
+  .wetu-event-card__property-activities-grid {
+    gap: 2px; /* Maintain 2px gap on mobile */
+  }
+  
+  .wetu-event-card__property-activity-overlay {
+    padding: 6px 8px;
+  }
+  
+  .wetu-event-card__property-activity-title {
+    font-size: 10px;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .wetu-event-card__property-activities-content {
+    padding: 0; /* Keep full-width images on mobile */
+  }
+  
+  .wetu-event-card__property-activities-grid {
+    gap: 2px; /* Maintain 2px gap on smallest screens */
+  }
+  
+  .wetu-event-card__property-activity-title {
+    font-size: 9px;
+  }
+}
+
+/* Included items card - No hover effect (non-interactive) */
+.wetu-event-card--included-summary {
+  cursor: default;
+  transition: none;
+}
+
+.wetu-event-card--included-summary:hover {
+  /* Override base event-card hover - this section doesn't link anywhere */
+  border-color: #e5e5e5;
+  box-shadow: none;
+  transform: none;
+}
+
+.wetu-event-card--included-summary .wetu-event-card__included-content {
+  padding: 8px 10px; /* Reduced padding for denser layout */
+  background: #fff;
+}
+
+.wetu-event-card__included-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+/* Minimal header style - single line, no icon, no border */
+.wetu-event-card__included-header--minimal {
+  gap: 0;
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+  border-bottom: none;
+}
+
+.wetu-event-card__included-label-inline {
+  font-size: 12px;
+  font-weight: 600;
+  color: #333333;
+  letter-spacing: 0.3px;
+}
+
+.wetu-event-card__included-icon {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5f5;
+  border: 1px solid #e5e5e5;
+  border-radius: 0;
+  color: #666;
+}
+
+/* Hide icon in minimal style */
+.wetu-event-card--included-minimal .wetu-event-card__included-icon {
+  display: none;
+}
+
+.wetu-event-card__included-icon--activities {
+  background: #f5f5f5;
+  color: #666;
+}
+
+.wetu-event-card__included-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wetu-event-card__included-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #333333;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.wetu-event-card__included-period {
+  font-size: 11px;
+  color: #999999;
+}
+
+.wetu-event-card__included-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wetu-event-card__included-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  color: #333333;
+}
+
+.wetu-event-card__included-item-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: #666;
+}
+
+/* Hide checkmarks in minimal style, use subtle bullet dots instead */
+.wetu-event-card--included-minimal .wetu-event-card__included-item-icon {
+  display: none;
+}
+
+.wetu-event-card--included-minimal .wetu-event-card__included-item {
+  gap: 0;
+  padding-left: 12px;
+  position: relative;
+}
+
+/* Subtle small bullet dot for each item */
+.wetu-event-card--included-minimal .wetu-event-card__included-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 7px;
+  width: 3px;
+  height: 3px;
+  background: #bbb;
+  border-radius: 50%;
+}
+
+.wetu-event-card__included-item--linked .wetu-event-card__included-item-link {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: #333;
+  text-decoration: none;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  text-align: left;
+}
+
+.wetu-event-card__included-item--linked .wetu-event-card__included-item-link:hover {
+  color: #000;
+  text-decoration: underline;
+}
+
+.wetu-event-card__included-item--linked .wetu-event-card__included-item-link span {
+  flex: 1;
+}
+
+.wetu-event-card__included-item-external {
+  flex-shrink: 0;
+  opacity: 0.4;
+}
+
+/* Staying at card */
+.wetu-event-card--staying {
+  transition: all 0.2s ease;
+}
+
+.wetu-event-card--staying:hover {
+  border-color: #999;
+  box-shadow: 
+    0 0 0 3px rgba(0, 0, 0, 0.08),
+    0 4px 12px rgba(0, 0, 0, 0.12),
+    0 0 20px rgba(0, 0, 0, 0.06);
+  transform: translateY(-1px);
+}
+
+.wetu-event-card--staying .wetu-event-card__staying-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px; /* Reduced padding for denser layout */
+  background: #fff;
+}
+
+.wetu-event-card__staying-icon {
+  flex-shrink: 0;
+  color: #999;
+}
+
+.wetu-event-card__staying-text {
+  font-size: 12px;
+  color: #666666;
+}
+
+.wetu-event-card__staying-text strong {
+  color: #333333;
+  font-weight: 500;
+}
+
+/* Clickable staying cards */
+.wetu-event-card--staying-clickable {
+  cursor: pointer;
+}
+
+.wetu-event-card--staying-clickable:hover {
+  border-color: #999;
+  box-shadow: 
+    0 0 0 3px rgba(0, 0, 0, 0.08),
+    0 4px 12px rgba(0, 0, 0, 0.12),
+    0 0 20px rgba(0, 0, 0, 0.06);
+  transform: translateY(-1px);
+}
+
+.wetu-event-card--staying-clickable:focus {
+  outline: 2px solid #333;
+  outline-offset: 2px;
+}
+
+.wetu-event-card--staying-clickable .wetu-event-card__staying-content {
+  justify-content: flex-start;
+}
+
+.wetu-event-card__staying-arrow {
+  margin-left: auto;
+  color: #999;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.wetu-event-card--staying-clickable:hover .wetu-event-card__staying-arrow {
+  color: #333;
+  transform: translateX(2px);
+}
+
+/* ============================================================================
+   ROUTE LABELS - Compact single-line with dark background
+   ============================================================================ */
+
+.wetu-flight-label,
+.wetu-drive-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: #333333;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 500;
+  white-space: nowrap;
+  border-radius: 0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1;
+  height: auto;
+  min-height: 0;
+}
+
+.wetu-flight-label:hover,
+.wetu-drive-label:hover {
+  background: #1a1a1a;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.wetu-flight-label__icon,
+.wetu-drive-label__icon {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  color: #fff;
+}
+
+.wetu-flight-label__text,
+.wetu-drive-label__text {
+  color: #fff;
+  font-size: 10px;
+  letter-spacing: 0.2px;
+}
+
+/* ============================================================================
+   ROUTE LINES - #333333 with solid/dashed variations
+   ============================================================================ */
+
+/* Override default route colors in the map */
+.mapboxgl-canvas-container .route-line {
+  stroke: #333333;
+}
+
+/* ============================================================================
+   ROUTE DETAILS PANEL
+   ============================================================================ */
+
+.wetu-fullscreen-map-v2__route-panel {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  width: 90%;
+  max-width: 400px;
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.wetu-fullscreen-map-v2__route-panel[data-visible="true"] {
+  opacity: 1;
+  visibility: visible;
+}
+
+.wetu-fullscreen-map-v2__route-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #fafafa;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.wetu-fullscreen-map-v2__route-panel-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.wetu-fullscreen-map-v2__route-panel-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  color: #999;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.wetu-fullscreen-map-v2__route-panel-close:hover {
+  color: #333;
+}
+
+.wetu-fullscreen-map-v2__route-panel-content {
+  padding: 16px;
+  color: #333;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* ============================================================================
+   CONTENT VIEWER - Full-screen iframe for loading product pages
+   ============================================================================ */
+
+.wetu-fullscreen-map-v2__content-viewer {
+  position: absolute;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-20px);
+  transition: all 0.3s ease;
+}
+
+.wetu-fullscreen-map-v2__content-viewer[data-visible="true"] {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0);
+}
+
+/* Content viewer header - HIDDEN (user requested no overlays except Shopify controls) */
+.wetu-fullscreen-map-v2__content-viewer-header {
+  display: none !important;
+}
+
+.wetu-fullscreen-map-v2__content-viewer-back {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  border-radius: 0;
+  color: #333;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.wetu-fullscreen-map-v2__content-viewer-back:hover {
+  background: #333;
+  border-color: #333;
+  color: #fff;
+}
+
+.wetu-fullscreen-map-v2__content-viewer-back svg {
+  width: 18px;
+  height: 18px;
+}
+
+.wetu-fullscreen-map-v2__content-viewer-title-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.wetu-fullscreen-map-v2__content-viewer-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Show on Map button in header - HIDDEN (using hero overlay instead) */
+.wetu-fullscreen-map-v2__show-on-map {
+  display: none !important;
+}
+
+.wetu-fullscreen-map-v2__content-viewer-loading {
+  position: absolute;
+  inset: 0;
+  top: 0; /* No header - full coverage */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: #fff;
+  color: #666;
+  font-size: 14px;
+  z-index: 5;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+}
+
+.wetu-fullscreen-map-v2__content-viewer-loading[data-loading="true"] {
+  opacity: 1;
+  visibility: visible;
+}
+
+.wetu-fullscreen-map-v2__content-viewer-loading .loading-spinner {
+  width: 28px;
+  height: 28px;
+  border: 2px solid #e5e5e5;
+  border-top-color: #333;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.wetu-fullscreen-map-v2__content-viewer-fullpage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  color: #666;
+  transition: color 0.2s ease;
+}
+
+.wetu-fullscreen-map-v2__content-viewer-fullpage:hover {
+  color: #333;
+}
+
+.wetu-fullscreen-map-v2__content-viewer-body {
+  flex: 1;
+  width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: #fff;
+}
+
+/* Full product view - injected main content */
+.wetu-content-viewer--full-product {
+  padding: 0;
+}
+
+.wetu-content-viewer--full-product main {
+  display: block;
+}
+
+/* ============================================================================
+   CONTENT VIEWER OVERLAYS - ALL HIDDEN
+   User requested no overlays except Shopify controls (language, cart, account)
+   ============================================================================ */
+
+/* Floating close button - HIDDEN */
+.wetu-fullscreen-map-v2__content-viewer-floating-close {
+  display: none !important;
+}
+
+/* Floating nav back button - HIDDEN */
+.wetu-fullscreen-map-v2__content-viewer-nav-back {
+  display: none !important;
+}
+
+/* Hide elements that don't make sense in embedded context */
+.wetu-content-viewer--full-product .breadcrumb,
+.wetu-content-viewer--full-product [data-section-type="breadcrumb"] {
+  display: none;
+}
+
+/* ============================================================================
+   HERO SECTION - EMBEDDED PRODUCT VIEW (LARGE SIZE, NOT FULLSCREEN)
+   Make the hero section work properly in the content viewer panel
+   Uses "large" size (~70vh) instead of fullscreen for better UX in split view
+   ============================================================================ */
+
+/* Hero wrapper - remove any margin and reset offset */
+.wetu-content-viewer--full-product .hero-wrapper,
+.wetu-content-viewer--full-product .section-wrapper:first-child {
+  --hero-height-offset: 0px !important;
+  margin: 0 !important;
+  margin-bottom: 2px !important; /* 2px gap to gallery below */
+}
+
+/* Hero - LARGE size (70vh) instead of fullscreen for embedded view */
+.wetu-content-viewer--full-product .hero {
+  /* Large size - approximately 70% of viewport height */
+  --hero-min-height: 70vh !important;
+  min-height: 70vh !important;
+  min-height: 70dvh !important;
+  max-height: 70vh !important;
+  max-height: 70dvh !important;
+  width: 100%;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Ensure the hero container fills the hero but respects max-height */
+.wetu-content-viewer--full-product .hero__container {
+  flex: 1;
+  min-height: 70vh !important;
+  min-height: 70dvh !important;
+  max-height: 70vh !important;
+  max-height: 70dvh !important;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background: #000;
+  overflow: hidden;
+}
+
+/* Media wrapper - ensure full coverage within the constrained height */
+.wetu-content-viewer--full-product .hero__media-wrapper {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+/* Hero images/videos fill the space */
+.wetu-content-viewer--full-product .hero__image,
+.wetu-content-viewer--full-product .hero__video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center center !important;
+}
+
+/* Content wrapper - bottom-left positioning for title overlay with padding */
+.wetu-content-viewer--full-product .hero__content-wrapper {
+  position: relative !important;
+  z-index: 2;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-end !important;
+  align-items: flex-start !important; /* Align to left */
+  flex: 1;
+  min-height: 70vh;
+  min-height: 70dvh;
+  max-height: 70vh;
+  max-height: 70dvh;
+  /* Increased padding for title overlay - needs breathing room from edges */
+  padding: 24px 24px 40px 24px !important; /* top right bottom left */
+  box-sizing: border-box;
+}
+
+/* Force padding on content blocks within hero - ensure text doesn't touch edges */
+.wetu-content-viewer--full-product .hero__content-wrapper > *,
+.wetu-content-viewer--full-product .hero__content-wrapper .group-block,
+.wetu-content-viewer--full-product .hero__content-wrapper .layout-panel-flex > * {
+  padding-left: 24px !important;
+  padding-bottom: 32px !important;
+  box-sizing: border-box;
+}
+
+/* Ensure text groups are visible and properly positioned */
+.wetu-content-viewer--full-product .hero__content-wrapper .group-block,
+.wetu-content-viewer--full-product .hero__content-wrapper .group-block-content,
+.wetu-content-viewer--full-product .hero__content-wrapper .layout-panel-flex {
+  position: relative;
+  z-index: 3;
+}
+
+/* Text styling - ensure visibility over the hero image */
+.wetu-content-viewer--full-product .hero__content-wrapper h1,
+.wetu-content-viewer--full-product .hero__content-wrapper h2,
+.wetu-content-viewer--full-product .hero__content-wrapper h3,
+.wetu-content-viewer--full-product .hero__content-wrapper h4,
+.wetu-content-viewer--full-product .hero__content-wrapper h5,
+.wetu-content-viewer--full-product .hero__content-wrapper h6,
+.wetu-content-viewer--full-product .hero__content-wrapper p,
+.wetu-content-viewer--full-product .hero__content-wrapper span,
+.wetu-content-viewer--full-product .hero__content-wrapper .text-block {
+  color: #fff !important;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.7) !important;
+}
+
+/* Gradient overlay for text readability */
+.wetu-content-viewer--full-product .hero .overlay {
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.3) 30%, transparent 60%) !important;
+}
+
+/* Add fallback gradient if no overlay exists */
+.wetu-content-viewer--full-product .hero__container::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.2) 25%, transparent 50%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ============================================================================
+   PRODUCT INFORMATION SECTION - Reduce spacing after hero
+   Force tight 2px gaps throughout the embedded product view
+   ============================================================================ */
+
+/* Reset ALL spacing in the content viewer - aggressive approach */
+.wetu-content-viewer--full-product main > *,
+.wetu-content-viewer--full-product .shopify-section,
+.wetu-content-viewer--full-product section {
+  margin: 0 !important;
+  padding-top: 0 !important;
+}
+
+/* Add back 2px gaps between sections */
+.wetu-content-viewer--full-product main > * + *,
+.wetu-content-viewer--full-product .shopify-section + .shopify-section,
+.wetu-content-viewer--full-product section + section {
+  margin-top: 2px !important;
+}
+
+/* Product information section - small padding for content */
+.wetu-content-viewer--full-product .product-information,
+.wetu-content-viewer--full-product [data-section-type="product-information"] {
+  padding-top: 8px !important;
+}
+
+/* Section wrappers - no margin */
+.wetu-content-viewer--full-product .section-wrapper {
+  margin: 0 !important;
+}
+
+/* Hero wrapper - remove bottom spacing */
+.wetu-content-viewer--full-product .hero-wrapper {
+  margin-bottom: 0 !important;
+}
+
+/* 2px gap between hero and next element */
+.wetu-content-viewer--full-product .hero-wrapper + *,
+.wetu-content-viewer--full-product .hero + *,
+.wetu-content-viewer--full-product [data-section-type="hero"] + * {
+  margin-top: 2px !important;
+}
+
+/* 2px gaps between gallery images for visual consistency */
+.wetu-content-viewer--full-product .media-gallery__grid {
+  gap: 2px !important;
+}
+
+.wetu-content-viewer--full-product .product-media__grid,
+.wetu-content-viewer--full-product .media-gallery {
+  gap: 2px !important;
+}
+
+/* Media gallery section - no extra spacing */
+.wetu-content-viewer--full-product media-gallery {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Product details - clean layout */
+.wetu-content-viewer--full-product .product-information__container {
+  gap: 16px;
+}
+
+/* ============================================================================
+   MEDIA GALLERY IN EMBEDDED VIEW - Make gallery visible immediately below hero
+   ============================================================================ */
+
+/* Product media gallery - ensure it's visible and properly sized */
+.wetu-content-viewer--full-product media-gallery,
+.wetu-content-viewer--full-product .media-gallery {
+  display: block !important;
+  width: 100%;
+}
+
+/* Gallery grid - optimize for embedded panel */
+.wetu-content-viewer--full-product .media-gallery__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2px;
+}
+
+/* ============================================================================
+   GENERAL EMBEDDED PRODUCT FIXES
+   ============================================================================ */
+
+/* Ensure hero sections fill the width */
+.wetu-content-viewer--full-product .hero,
+.wetu-content-viewer--full-product [data-section-type="hero"],
+.wetu-content-viewer--full-product .product-hero {
+  width: 100%;
+}
+
+/* Fix for galleries/sliders in embedded context */
+.wetu-content-viewer--full-product .slider,
+.wetu-content-viewer--full-product .slideshow {
+  max-width: 100%;
+  overflow: hidden;
+}
+
+/* Ensure images don't overflow */
+.wetu-content-viewer--full-product img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Exception: Hero images should fill their container */
+.wetu-content-viewer--full-product .hero__image,
+.wetu-content-viewer--full-product .hero__video {
+  max-width: none;
+  height: 100%;
+}
+
+/* Add some breathing room at the bottom */
+.wetu-content-viewer--full-product main > *:last-child {
+  margin-bottom: 40px;
+}
+
+/* ============================================================================
+   ZOOM DIALOG - CONFINED TO CONTENT VIEWER PANEL
+   When the Horizon photo gallery opens in fullscreen mode, constrain it to
+   the 70% content viewer panel instead of the true fullscreen viewport.
+   
+   IMPORTANT: The native <dialog> element uses the "top layer" when showModal()
+   is called, which ignores normal CSS positioning. We must use fixed positioning
+   that matches the content viewer's dimensions.
+   ============================================================================ */
+
+/* Content viewer body needs to be the positioning context */
+.wetu-fullscreen-map-v2__content-viewer-body {
+  position: relative !important;
+}
+
+/* The zoom-dialog custom element - don't block clicks when closed */
+.wetu-content-viewer--full-product zoom-dialog {
+  pointer-events: none !important;
+}
+
+/* When dialog is open, enable pointer events */
+.wetu-content-viewer--full-product zoom-dialog:has(dialog[open]) {
+  pointer-events: auto !important;
+}
+
+/* 
+ * Override the dialog's positioning to match the content viewer panel.
+ * Since the dialog is in the top layer, we use fixed positioning that
+ * matches the content viewer's position (right side, 70% width).
+ * Timeline is 30% on left, map is 70% on right.
+ */
+.wetu-content-viewer--full-product zoom-dialog dialog,
+.wetu-content-viewer--full-product zoom-dialog dialog[open] {
+  position: fixed !important;
+  top: 0 !important;
+  left: 30% !important;  /* Start after the 30% timeline */
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 70% !important;  /* Match the content viewer width */
+  height: 100% !important;
+  max-width: 70% !important;
+  max-height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  background: rgba(0, 0, 0, 0.98) !important;
+  z-index: 9999;
+}
+
+/* Hide the backdrop since we're constraining the dialog */
+.wetu-content-viewer--full-product zoom-dialog dialog::backdrop {
+  background: transparent !important;
+  display: none !important;
+}
+
+/* Zoomed gallery - constrain to panel dimensions */
+.wetu-content-viewer--full-product .dialog-zoomed-gallery {
+  position: relative !important;
+  width: 100% !important;
+  height: calc(100% - 80px) !important; /* Leave room for thumbnails */
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.3) transparent;
+}
+
+/* Thumbnails container - positioned at bottom of panel */
+.wetu-content-viewer--full-product .dialog-thumbnails-list-container {
+  position: absolute !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 80px;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 10;
+  padding: 8px 16px;
+  box-sizing: border-box;
+}
+
+.wetu-content-viewer--full-product .dialog-thumbnails-list {
+  display: flex !important;
+  gap: 8px;
+  height: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.3) transparent;
+}
+
+.wetu-content-viewer--full-product .dialog-thumbnails-list::-webkit-scrollbar {
+  height: 4px;
+}
+
+.wetu-content-viewer--full-product .dialog-thumbnails-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+}
+
+.wetu-content-viewer--full-product .dialog-thumbnails-list__thumbnail {
+  flex-shrink: 0;
+  height: 100%;
+  aspect-ratio: 16/9;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  overflow: hidden;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.wetu-content-viewer--full-product .dialog-thumbnails-list__thumbnail[aria-selected="true"] {
+  border-color: #fff;
+}
+
+.wetu-content-viewer--full-product .dialog-thumbnails-list__thumbnail:hover {
+  border-color: rgba(255, 255, 255, 0.6);
+  transform: scale(1.02);
+}
+
+.wetu-content-viewer--full-product .dialog-thumbnails-list__thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Close button - position within the panel */
+.wetu-content-viewer--full-product .dialog-zoomed-gallery__close-button {
+  position: absolute !important;
+  top: 16px !important;
+  right: 16px !important;
+  z-index: 20 !important;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.wetu-content-viewer--full-product .dialog-zoomed-gallery__close-button:hover {
+  background: rgba(0, 0, 0, 0.8);
+  transform: scale(1.05);
+}
+
+.wetu-content-viewer--full-product .dialog-zoomed-gallery__close-button svg {
+  width: 24px;
+  height: 24px;
+  color: #fff;
+}
+
+/* Product media containers within the zoom dialog */
+.wetu-content-viewer--full-product .dialog-zoomed-gallery .product-media-container {
+  width: 100%;
+  margin-bottom: 2px;
+}
+
+.wetu-content-viewer--full-product .dialog-zoomed-gallery .product-media-container img {
+  width: 100%;
+  height: auto;
+  max-height: calc(100vh - 100px);
+  max-height: calc(100dvh - 100px);
+  object-fit: contain;
+}
+
+/* Mobile zoom dialog adjustments for 50/50 split */
+@media screen and (max-width: 900px) {
+  /* On mobile, the dialog should fill the bottom 50% (where content viewer is) */
+  .wetu-content-viewer--full-product zoom-dialog dialog,
+  .wetu-content-viewer--full-product zoom-dialog dialog[open] {
+    position: fixed !important;
+    top: 50% !important;  /* Start at 50% from top */
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 50% !important;
+    max-width: 100% !important;
+    max-height: 50% !important;
+  }
+  
+  .wetu-content-viewer--full-product .dialog-zoomed-gallery {
+    height: calc(100% - 70px) !important;
+  }
+  
+  .wetu-content-viewer--full-product .dialog-thumbnails-list-container {
+    height: 70px;
+    padding: 6px 12px;
+  }
+  
+  .wetu-content-viewer--full-product .dialog-zoomed-gallery__close-button {
+    top: 12px !important;
+    right: 12px !important;
+    width: 40px;
+    height: 40px;
+  }
+  
+  .wetu-content-viewer--full-product .dialog-zoomed-gallery .product-media-container img {
+    max-height: calc(50vh - 80px);
+    max-height: calc(50dvh - 80px);
+  }
+  
+  /* Mobile hero - smaller for 50/50 split */
+  .wetu-content-viewer--full-product .hero {
+    --hero-min-height: 50vh !important;
+    min-height: 50vh !important;
+    min-height: 50dvh !important;
+    max-height: 50vh !important;
+    max-height: 50dvh !important;
+  }
+  
+  .wetu-content-viewer--full-product .hero__container {
+    min-height: 50vh !important;
+    min-height: 50dvh !important;
+    max-height: 50vh !important;
+    max-height: 50dvh !important;
+  }
+  
+  .wetu-content-viewer--full-product .hero__content-wrapper {
+    min-height: 50vh;
+    min-height: 50dvh;
+    max-height: 50vh;
+    max-height: 50dvh;
+    padding: 16px !important;
+    padding-bottom: 24px !important;
+  }
+}
+
+/* ============================================================================
+   PRODUCT MEDIA CONTAINER - Clickable gallery items
+   ============================================================================ */
+
+/* Make media containers clearly clickable */
+.wetu-content-viewer--full-product .product-media-container--zoomable {
+  cursor: zoom-in;
+  position: relative;
+}
+
+.wetu-content-viewer--full-product .product-media-container--zoomable::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0);
+  transition: background 0.2s ease;
+  pointer-events: none;
+}
+
+.wetu-content-viewer--full-product .product-media-container--zoomable:hover::after {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+/* Zoom icon overlay on hover */
+.wetu-content-viewer--full-product .product-media-container--zoomable .product-media-container__zoom-button {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 5;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.wetu-content-viewer--full-product .product-media-container--zoomable:hover .product-media-container__zoom-button {
+  opacity: 1;
+}
+
+/* ============================================================================
+   SLIDESHOW/CAROUSEL IN EMBEDDED VIEW
+   ============================================================================ */
+
+.wetu-content-viewer--full-product .slideshow,
+.wetu-content-viewer--full-product .media-gallery--carousel {
+  position: relative;
+  overflow: hidden;
+}
+
+.wetu-content-viewer--full-product .slideshow slideshow-slide {
+  scroll-snap-align: start;
+  flex-shrink: 0;
+  width: 100%;
+}
+
+/* Slideshow navigation arrows */
+.wetu-content-viewer--full-product .slideshow__arrow,
+.wetu-content-viewer--full-product .slideshow-arrows button {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.wetu-content-viewer--full-product .slideshow__arrow:hover,
+.wetu-content-viewer--full-product .slideshow-arrows button:hover {
+  background: #fff;
+  transform: translateY(-50%) scale(1.05);
+}
+
+.wetu-content-viewer--full-product .slideshow__arrow--prev,
+.wetu-content-viewer--full-product .slideshow-arrows button:first-child {
+  left: 12px;
+}
+
+.wetu-content-viewer--full-product .slideshow__arrow--next,
+.wetu-content-viewer--full-product .slideshow-arrows button:last-child {
+  right: 12px;
+}
+
+/* Slideshow pagination dots/counter */
+.wetu-content-viewer--full-product .slideshow-controls {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 20px;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.wetu-content-viewer--full-product .slideshow-controls__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.wetu-content-viewer--full-product .slideshow-controls__dot[aria-selected="true"],
+.wetu-content-viewer--full-product .slideshow-controls__dot--active {
+  background: #fff;
+  transform: scale(1.2);
+}
+
+.wetu-content-viewer--full-product .slideshow-controls__counter {
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+
+/* ============================================================================
+   MAPBOX POPUP OVERRIDES - GRAYSCALE
+   ============================================================================ */
+
+.mapboxgl-popup-content {
+  border-radius: 0 !important;
+  padding: 0 !important;
+  background: #fff !important;
+  border: 1px solid #e5e5e5 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+}
+
+.mapboxgl-popup-tip {
+  border-top-color: #fff !important;
+}
+
+.mapboxgl-popup-close-button {
+  color: #999 !important;
+  font-size: 20px !important;
+  padding: 4px 8px !important;
+}
+
+.mapboxgl-popup-close-button:hover {
+  color: #333 !important;
+  background: transparent !important;
+}
+
+/* Popup content styling */
+.wetu-map-popup {
+  background: #fff;
+}
+
+.wetu-map-popup__image-container {
+  position: relative;
+}
+
+.wetu-map-popup__image {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.wetu-map-popup__content {
+  padding: 12px;
+}
+
+.wetu-map-popup__title {
+  margin: 0 0 4px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.wetu-map-popup__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 6px;
+}
+
+.wetu-map-popup__location {
+  font-size: 12px;
+  color: #999;
+  margin: 0 0 8px 0;
+}
+
+.wetu-map-popup__actions {
+  padding-top: 8px;
+  border-top: 1px solid #e5e5e5;
+}
+
+.wetu-map-popup__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #333;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.wetu-map-popup__link:hover {
+  text-decoration: underline;
+}
+
+/* Button style for popup view links - Ensure readable contrast */
+.wetu-map-popup__link--viewer {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background: #ffffff;
+  border: 1px solid #333;
+  border-radius: 0;
+  color: #333;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.wetu-map-popup__link--viewer:hover {
+  background: #333;
+  color: #fff;
+  text-decoration: none;
+}
+
+.wetu-map-popup__link--viewer svg {
+  transition: transform 0.2s ease;
+  stroke: currentColor;
+}
+
+.wetu-map-popup__link--viewer:hover svg {
+  transform: translateX(2px);
+}
+
+/* ============================================================================
+   MOBILE RESPONSIVE - 50/50 VERTICAL SPLIT
+   ============================================================================ */
+
+@media screen and (max-width: 900px) {
+  .wetu-fullscreen-map-v2 {
+    flex-direction: column;
+  }
+  
+  /* Map section - top 50% on mobile */
+  .wetu-fullscreen-map-v2__map-section {
+    flex: 0 0 50%;
+    width: 100%;
+    height: 50%;
+    border-bottom: 1px solid #e5e5e5;
+    border-right: none;
+    order: 1; /* Map on top for mobile */
+  }
+  
+  /* Shopify controls overlay - top right on mobile */
+  .wetu-fullscreen-map-v2__map-controls-overlay {
+    top: 12px;
+    right: 12px;
+    gap: 12px;
+  }
+  
+  .wetu-fullscreen-map-v2__map-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+  
+  .wetu-fullscreen-map-v2__controls {
+    bottom: 12px;
+    left: 12px;
+  }
+  
+  .wetu-fullscreen-map-v2__control {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .wetu-fullscreen-map-v2__control svg {
+    width: 16px;
+    height: 16px;
+  }
+  
+  /* Timeline section - bottom 50% on mobile */
+  .wetu-fullscreen-map-v2__timeline-section {
+    flex: 0 0 50%;
+    width: 100%;
+    height: 50%;
+    border-right: none;
+    border-top: 1px solid #e5e5e5;
+    order: 2; /* Timeline on bottom for mobile */
+  }
+
+  /* Timeline content scrolls on mobile */
+  .wetu-fullscreen-map-v2__timeline-content {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .wetu-fullscreen-map-v2__journey-card {
+    margin: 0; /* Full width on mobile */
+    padding: 12px;
+  }
+  
+  .wetu-fullscreen-map-v2__title {
+    font-size: 16px;
+  }
+  
+  .wetu-fullscreen-map-v2__meta {
+    font-size: 12px;
+  }
+  
+  .wetu-fullscreen-map-v2__timeline-content {
+    padding: 0; /* Full width on mobile too */
+  }
+  
+  .wetu-fullscreen-map-v2__booking-section {
+    padding: 20px 16px;
+    margin-top: 12px;
+  }
+  
+  .wetu-journey-day__header {
+    padding: 6px 10px;
+  }
+  
+  .wetu-journey-day__day-number {
+    font-size: 11px;
+  }
+  
+  .wetu-journey-day__weekday,
+  .wetu-journey-day__date {
+    font-size: 10px;
+  }
+  
+  .wetu-journey-day__events {
+    padding: 2px; /* 2px padding on mobile */
+    gap: 2px;
+  }
+  
+  .wetu-event-card__accommodation-image {
+    width: 80px;
+    height: 64px;
+  }
+  
+  .wetu-event-card__accommodation-details {
+    padding: 6px 8px; /* Reduced for mobile dense layout */
+  }
+  
+  .wetu-event-card__accommodation-name {
+    font-size: 13px;
+  }
+  
+  /* Content viewer mobile - loading state top position (no header) */
+  .wetu-fullscreen-map-v2__content-viewer-loading {
+    top: 0;
+  }
+  
+  /* Compact card mobile adjustments */
+  .wetu-event-card__compact-thumb {
+    width: 80px;
+  }
+  
+  .wetu-event-card__compact-content {
+    padding: 6px 8px; /* Reduced for mobile dense layout */
+  }
+  
+  .wetu-event-card__compact-title {
+    font-size: 12px;
+  }
+  
+  .wetu-event-card__compact-badge {
+    font-size: 8px;
+    padding: 2px 4px;
+  }
+  
+  .wetu-event-card__action,
+  .wetu-destination-arrival__action {
+    width: 32px;
+    min-height: 36px;
+  }
+  
+  .wetu-destination-arrival__main {
+    padding: 8px 10px;
+  }
+  
+  /* Show "Also Available" property activities section on mobile - same as desktop */
+  .wetu-event-card--property-activities {
+    display: block;
+  }
+  
+  /* Mobile property activities grid - 2 columns like desktop */
+  .wetu-event-card__property-activities-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2px;
+  }
+}
+
+/* Extra small mobile */
+@media screen and (max-width: 480px) {
+  .wetu-fullscreen-map-v2__journey-card {
+    margin: 0; /* Full width on extra small mobile */
+    padding: 10px;
+  }
+  
+  .wetu-fullscreen-map-v2__title {
+    font-size: 15px;
+  }
+  
+  .wetu-fullscreen-map-v2__timeline-content {
+    padding: 0; /* Full width on extra small mobile */
+  }
+  
+  .wetu-fullscreen-map-v2__booking-section {
+    padding: 16px 14px;
+    margin-top: 10px;
+    gap: 12px;
+  }
+  
+  .wetu-event-card__accommodation-image {
+    width: 70px;
+    height: 56px;
+  }
+  
+  .wetu-event-card__transit-content {
+    padding: 6px 8px; /* Reduced for dense layout */
+  }
+  
+  .wetu-event-card__transit-icon {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+/* Landscape mobile - adjust split */
+@media screen and (max-height: 500px) and (orientation: landscape) {
+  .wetu-fullscreen-map-v2 {
+    flex-direction: row;
+  }
+  
+  .wetu-fullscreen-map-v2__timeline-section {
+    flex: 0 0 40%;
+    width: 40%;
+    height: 100%;
+    border-top: none;
+    border-right: 1px solid #e5e5e5;
+    order: 1;
+  }
+  
+  .wetu-fullscreen-map-v2__map-section {
+    flex: 0 0 60%;
+    width: 60%;
+    height: 100%;
+    border-bottom: none;
+    border-left: none;
+    order: 2;
+  }
+}
+
+/* ============================================================================
+   INTERACTIVE CARD INDICATORS - Subtle visual cues for clickability
+   ============================================================================
+   
+   Types of interactions:
+   - Map interaction: Cards that highlight a location on the map (left border accent)
+   - Content view: Cards that open detailed content (arrow indicator)
+   - Dual action: Cards with both map and content buttons (button column)
+   
+   ============================================================================ */
+
+/* Base interaction indicator - subtle left border for map-interactive cards */
+.wetu-event-card[data-lat][data-lng],
+.wetu-event-card--accommodation,
+.wetu-event-card--destination-arrival,
+.wetu-event-card--transit {
+  position: relative;
+  border-left: 2px solid transparent;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+/* Map interaction indicator - appears on cards that highlight on map */
+.wetu-event-card[data-lat][data-lng]::before,
+.wetu-event-card--accommodation::before,
+.wetu-event-card--destination-arrival::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: #333;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+/* Show map indicator on hover */
+.wetu-event-card[data-lat][data-lng]:hover::before,
+.wetu-event-card--accommodation:hover::before,
+.wetu-event-card--destination-arrival:hover::before {
+  opacity: 1;
+}
+
+/* Active state - when card is selected/highlighted on map */
+.wetu-event-card.is-active,
+.wetu-event-card--accommodation.is-active,
+.wetu-event-card--destination-arrival.is-active {
+  border-left-color: #333;
+  box-shadow: 
+    0 0 0 1px #333,
+    0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.wetu-event-card.is-active::before {
+  opacity: 1;
+  width: 3px;
+  background: #333;
+}
+
+/* Transit cards - route line indicator */
+.wetu-event-card--transit::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(to bottom, #333 0%, #666 100%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.wetu-event-card--transit:hover::before {
+  opacity: 1;
+}
+
+/* Flight transit - dashed indicator */
+.wetu-event-card--transit[data-mode*="flight"]::before,
+.wetu-event-card--transit.wetu-event-card--flight::before {
+  background: repeating-linear-gradient(
+    to bottom,
+    #333 0px,
+    #333 4px,
+    transparent 4px,
+    transparent 8px
+  );
+}
+
+/* ============================================================================
+   INTERACTION HINT ICONS - Small arrows/icons indicating action type
+   ============================================================================ */
+
+/* Clickable card arrow indicator - right side hint */
+.wetu-event-card--clickable-indicator {
+  position: relative;
+}
+
+.wetu-event-card--clickable-indicator::after {
+  content: '';
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid #ccc;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  opacity: 0.5;
+  transition: opacity 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.wetu-event-card--clickable-indicator:hover::after {
+  opacity: 1;
+  border-left-color: #333;
+  transform: translateY(-50%) translateX(2px);
+}
+
+/* Map pin hint - for cards that show location */
+.wetu-event-card__map-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  background: rgba(51, 51, 51, 0.08);
+  border-radius: 3px;
+  font-size: 10px;
+  color: #666;
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.wetu-event-card:hover .wetu-event-card__map-hint {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.wetu-event-card__map-hint svg {
+  width: 10px;
+  height: 10px;
+}
+
+/* ============================================================================
+   ACTION BUTTON COLUMN STYLING - For dual-action cards
+   ============================================================================ */
+
+/* Action column visual separator */
+.wetu-event-card__compact-actions,
+.wetu-destination-arrival__actions {
+  background: #fafafa;
+}
+
+/* Primary action (view content) - filled dark */
+.wetu-event-card__action--primary,
+.wetu-destination-arrival__action--primary {
+  background: #333;
+  color: #fff;
+  border-color: #333;
+}
+
+.wetu-event-card__action--primary:hover,
+.wetu-destination-arrival__action--primary:hover {
+  background: #1a1a1a;
+  color: #fff;
+}
+
+/* Secondary action (show on map) - outlined style */
+.wetu-event-card__action--secondary,
+.wetu-destination-arrival__action--secondary {
+  background: transparent;
+  color: #666;
+  border-color: #e5e5e5;
+}
+
+.wetu-event-card__action--secondary:hover,
+.wetu-destination-arrival__action--secondary:hover {
+  background: #f0f0f0;
+  color: #333;
+}
+
+/* Action icon animations */
+.wetu-event-card__action svg,
+.wetu-destination-arrival__action svg {
+  transition: transform 0.2s ease;
+}
+
+.wetu-event-card__action--primary:hover svg {
+  transform: translateX(2px);
+}
+
+.wetu-event-card__action--secondary:hover svg {
+  transform: scale(1.1);
+}
+
+/* ============================================================================
+   CURSOR INDICATORS - Different cursors for different interactions
+   ============================================================================ */
+
+/* Pointer cursor for all interactive cards */
+.wetu-event-card[data-action],
+.wetu-event-card[data-lat][data-lng],
+.wetu-event-card--accommodation,
+.wetu-event-card--destination-arrival,
+.wetu-event-card--transit,
+.wetu-event-card--staying-clickable,
+.wetu-event-card__property-activity-thumb,
+.wetu-event-card__included-item--linked .wetu-event-card__included-item-link {
+  cursor: pointer;
+}
+
+/* ============================================================================
+   FOCUS INDICATORS - Keyboard accessibility
+   ============================================================================ */
+
+/* Focus ring for keyboard navigation */
+.wetu-event-card:focus-visible,
+.wetu-event-card__action:focus-visible,
+.wetu-event-card__property-activity-thumb:focus-visible,
+.wetu-event-card__included-item-link:focus-visible,
+.wetu-destination-arrival__action:focus-visible {
+  outline: 2px solid #333;
+  outline-offset: 2px;
+}
+
+/* ============================================================================
+   INTERACTION FEEDBACK - Visual response to clicks
+   ============================================================================ */
+
+/* Active/pressed state */
+.wetu-event-card:active:not(.wetu-event-card--included-summary),
+.wetu-event-card__action:active,
+.wetu-event-card__property-activity-thumb:active {
+  transform: scale(0.99);
+}
+
+/* ============================================================================
+   JOURNEY TITLE CARD - Map view interaction indicator
+   ============================================================================ */
+
+.wetu-fullscreen-map-v2__journey-card--clickable {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle map icon hint */
+.wetu-fullscreen-map-v2__journey-card--clickable::after {
+  content: '';
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  width: 20px;
+  height: 20px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='1.5'%3E%3Cpath d='M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  opacity: 0.4;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.wetu-fullscreen-map-v2__journey-card--clickable:hover::after {
+  opacity: 0.8;
+  transform: scale(1.1);
+}
+
+/* ============================================================================
+   MOBILE-SPECIFIC INTERACTION INDICATORS
+   ============================================================================ */
+
+@media screen and (max-width: 900px) {
+  /* Slightly larger touch targets for mobile */
+  .wetu-event-card__action,
+  .wetu-destination-arrival__action {
+    width: 40px;
+    min-height: 44px; /* Apple's recommended touch target */
+  }
+  
+  /* Make left border indicator more visible on mobile */
+  .wetu-event-card[data-lat][data-lng]::before,
+  .wetu-event-card--accommodation::before,
+  .wetu-event-card--destination-arrival::before,
+  .wetu-event-card--transit::before {
+    width: 4px;
+  }
+  
+  /* Always show interaction hints on mobile (no hover) */
+  .wetu-event-card[data-lat][data-lng]::before,
+  .wetu-event-card--accommodation::before,
+  .wetu-event-card--destination-arrival::before {
+    opacity: 0.3;
+  }
+  
+  /* Journey card hint always visible on mobile */
+  .wetu-fullscreen-map-v2__journey-card--clickable::after {
+    opacity: 0.5;
+  }
+  
+  /* Clickable card arrow - larger touch-friendly on mobile */
+  .wetu-event-card__compact-arrow {
+    width: 40px;
+    min-height: 44px;
+  }
+  
+  /* Title group in content viewer */
+  .wetu-fullscreen-map-v2__content-viewer-title-group {
+    gap: 6px;
+  }
+  
+  /* Show on Map overlay - mobile adjustments */
+  .wetu-show-on-map-overlay {
+    top: 12px;
+    right: 12px;
+    padding: 8px 14px;
+    font-size: 12px;
+    gap: 6px;
+  }
+}
+
+/* ============================================================================
+   SHOW ON MAP OVERLAY - Overlaid on hero images in content viewer
+   Works across all product templates (wetu-property, wetu-destination, etc.)
+   ============================================================================ */
+
+.wetu-show-on-map-overlay {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 100;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.95);
+  border: none;
+  border-radius: 24px;
+  color: #333;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.15),
+    0 0 0 1px rgba(0, 0, 0, 0.05);
+  /* Outer glow for visibility on any background */
+  text-shadow: none;
+}
+
+.wetu-show-on-map-overlay:hover {
+  background: #fff;
+  transform: translateY(-1px);
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+.wetu-show-on-map-overlay:active {
+  transform: translateY(0);
+}
+
+.wetu-show-on-map-overlay svg {
+  flex-shrink: 0;
+  color: #e74c3c;
+}
+
+.wetu-show-on-map-overlay span {
+  white-space: nowrap;
+}
+
+/* ============================================================================
+   THUMBNAIL POPUP - Elegant floating card for map locations
+   Clean, minimal design suitable for high-end travel sites
+   3-tier interaction: small marker → popup summary → full product
+   ============================================================================ */
+
+/* Reset Mapbox popup defaults for custom styling */
+.wetu-thumbnail-popup-container.mapboxgl-popup {
+  z-index: 100;
+}
+
+.wetu-thumbnail-popup-container .mapboxgl-popup-content {
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+  overflow: visible;
+}
+
+.wetu-thumbnail-popup-container .mapboxgl-popup-tip {
+  display: none;
+}
+
+/* Main popup wrapper */
+.wetu-thumbnail-popup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Card - elegant floating design */
+.wetu-thumbnail-popup__card {
+  position: relative;
+  width: 160px;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: bottom center;
+  /* Elegant shadow - layered for depth */
+  box-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.1),
+    0 8px 24px rgba(0, 0, 0, 0.15),
+    0 16px 48px rgba(0, 0, 0, 0.1);
+}
+
+/* Hover state - subtle expansion */
+.wetu-thumbnail-popup__card:hover {
+  width: 200px;
+  transform: translateY(-4px);
+  box-shadow: 
+    0 4px 8px rgba(0, 0, 0, 0.12),
+    0 12px 32px rgba(0, 0, 0, 0.18),
+    0 24px 64px rgba(0, 0, 0, 0.12);
+}
+
+/* Image wrapper - 16:9 aspect ratio */
+.wetu-thumbnail-popup__image-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: #1a1a1a;
+}
+
+/* Image with smooth zoom on hover */
+.wetu-thumbnail-popup__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+}
+
+.wetu-thumbnail-popup__card:hover .wetu-thumbnail-popup__image {
+  transform: scale(1.08);
+}
+
+/* Gradient overlay - elegant fade for text readability */
+.wetu-thumbnail-popup__gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.85) 0%,
+    rgba(0, 0, 0, 0.5) 35%,
+    rgba(0, 0, 0, 0.15) 60%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+/* Title - always visible, refined typography */
+.wetu-thumbnail-popup__title {
+  position: absolute;
+  bottom: 10px;
+  left: 12px;
+  right: 12px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  /* Subtle text shadow for legibility */
+  text-shadow: 
+    0 1px 2px rgba(0, 0, 0, 0.5),
+    0 2px 8px rgba(0, 0, 0, 0.3);
+  /* Two-line ellipsis */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+/* Hover - slightly larger title */
+.wetu-thumbnail-popup__card:hover .wetu-thumbnail-popup__title {
+  font-size: 14px;
+  bottom: 12px;
+}
+
+/* No image fallback */
+.wetu-thumbnail-popup__no-image {
+  background: linear-gradient(135deg, #2c2c2c 0%, #1a1a1a 100%);
+  min-height: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.wetu-thumbnail-popup__title--no-image {
+  position: static;
+  color: #fff;
+  text-shadow: none;
+  text-align: center;
+}
+
+/* Pointer arrow - subtle, elegant */
+.wetu-thumbnail-popup__pointer {
+  margin-top: -2px;
+  transition: transform 0.3s ease;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+.wetu-thumbnail-popup__pointer svg {
+  display: block;
+  width: 16px;
+  height: 10px;
+  color: #1a1a1a;
+  transition: all 0.3s ease;
+}
+
+/* Pointer grows slightly on hover */
+.wetu-thumbnail-popup__card:hover + .wetu-thumbnail-popup__pointer svg {
+  width: 18px;
+  height: 11px;
+}
+
+/* Tap/click indicator - subtle border glow */
+.wetu-thumbnail-popup__card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 0 rgba(255, 255, 255, 0);
+  transition: box-shadow 0.3s ease;
+  pointer-events: none;
+}
+
+.wetu-thumbnail-popup__card:hover::after {
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.3);
+}
+
+/* ============================================================================
+   MOBILE RESPONSIVE - Touch-optimized
+   ============================================================================ */
+
+@media screen and (max-width: 900px) {
+  /* Larger touch target on mobile */
+  .wetu-thumbnail-popup__card {
+    width: 140px;
+  }
+  
+  /* Tap expands on mobile (touch doesn't have hover) */
+  .wetu-thumbnail-popup__card:active {
+    width: 180px;
+    transform: translateY(-2px);
+  }
+  
+  .wetu-thumbnail-popup__title {
+    font-size: 12px;
+    bottom: 8px;
+    left: 10px;
+    right: 10px;
+  }
+  
+  .wetu-thumbnail-popup__pointer svg {
+    width: 14px;
+    height: 9px;
+    color: #1a1a1a;
+  }
+}
+
+/* Extra small screens */
+@media screen and (max-width: 480px) {
+  .wetu-thumbnail-popup__card {
+    width: 120px;
+  }
+  
+  .wetu-thumbnail-popup__title {
+    font-size: 11px;
+    bottom: 6px;
+    left: 8px;
+    right: 8px;
+  }
+}

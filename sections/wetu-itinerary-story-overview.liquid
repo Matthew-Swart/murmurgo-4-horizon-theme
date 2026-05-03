@@ -1,0 +1,1092 @@
+{% comment %}
+  ============================================================================
+  WETU ITINERARY STORY OVERVIEW
+  ============================================================================
+  
+  Journey overview section with destination carousel, stats, and mini-map.
+  Provides quick orientation before detailed leg sections.
+  
+  ============================================================================
+{% endcomment %}
+
+{% comment %} Load itinerary data {% endcomment %}
+{% include 'wetu-itinerary-data' %}
+
+
+{% comment %} Get itinerary summary {% endcomment %}
+{% assign total_days = wetu_total_days | default: product.metafields.wetu.itinerary_days.value | default: 0 %}
+{% assign total_nights = wetu_total_nights | default: total_days | minus: 1 %}
+{% assign map_view_url = product.metafields.wetu.map_view_url.value %}
+
+{% comment %} Get itinerary summary/introduction content {% endcomment %}
+{% assign summary_content = wetu_itinerary.summary.value %}
+{% assign summary_metafield = product.metafields.wetu.itinerary_summary.value %}
+{% assign has_summary = false %}
+{% if summary_content != blank or summary_metafield != blank or product.description != blank %}
+  {% assign has_summary = true %}
+{% endif %}
+
+{% comment %} Count accommodations and experiences {% endcomment %}
+{% assign accommodation_count = 0 %}
+{% assign experiences_count = 0 %}
+{% assign flight_count = wetu_flight_count | default: 0 %}
+
+{% for leg in wetu_legs %}
+  {% assign leg_type = leg.type.value | default: 'Standard' %}
+  {% assign leg_nights = leg.nights.value | default: 0 %}
+  {% if leg_type != 'Departure' and leg_nights > 0 %}
+    {% assign accommodation_count = accommodation_count | plus: 1 %}
+    
+    {% comment %} Count activities from periods {% endcomment %}
+    {% assign periods = leg.periods.value %}
+    {% for period in periods %}
+      {% assign period_activities = period.activities.value %}
+      {% if period_activities.size > 0 %}
+        {% assign experiences_count = experiences_count | plus: period_activities.size %}
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+{% endfor %}
+
+{% comment %} Also count linked activity products {% endcomment %}
+{% if wetu_activity_products.size > experiences_count %}
+  {% assign experiences_count = wetu_activity_products.size %}
+{% endif %}
+
+<section 
+  class="itinerary-overview color-{{ section.settings.color_scheme }}" 
+  id="journey"
+  aria-labelledby="overview-heading"
+>
+  <div class="page-width">
+    
+    {% comment %} Section Header with Duration Badge {% endcomment %}
+    <header class="itinerary-overview__header">
+      <h2 class="itinerary-overview__heading" id="overview-heading">
+        {{ section.settings.heading | default: 'Your Journey' }}
+      </h2>
+      {% if section.settings.subheading != blank %}
+        <p class="itinerary-overview__subheading">{{ section.settings.subheading }}</p>
+      {% endif %}
+
+      {% comment %} Duration Badge {% endcomment %}
+      {% if total_days > 0 %}
+        <div class="itinerary-overview__duration-badge">
+          <span class="itinerary-overview__duration-value">{{ total_days }} Days</span>
+          <span class="itinerary-overview__duration-separator">/</span>
+          <span class="itinerary-overview__duration-value">{{ total_nights }} Nights</span>
+        </div>
+      {% endif %}
+    </header>
+
+    {% comment %} Introduction Section {% endcomment %}
+    {% if section.settings.show_introduction and has_summary %}
+      <div class="itinerary-overview__introduction">
+        <div class="itinerary-overview__introduction-content rte">
+          {% if summary_content != blank %}
+            {% render 'wetu-rich-text', content: summary_content %}
+          {% elsif summary_metafield != blank %}
+            {% render 'wetu-rich-text', content: summary_metafield %}
+          {% elsif product.description != blank %}
+            {{ product.description }}
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+
+    {% comment %} Stats Row {% endcomment %}
+    <div class="itinerary-overview__stats" role="list" aria-label="Journey statistics">
+      <div class="itinerary-overview__stat" role="listitem">
+        <div class="itinerary-overview__stat-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+        </div>
+        <div class="itinerary-overview__stat-content">
+          <span class="itinerary-overview__stat-value">{{ total_days }}</span>
+          <span class="itinerary-overview__stat-label">Days</span>
+        </div>
+      </div>
+      
+      <div class="itinerary-overview__stat" role="listitem">
+        <div class="itinerary-overview__stat-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+        </div>
+        <div class="itinerary-overview__stat-content">
+          <span class="itinerary-overview__stat-value">{{ accommodation_count }}</span>
+          <span class="itinerary-overview__stat-label">{% if accommodation_count == 1 %}Lodge{% else %}Lodges{% endif %}</span>
+        </div>
+      </div>
+      
+      {% if experiences_count > 0 %}
+        <div class="itinerary-overview__stat" role="listitem">
+          <div class="itinerary-overview__stat-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14.5 10c-.83 0-1.5-.67-1.5-1.5v-5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5z"/>
+              <path d="M20.5 10H19V8.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+              <path d="M9.5 14c.83 0 1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5S8 21.33 8 20.5v-5c0-.83.67-1.5 1.5-1.5z"/>
+              <path d="M3.5 14H5v1.5c0 .83-.67 1.5-1.5 1.5S2 16.33 2 15.5 2.67 14 3.5 14z"/>
+              <path d="M14 14.5c0-.83.67-1.5 1.5-1.5h5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-5c-.83 0-1.5-.67-1.5-1.5z"/>
+              <path d="M15.5 19H14v1.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5-.67-1.5-1.5-1.5z"/>
+              <path d="M10 9.5C10 8.67 9.33 8 8.5 8h-5C2.67 8 2 8.67 2 9.5S2.67 11 3.5 11h5c.83 0 1.5-.67 1.5-1.5z"/>
+              <path d="M8.5 5H10V3.5C10 2.67 9.33 2 8.5 2S7 2.67 7 3.5 7.67 5 8.5 5z"/>
+            </svg>
+          </div>
+          <div class="itinerary-overview__stat-content">
+            <span class="itinerary-overview__stat-value">{{ experiences_count }}+</span>
+            <span class="itinerary-overview__stat-label">Experiences</span>
+          </div>
+        </div>
+      {% endif %}
+      
+      {% if flight_count > 0 %}
+        <div class="itinerary-overview__stat" role="listitem">
+          <div class="itinerary-overview__stat-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
+            </svg>
+          </div>
+          <div class="itinerary-overview__stat-content">
+            <span class="itinerary-overview__stat-value">{{ flight_count }}</span>
+            <span class="itinerary-overview__stat-label">{% if flight_count == 1 %}Flight{% else %}Flights{% endif %}</span>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+    {% comment %} Destinations Carousel {% endcomment %}
+    {% if wetu_legs.size > 0 %}
+      <div class="itinerary-overview__destinations">
+        <h3 class="itinerary-overview__destinations-heading sr-only">Journey Stops</h3>
+        
+        <div class="itinerary-overview__destinations-track">
+          {% assign running_day = 1 %}
+          {% for leg in wetu_legs %}
+            {% assign leg_type = leg.type.value | default: 'Standard' %}
+            {% assign leg_nights = leg.nights.value | default: 0 %}
+            
+            {% if leg_type != 'Departure' and leg_nights > 0 %}
+              {% assign acc_name = leg.accommodation_name.value %}
+              {% assign acc_id = leg.content_entity_id.value %}
+              {% assign dest_id = leg.destination_content_entity_id.value %}
+              
+              {% comment %} Find linked accommodation product {% endcomment %}
+              {% assign acc_product = nil %}
+              {% assign acc_image = nil %}
+              {% for check_product in wetu_accommodation_products %}
+                {% assign check_pin = check_product.metafields.wetu.pin_id.value %}
+                {% if check_pin == acc_id %}
+                  {% assign acc_product = check_product %}
+                  {% assign acc_image = check_product.featured_image %}
+                  {% break %}
+                {% endif %}
+              {% endfor %}
+              
+              {% comment %} Find destination name {% endcomment %}
+              {% assign dest_name = '' %}
+              {% for dest_product in wetu_destination_products %}
+                {% assign dest_pin = dest_product.metafields.wetu.pin_id.value %}
+                {% if dest_pin == dest_id %}
+                  {% assign dest_name = dest_product.title %}
+                  {% if acc_image == nil %}
+                    {% assign acc_image = dest_product.featured_image %}
+                  {% endif %}
+                  {% break %}
+                {% endif %}
+              {% endfor %}
+              
+              <a href="#leg-{{ forloop.index }}" class="itinerary-overview__destination-card">
+                <div class="itinerary-overview__destination-image-wrapper">
+                  {% if acc_image %}
+                    <img 
+                      src="{{ acc_image | image_url: width: 400 }}"
+                      alt="{{ acc_name }}"
+                      loading="lazy"
+                      class="itinerary-overview__destination-image"
+                    >
+                  {% else %}
+                    <div class="itinerary-overview__destination-placeholder">
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                      </svg>
+                    </div>
+                  {% endif %}
+                  <span class="itinerary-overview__destination-days">
+                    Day {{ running_day }}{% if leg_nights > 1 %}-{{ running_day | plus: leg_nights | minus: 1 }}{% endif %}
+                  </span>
+                </div>
+                <div class="itinerary-overview__destination-info">
+                  <span class="itinerary-overview__destination-name">{{ acc_name }}</span>
+                  {% if dest_name != blank %}
+                    <span class="itinerary-overview__destination-region">{{ dest_name }}</span>
+                  {% endif %}
+                  <span class="itinerary-overview__destination-nights">{{ leg_nights }} {% if leg_nights == 1 %}Night{% else %}Nights{% endif %}</span>
+                </div>
+              </a>
+              
+              {% comment %} Connection Line {% endcomment %}
+              {% unless forloop.last %}
+                {% assign next_leg = wetu_legs[forloop.index] %}
+                {% if next_leg.type.value != 'Departure' %}
+                  <div class="itinerary-overview__connection" aria-hidden="true">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                  </div>
+                {% endif %}
+              {% endunless %}
+              
+              {% assign running_day = running_day | plus: leg_nights %}
+            {% endif %}
+          {% endfor %}
+        </div>
+        
+        {% comment %} Scroll Arrows {% endcomment %}
+        <button class="itinerary-overview__scroll-btn itinerary-overview__scroll-btn--prev" aria-label="Scroll left" data-scroll-prev>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 18l-6-6 6-6"/>
+          </svg>
+        </button>
+        <button class="itinerary-overview__scroll-btn itinerary-overview__scroll-btn--next" aria-label="Scroll right" data-scroll-next>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 18l6-6-6-6"/>
+          </svg>
+        </button>
+      </div>
+    {% endif %}
+
+    {% comment %} Accommodation Summary Table {% endcomment %}
+    {% if section.settings.show_accommodation_table and wetu_legs.size > 0 %}
+      <div class="itinerary-overview__accommodation-summary">
+        <h3 class="itinerary-overview__accommodation-heading">
+          {{ section.settings.accommodation_table_heading | default: 'Accommodation Summary' }}
+        </h3>
+
+        <div class="itinerary-overview__table-wrapper">
+          <table class="itinerary-overview__table">
+            <thead>
+              <tr>
+                <th class="itinerary-overview__th itinerary-overview__th--stay">Stay</th>
+                <th class="itinerary-overview__th itinerary-overview__th--date">Date</th>
+                <th class="itinerary-overview__th itinerary-overview__th--nights">Nights</th>
+                <th class="itinerary-overview__th itinerary-overview__th--basis">Basis</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% assign running_day = 1 %}
+              {% for leg in wetu_legs %}
+                {% assign leg_type = leg.type.value | default: 'Standard' %}
+                {% assign leg_nights = leg.nights.value | default: 0 %}
+
+                {% if leg_type != 'Departure' and leg_nights > 0 %}
+                  {% assign acc_name = leg.accommodation_name.value %}
+                  {% assign acc_id = leg.content_entity_id.value %}
+                  {% assign dest_id = leg.destination_content_entity_id.value %}
+
+                  {% comment %} Find linked accommodation product for URL {% endcomment %}
+                  {% assign acc_product = nil %}
+                  {% for check_product in wetu_accommodation_products %}
+                    {% assign check_pin = check_product.metafields.wetu.pin_id.value %}
+                    {% if check_pin == acc_id %}
+                      {% assign acc_product = check_product %}
+                      {% break %}
+                    {% endif %}
+                  {% endfor %}
+
+                  {% comment %} Find destination name {% endcomment %}
+                  {% assign dest_name = '' %}
+                  {% for dest_product in wetu_destination_products %}
+                    {% assign dest_pin = dest_product.metafields.wetu.pin_id.value %}
+                    {% if dest_pin == dest_id %}
+                      {% assign dest_name = dest_product.title %}
+                      {% break %}
+                    {% endif %}
+                  {% endfor %}
+
+                  {% comment %} Get meal basis from first period {% endcomment %}
+                  {% assign periods = leg.periods.value %}
+                  {% assign first_period = periods | first %}
+                  {% assign room_basis = first_period.room_basis.value | default: '' %}
+
+                  <tr class="itinerary-overview__tr">
+                    <td class="itinerary-overview__td itinerary-overview__td--stay">
+                      <div class="itinerary-overview__stay-info">
+                        {% if acc_product %}
+                          <a href="{{ acc_product.url }}" class="itinerary-overview__stay-link">
+                            {{ acc_name }}
+                          </a>
+                        {% else %}
+                          <span class="itinerary-overview__stay-name">{{ acc_name }}</span>
+                        {% endif %}
+                        {% if dest_name != blank %}
+                          <span class="itinerary-overview__stay-destination">{{ dest_name }}</span>
+                        {% endif %}
+                      </div>
+                    </td>
+                    <td class="itinerary-overview__td itinerary-overview__td--date">
+                      <span class="itinerary-overview__day-label">
+                        Day {{ running_day }}{% if leg_nights > 1 %} - {{ running_day | plus: leg_nights | minus: 1 }}{% endif %}
+                      </span>
+                    </td>
+                    <td class="itinerary-overview__td itinerary-overview__td--nights">
+                      {{ leg_nights }}
+                    </td>
+                    <td class="itinerary-overview__td itinerary-overview__td--basis">
+                      {% render 'wetu-meal-basis', basis: room_basis %}
+                    </td>
+                  </tr>
+
+                  {% assign running_day = running_day | plus: leg_nights %}
+                {% endif %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        {% comment %} Meal Basis Legend {% endcomment %}
+        {% if section.settings.show_basis_legend %}
+          <div class="itinerary-overview__basis-legend">
+            <span class="itinerary-overview__legend-title">Meal Plan Key:</span>
+            <span class="itinerary-overview__legend-item"><strong>B&B</strong> Bed & Breakfast</span>
+            <span class="itinerary-overview__legend-item"><strong>FB</strong> Full Board</span>
+            <span class="itinerary-overview__legend-item"><strong>FB+</strong> Full Board Plus</span>
+            <span class="itinerary-overview__legend-item"><strong>FI</strong> Fully Inclusive</span>
+            <span class="itinerary-overview__legend-item"><strong>HB</strong> Half Board</span>
+            <span class="itinerary-overview__legend-item"><strong>DBB</strong> Dinner, Bed & Breakfast</span>
+          </div>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {% comment %} Map Preview {% endcomment %}
+    {% if section.settings.show_map_preview and map_view_url != blank %}
+      <div class="itinerary-overview__map-preview">
+        <a href="{{ product.url }}?view=wetu-itinerary-map" class="itinerary-overview__map-link" aria-label="View full interactive map">
+          <img 
+            src="{{ map_view_url }}&width=800&height=400&scale=2" 
+            alt="Route map for {{ product.title }}"
+            loading="lazy"
+            class="itinerary-overview__map-image"
+          >
+          <div class="itinerary-overview__map-overlay">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
+              <path d="M8 2v16"/>
+              <path d="M16 6v16"/>
+            </svg>
+            <span>View Interactive Map</span>
+          </div>
+        </a>
+      </div>
+    {% endif %}
+
+    {% comment %} Description {% endcomment %}
+    {% if section.settings.show_description and product.description != blank %}
+      <div class="itinerary-overview__description">
+        <div class="itinerary-overview__description-content rte">
+          {{ product.description }}
+        </div>
+      </div>
+    {% endif %}
+
+  </div>
+</section>
+
+<style>
+/* ====================================
+   Itinerary Overview Section
+   ==================================== */
+
+.itinerary-overview {
+  padding: var(--section-spacing-top, 60px) 0 var(--section-spacing-bottom, 60px);
+  background: var(--color-background);
+}
+
+/* Header */
+.itinerary-overview__header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.itinerary-overview__heading {
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
+  font-weight: 600;
+  color: var(--color-foreground);
+  margin: 0 0 12px;
+}
+
+.itinerary-overview__subheading {
+  font-size: 1rem;
+  color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+  margin: 0;
+}
+
+/* Duration Badge */
+.itinerary-overview__duration-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 12px 24px;
+  background: var(--color-primary);
+  color: var(--color-primary-contrast, #fff);
+  border-radius: 0;
+  font-weight: 600;
+  font-size: 1.125rem;
+  letter-spacing: 0.02em;
+}
+
+.itinerary-overview__duration-separator {
+  opacity: 0.5;
+  font-weight: 400;
+}
+
+/* Introduction Section */
+.itinerary-overview__introduction {
+  max-width: 900px;
+  margin: 0 auto 40px;
+  padding: 24px 32px;
+  background: color-mix(in srgb, var(--color-foreground) 3%, transparent);
+  border-radius: 0;
+  border-left: 4px solid var(--color-primary);
+}
+
+.itinerary-overview__introduction-content {
+  font-size: 1.0625rem;
+  line-height: 1.75;
+  color: color-mix(in srgb, var(--color-foreground) 80%, transparent);
+}
+
+.itinerary-overview__introduction-content p {
+  margin-bottom: 1rem;
+}
+
+.itinerary-overview__introduction-content p:last-child {
+  margin-bottom: 0;
+}
+
+/* Stats Row */
+.itinerary-overview__stats {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 24px 40px;
+  margin-bottom: 48px;
+  padding: 24px;
+  background: color-mix(in srgb, var(--color-foreground) 3%, transparent);
+  border-radius: 0;
+}
+
+.itinerary-overview__stat {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.itinerary-overview__stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+  border-radius: 0;
+  color: var(--color-primary);
+}
+
+.itinerary-overview__stat-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.itinerary-overview__stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-foreground);
+  line-height: 1.2;
+}
+
+.itinerary-overview__stat-label {
+  font-size: 0.875rem;
+  color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+}
+
+/* Destinations Carousel */
+.itinerary-overview__destinations {
+  position: relative;
+  margin-bottom: 48px;
+}
+
+.itinerary-overview__destinations-track {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding: 8px 4px;
+}
+
+.itinerary-overview__destinations-track::-webkit-scrollbar {
+  display: none;
+}
+
+.itinerary-overview__destination-card {
+  flex: 0 0 auto;
+  width: 200px;
+  text-decoration: none;
+  scroll-snap-align: start;
+  transition: transform 0.2s ease;
+}
+
+.itinerary-overview__destination-card:hover {
+  transform: translateY(-4px);
+}
+
+.itinerary-overview__destination-image-wrapper {
+  position: relative;
+  aspect-ratio: 4/3;
+  border-radius: 0;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--color-foreground) 8%, transparent);
+}
+
+.itinerary-overview__destination-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.itinerary-overview__destination-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: color-mix(in srgb, var(--color-foreground) 30%, transparent);
+}
+
+.itinerary-overview__destination-days {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--color-primary);
+  border-radius: 0;
+}
+
+.itinerary-overview__destination-info {
+  padding: 12px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.itinerary-overview__destination-name {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-foreground);
+  line-height: 1.3;
+}
+
+.itinerary-overview__destination-region {
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+}
+
+.itinerary-overview__destination-nights {
+  font-size: 0.75rem;
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+.itinerary-overview__connection {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: color-mix(in srgb, var(--color-foreground) 30%, transparent);
+  padding: 0 4px;
+}
+
+/* Scroll Buttons */
+.itinerary-overview__scroll-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: 0;
+  color: var(--color-foreground);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 10;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.itinerary-overview__scroll-btn:hover {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-background);
+}
+
+.itinerary-overview__scroll-btn--prev {
+  left: -20px;
+}
+
+.itinerary-overview__scroll-btn--next {
+  right: -20px;
+}
+
+@media (max-width: 768px) {
+  .itinerary-overview__scroll-btn {
+    display: none;
+  }
+}
+
+/* Map Preview */
+.itinerary-overview__map-preview {
+  margin-bottom: 48px;
+}
+
+.itinerary-overview__map-link {
+  position: relative;
+  display: block;
+  border-radius: 0;
+  overflow: hidden;
+}
+
+.itinerary-overview__map-image {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.itinerary-overview__map-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(0, 0, 0, 0.4);
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.itinerary-overview__map-link:hover .itinerary-overview__map-overlay {
+  opacity: 1;
+}
+
+.itinerary-overview__map-overlay span {
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+/* Description */
+.itinerary-overview__description {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.itinerary-overview__description-content {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: color-mix(in srgb, var(--color-foreground) 80%, transparent);
+}
+
+/* Accommodation Summary Table */
+.itinerary-overview__accommodation-summary {
+  margin: 48px 0;
+  padding: 32px;
+  background: color-mix(in srgb, var(--color-foreground) 2%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-foreground) 10%, transparent);
+  border-radius: 0;
+}
+
+.itinerary-overview__accommodation-heading {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-foreground);
+  margin: 0 0 24px;
+  letter-spacing: 0.02em;
+}
+
+.itinerary-overview__table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.itinerary-overview__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+.itinerary-overview__th {
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+  border-bottom: 2px solid color-mix(in srgb, var(--color-foreground) 15%, transparent);
+}
+
+.itinerary-overview__th--stay {
+  width: 45%;
+}
+
+.itinerary-overview__th--date {
+  width: 20%;
+}
+
+.itinerary-overview__th--nights {
+  width: 15%;
+  text-align: center;
+}
+
+.itinerary-overview__th--basis {
+  width: 20%;
+  text-align: center;
+}
+
+.itinerary-overview__tr {
+  transition: background-color 0.2s ease;
+}
+
+.itinerary-overview__tr:hover {
+  background: color-mix(in srgb, var(--color-foreground) 3%, transparent);
+}
+
+.itinerary-overview__td {
+  padding: 16px;
+  vertical-align: middle;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-foreground) 8%, transparent);
+}
+
+.itinerary-overview__td--nights,
+.itinerary-overview__td--basis {
+  text-align: center;
+}
+
+.itinerary-overview__stay-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.itinerary-overview__stay-link {
+  color: var(--color-foreground);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.itinerary-overview__stay-link:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+.itinerary-overview__stay-name {
+  font-weight: 500;
+  color: var(--color-foreground);
+}
+
+.itinerary-overview__stay-destination {
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--color-foreground) 55%, transparent);
+}
+
+.itinerary-overview__day-label {
+  font-weight: 500;
+  color: var(--color-foreground);
+}
+
+.itinerary-overview__td--nights {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+/* Meal Basis Styling */
+.wetu-meal-basis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+  color: var(--color-primary);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: help;
+}
+
+/* Basis Legend */
+.itinerary-overview__basis-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid color-mix(in srgb, var(--color-foreground) 8%, transparent);
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--color-foreground) 60%, transparent);
+}
+
+.itinerary-overview__legend-title {
+  font-weight: 600;
+  color: color-mix(in srgb, var(--color-foreground) 70%, transparent);
+}
+
+.itinerary-overview__legend-item {
+  white-space: nowrap;
+}
+
+.itinerary-overview__legend-item strong {
+  color: var(--color-foreground);
+  margin-right: 4px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .itinerary-overview__introduction {
+    padding: 20px 24px;
+    margin-bottom: 32px;
+  }
+
+  .itinerary-overview__introduction-content {
+    font-size: 1rem;
+  }
+
+  .itinerary-overview__accommodation-summary {
+    margin: 32px 0;
+    padding: 20px;
+  }
+
+  .itinerary-overview__accommodation-heading {
+    font-size: 1.125rem;
+    margin-bottom: 16px;
+  }
+
+  .itinerary-overview__th,
+  .itinerary-overview__td {
+    padding: 12px 10px;
+    font-size: 0.875rem;
+  }
+
+  .itinerary-overview__th--stay {
+    width: auto;
+  }
+
+  .itinerary-overview__basis-legend {
+    font-size: 0.6875rem;
+    gap: 6px 12px;
+  }
+}
+
+@media (max-width: 640px) {
+  .itinerary-overview {
+    padding: 40px 0;
+  }
+
+  .itinerary-overview__duration-badge {
+    font-size: 1rem;
+    padding: 10px 20px;
+    gap: 8px;
+  }
+
+  .itinerary-overview__stats {
+    gap: 16px 24px;
+    padding: 20px;
+  }
+
+  .itinerary-overview__stat-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .itinerary-overview__destination-card {
+    width: 160px;
+  }
+
+  /* Mobile table layout */
+  .itinerary-overview__table-wrapper {
+    margin: 0 -20px;
+    padding: 0 20px;
+  }
+
+  .itinerary-overview__table {
+    font-size: 0.8125rem;
+  }
+
+  .itinerary-overview__th--date,
+  .itinerary-overview__td--date {
+    display: none;
+  }
+
+  .itinerary-overview__th--stay {
+    width: 50%;
+  }
+
+  .itinerary-overview__th--nights,
+  .itinerary-overview__th--basis {
+    width: 25%;
+  }
+
+  .itinerary-overview__th,
+  .itinerary-overview__td {
+    padding: 10px 8px;
+  }
+
+  .itinerary-overview__stay-destination {
+    font-size: 0.75rem;
+  }
+
+  .itinerary-overview__day-label {
+    font-size: 0.8125rem;
+  }
+
+  .wetu-meal-basis {
+    padding: 3px 6px;
+    font-size: 0.6875rem;
+  }
+}
+
+/* Screen reader only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+</style>
+
+<script>
+(function() {
+  const track = document.querySelector('.itinerary-overview__destinations-track');
+  if (!track) return;
+  
+  const prevBtn = document.querySelector('[data-scroll-prev]');
+  const nextBtn = document.querySelector('[data-scroll-next]');
+  
+  const scrollAmount = 240;
+  
+  if (prevBtn) {
+    prevBtn.addEventListener('click', () => {
+      track.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+    });
+  }
+  
+  if (nextBtn) {
+    nextBtn.addEventListener('click', () => {
+      track.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    });
+  }
+})();
+</script>
+
+{% schema %}
+{
+  "name": "Itinerary Overview",
+  "tag": "section",
+  "class": "section-itinerary-overview",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Your Journey"
+    },
+    {
+      "type": "text",
+      "id": "subheading",
+      "label": "Subheading"
+    },
+    {
+      "type": "header",
+      "content": "Introduction"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_introduction",
+      "label": "Show introduction section",
+      "info": "Displays the itinerary summary or product description",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Accommodation Table"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_accommodation_table",
+      "label": "Show accommodation summary table",
+      "info": "Displays a table with stays, dates, nights, and meal basis",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "accommodation_table_heading",
+      "label": "Table heading",
+      "default": "Accommodation Summary"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_basis_legend",
+      "label": "Show meal basis legend",
+      "info": "Displays a key explaining meal plan abbreviations",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Additional Content"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_map_preview",
+      "label": "Show map preview",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_description",
+      "label": "Show itinerary description",
+      "info": "Shows additional description below (if introduction is already showing summary)",
+      "default": false
+    }
+  ],
+  "presets": [
+    {
+      "name": "Itinerary Overview"
+    }
+  ]
+}
+{% endschema %}

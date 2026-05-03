@@ -1,0 +1,782 @@
+{% comment %}
+  ============================================================================
+  WETU BREADCRUMBS
+  ============================================================================
+  
+  Displays a comprehensive geographical breadcrumb navigation based on Wetu hierarchy:
+  Home > [Group] > Country > Property > Current Page
+  
+  Logic:
+  1. Determine the "Parent Property" (source of location data).
+  2. Extract location details from the Parent Property's Metafields.
+  3. Construct the breadcrumb trail:
+     - Check for Group Name metafield and link to matching collection.
+     - Show Country.
+     - Show Property.
+     - Show Current Page.
+  
+  ============================================================================
+{% endcomment %}
+
+{%- liquid
+  # --- STORE-SPECIFIC LOGIC ---
+  # Detect Travel 2022 store
+  assign is_travel_2022 = false
+  if shop.permanent_domain contains 'travel-2022'
+    assign is_travel_2022 = true
+  endif
+  
+  # Wetu breadcrumbs only show on Travel2022 store
+  # All other stores use the property-nav-bar instead
+  if is_travel_2022 == false
+    assign skip_breadcrumbs = true
+  else
+    assign skip_breadcrumbs = false
+  endif
+
+  assign skip_command_center_breadcrumbs = false
+  if template.name == 'product' and template.suffix == 'wetu-itinerary-command-center'
+    assign skip_command_center_breadcrumbs = true
+  endif
+  
+  # Get home favicon from shop metafield for non-Travel2022 stores
+  assign home_favicon = nil
+  unless is_travel_2022
+    assign home_favicon = shop.metafields.custom.group_favicon_white
+  endunless
+  
+  assign parent_property = nil
+  assign location_obj = nil
+  assign is_property_page = false
+  assign current_entity_title = ''
+  assign is_video_context = false
+  assign is_document_context = false
+
+  # --- 1. CONTEXT RESOLUTION ---
+  if product
+    assign current_entity_title = product.title
+    if product.type == 'wetu-property'
+      assign is_property_page = true
+      assign parent_property = product
+    else
+      # Child items (Accommodation, Activity, Video, etc.)
+      
+      # Strategy A: Direct Metafield Link (various namespaces)
+      assign potential_parent = product.metafields.wetu.property_product.value
+      
+      unless potential_parent
+        assign potential_parent = product.metafields.wetu_room.property_product.value
+      endunless
+      unless potential_parent
+        assign potential_parent = product.metafields.wetu_video.property_product.value
+      endunless
+      unless potential_parent
+        assign potential_parent = product.metafields.wetu_activity.property_product.value
+      endunless
+      unless potential_parent
+         assign potential_parent = product.metafields.wetu_restaurant.property_product.value
+      endunless
+      unless potential_parent
+         assign potential_parent = product.metafields.wetu_spa.property_product.value
+      endunless
+       unless potential_parent
+         assign potential_parent = product.metafields.wetu_linked_activity.property_product.value
+      endunless
+      unless potential_parent
+         assign potential_parent = product.metafields.wetu_linked_restaurant.property_product.value
+      endunless
+      unless potential_parent
+         assign potential_parent = product.metafields.wetu_linked_spa.property_product.value
+      endunless
+
+      if potential_parent
+        assign parent_property = potential_parent
+      endif
+
+      # Strategy B: Tags (Fallback)
+      unless parent_property
+        for tag in product.tags
+          if tag contains 'wetu-property-parent-handle:'
+             assign parent_handle = tag | remove: 'wetu-property-parent-handle:' | strip
+             assign parent_property = all_products[parent_handle]
+             break
+          endif
+        endfor
+      endunless
+
+      # Strategy C: Collections (Fallback)
+      unless parent_property
+        for col in product.collections
+          if col.metafields.wetu_collection.property_product.value
+            assign parent_property = col.metafields.wetu_collection.property_product.value
+            break
+          endif
+        endfor
+      endunless
+
+      # Fallback: if wetu-accommodation but no parent found, treat self as property/parent
+      if product.type == 'wetu-accommodation' and parent_property == nil
+         assign is_property_page = true
+         assign parent_property = product
+      endif
+
+      # Detect videos/documents by handles and metafields (not product type)
+      if product.metafields.wetu_video != blank
+        assign is_video_context = true
+      elsif product.metafields.wetu_video.video != blank or product.metafields.wetu.video != blank or product.metafields.wetu.videos != blank
+        assign is_video_context = true
+      elsif product.handle contains '-video-'
+        assign is_video_context = true
+      endif
+
+      if product.metafields.wetu_document != blank
+        assign is_document_context = true
+      elsif product.metafields.wetu_document.document != blank or product.metafields.wetu.document != blank or product.metafields.wetu.documents != blank
+        assign is_document_context = true
+      elsif product.handle contains '-document-'
+        assign is_document_context = true
+      endif
+
+      if is_video_context == false or is_document_context == false
+        for product_collection in product.collections
+          if is_video_context == false
+            if product_collection.handle contains '-videos' or product_collection.handle == 'all-property-videos'
+              assign is_video_context = true
+            endif
+          endif
+          if is_document_context == false
+            if product_collection.handle contains '-documents' or product_collection.handle == 'all-property-documents'
+              assign is_document_context = true
+            endif
+          endif
+          if is_video_context and is_document_context
+            break
+          endif
+        endfor
+      endif
+    endif
+
+  elsif collection
+    assign current_entity_title = collection.title
+    # Support for Collection pages linked to a property
+    assign potential_parent = collection.metafields.wetu_collection.property_product.value
+    if potential_parent
+      assign parent_property = potential_parent
+    endif
+
+    if collection.handle contains '-videos' or collection.handle == 'all-property-videos'
+      assign is_video_context = true
+    endif
+    if collection.handle contains '-documents' or collection.handle == 'all-property-documents'
+      assign is_document_context = true
+    endif
+
+  elsif request.page_type == 'page'
+    assign current_entity_title = page.title
+    # Check if page is linked to a property (optional, dependent on implementation)
+    assign potential_parent = page.metafields.wetu.property_product.value
+    unless potential_parent
+       assign potential_parent = page.metafields.wetu_page.source_property.value
+    endunless
+    if potential_parent
+      assign parent_property = potential_parent
+    endif
+  endif
+
+  # --- 2. LOCATION & GROUP EXTRACTION ---
+  
+  # Group Name Logic
+  assign group_name = nil
+  
+  # 1. Try direct metafield on the object itself
+  if product
+     assign group_name = product.metafields.wetu.group_name.value
+     if group_name == blank
+        assign group_name = product.metafields.custom.group_name.value
+     endif
+  elsif collection
+     assign group_name = collection.metafields.custom.group_name.value
+  elsif request.page_type == 'page'
+     assign group_name = page.metafields.custom.group_name.value
+  endif
+
+  # 2. If not found, try parent property metafields
+  if group_name == blank and parent_property
+     assign group_name = parent_property.metafields.wetu.group_name.value
+     if group_name == blank
+        assign group_name = parent_property.metafields.custom.group_name.value
+     endif
+  endif
+  
+  # Handle object vs string (some metafields return objects)
+  if group_name.value
+     assign group_name = group_name.value
+  endif
+
+  if parent_property
+    # Primary Source: Single Line Text Metafields
+    assign path_country = parent_property.metafields.wetu.country.value
+    
+    # Fallback to older Location Object if direct fields are empty
+    if path_country == blank
+        assign location_obj = parent_property.metafields.custom.wetu.location.value
+        unless location_obj
+           assign location_obj = parent_property.metafields.wetu.location.value
+        endunless
+        unless location_obj
+           assign location_obj = parent_property.metafields.travel.location.value
+        endunless
+
+        if location_obj
+            assign path_country = location_obj.country
+        endif
+    endif
+  endif
+
+  # State tracking for deduplication
+  assign last_crumb_name = ''
+  
+  # Track if any breadcrumb items are added after Home
+  assign has_breadcrumb_items = false
+
+  # --- 3. INTERMEDIATE LINKS (Videos, Accommodation) ---
+  assign intermediate_title = nil
+  assign intermediate_link = nil
+  
+  if parent_property and is_property_page == false
+      if is_video_context
+          assign intermediate_title = 'Videos'
+          assign video_col_handle = parent_property.handle | append: '-videos'
+          if collections[video_col_handle]
+              assign intermediate_link = collections[video_col_handle].url
+          else
+              assign intermediate_link = parent_property.url | append: '#videos'
+          endif
+      elsif product.type == 'wetu-accommodation' or product.metafields.wetu_room != blank
+          assign intermediate_title = 'Accommodation'
+          assign accom_col_handle = parent_property.handle | append: '-accommodation'
+          if collections[accom_col_handle]
+              assign intermediate_link = collections[accom_col_handle].url
+          else
+              assign intermediate_link = parent_property.url | append: '#accommodation'
+          endif
+      elsif is_document_context
+          assign intermediate_title = 'Documents'
+          assign docs_col_handle = parent_property.handle | append: '-documents'
+          if collections[docs_col_handle]
+              assign intermediate_link = collections[docs_col_handle].url
+          else
+              assign intermediate_link = parent_property.url | append: '#documents'
+          endif
+      endif
+  endif
+
+  # --- 4. TITLE CLEANUP & STANDARDIZATION ---
+  # 1. Remove property name if present to avoid duplication
+  if parent_property and current_entity_title contains parent_property.title
+     assign cleaned_title = current_entity_title | remove: parent_property.title | strip
+  else
+     assign cleaned_title = current_entity_title
+  endif
+
+  # 2. Standardize specific page titles based on user requirements
+  # Handles "Accommodation at...", "Videos for...", "Location Map", "Rates"
+  assign cleaned_title_down = cleaned_title | downcase | strip
+  
+  if cleaned_title_down == 'accommodation at' or cleaned_title_down == 'accommodation'
+     assign current_entity_title = 'Accommodation'
+  elsif cleaned_title_down == 'activities at' or cleaned_title_down == 'activities'
+     assign current_entity_title = 'Activities'
+  elsif cleaned_title_down == 'videos for' or cleaned_title_down == 'videos'
+     assign current_entity_title = 'Videos'
+  elsif cleaned_title_down == 'location map' or cleaned_title_down == 'map'
+     assign current_entity_title = 'Map'
+  elsif cleaned_title_down == 'rates'
+     assign current_entity_title = 'Rates & Info'
+  elsif parent_property and current_entity_title contains parent_property.title
+      # Fallback generic cleanup if we haven't matched a specific override yet
+      # Remove leading punctuation commonly used as separators ( - | : )
+      assign first_char = cleaned_title | slice: 0
+      if first_char == '-' or first_char == '|' or first_char == ':' or first_char == '–'
+          assign cleaned_title = cleaned_title | slice: 1, cleaned_title.size | strip
+      endif
+      
+      # Clean trailing prepositions if they were left behind
+      if cleaned_title contains ' at'
+          assign check_at = cleaned_title | split: ' at' | last
+          if check_at == blank or check_at == '' 
+             assign cleaned_title = cleaned_title | split: ' at' | first
+          endif
+      endif
+      if cleaned_title contains ' for'
+          assign check_for = cleaned_title | split: ' for' | last
+          if check_for == blank or check_for == ''
+             assign cleaned_title = cleaned_title | split: ' for' | first
+          endif
+      endif
+
+      if cleaned_title != blank
+         assign current_entity_title = cleaned_title | strip
+      endif
+  endif
+-%}
+
+{% comment %} Render breadcrumbs on all stores, but skip group collection for non-Travel2022 {% endcomment %}
+{% unless skip_breadcrumbs or template.name == 'index' or skip_command_center_breadcrumbs %}
+<nav 
+  class="wetu-breadcrumbs color-{{ section.settings.color_scheme }}" 
+  aria-label="Breadcrumb"
+  style="
+    --section-padding-top: {{ section.settings.padding_top }}px;
+    --section-padding-bottom: {{ section.settings.padding_bottom }}px;
+  "
+>
+  <div class="wetu-breadcrumbs__container">
+    <ol class="wetu-breadcrumbs__list">
+      
+      {% comment %} 1. HOME (Favicon Icon) {% endcomment %}
+      <li class="wetu-breadcrumbs__item wetu-breadcrumbs__home">
+        <a href="{{ routes.root_url }}" class="wetu-breadcrumbs__link wetu-breadcrumbs__home-link" title="Home">
+          {% if home_favicon %}
+            <img src="{{ home_favicon | image_url: width: 48 }}" alt="Home" class="wetu-breadcrumbs__home-icon" width="16" height="16" loading="eager">
+          {% else %}
+            {% comment %} Fallback SVG home icon if no favicon set {% endcomment %}
+            <svg class="wetu-breadcrumbs__home-svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path d="M10 2L2 9h3v9h4v-6h2v6h4V9h3L10 2z"/>
+            </svg>
+          {% endif %}
+        </a>
+        <span class="wetu-breadcrumbs__separator">
+          <svg viewBox="0 0 8 12" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M1 1l5 5-5 5"/>
+          </svg>
+        </span>
+      </li>
+
+      {% comment %} 2. GROUP NAME (Optional) {% endcomment %}
+      {% if group_name != blank %}
+        {% assign group_handle = group_name | handleize %}
+        {% assign col_group = collections[group_handle] %}
+        
+        {% unless group_name == last_crumb_name %}
+           <li class="wetu-breadcrumbs__item">
+             {% if col_group %}
+               <a href="{{ col_group.url }}" class="wetu-breadcrumbs__link">{{ group_name }}</a>
+             {% else %}
+               <span class="wetu-breadcrumbs__text">{{ group_name }}</span>
+             {% endif %}
+             <svg viewBox="0 0 8 12" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M1 1l5 5-5 5"/></svg>
+           </li>
+           {% assign last_crumb_name = group_name %}
+           {% assign has_breadcrumb_items = true %}
+        {% endunless %}
+      {% endif %}
+
+      {% comment %} 3. COUNTRY (Show ONLY if Group is missing) {% endcomment %}
+      {% if path_country != blank and group_name == blank %}
+         {% assign handle_country = path_country | handleize %}
+         {% assign col_country = collections[handle_country] %}
+         
+         {% if col_country %}
+            {% unless path_country == last_crumb_name %}
+                <li class="wetu-breadcrumbs__item">
+                  <a href="{{ col_country.url }}" class="wetu-breadcrumbs__link">{{ path_country }}</a>
+                  <svg viewBox="0 0 8 12" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M1 1l5 5-5 5"/></svg>
+                </li>
+                {% assign last_crumb_name = path_country %}
+                {% assign has_breadcrumb_items = true %}
+            {% endunless %}
+         {% endif %}
+      {% endif %}
+
+      {% comment %} 4. PROPERTY & CURRENT PAGE {% endcomment %}
+      {% if parent_property %}
+        {% assign has_breadcrumb_items = true %}
+        
+        {% if is_property_page %}
+           {% comment %} Property IS the current page - show text, no chevron {% endcomment %}
+           <li class="wetu-breadcrumbs__item">
+             <span class="wetu-breadcrumbs__text" aria-current="page">{{ parent_property.title }}</span>
+           </li>
+        {% else %}
+           {% comment %} Property is a parent - show link and chevron {% endcomment %}
+           <li class="wetu-breadcrumbs__item">
+             <a href="{{ parent_property.url }}" class="wetu-breadcrumbs__link">{{ parent_property.title }}</a>
+             <svg viewBox="0 0 8 12" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M1 1l5 5-5 5"/></svg>
+           </li>
+
+           {% comment %} INTERMEDIATE LINKS (Videos, Accommodation) {% endcomment %}
+           {% if intermediate_title %}
+              <li class="wetu-breadcrumbs__item">
+                <a href="{{ intermediate_link }}" class="wetu-breadcrumbs__link">{{ intermediate_title }}</a>
+                <svg viewBox="0 0 8 12" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M1 1l5 5-5 5"/></svg>
+              </li>
+           {% endif %}
+
+           {% comment %} Current Entity {% endcomment %}
+           <li class="wetu-breadcrumbs__item">
+            <span class="wetu-breadcrumbs__text" aria-current="page">{{ current_entity_title }}</span>
+           </li>
+        {% endif %}
+      
+      {% elsif template.suffix == 'resrequest-integration' or template.suffix == 'wetu-integration' or page.handle == 'resrequest-com-integration' or page.handle == 'wetu-com-integration' %}
+        {% comment %} Integration Pages {% endcomment %}
+        {% assign has_breadcrumb_items = true %}
+        <li class="wetu-breadcrumbs__item">
+           <span class="wetu-breadcrumbs__text" aria-current="page">{{ page.title }}</span>
+        </li>
+      {% elsif product or collection %}
+        {% comment %} Fallback for non-wetu or unlinked items, display current title only {% endcomment %}
+        {% assign has_breadcrumb_items = true %}
+        <li class="wetu-breadcrumbs__item">
+           <span class="wetu-breadcrumbs__text" aria-current="page">{{ current_entity_title }}</span>
+        </li>
+      {% endif %}
+
+      {% comment %} FALLBACK: If no breadcrumb items were added, show current page title {% endcomment %}
+      {% unless has_breadcrumb_items %}
+        <li class="wetu-breadcrumbs__item">
+          <span class="wetu-breadcrumbs__text" aria-current="page">
+            {% if page.title != blank %}
+              {{ page.title }}
+            {% elsif product.title != blank %}
+              {{ product.title }}
+            {% elsif collection.title != blank %}
+              {{ collection.title }}
+            {% else %}
+              {{ current_entity_title }}
+            {% endif %}
+          </span>
+        </li>
+      {% endunless %}
+
+    </ol>
+  </div>
+</nav>
+{% endunless %}
+
+{%- comment -%}
+  JSON-LD Structured Data for SEO
+{%- endcomment -%}
+{% unless skip_breadcrumbs or template.name == 'index' or skip_command_center_breadcrumbs %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "{{ shop.url }}"
+    }
+    {% assign position = 1 %}
+    {% assign last_schema_name = '' %}
+    
+    {% comment %} GROUP {%- endcomment -%}
+    {% if group_name != blank %}
+      {% assign group_handle = group_name | handleize %}
+      {% assign col_group = collections[group_handle] %}
+      
+      {% unless group_name == last_schema_name %}
+        {% assign position = position | plus: 1 %}
+        ,{
+          "@type": "ListItem",
+          "position": {{ position }},
+          "name": "{{ group_name }}",
+          {% if col_group %}
+            "item": "{{ shop.url }}{{ col_group.url }}"
+          {% else %}
+            "item": "{{ shop.url }}/collections/{{ group_handle }}"
+          {% endif %}
+        }
+        {% assign last_schema_name = group_name %}
+      {% endunless %}
+    {% endif %}
+
+    {% comment %} COUNTRY (Show ONLY if Group is missing) {%- endcomment -%}
+    {% if path_country != blank and group_name == blank %}
+      {% assign handle_country = path_country | handleize %}
+      {% assign col_country = collections[handle_country] %}
+      {% if col_country %}
+        {% unless path_country == last_schema_name %}
+          {% assign position = position | plus: 1 %}
+          ,{
+            "@type": "ListItem",
+            "position": {{ position }},
+            "name": "{{ path_country }}",
+            "item": "{{ shop.url }}{{ col_country.url }}"
+          }
+          {% assign last_schema_name = path_country %}
+        {% endunless %}
+      {% endif %}
+    {% endif %}
+
+    {% if parent_property %}
+      {% assign position = position | plus: 1 %}
+      ,{
+        "@type": "ListItem",
+        "position": {{ position }},
+        "name": "{{ parent_property.title }}",
+        "item": "{{ shop.url }}{{ parent_property.url }}"
+      }
+      {% unless is_property_page %}
+        {% if intermediate_title %}
+          {% assign position = position | plus: 1 %}
+          ,{
+            "@type": "ListItem",
+            "position": {{ position }},
+            "name": "{{ intermediate_title }}",
+            "item": "{{ shop.url }}{{ intermediate_link }}"
+          }
+        {% endif %}
+        {% assign position = position | plus: 1 %}
+        ,{
+          "@type": "ListItem",
+          "position": {{ position }},
+          "name": "{{ current_entity_title }}",
+          "item": "{{ shop.url }}{{ product.url | default: collection.url }}"
+        }
+      {% endunless %}
+    {% elsif template.suffix == 'resrequest-integration' or template.suffix == 'wetu-integration' or page.handle == 'resrequest-com-integration' or page.handle == 'wetu-com-integration' %}
+       {% assign position = position | plus: 1 %}
+        ,{
+          "@type": "ListItem",
+          "position": {{ position }},
+          "name": "{{ page.title }}",
+          "item": "{{ shop.url }}{{ page.url }}"
+        }
+    {% elsif product or collection %}
+       {% assign position = position | plus: 1 %}
+        ,{
+          "@type": "ListItem",
+          "position": {{ position }},
+          "name": "{{ current_entity_title }}",
+          "item": "{{ shop.url }}{{ product.url | default: collection.url }}"
+        }
+    {% else %}
+      {% comment %} FALLBACK: Add current page to schema if no other items were added {% endcomment %}
+      {% assign position = position | plus: 1 %}
+      ,{
+        "@type": "ListItem",
+        "position": {{ position }},
+        "name": "{% if page.title != blank %}{{ page.title }}{% elsif product.title != blank %}{{ product.title }}{% elsif collection.title != blank %}{{ collection.title }}{% else %}{{ current_entity_title }}{% endif %}",
+        "item": "{{ shop.url }}{% if page.url != blank %}{{ page.url }}{% elsif product.url != blank %}{{ product.url }}{% elsif collection.url != blank %}{{ collection.url }}{% endif %}"
+      }
+    {% endif %}
+  ]
+}
+</script>
+{% endunless %}
+
+{% style %}
+  .section-wetu-breadcrumbs .wetu-breadcrumbs {
+    padding-top: calc(var(--section-padding-top) * 0.72);
+    padding-bottom: calc(var(--section-padding-bottom) * 0.72);
+    background: var(--color-background);
+    color: var(--color-foreground);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    width: 100%;
+    position: relative;
+    z-index: 5;
+  }
+
+  .section-wetu-breadcrumbs {
+    position: relative;
+    z-index: 5;
+    transition: transform var(--animation-speed, 0.3s) var(--animation-easing, ease),
+                opacity var(--animation-speed, 0.3s) var(--animation-easing, ease);
+  }
+
+  .section-wetu-breadcrumbs[data-sticky="true"] {
+    position: relative;
+    top: auto;
+    z-index: 5;
+  }
+
+  .section-wetu-breadcrumbs[data-hidden="true"] {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+  
+  .section-wetu-breadcrumbs[data-hidden="false"] {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .wetu-breadcrumbs__container {
+    padding: 0 12px;
+  }
+
+  .wetu-breadcrumbs__list {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    gap: 0;
+  }
+
+  .wetu-breadcrumbs__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0;
+    white-space: nowrap;
+  }
+
+  /* Home icon container with equal padding */
+  .wetu-breadcrumbs__home {
+    display: flex;
+    align-items: center;
+  }
+
+  .wetu-breadcrumbs__home-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 0;
+    opacity: 1;
+  }
+
+  .wetu-breadcrumbs__home-icon {
+    height: 16px;
+    width: auto;
+    display: block;
+    object-fit: contain;
+  }
+
+  .wetu-breadcrumbs__home-svg {
+    width: 16px;
+    height: 16px;
+    opacity: 0.9;
+  }
+
+  /* Separator chevron styling */
+  .wetu-breadcrumbs__separator {
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    opacity: 0.5;
+  }
+
+  .wetu-breadcrumbs__separator svg {
+    width: 6px;
+    height: 10px;
+  }
+
+  .wetu-breadcrumbs__link {
+    color: inherit;
+    text-decoration: none;
+    opacity: 0.8;
+    transition: opacity 0.15s ease;
+    padding: 2px 0;
+  }
+
+  .wetu-breadcrumbs__link:hover {
+    opacity: 1;
+    text-decoration: underline;
+  }
+
+  .wetu-breadcrumbs__text {
+    opacity: 1;
+    font-weight: 600;
+    padding: 2px 0;
+  }
+
+  /* Replace icon-caret with inline chevron */
+  .wetu-breadcrumbs__item > svg {
+    width: 6px;
+    height: 10px;
+    opacity: 0.5;
+    margin: 0 8px;
+    flex-shrink: 0;
+  }
+
+  @media screen and (max-width: 749px) {
+    .wetu-breadcrumbs__container {
+      padding: 0 8px;
+    }
+    
+    .wetu-breadcrumbs__home-icon {
+      height: 16px;
+    }
+    
+    .wetu-breadcrumbs__separator {
+      padding: 0 6px;
+    }
+    
+    .section-wetu-breadcrumbs .wetu-breadcrumbs {
+      font-size: 0.65rem;
+    }
+  }
+{% endstyle %}
+
+<script>
+  (function() {
+    function initWetuBreadcrumbs() {
+      const breadcrumbsSection = document.querySelector('.section-wetu-breadcrumbs');
+      if (!breadcrumbsSection) return;
+
+      // Breadcrumb strip is intentionally non-sticky; keep header offset at zero.
+      document.body.style.setProperty('--wetu-breadcrumb-height', '0px');
+      breadcrumbsSection.setAttribute('data-sticky', 'false');
+      breadcrumbsSection.setAttribute('data-hidden', 'false');
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initWetuBreadcrumbs);
+    } else {
+      initWetuBreadcrumbs();
+    }
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Wetu Breadcrumbs",
+  "tag": "section",
+  "class": "section-wetu-breadcrumbs",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-5",
+      "info": "Scheme 5 provides a dark background with white text"
+    },
+    {
+      "type": "header",
+      "content": "Spacing"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "Top padding",
+      "min": 0,
+      "max": 60,
+      "step": 4,
+      "unit": "px",
+      "default": 8
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "Bottom padding",
+      "min": 0,
+      "max": 60,
+      "step": 4,
+      "unit": "px",
+      "default": 8
+    }
+  ],
+  "presets": [
+    {
+      "name": "Wetu Breadcrumbs"
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,31 @@
+{
+  "sections": {
+    "place-hero": {
+      "type": "place-hero",
+      "settings": {}
+    },
+    "place-summary-and-claim": {
+      "type": "place-summary-and-claim",
+      "settings": {}
+    },
+    "panorama-viewer": {
+      "type": "panorama-viewer",
+      "settings": {}
+    },
+    "place-gallery": {
+      "type": "place-gallery",
+      "settings": {}
+    },
+    "place-jsonld": {
+      "type": "place-jsonld",
+      "settings": {}
+    }
+  },
+  "order": [
+    "place-hero",
+    "place-summary-and-claim",
+    "panorama-viewer",
+    "place-gallery",
+    "place-jsonld"
+  ]
+}

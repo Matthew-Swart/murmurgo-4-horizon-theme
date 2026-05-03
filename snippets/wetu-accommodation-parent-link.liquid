@@ -1,0 +1,25 @@
+{% doc %}
+  Renders a contextual heading with a link to the parent property for Wetu accommodation products
+  
+  @param {product} product - The product object
+  
+  @example
+  {% render 'wetu-accommodation-parent-link', product: product %}
+{% enddoc %}
+
+{% liquid
+  assign parent_property = product.metafields.custom.room_parent_property.value
+  assign accommodation_name = product.title
+  
+  if parent_property != blank and accommodation_name != blank
+    echo '<h4 style="margin-bottom: 1rem;">'
+    echo accommodation_name
+    echo ' at '
+    echo '<a href="'
+    echo parent_property.url
+    echo '" style="text-decoration: underline;">'
+    echo parent_property.title
+    echo '</a>'
+    echo '</h4>'
+  endif
+%}

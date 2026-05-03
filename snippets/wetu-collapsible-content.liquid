@@ -1,0 +1,200 @@
+{% comment %}
+  ============================================================================
+  WETU COLLAPSIBLE CONTENT SNIPPET
+  ============================================================================
+  
+  A reusable collapsible/accordion component for displaying expandable content.
+  Used in property cards, activity cards, and other sections.
+  
+  PARAMETERS:
+  - id: Unique identifier for the collapsible (required)
+  - title: Button text/title (required)
+  - content: HTML content to show/hide (required)
+  - collapsible: Boolean - if false, content is always visible (default: true)
+  - open: Boolean - start expanded (default: false)
+  - icon: Icon name to display (optional)
+  
+  USAGE:
+  {% capture my_content %}
+    <p>Content to show/hide</p>
+  {% endcapture %}
+  
+  {% render 'wetu-collapsible-content',
+    id: 'unique-id',
+    title: 'Section Title',
+    content: my_content,
+    collapsible: true,
+    open: false
+  %}
+  
+  ============================================================================
+{% endcomment %}
+
+{% if id == blank or title == blank %}
+  {% comment %} Missing required parameters {% endcomment %}
+  {% break %}
+{% endif %}
+
+{% assign is_collapsible = collapsible | default: true %}
+{% assign is_open = open | default: false %}
+{% assign content_id = id | append: '-content' %}
+
+{% if is_collapsible %}
+  <div class="wetu-collapsible{% if is_open %} is-open{% endif %}" data-collapsible>
+    <button 
+      type="button"
+      class="wetu-collapsible__toggle"
+      aria-expanded="{{ is_open }}"
+      aria-controls="{{ content_id }}"
+      data-controls="{{ content_id }}"
+    >
+      <span class="wetu-collapsible__toggle-text">
+        {% if icon %}
+          {% render icon %}
+        {% endif %}
+        {{ title }}
+      </span>
+      <svg 
+        class="wetu-collapsible__chevron" 
+        width="20" 
+        height="20" 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        stroke-width="2"
+        aria-hidden="true"
+      >
+        <polyline points="6 9 12 15 18 9"/>
+      </svg>
+    </button>
+    
+    <div 
+      id="{{ content_id }}" 
+      class="wetu-collapsible__content{% if is_open %} is-expanded{% endif %}"
+      {% unless is_open %}hidden{% endunless %}
+    >
+      <div class="wetu-collapsible__inner">
+        {{ content }}
+      </div>
+    </div>
+  </div>
+{% else %}
+  {% comment %} Non-collapsible: just show content with title {% endcomment %}
+  <div class="wetu-collapsible wetu-collapsible--static">
+    <h4 class="wetu-collapsible__static-title">
+      {% if icon %}
+        {% render icon %}
+      {% endif %}
+      {{ title }}
+    </h4>
+    <div class="wetu-collapsible__content is-expanded">
+      <div class="wetu-collapsible__inner">
+        {{ content }}
+      </div>
+    </div>
+  </div>
+{% endif %}
+
+{% comment %} Styles only need to be included once {% endcomment %}
+{% unless wetu_collapsible_styles_loaded %}
+  {% assign wetu_collapsible_styles_loaded = true %}
+  <style>
+    .wetu-collapsible {
+      border-top: 1px solid var(--wetu-border, var(--color-border, #e5e7eb));
+    }
+    
+    .wetu-collapsible:last-child {
+      border-bottom: 1px solid var(--wetu-border, var(--color-border, #e5e7eb));
+    }
+    
+    .wetu-collapsible--static {
+      border: none;
+      margin-top: 20px;
+    }
+    
+    .wetu-collapsible__toggle {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      padding: 16px 0;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 600;
+      text-align: left;
+      color: var(--wetu-text, var(--color-foreground, inherit));
+      transition: color 0.2s ease;
+    }
+    
+    .wetu-collapsible__toggle:hover {
+      color: var(--wetu-accent, var(--color-primary, #2563eb));
+    }
+    
+    .wetu-collapsible__toggle-text {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .wetu-collapsible__toggle-text svg {
+      width: 18px;
+      height: 18px;
+      color: var(--wetu-accent, var(--color-primary, #2563eb));
+      flex-shrink: 0;
+    }
+    
+    .wetu-collapsible__chevron {
+      flex-shrink: 0;
+      color: var(--wetu-text-muted, color-mix(in srgb, var(--color-foreground) 50%, transparent));
+      transition: transform 0.3s ease;
+    }
+    
+    .wetu-collapsible__toggle[aria-expanded="true"] .wetu-collapsible__chevron {
+      transform: rotate(180deg);
+    }
+    
+    .wetu-collapsible__content {
+      overflow: hidden;
+      max-height: 0;
+      transition: max-height 0.4s ease-out;
+    }
+    
+    .wetu-collapsible__content.is-expanded,
+    .wetu-collapsible__content:not([hidden]) {
+      max-height: 2000px;
+      transition: max-height 0.4s ease-in;
+    }
+    
+    .wetu-collapsible__inner {
+      padding-bottom: 16px;
+    }
+    
+    .wetu-collapsible__static-title {
+      margin: 0 0 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--wetu-text, var(--color-foreground, inherit));
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .wetu-collapsible__static-title svg {
+      width: 18px;
+      height: 18px;
+      color: var(--wetu-accent, var(--color-primary, #2563eb));
+      flex-shrink: 0;
+    }
+    
+    /* Reduced Motion */
+    @media (prefers-reduced-motion: reduce) {
+      .wetu-collapsible__chevron,
+      .wetu-collapsible__content {
+        transition: none;
+      }
+    }
+  </style>
+{% endunless %}
+

@@ -1,0 +1,217 @@
+{%- comment -%}
+  Travel Search API Snippet
+  This snippet provides formatted search results with metafield data for properties and locations
+  Usage: {% render 'travel-search-api', search_query: 'term' %}
+{%- endcomment -%}
+
+{%- liquid
+  assign search_query = search_query | default: ''
+  assign search_results = search.results
+  assign max_results = 20
+-%}
+
+{%- capture api_response -%}
+{
+  "query": {{ search_query | json }},
+  "results": {
+    "locations": [
+      {%- assign location_count = 0 -%}
+      {%- assign processed_locations = '' | split: '' -%}
+      
+      {%- for item in search_results -%}
+        {%- if location_count >= max_results -%}
+          {%- break -%}
+        {%- endif -%}
+        
+        {%- if item.object_type == 'product' -%}
+          {%- liquid
+            assign is_wetu = false
+            assign is_resrequest = false
+            
+            if item.vendor == 'Wetu' or item.type contains 'wetu'
+              assign is_wetu = true
+            elsif item.vendor == 'ResRequest' or item.type contains 'Res'
+              assign is_resrequest = true
+            endif
+          -%}
+          
+          {%- if is_wetu or is_resrequest -%}
+            {%- liquid
+              # Extract location metafields
+              assign country = ''
+              assign region = ''
+              assign area = ''
+              assign location_display = ''
+              
+              # Try to get Wetu location metafield
+              if is_wetu and item.metafields.wetu.location
+                assign wetu_location = item.metafields.wetu.location
+                assign country = wetu_location.country
+                assign region = wetu_location.region
+                assign area = wetu_location.area
+              elsif is_wetu and item.metafields.travel.location
+                assign travel_location = item.metafields.travel.location
+                assign country = travel_location.country
+                assign region = travel_location.region
+                assign area = travel_location.area
+              endif
+              
+              # Try ResRequest metafields
+              if is_resrequest
+                assign country = item.metafields.resrequest.country | default: ''
+                assign region = item.metafields.resrequest.region | default: ''
+                assign area = item.metafields.resrequest.area | default: ''
+              endif
+              
+              # Build location display string
+              assign location_parts = '' | split: ''
+              if area != blank
+                assign location_parts = location_parts | append: area | split: ','
+              endif
+              if region != blank and region != area
+                assign location_parts = location_parts | append: region | split: ','
+              endif
+              if country != blank
+                assign location_parts = location_parts | append: country | split: ','
+              endif
+              assign location_display = location_parts | join: ', '
+              
+              # Create unique location identifier
+              assign location_key = country | append: '|' | append: region | append: '|' | append: area
+            -%}
+            
+            {%- unless processed_locations contains location_key -%}
+              {%- if location_display != blank -%}
+                {%- if location_count > 0 -%},{%- endif -%}
+                {
+                  "type": "location",
+                  "country": {{ country | json }},
+                  "region": {{ region | json }},
+                  "area": {{ area | json }},
+                  "display": {{ location_display | json }},
+                  "key": {{ location_key | json }}
+                }
+                {%- assign processed_locations = processed_locations | append: location_key | append: ',' | split: ',' -%}
+                {%- assign location_count = location_count | plus: 1 -%}
+              {%- endif -%}
+            {%- endunless -%}
+          {%- endif -%}
+        {%- endif -%}
+      {%- endfor -%}
+    ],
+    "properties": [
+      {%- assign property_count = 0 -%}
+      
+      {%- for item in search_results -%}
+        {%- if property_count >= max_results -%}
+          {%- break -%}
+        {%- endif -%}
+        
+        {%- if item.object_type == 'product' -%}
+          {%- liquid
+            assign is_property = false
+            assign is_accommodation = false
+            
+            if item.type contains 'Property' or item.type contains 'property'
+              assign is_property = true
+            elsif item.type contains 'Accommodation' or item.type contains 'accommodation'
+              assign is_accommodation = true
+            endif
+          -%}
+          
+          {%- if is_property or is_accommodation -%}
+            {%- liquid
+              # Get featured image
+              assign image_url = ''
+              assign image_width = 0
+              assign image_height = 0
+              
+              if item.featured_image
+                assign image_url = item.featured_image | image_url: width: 128
+                assign image_width = 128
+                assign image_height = 72
+              elsif item.images.size > 0
+                assign first_image = item.images | first
+                assign image_url = first_image | image_url: width: 128
+                assign image_width = 128
+                assign image_height = 72
+              endif
+              
+              # Extract location for this property
+              assign prop_country = ''
+              assign prop_region = ''
+              assign prop_area = ''
+              assign prop_location_display = ''
+              
+              if item.vendor == 'Wetu' or item.type contains 'wetu'
+                if item.metafields.wetu.location
+                  assign wetu_location = item.metafields.wetu.location
+                  assign prop_country = wetu_location.country
+                  assign prop_region = wetu_location.region
+                  assign prop_area = wetu_location.area
+                elsif item.metafields.travel.location
+                  assign travel_location = item.metafields.travel.location
+                  assign prop_country = travel_location.country
+                  assign prop_region = travel_location.region
+                  assign prop_area = travel_location.area
+                endif
+              elsif item.vendor == 'ResRequest' or item.type contains 'Res'
+                assign prop_country = item.metafields.resrequest.country | default: ''
+                assign prop_region = item.metafields.resrequest.region | default: ''
+                assign prop_area = item.metafields.resrequest.area | default: ''
+              endif
+              
+              # Build property location display
+              assign prop_location_parts = '' | split: ''
+              if prop_area != blank
+                assign prop_location_parts = prop_location_parts | append: prop_area | split: ','
+              endif
+              if prop_region != blank and prop_region != prop_area
+                assign prop_location_parts = prop_location_parts | append: prop_region | split: ','
+              endif
+              if prop_country != blank
+                assign prop_location_parts = prop_location_parts | append: prop_country | split: ','
+              endif
+              assign prop_location_display = prop_location_parts | join: ', '
+            -%}
+            
+            {%- if property_count > 0 -%},{%- endif -%}
+            {
+              "type": "property",
+              "id": {{ item.id | json }},
+              "title": {{ item.title | json }},
+              "handle": {{ item.handle | json }},
+              "url": {{ item.url | json }},
+              "vendor": {{ item.vendor | json }},
+              "product_type": {{ item.type | json }},
+              "image": {
+                "url": {{ image_url | json }},
+                "width": {{ image_width }},
+                "height": {{ image_height }},
+                "alt": {{ item.title | json }}
+              },
+              "location": {
+                "country": {{ prop_country | json }},
+                "region": {{ prop_region | json }},
+                "area": {{ prop_area | json }},
+                "display": {{ prop_location_display | json }}
+              },
+              "is_property": {{ is_property }},
+              "is_accommodation": {{ is_accommodation }}
+            }
+            {%- assign property_count = property_count | plus: 1 -%}
+          {%- endif -%}
+        {%- endif -%}
+      {%- endfor -%}
+    ]
+  },
+  "metadata": {
+    "total_results": {{ search.results_count }},
+    "locations_count": {{ location_count }},
+    "properties_count": {{ property_count }},
+    "query_time": "{{ 'now' | date: '%Y-%m-%dT%H:%M:%S%z' }}"
+  }
+}
+{%- endcapture -%}
+
+{{- api_response | strip_newlines -}}

@@ -1,0 +1,473 @@
+{% comment %}
+  ============================================================================
+  WETU DAY-BY-DAY DATA PROCESSING SNIPPET
+  ============================================================================
+  
+  Transforms leg-based itinerary data into a chronological day-indexed structure
+  for rendering itineraries as true day-by-day experiences.
+  
+  USAGE:
+    {% render 'wetu-day-by-day-data', product: product %}
+    
+    Note: This snippet should be rendered AFTER 'wetu-itinerary-data' as it
+    depends on variables created by that snippet.
+  
+  OUTPUT VARIABLES:
+    - wetu_days                    : Array of day objects (1-indexed)
+    - wetu_seen_destinations       : Comma-separated list of destination PIN IDs already shown
+    - wetu_seen_accommodations     : Comma-separated list of accommodation PIN IDs already shown
+  
+  EACH DAY OBJECT CONTAINS:
+    - day_number                   : Day number (1, 2, 3...)
+    - date                         : Calculated date (if start_date available)
+    - date_formatted               : Formatted date string
+    
+    ROUTES:
+    - routes_arriving              : Routes/transfers arriving this day
+    - routes_departing             : Routes/transfers departing this day
+    - has_arriving_routes          : Boolean - are there incoming routes?
+    - has_departing_routes         : Boolean - are there outgoing routes?
+    
+    DESTINATION:
+    - destination_pin_id           : WETU PIN ID for destination
+    - destination_name             : Destination name
+    - destination_product          : Linked Shopify product (if exists)
+    - destination_is_first_visit   : Boolean - first time at this destination?
+    
+    ACCOMMODATION:
+    - accommodation_pin_id         : WETU PIN ID for accommodation
+    - accommodation_name           : Property name
+    - accommodation_product        : Linked Shopify product (if exists)
+    - accommodation_is_arrival_day : Boolean - arriving at this property today?
+    - accommodation_is_departure_day : Boolean - leaving this property today?
+    - accommodation_nights_total   : Total nights at this property
+    - accommodation_night_number   : Which night this is (1, 2, 3...)
+    - accommodation_nights_remaining : Nights remaining after today
+    
+    DAILY DETAILS (from leg periods):
+    - activities                   : Array of activities for this day
+    - period_notes                 : Notes for this day
+    - room_basis                   : Room/meal basis (e.g., "Full Board")
+    - drinks_basis                 : Drinks package (e.g., "All Inclusive")
+    
+    LEG REFERENCE:
+    - leg_index                    : Which leg this day belongs to (0-based)
+    - leg_sequence                 : Leg sequence number
+    - leg_type                     : Leg type (Standard, Mobile, Departure)
+  
+  ============================================================================
+  EXAMPLE STRUCTURE
+  ============================================================================
+  
+  For a 7-day itinerary:
+  
+  Day 1:
+    - routes_arriving: [Flight Johannesburg → Maun]
+    - destination: Okavango Delta (first_visit: true)
+    - accommodation: Camp Okavango (arrival_day: true, nights: 3, night_number: 1)
+    - activities: ["Sundowner cruise", "Night drive"]
+    
+  Day 2:
+    - destination: Okavango Delta (first_visit: false)
+    - accommodation: Camp Okavango (arrival_day: false, night_number: 2)
+    - activities: ["Mokoro excursion", "Guided walk"]
+    
+  Day 3:
+    - routes_departing: [Charter flight to Savuti]
+    - destination: Okavango Delta (first_visit: false)
+    - accommodation: Camp Okavango (departure_day: true, night_number: 3)
+    - activities: ["Morning game drive"]
+    
+  Day 4:
+    - routes_arriving: [Charter flight from Okavango]
+    - destination: Chobe (first_visit: true)
+    - accommodation: Savuti Safari Lodge (arrival_day: true, nights: 2)
+    
+  ...and so on
+  
+  ============================================================================
+{% endcomment %}
+
+{% comment %} ----------------------------------------------------------------
+  INITIALIZE TRACKING VARIABLES
+  
+  These track which destinations/accommodations have been "introduced" so we
+  can show full hero sections on first appearance and subtle mentions after.
+---------------------------------------------------------------- {% endcomment %}
+
+{% assign wetu_seen_destinations = '' %}
+{% assign wetu_seen_accommodations = '' %}
+
+{% comment %} ----------------------------------------------------------------
+  BUILD LEG START/END DAY MAPPING
+  
+  First pass: Calculate which day each leg starts and ends.
+  This creates a lookup structure for determining accommodation per day.
+---------------------------------------------------------------- {% endcomment %}
+
+{% assign leg_mappings = '' %}
+{% assign current_day = 1 %}
+
+{% for leg in wetu_legs %}
+  {% assign leg_type = leg.type.value | default: 'Standard' %}
+  {% assign leg_nights = leg.nights.value | default: 0 | plus: 0 %}
+  {% assign leg_sequence = leg.sequence.value | default: forloop.index0 %}
+  
+  {% comment %} Calculate leg start and end days {% endcomment %}
+  {% assign leg_start_day = current_day %}
+  {% if leg_nights > 0 %}
+    {% assign leg_end_day = current_day | plus: leg_nights | minus: 1 %}
+  {% else %}
+    {% assign leg_end_day = current_day %}
+  {% endif %}
+  
+  {% comment %} Store mapping as: sequence|start_day|end_day|nights {% endcomment %}
+  {% capture leg_entry %}{{ leg_sequence }}|{{ leg_start_day }}|{{ leg_end_day }}|{{ leg_nights }}{% endcapture %}
+  {% if leg_mappings == '' %}
+    {% assign leg_mappings = leg_entry %}
+  {% else %}
+    {% assign leg_mappings = leg_mappings | append: '|||' | append: leg_entry %}
+  {% endif %}
+  
+  {% comment %} Advance current day for next leg {% endcomment %}
+  {% assign current_day = current_day | plus: leg_nights %}
+{% endfor %}
+
+{% assign leg_mappings_array = leg_mappings | split: '|||' %}
+
+{% comment %} ----------------------------------------------------------------
+  BUILD ROUTE LOOKUP BY DAY
+  
+  Pre-process routes to know which routes arrive/depart on each day.
+  Routes use start_day/end_day from WETU data.
+---------------------------------------------------------------- {% endcomment %}
+
+{% assign routes_by_start_day = '' %}
+{% assign routes_by_end_day = '' %}
+
+{% for route in wetu_routes %}
+  {% assign route_start = route.start_day.value | default: 1 | plus: 0 %}
+  {% assign route_end = route.end_day.value | default: route_start | plus: 0 %}
+  {% assign route_idx = forloop.index0 %}
+  
+  {% comment %} Store route indices by their start/end days {% endcomment %}
+  {% comment %} Format: day:index,index,index|||day:index,index {% endcomment %}
+{% endfor %}
+
+{% comment %} ----------------------------------------------------------------
+  MAIN DAY PROCESSING LOOP
+  
+  Iterate through each day of the itinerary and build the day data object.
+  We'll capture all day data into a JSON-like structure for consumption.
+---------------------------------------------------------------- {% endcomment %}
+
+{% assign wetu_total_days_num = wetu_total_days | plus: 0 %}
+{% if wetu_total_days_num < 1 %}
+  {% assign wetu_total_days_num = wetu_total_nights | plus: 1 %}
+{% endif %}
+
+{% comment %} Get itinerary start date if available {% endcomment %}
+{% assign itinerary_start_date = wetu_itinerary.start_date.value %}
+
+{% comment %} Build days as JSON array {% endcomment %}
+{% capture wetu_days_json %}
+[
+{% for day_num in (1..wetu_total_days_num) %}
+  {% comment %} ----- FIND WHICH LEG THIS DAY BELONGS TO ----- {% endcomment %}
+  {% assign current_leg = nil %}
+  {% assign current_leg_index = -1 %}
+  {% assign day_within_leg = 0 %}
+  {% assign leg_start = 0 %}
+  {% assign leg_end = 0 %}
+  {% assign leg_total_nights = 0 %}
+  
+  {% assign running_day = 1 %}
+  {% for leg in wetu_legs %}
+    {% assign leg_type = leg.type.value | default: 'Standard' %}
+    {% assign leg_nights = leg.nights.value | default: 0 | plus: 0 %}
+    
+    {% assign this_leg_start = running_day %}
+    {% if leg_nights > 0 %}
+      {% assign this_leg_end = running_day | plus: leg_nights | minus: 1 %}
+    {% else %}
+      {% assign this_leg_end = running_day %}
+    {% endif %}
+    
+    {% comment %} Check if current day falls within this leg {% endcomment %}
+    {% if day_num >= this_leg_start and day_num <= this_leg_end %}
+      {% assign current_leg = leg %}
+      {% assign current_leg_index = forloop.index0 %}
+      {% assign leg_start = this_leg_start %}
+      {% assign leg_end = this_leg_end %}
+      {% assign leg_total_nights = leg_nights %}
+      {% assign day_within_leg = day_num | minus: this_leg_start | plus: 1 %}
+      {% break %}
+    {% endif %}
+    
+    {% assign running_day = running_day | plus: leg_nights %}
+  {% endfor %}
+  
+  {% comment %} ----- EXTRACT LEG DATA ----- {% endcomment %}
+  {% if current_leg %}
+    {% assign leg_type = current_leg.type.value | default: 'Standard' %}
+    {% assign acc_pin_id = current_leg.content_entity_id.value %}
+    {% assign acc_name = current_leg.accommodation_name.value %}
+    {% assign dest_pin_id = current_leg.destination_content_entity_id.value %}
+    {% assign leg_sequence = current_leg.sequence.value | default: current_leg_index %}
+    {% assign periods = current_leg.periods.value %}
+    
+    {% comment %} Calculate arrival/departure flags {% endcomment %}
+    {% assign is_arrival_day = false %}
+    {% assign is_departure_day = false %}
+    {% assign nights_remaining = leg_total_nights | minus: day_within_leg %}
+    
+    {% if day_within_leg == 1 %}
+      {% assign is_arrival_day = true %}
+    {% endif %}
+    
+    {% if day_within_leg == leg_total_nights %}
+      {% assign is_departure_day = true %}
+    {% endif %}
+    
+    {% comment %} ----- FIND LINKED PRODUCTS ----- {% endcomment %}
+    {% assign acc_product = nil %}
+    {% assign acc_handle = nil %}
+    {% assign dest_product = nil %}
+    {% assign dest_handle = nil %}
+    {% assign dest_name = '' %}
+    
+    {% comment %} Find Accommodation Product {% endcomment %}
+    {% if acc_pin_id != blank %}
+      {% assign search_pin = acc_pin_id | append: '' %}
+      {% for check_pin in wetu_pin_ids_array %}
+        {% assign current_pin = check_pin | append: '' %}
+        {% if current_pin == search_pin %}
+          {% assign acc_handle = wetu_handles_array[forloop.index0] %}
+          {% assign acc_product = all_products[acc_handle] %}
+          {% break %}
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+    
+    {% comment %} Find Destination Product {% endcomment %}
+    {% if dest_pin_id != blank %}
+      {% assign search_dest = dest_pin_id | append: '' %}
+      {% for check_pin in wetu_pin_ids_array %}
+        {% assign current_pin = check_pin | append: '' %}
+        {% if current_pin == search_dest %}
+          {% assign dest_handle = wetu_handles_array[forloop.index0] %}
+          {% assign dest_product = all_products[dest_handle] %}
+          {% assign dest_name = dest_product.title | default: '' %}
+          {% break %}
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+    
+    {% comment %} ----- CHECK FIRST VISIT FLAGS ----- {% endcomment %}
+    {% assign dest_is_first_visit = false %}
+    {% assign acc_is_first_visit = false %}
+    
+    {% if dest_pin_id != blank %}
+      {% assign dest_check = dest_pin_id | append: ',' %}
+      {% unless wetu_seen_destinations contains dest_check %}
+        {% assign dest_is_first_visit = true %}
+        {% assign wetu_seen_destinations = wetu_seen_destinations | append: dest_check %}
+      {% endunless %}
+    {% endif %}
+    
+    {% if acc_pin_id != blank %}
+      {% assign acc_check = acc_pin_id | append: ',' %}
+      {% unless wetu_seen_accommodations contains acc_check %}
+        {% assign acc_is_first_visit = true %}
+        {% assign wetu_seen_accommodations = wetu_seen_accommodations | append: acc_check %}
+      {% endunless %}
+    {% endif %}
+    
+    {% comment %} ----- GET PERIOD DATA FOR THIS DAY ----- {% endcomment %}
+    {% assign day_activities = nil %}
+    {% assign day_period_notes = '' %}
+    {% assign day_room_basis = '' %}
+    {% assign day_drinks_basis = '' %}
+    
+    {% if periods.size > 0 %}
+      {% comment %} Period index is day_within_leg - 1 (0-indexed) {% endcomment %}
+      {% assign period_index = day_within_leg | minus: 1 %}
+      {% assign current_period = periods[period_index] %}
+      
+      {% if current_period %}
+        {% assign day_activities = current_period.activities.value %}
+        {% assign day_period_notes = current_period.notes.value | default: '' %}
+        {% assign day_room_basis = current_period.room_basis.value | default: '' %}
+        {% assign day_drinks_basis = current_period.drinks_basis.value | default: '' %}
+      {% elsif periods.size == 1 %}
+        {% comment %} If only one period, use it for all days {% endcomment %}
+        {% assign current_period = periods[0] %}
+        {% assign day_activities = current_period.activities.value %}
+        {% assign day_period_notes = current_period.notes.value | default: '' %}
+        {% assign day_room_basis = current_period.room_basis.value | default: '' %}
+        {% assign day_drinks_basis = current_period.drinks_basis.value | default: '' %}
+      {% endif %}
+    {% endif %}
+    
+    {% comment %} ----- FIND ROUTES FOR THIS DAY ----- {% endcomment %}
+    {% assign arriving_routes = '' | split: '' %}
+    {% assign departing_routes = '' | split: '' %}
+    
+    {% for route in wetu_routes %}
+      {% assign route_start = route.start_day.value | default: 0 | plus: 0 %}
+      {% assign route_end = route.end_day.value | default: route_start | plus: 0 %}
+      
+      {% comment %} Route starts on this day = arriving {% endcomment %}
+      {% if route_start == day_num %}
+        {% assign arriving_routes = arriving_routes | push: route %}
+      {% endif %}
+      
+      {% comment %} Route ends on this day (and spans multiple days) = arriving from previous day {% endcomment %}
+      {% if route_end == day_num and route_end != route_start %}
+        {% assign arriving_routes = arriving_routes | push: route %}
+      {% endif %}
+      
+      {% comment %} Route departs on this day (next day travel) {% endcomment %}
+      {% comment %} Note: In WETU, routes typically use start_day as the travel day {% endcomment %}
+    {% endfor %}
+    
+    {% comment %} Check for departing routes (routes starting the next day but logically "departing" today) {% endcomment %}
+    {% assign next_day = day_num | plus: 1 %}
+    {% for route in wetu_routes %}
+      {% assign route_start = route.start_day.value | default: 0 | plus: 0 %}
+      {% if route_start == next_day and is_departure_day %}
+        {% assign departing_routes = departing_routes | push: route %}
+      {% endif %}
+    {% endfor %}
+    
+    {% comment %} ----- CALCULATE DATE ----- {% endcomment %}
+    {% assign day_date = nil %}
+    {% assign day_date_formatted = '' %}
+    
+    {% if itinerary_start_date != blank %}
+      {% comment %} Add (day_num - 1) days to start date {% endcomment %}
+      {% assign days_to_add = day_num | minus: 1 %}
+      {% assign seconds_to_add = days_to_add | times: 86400 %}
+      {% assign start_timestamp = itinerary_start_date | date: '%s' | plus: 0 %}
+      {% assign day_timestamp = start_timestamp | plus: seconds_to_add %}
+      {% assign day_date = day_timestamp | date: '%Y-%m-%d' %}
+      {% assign day_date_formatted = day_timestamp | date: '%A, %B %e, %Y' %}
+    {% endif %}
+    
+  {% else %}
+    {% comment %} No leg found for this day - shouldn't happen but handle gracefully {% endcomment %}
+    {% assign leg_type = 'Unknown' %}
+    {% assign acc_pin_id = '' %}
+    {% assign acc_name = '' %}
+    {% assign dest_pin_id = '' %}
+    {% assign dest_name = '' %}
+    {% assign leg_sequence = 0 %}
+    {% assign is_arrival_day = false %}
+    {% assign is_departure_day = false %}
+    {% assign nights_remaining = 0 %}
+    {% assign day_within_leg = 0 %}
+    {% assign leg_total_nights = 0 %}
+    {% assign current_leg_index = -1 %}
+    {% assign acc_handle = nil %}
+    {% assign dest_handle = nil %}
+    {% assign dest_is_first_visit = false %}
+    {% assign acc_is_first_visit = false %}
+    {% assign day_activities = nil %}
+    {% assign day_period_notes = '' %}
+    {% assign day_room_basis = '' %}
+    {% assign day_drinks_basis = '' %}
+    {% assign arriving_routes = '' | split: '' %}
+    {% assign departing_routes = '' | split: '' %}
+    {% assign day_date = nil %}
+    {% assign day_date_formatted = '' %}
+  {% endif %}
+  
+  {% comment %} ----- OUTPUT DAY JSON OBJECT ----- {% endcomment %}
+  {% unless forloop.first %},{% endunless %}
+  {
+    "day_number": {{ day_num }},
+    "date": {{ day_date | json }},
+    "date_formatted": {{ day_date_formatted | json }},
+    
+    "has_arriving_routes": {{ arriving_routes.size | default: 0 | at_least: 1 | divided_by: arriving_routes.size | default: 0 }},
+    "has_departing_routes": {{ departing_routes.size | default: 0 | at_least: 1 | divided_by: departing_routes.size | default: 0 }},
+    "arriving_route_count": {{ arriving_routes.size | default: 0 }},
+    "departing_route_count": {{ departing_routes.size | default: 0 }},
+    
+    "destination_pin_id": {{ dest_pin_id | json }},
+    "destination_name": {{ dest_name | json }},
+    "destination_handle": {{ dest_handle | json }},
+    "destination_is_first_visit": {{ dest_is_first_visit }},
+    
+    "accommodation_pin_id": {{ acc_pin_id | json }},
+    "accommodation_name": {{ acc_name | json }},
+    "accommodation_handle": {{ acc_handle | json }},
+    "accommodation_is_arrival_day": {{ is_arrival_day }},
+    "accommodation_is_departure_day": {{ is_departure_day }},
+    "accommodation_is_first_visit": {{ acc_is_first_visit }},
+    "accommodation_nights_total": {{ leg_total_nights }},
+    "accommodation_night_number": {{ day_within_leg }},
+    "accommodation_nights_remaining": {{ nights_remaining }},
+    
+    "activities_count": {{ day_activities.size | default: 0 }},
+    "period_notes": {{ day_period_notes | json }},
+    "room_basis": {{ day_room_basis | json }},
+    "drinks_basis": {{ day_drinks_basis | json }},
+    
+    "leg_index": {{ current_leg_index }},
+    "leg_sequence": {{ leg_sequence }},
+    "leg_type": {{ leg_type | json }}
+  }
+{% endfor %}
+]
+{% endcapture %}
+
+{% assign wetu_days_data = wetu_days_json %}
+
+{% comment %} ----------------------------------------------------------------
+  EXPOSE PROCESSED DATA AS LIQUID ARRAYS
+  
+  Since we can't parse JSON back into Liquid objects easily, we'll also
+  create parallel arrays for common lookups.
+---------------------------------------------------------------- {% endcomment %}
+
+{% comment %} Reset tracking for second pass (for templates to use) {% endcomment %}
+{% assign wetu_seen_destinations = '' %}
+{% assign wetu_seen_accommodations = '' %}
+
+{% comment %} Create simple day counter array for iteration {% endcomment %}
+{% assign wetu_day_numbers = '' %}
+{% for i in (1..wetu_total_days_num) %}
+  {% if wetu_day_numbers == '' %}
+    {% assign wetu_day_numbers = i | append: '' %}
+  {% else %}
+    {% assign wetu_day_numbers = wetu_day_numbers | append: ',' | append: i %}
+  {% endif %}
+{% endfor %}
+{% assign wetu_day_numbers_array = wetu_day_numbers | split: ',' %}
+
+{% comment %} ----------------------------------------------------------------
+  HELPER FUNCTION: Get Leg for Day
+  
+  Usage in templates:
+    {% assign target_day = 3 %}
+    {% assign running = 1 %}
+    {% for leg in wetu_legs %}
+      {% assign nights = leg.nights.value | default: 0 | plus: 0 %}
+      {% assign leg_end = running | plus: nights | minus: 1 %}
+      {% if target_day >= running and target_day <= leg_end %}
+        {% comment %} Found the leg for this day {% endcomment %}
+        {% assign day_leg = leg %}
+        {% assign day_in_leg = target_day | minus: running | plus: 1 %}
+        {% break %}
+      {% endif %}
+      {% assign running = running | plus: nights %}
+    {% endfor %}
+---------------------------------------------------------------- {% endcomment %}
+
+{% comment %} ----------------------------------------------------------------
+  COMPUTED SUMMARY VALUES
+---------------------------------------------------------------- {% endcomment %}
+
+{% assign wetu_unique_destinations_count = wetu_seen_destinations | split: ',' | uniq | size %}
+{% assign wetu_unique_accommodations_count = wetu_seen_accommodations | split: ',' | uniq | size %}

@@ -1,0 +1,436 @@
+{% doc %}
+  WETU Pricing Overlay Snippet
+  
+  Renders a pricing overlay for WETU products with title and pricing.
+  Designed to be placed over images in product cards or hero sections.
+  
+  @param {product} product - The product object (required)
+  @param {string} [position] - Overlay position: 'bottom-left', 'bottom-right', 'top-left', 'top-right' (default: 'bottom-left')
+  @param {string} [size] - Text size: 'small', 'medium', 'large' (default: 'medium')
+  @param {boolean} [show_title] - Whether to show the product title (default: false)
+  @param {boolean} [show_pricing] - Whether to show the pricing information (default: true)
+  
+  @example
+  {% render 'wetu-pricing-overlay', product: product, position: 'bottom-left', size: 'small', show_title: true, show_pricing: false %}
+{% enddoc %}
+
+{% liquid
+  assign product = product | default: closest.product
+  assign position = position | default: 'bottom-left'
+  assign size = size | default: 'medium'
+  
+  comment Handle boolean parameters - check for nil explicitly
+  endcomment
+  if show_title == nil
+    assign show_title = false
+  endif
+  
+  if show_pricing == nil
+    assign show_pricing = true
+  endif
+  
+  comment Extract pricing data from metaobjects
+  endcomment
+  assign wetu_has_pricing = false
+  assign wetu_min_rate = nil
+  assign wetu_max_rate = nil
+  assign wetu_currency = 'ZAR'
+  assign wetu_rate_context = ''
+  
+  if product
+    comment Get rate tiers from metaobjects
+    endcomment
+    assign rate_tiers = product.metafields.wetu_room.aggregated_rate_tiers.value
+    
+    comment If no room rate tiers, check property-level rate tiers
+    endcomment
+    if rate_tiers == blank
+      assign rate_tiers = product.metafields.wetu.rate_tiers.value
+    endif
+    
+    comment Process rate tiers - must iterate directly as MetaobjectListDrop doesn't support .size
+    endcomment
+    if rate_tiers != blank
+      assign lowest_rate = nil
+      assign highest_rate = nil
+      assign first_rate_type = ''
+      assign first_currency = ''
+      assign tier_count = 0
+      
+      for tier in rate_tiers
+        assign tier_count = tier_count | plus: 1
+        
+        assign tier_amount = tier.rate_amount
+        assign tier_currency = tier.currency  
+        assign tier_type = tier.rate_type
+        
+        if first_currency == blank and tier_currency != blank
+          assign first_currency = tier_currency
+        endif
+        
+        if first_rate_type == blank and tier_type != blank
+          assign first_rate_type = tier_type
+        endif
+        
+        if tier_amount != blank
+          if lowest_rate == nil or tier_amount < lowest_rate
+            assign lowest_rate = tier_amount
+          endif
+          
+          if highest_rate == nil or tier_amount > highest_rate
+            assign highest_rate = tier_amount
+          endif
+        endif
+      endfor
+      
+      comment Only set pricing if we found actual data
+      endcomment
+      if tier_count > 0 and lowest_rate != nil
+        assign wetu_has_pricing = true
+        assign wetu_min_rate = lowest_rate
+        assign wetu_max_rate = highest_rate
+        
+        if first_currency != blank
+          assign wetu_currency = first_currency
+        endif
+        
+        case first_rate_type
+          when 'per_person_sharing'
+            assign wetu_rate_context = 'per person per night'
+          when 'single'
+            assign wetu_rate_context = 'per person per night'
+          when 'room'
+            assign wetu_rate_context = 'per night'
+          when 'unit'
+            assign wetu_rate_context = 'per night'
+          else
+            assign wetu_rate_context = 'per night'
+        endcase
+      endif
+    endif
+  endif
+%}
+
+{% liquid
+  assign should_show_overlay = false
+  if show_title and product.title
+    assign should_show_overlay = true
+  endif
+  if show_pricing and wetu_has_pricing
+    assign should_show_overlay = true
+  endif
+%}
+
+{% if should_show_overlay %}
+  <div class="wetu-pricing-overlay wetu-pricing-overlay--{{ position }} wetu-pricing-overlay--{{ size }}">
+    <div class="wetu-pricing-overlay__content">
+      {% if show_title and product.title %}
+        <h3 class="wetu-pricing-overlay__title">{{ product.title }}</h3>
+      {% endif %}
+      
+      {% if show_pricing and wetu_has_pricing and wetu_min_rate %}
+        <div class="wetu-pricing-overlay__pricing">
+          <div class="wetu-pricing-overlay__price-line">
+            <span class="wetu-pricing-overlay__from">{{ 'wetu.pricing.from' | t | default: 'From' }}</span>
+            <span class="wetu-pricing-overlay__currency">{{ wetu_currency }}</span>
+            <span class="wetu-pricing-overlay__amount">{{ wetu_min_rate | round: 0 }}</span>
+          </div>
+          {% if wetu_rate_context != blank %}
+            <div class="wetu-pricing-overlay__context-line">
+              <span class="wetu-pricing-overlay__context">{{ wetu_rate_context }}</span>
+            </div>
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+  </div>
+{% endif %}
+
+{% stylesheet %}
+    .wetu-pricing-overlay {
+      position: absolute;
+      z-index: 2;
+      color: #ffffff;
+      font-family: var(--font-body--family);
+      pointer-events: none;
+    }
+    
+    .wetu-pricing-overlay__content {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      text-align: left;
+    }
+    
+    /* Subtle glow effect around text only */
+    .wetu-pricing-overlay__content * {
+      text-shadow: 
+        0 0 10px rgba(0, 0, 0, 0.9),
+        0 0 20px rgba(0, 0, 0, 0.7),
+        0 2px 4px rgba(0, 0, 0, 0.9),
+        0 4px 8px rgba(0, 0, 0, 0.6);
+    }
+    
+    .wetu-pricing-overlay__title {
+      margin: 0;
+      padding: 0;
+      font-weight: 700;
+      line-height: 1.3;
+      color: #ffffff;
+      text-transform: none;
+    }
+    
+    .wetu-pricing-overlay__pricing {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      line-height: 1.2;
+    }
+    
+    .wetu-pricing-overlay__price-line {
+      display: flex;
+      align-items: baseline;
+      gap: 0.35em;
+      justify-content: flex-start;
+    }
+    
+    .wetu-pricing-overlay__context-line {
+      display: flex;
+      align-items: baseline;
+      justify-content: flex-start;
+    }
+    
+    /* Right-align pricing when in bottom-right position */
+    .wetu-pricing-overlay--bottom-right .wetu-pricing-overlay__price-line,
+    .wetu-pricing-overlay--bottom-right .wetu-pricing-overlay__context-line {
+      justify-content: flex-end;
+      text-align: right;
+    }
+    /* Place context on same line as price for bottom-right variant */
+    .wetu-pricing-overlay--bottom-right .wetu-pricing-overlay__pricing {
+      flex-direction: row;
+      align-items: baseline;
+      gap: 0.65em;
+    }
+    
+    /* Position variants */
+    .wetu-pricing-overlay--bottom-left {
+      bottom: 1rem;
+      left: 1rem;
+    }
+    
+    .wetu-pricing-overlay--bottom-left .wetu-pricing-overlay__content {
+      align-items: flex-start;
+      text-align: left;
+    }
+    
+    .wetu-pricing-overlay--bottom-right {
+      bottom: 1rem;
+      right: 1rem;
+    }
+    
+    .wetu-pricing-overlay--bottom-right .wetu-pricing-overlay__content {
+      align-items: flex-end;
+      text-align: right;
+    }
+    
+    .wetu-pricing-overlay--top-left {
+      top: 1.5rem;
+      left: 1.5rem;
+    }
+    
+    .wetu-pricing-overlay--top-left .wetu-pricing-overlay__content {
+      align-items: flex-start;
+      text-align: left;
+    }
+    
+    .wetu-pricing-overlay--top-right {
+      top: 1.5rem;
+      right: 1.5rem;
+    }
+    
+    .wetu-pricing-overlay--top-right .wetu-pricing-overlay__content {
+      align-items: flex-end;
+      text-align: right;
+    }
+    
+    /* Size variants */
+    .wetu-pricing-overlay--small {
+      font-size: 0.875rem;
+    }
+    
+    .wetu-pricing-overlay--small .wetu-pricing-overlay__title {
+      font-size: 1.35rem;
+      margin-bottom: 4px;
+      font-weight: 700;
+    }
+    
+    .wetu-pricing-overlay--small .wetu-pricing-overlay__from {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      opacity: 0.95;
+      font-weight: 500;
+    }
+    
+    .wetu-pricing-overlay--small .wetu-pricing-overlay__currency {
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+    
+    .wetu-pricing-overlay--small .wetu-pricing-overlay__amount {
+      font-size: 1.125rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+    
+    .wetu-pricing-overlay--small .wetu-pricing-overlay__context {
+      font-size: 0.8rem;
+      opacity: 0.95;
+      font-weight: 400;
+    }
+    
+    .wetu-pricing-overlay--medium {
+      font-size: 1rem;
+    }
+    
+    .wetu-pricing-overlay--medium .wetu-pricing-overlay__title {
+      font-size: 1.5rem;
+      margin-bottom: 4px;
+    }
+    
+    .wetu-pricing-overlay--medium .wetu-pricing-overlay__from {
+      font-size: 0.875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      opacity: 0.9;
+    }
+    
+    .wetu-pricing-overlay--medium .wetu-pricing-overlay__currency {
+      font-size: 1rem;
+      font-weight: 500;
+    }
+    
+    .wetu-pricing-overlay--medium .wetu-pricing-overlay__amount {
+      font-size: 1.5rem;
+      font-weight: 600;
+      line-height: 1;
+    }
+    
+    .wetu-pricing-overlay--medium .wetu-pricing-overlay__context {
+      font-size: 0.875rem;
+      opacity: 0.9;
+    }
+    
+    .wetu-pricing-overlay--large {
+      font-size: 1.125rem;
+    }
+    
+    .wetu-pricing-overlay--large .wetu-pricing-overlay__title {
+      font-size: 2rem;
+      margin-bottom: 6px;
+    }
+    
+    .wetu-pricing-overlay--large .wetu-pricing-overlay__from {
+      font-size: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      opacity: 0.9;
+    }
+    
+    .wetu-pricing-overlay--large .wetu-pricing-overlay__currency {
+      font-size: 1.25rem;
+      font-weight: 500;
+    }
+    
+    .wetu-pricing-overlay--large .wetu-pricing-overlay__amount {
+      font-size: 2rem;
+      font-weight: 600;
+      line-height: 1;
+    }
+    
+    .wetu-pricing-overlay--large .wetu-pricing-overlay__context {
+      font-size: 1rem;
+      opacity: 0.9;
+    }
+    
+    /* Responsive */
+    @media screen and (max-width: 749px) {
+      /* Center overlays horizontally and vertically on mobile */
+      .wetu-pricing-overlay--bottom-left,
+      .wetu-pricing-overlay--bottom-right {
+        top: 50%;
+        left: 50%;
+        right: auto;
+        bottom: auto;
+        -webkit-transform: translate(-50%, -50%); /* iOS Safari */
+        transform: translate(-50%, -50%);
+        width: calc(100% - 1rem); /* More width for longer titles */
+        max-width: calc(100% - 1rem);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      /* When there's a title, move it up slightly to accommodate pricing below */
+      .wetu-pricing-overlay--bottom-left {
+        -webkit-transform: translate(-50%, calc(-50% - 0.75rem)); /* iOS Safari */
+        transform: translate(-50%, calc(-50% - 0.75rem)); /* Move up */
+      }
+      
+      /* When there's pricing, position it below center */
+      .wetu-pricing-overlay--bottom-right {
+        -webkit-transform: translate(-50%, calc(-50% + 0.75rem)); /* iOS Safari */
+        transform: translate(-50%, calc(-50% + 0.75rem)); /* Move down */
+      }
+      
+      /* Center-align all content on mobile */
+      .wetu-pricing-overlay--bottom-left .wetu-pricing-overlay__content,
+      .wetu-pricing-overlay--bottom-right .wetu-pricing-overlay__content {
+        align-items: center;
+        text-align: center;
+        width: 100%;
+      }
+      
+      .wetu-pricing-overlay--bottom-right .wetu-pricing-overlay__price-line,
+      .wetu-pricing-overlay--bottom-right .wetu-pricing-overlay__context-line {
+        justify-content: center;
+        text-align: center;
+      }
+      
+      /* Keep pricing on one line on mobile for better centering */
+      .wetu-pricing-overlay--bottom-right .wetu-pricing-overlay__pricing {
+        flex-direction: column;
+        align-items: center;
+      }
+      
+      .wetu-pricing-overlay--small .wetu-pricing-overlay__title {
+        font-size: 1.1rem;
+      }
+      
+      .wetu-pricing-overlay--small .wetu-pricing-overlay__amount {
+        font-size: 1rem;
+      }
+      
+      .wetu-pricing-overlay--small .wetu-pricing-overlay__context {
+        font-size: 0.75rem;
+      }
+      
+      .wetu-pricing-overlay--medium .wetu-pricing-overlay__title {
+        font-size: 1.35rem;
+      }
+      
+      .wetu-pricing-overlay--medium .wetu-pricing-overlay__amount {
+        font-size: 1.35rem;
+      }
+      
+      .wetu-pricing-overlay--large .wetu-pricing-overlay__title {
+        font-size: 1.65rem;
+      }
+      
+      .wetu-pricing-overlay--large .wetu-pricing-overlay__amount {
+        font-size: 1.65rem;
+      }
+    }
+  {% endstylesheet %}

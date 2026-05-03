@@ -1,0 +1,956 @@
+{% comment %}
+  ============================================================================
+  WETU ACCOMMODATION BENTO GALLERY SNIPPET
+  ============================================================================
+  
+  Renders an accommodation detail view with bento-style gallery:
+  1. Images start in left column on desktop
+  2. Text content (description + related sections) pinned to top-right
+  3. Images wrap around and below the text content
+  4. Consistent 2px gaps between all elements
+  5. Full-screen vertically scrollable gallery on thumbnail click
+  
+  USAGE:
+  {% render 'wetu-accommodation-bento-gallery',
+    product: product,
+    color_scheme: "scheme-5",
+    section_id: section.id,
+    show_activities: true,
+    show_dining: true,
+    show_spa: true,
+    show_videos: true,
+    show_key_details: true
+  %}
+  
+  ============================================================================
+{% endcomment %}
+
+{% liquid
+  assign unique_id = section_id | default: 'acc-bento' | append: '-' | append: product.id
+  
+  # Get product images (excluding featured if it's the hero)
+  assign gallery_images = product.images
+  assign gallery_count = gallery_images.size
+  assign has_gallery = false
+  if gallery_count > 1
+    assign has_gallery = true
+  endif
+  
+  # Get description
+  assign description = product.description
+  
+  # Get related content collections
+  assign activities_collection = product.metafields.wetu.activities_collection_ref.value
+  assign dining_collection = product.metafields.wetu.restaurants_collection_ref.value
+  assign spa_collection = product.metafields.wetu.spa_collection_ref.value
+  assign videos_collection = product.metafields.wetu.videos_collection_ref.value
+  assign videos_collection = videos_collection | default: product.metafields.wetu.videos_collection.value
+  assign videos_refs = product.metafields.wetu.videos.value
+  assign videos_from_refs = false
+  assign parent_property = product.metafields.wetu_room.property_product.value
+  assign parent_property = parent_property | default: product.metafields.wetu.property_product.value
+  
+  # Count related content
+  assign activities_count = 0
+  if activities_collection and show_activities
+    assign activities_count = activities_collection.products_count | default: 0
+  endif
+  
+  assign dining_count = 0
+  if dining_collection and show_dining
+    assign dining_count = dining_collection.products_count | default: 0
+  endif
+  
+  assign spa_count = 0
+  if spa_collection and show_spa
+    assign spa_count = spa_collection.products_count | default: 0
+  endif
+  
+  assign videos_count = 0
+  if show_videos
+    if videos_refs != blank
+      for video_ref in videos_refs
+        assign videos_count = videos_count | plus: 1
+      endfor
+      if videos_count > 0
+        assign videos_from_refs = true
+      endif
+    endif
+
+    if videos_count == 0 and videos_collection
+      assign videos_count = videos_collection.products_count | default: 0
+    endif
+  endif
+  
+  # Check for key details
+  assign room_amenities = product.metafields.wetu_room.room_amenities.value
+  assign amenities = product.metafields.wetu_room.amenities.value
+  assign has_key_details = false
+  if show_key_details and room_amenities or amenities
+    assign has_key_details = true
+  endif
+  
+  # Has content?
+  assign has_content = false
+  if description != blank or activities_count > 0 or dining_count > 0 or spa_count > 0 or videos_count > 0 or has_key_details
+    assign has_content = true
+  endif
+%}
+
+<div class="wetu-acc-bento color-{{ color_scheme | default: 'scheme-5' }}" id="acc-bento-{{ unique_id }}" data-acc-bento>
+  
+  {% comment %} === BENTO GALLERY + CONTENT === {% endcomment %}
+  {% if has_content or has_gallery %}
+    <div class="wetu-acc-bento__grid" data-gallery-grid="{{ unique_id }}">
+      
+      {% comment %} TEXT BLOCK: Pinned to top-right on desktop {% endcomment %}
+      <div class="wetu-acc-bento__text-block">
+        
+        {% comment %} Description {% endcomment %}
+        {% if description != blank %}
+          <div class="wetu-acc-bento__description rte">
+            {{ description }}
+          </div>
+        {% endif %}
+        
+        {% comment %} Key Details (Room Amenities) {% endcomment %}
+        {% if has_key_details %}
+          <div class="wetu-acc-bento__key-details">
+            {% render 'wetu-accommodation-key-details', product: product %}
+          </div>
+        {% endif %}
+        
+        {% comment %} Related Activities {% endcomment %}
+        {% if activities_count > 0 %}
+          <div class="wetu-acc-bento__section">
+            <h3 class="wetu-acc-bento__section-title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14.5 10c-.83 0-1.5-.67-1.5-1.5v-5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5z"/>
+                <path d="M20.5 10H19V8.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+                <path d="M9.5 14c.83 0 1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5S8 21.33 8 20.5v-5c0-.83.67-1.5 1.5-1.5z"/>
+                <path d="M3.5 14H5v1.5c0 .83-.67 1.5-1.5 1.5S2 16.33 2 15.5 2.67 14 3.5 14z"/>
+                <path d="M14 14.5c0-.83.67-1.5 1.5-1.5h5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-5c-.83 0-1.5-.67-1.5-1.5z"/>
+                <path d="M15.5 19H14v1.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5-.67-1.5-1.5-1.5z"/>
+                <path d="M10 9.5C10 8.67 9.33 8 8.5 8h-5C2.67 8 2 8.67 2 9.5S2.67 11 3.5 11h5c.83 0 1.5-.67 1.5-1.5z"/>
+                <path d="M8.5 5H10V3.5C10 2.67 9.33 2 8.5 2S7 2.67 7 3.5 7.67 5 8.5 5z"/>
+              </svg>
+              Activities
+              <span class="wetu-acc-bento__section-count">{{ activities_count }}</span>
+            </h3>
+            <div class="wetu-acc-bento__section-grid">
+              {% for activity in activities_collection.products limit: 6 %}
+                <a href="{{ activity.url }}" class="wetu-acc-bento__related-card">
+                  {% if activity.featured_image %}
+                    <div class="wetu-acc-bento__related-image">
+                      <img
+                        src="{{ activity.featured_image | image_url: width: 200 }}"
+                        alt="{{ activity.title }}"
+                        loading="lazy"
+                      >
+                    </div>
+                  {% endif %}
+                  <span class="wetu-acc-bento__related-title">{{ activity.title }}</span>
+                </a>
+              {% endfor %}
+            </div>
+            {% if activities_count > 6 %}
+              <a href="{{ activities_collection.url }}" class="wetu-acc-bento__view-all">
+                View all {{ activities_count }} activities →
+              </a>
+            {% endif %}
+          </div>
+        {% endif %}
+        
+        {% comment %} Related Dining {% endcomment %}
+        {% if dining_count > 0 %}
+          <div class="wetu-acc-bento__section">
+            <h3 class="wetu-acc-bento__section-title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
+                <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+                <line x1="6" y1="1" x2="6" y2="4"/>
+                <line x1="10" y1="1" x2="10" y2="4"/>
+                <line x1="14" y1="1" x2="14" y2="4"/>
+              </svg>
+              Dining
+              <span class="wetu-acc-bento__section-count">{{ dining_count }}</span>
+            </h3>
+            <div class="wetu-acc-bento__section-grid">
+              {% for restaurant in dining_collection.products limit: 4 %}
+                <a href="{{ restaurant.url }}" class="wetu-acc-bento__related-card">
+                  {% if restaurant.featured_image %}
+                    <div class="wetu-acc-bento__related-image">
+                      <img
+                        src="{{ restaurant.featured_image | image_url: width: 200 }}"
+                        alt="{{ restaurant.title }}"
+                        loading="lazy"
+                      >
+                    </div>
+                  {% endif %}
+                  <span class="wetu-acc-bento__related-title">{{ restaurant.title }}</span>
+                </a>
+              {% endfor %}
+            </div>
+            {% if dining_count > 4 %}
+              <a href="{{ dining_collection.url }}" class="wetu-acc-bento__view-all">
+                View all {{ dining_count }} dining options →
+              </a>
+            {% endif %}
+          </div>
+        {% endif %}
+        
+        {% comment %} Related Spa {% endcomment %}
+        {% if spa_count > 0 %}
+          <div class="wetu-acc-bento__section">
+            <h3 class="wetu-acc-bento__section-title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2a10 10 0 1 0 10 10H12V2z"/>
+                <path d="M12 2a10 10 0 0 1 10 10"/>
+                <path d="M12 2v10l7 7"/>
+              </svg>
+              Spa & Wellness
+              <span class="wetu-acc-bento__section-count">{{ spa_count }}</span>
+            </h3>
+            <div class="wetu-acc-bento__section-grid">
+              {% for spa in spa_collection.products limit: 4 %}
+                <a href="{{ spa.url }}" class="wetu-acc-bento__related-card">
+                  {% if spa.featured_image %}
+                    <div class="wetu-acc-bento__related-image">
+                      <img
+                        src="{{ spa.featured_image | image_url: width: 200 }}"
+                        alt="{{ spa.title }}"
+                        loading="lazy"
+                      >
+                    </div>
+                  {% endif %}
+                  <span class="wetu-acc-bento__related-title">{{ spa.title }}</span>
+                </a>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+        
+        {% comment %} Related Videos {% endcomment %}
+        {% if videos_count > 0 %}
+          <div class="wetu-acc-bento__section">
+            <h3 class="wetu-acc-bento__section-title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+              </svg>
+              Videos
+              <span class="wetu-acc-bento__section-count">{{ videos_count }}</span>
+            </h3>
+            <div class="wetu-acc-bento__section-grid wetu-acc-bento__section-grid--videos">
+              {% if videos_from_refs %}
+                {% for video_ref in videos_refs limit: 3 %}
+                  {% liquid
+                    assign video_embed_url = video_ref.embed_url.value | default: video_ref.embed_url
+                    assign video_url = video_ref.url.value | default: video_ref.url | default: video_embed_url
+                    assign video_title = video_ref.title.value | default: video_ref.label.value | default: video_ref.title | default: 'Video'
+                    assign video_thumb = video_ref.thumbnail_url.value | default: video_ref.thumbnail_url
+
+                    assign youtube_id = ''
+                    if video_embed_url contains 'youtube.com/embed/'
+                      assign youtube_parts = video_embed_url | split: 'youtube.com/embed/'
+                      assign youtube_id = youtube_parts[1] | split: '?' | first
+                    elsif video_embed_url contains 'youtu.be/'
+                      assign youtube_parts = video_embed_url | split: 'youtu.be/'
+                      assign youtube_id = youtube_parts[1] | split: '?' | first
+                    endif
+
+                    if video_thumb == blank and youtube_id != ''
+                      assign video_thumb = 'https://img.youtube.com/vi/' | append: youtube_id | append: '/maxresdefault.jpg'
+                    endif
+                  %}
+                  {% if video_url != blank %}
+                    <a href="{{ video_url }}" class="wetu-acc-bento__video-card" target="_blank" rel="noopener">
+                      {% if video_thumb != blank %}
+                        <div class="wetu-acc-bento__video-thumb">
+                          <img
+                            src="{{ video_thumb }}"
+                            alt="{{ video_title }}"
+                            loading="lazy"
+                          >
+                          <div class="wetu-acc-bento__video-play">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+                              <polygon points="5 3 19 12 5 21 5 3"/>
+                            </svg>
+                          </div>
+                        </div>
+                      {% endif %}
+                      <span class="wetu-acc-bento__video-title">{{ video_title }}</span>
+                    </a>
+                  {% endif %}
+                {% endfor %}
+              {% else %}
+                {% for video in videos_collection.products limit: 3 %}
+                  <a href="{{ video.url }}" class="wetu-acc-bento__video-card">
+                    {% if video.featured_image %}
+                      <div class="wetu-acc-bento__video-thumb">
+                        <img
+                          src="{{ video.featured_image | image_url: width: 400 }}"
+                          alt="{{ video.title }}"
+                          loading="lazy"
+                        >
+                        <div class="wetu-acc-bento__video-play">
+                          <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+                            <polygon points="5 3 19 12 5 21 5 3"/>
+                          </svg>
+                        </div>
+                      </div>
+                    {% endif %}
+                    <span class="wetu-acc-bento__video-title">{{ video.title }}</span>
+                  </a>
+                {% endfor %}
+              {% endif %}
+            </div>
+            {% if videos_count > 3 %}
+              {% liquid
+                assign videos_collection_url = videos_collection.url
+                if videos_collection_url == blank and parent_property
+                  assign videos_collection_url = '/collections/' | append: parent_property.handle | append: '-videos'
+                endif
+              %}
+              {% if videos_collection_url != blank %}
+                <a href="{{ videos_collection_url }}" class="wetu-acc-bento__view-all">
+                  View all {{ videos_count }} videos →
+                </a>
+              {% endif %}
+            {% endif %}
+          </div>
+        {% endif %}
+        
+      </div>
+
+      {% comment %} BENTO IMAGES: Flow around and below text {% endcomment %}
+      {% if has_gallery %}
+        {% assign visible_images = 0 %}
+        {% assign image_index = 0 %}
+        
+        {% for image in gallery_images %}
+          {% comment %} Skip featured image if it's the first one (used in hero) {% endcomment %}
+          {% if forloop.index0 == 0 %}
+            {% assign image_index = image_index | plus: 1 %}
+            {% continue %}
+          {% endif %}
+          
+          {% assign visible_images = visible_images | plus: 1 %}
+          
+          {% comment %} 
+            Pattern for flush rows (6 column grid, 3 columns available in left):
+            - Row 1: 1 tall (2 rows) + 2 standard = fills 3 cols
+            - Row 2: continuing tall + 2 standard = fills 3 cols
+            - Row 3 (full width below text): 1 wide (2 cols) + 4 standard = fills 6 cols
+            - Row 4: 1 big (2x2) + 4 standard = fills 6 cols
+            - Repeat pattern every 12 images for consistency
+          {% endcomment %}
+          {% assign pattern_position = visible_images | modulo: 12 %}
+          
+          {% assign variation_class = '' %}
+          
+          {% case pattern_position %}
+            {% when 1 %}
+              {% comment %} First image: tall (spans 2 rows) {% endcomment %}
+              {% assign variation_class = 'wetu-acc-bento__img--tall' %}
+            {% when 4 %}
+              {% comment %} Position 4: wide image to fill row {% endcomment %}
+              {% assign variation_class = 'wetu-acc-bento__img--wide' %}
+            {% when 7 %}
+              {% comment %} Position 7: big image (2x2) {% endcomment %}
+              {% assign variation_class = 'wetu-acc-bento__img--big' %}
+            {% when 10 %}
+              {% comment %} Position 10: wide for row completion {% endcomment %}
+              {% assign variation_class = 'wetu-acc-bento__img--wide' %}
+          {% endcase %}
+          
+          <button
+            type="button"
+            class="wetu-acc-bento__img-card {{ variation_class }}"
+            data-gallery-trigger="{{ unique_id }}"
+            data-image-index="{{ image_index }}"
+            aria-label="View {{ image.alt | default: product.title }} in fullscreen gallery"
+          >
+            <img
+              src="{{ image | image_url: width: 800 }}"
+              srcset="{{ image | image_url: width: 400 }} 400w, {{ image | image_url: width: 600 }} 600w, {{ image | image_url: width: 800 }} 800w, {{ image | image_url: width: 1200 }} 1200w"
+              sizes="(max-width: 749px) 50vw, (max-width: 989px) 25vw, 16.67vw"
+              alt="{{ image.alt | default: product.title }}"
+              loading="lazy"
+              class="wetu-acc-bento__img-card-image"
+            >
+            <div class="wetu-acc-bento__img-overlay">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+              </svg>
+            </div>
+          </button>
+          
+          {% assign image_index = image_index | plus: 1 %}
+        {% endfor %}
+      {% endif %}
+    </div>
+  {% endif %}
+  
+  {% comment %} === FULLSCREEN VERTICAL GALLERY === {% endcomment %}
+  {% if has_gallery %}
+    <div 
+      class="wetu-acc-bento__fullscreen" 
+      id="fullscreen-gallery-{{ unique_id }}"
+      data-fullscreen-gallery="{{ unique_id }}"
+      hidden
+      aria-hidden="true"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Fullscreen gallery for {{ product.title | escape }}"
+    >
+      <div class="wetu-acc-bento__fullscreen-backdrop"></div>
+      
+      <button type="button" class="wetu-acc-bento__fullscreen-close" aria-label="Close gallery">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+      
+      <div class="wetu-acc-bento__fullscreen-counter">
+        <span data-current-index>1</span> / {{ gallery_count }}
+      </div>
+      
+      <div class="wetu-acc-bento__fullscreen-scroller">
+        {% for image in gallery_images %}
+          <div 
+            class="wetu-acc-bento__fullscreen-item" 
+            data-fullscreen-image-index="{{ forloop.index0 }}"
+          >
+            <img
+              src="{{ image | image_url: width: 2000 }}"
+              srcset="{{ image | image_url: width: 1200 }} 1200w, {{ image | image_url: width: 1600 }} 1600w, {{ image | image_url: width: 2000 }} 2000w"
+              sizes="100vw"
+              alt="{{ image.alt | default: product.title }}"
+              loading="lazy"
+              class="wetu-acc-bento__fullscreen-img"
+            >
+            {% if image.alt != blank %}
+              <p class="wetu-acc-bento__fullscreen-caption">{{ image.alt }}</p>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+</div>
+
+<style>
+  /* ============================================
+     WETU ACCOMMODATION BENTO STYLES
+     ============================================ */
+  
+  .wetu-acc-bento {
+    background: var(--color-background);
+    color: var(--color-foreground);
+  }
+  
+  /* === BENTO GRID LAYOUT === */
+  .wetu-acc-bento__grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 2px;
+    grid-auto-flow: dense;
+    background: var(--color-background);
+    width: 100%;
+  }
+  
+  /* Tablet: 4-column grid */
+  @media (max-width: 989px) {
+    .wetu-acc-bento__grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+  
+  /* Mobile: 2-column grid */
+  @media (max-width: 749px) {
+    .wetu-acc-bento__grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  
+  /* TEXT BLOCK: Pinned to top-right on desktop, height adapts to content */
+  .wetu-acc-bento__text-block {
+    grid-column: 4 / 7;
+    grid-row: 1 / auto;
+    padding: 48px 40px;
+    background: var(--color-background);
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    box-sizing: border-box;
+    z-index: 2;
+    height: fit-content;
+    min-height: 200px;
+  }
+  
+  @media (max-width: 989px) {
+    .wetu-acc-bento__text-block {
+      grid-column: 1 / -1;
+      grid-row: auto;
+      padding: 40px 32px;
+    }
+  }
+  
+  @media (max-width: 749px) {
+    .wetu-acc-bento__text-block {
+      grid-column: span 2;
+      padding: 32px 24px;
+      gap: 24px;
+    }
+  }
+  
+  /* Description */
+  .wetu-acc-bento__description {
+    font-size: 1rem;
+    line-height: 1.8;
+    color: rgba(var(--color-foreground-rgb), 0.85);
+  }
+  
+  .wetu-acc-bento__description p {
+    margin-bottom: 1.25em;
+  }
+  
+  .wetu-acc-bento__description p:last-child {
+    margin-bottom: 0;
+  }
+  
+  /* Key Details Section */
+  .wetu-acc-bento__key-details {
+    padding-top: 24px;
+    border-top: 1px solid rgba(var(--color-foreground-rgb), 0.1);
+  }
+  
+  .wetu-acc-bento__key-details .wetu-accommodation-key-details {
+    margin-block: 0;
+  }
+  
+  /* Related Content Sections */
+  .wetu-acc-bento__section {
+    padding-top: 24px;
+    border-top: 1px solid rgba(var(--color-foreground-rgb), 0.1);
+  }
+  
+  .wetu-acc-bento__section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 16px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-foreground);
+  }
+  
+  .wetu-acc-bento__section-title svg {
+    opacity: 0.6;
+  }
+  
+  .wetu-acc-bento__section-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 8px;
+    background: rgba(var(--color-foreground-rgb), 0.08);
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  
+  .wetu-acc-bento__section-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 12px;
+  }
+  
+  .wetu-acc-bento__section-grid--videos {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+  
+  /* Related Cards */
+  .wetu-acc-bento__related-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    text-decoration: none;
+    color: inherit;
+    transition: opacity 0.2s ease;
+  }
+  
+  .wetu-acc-bento__related-card:hover {
+    opacity: 0.8;
+  }
+  
+  .wetu-acc-bento__related-image {
+    aspect-ratio: 1;
+    border-radius: 8px;
+    overflow: hidden;
+    background: rgba(var(--color-foreground-rgb), 0.05);
+  }
+  
+  .wetu-acc-bento__related-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  .wetu-acc-bento__related-title {
+    font-size: 0.8125rem;
+    line-height: 1.3;
+    color: rgba(var(--color-foreground-rgb), 0.8);
+  }
+  
+  /* Video Cards */
+  .wetu-acc-bento__video-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    text-decoration: none;
+    color: inherit;
+  }
+  
+  .wetu-acc-bento__video-thumb {
+    position: relative;
+    aspect-ratio: 16/9;
+    border-radius: 8px;
+    overflow: hidden;
+    background: rgba(var(--color-foreground-rgb), 0.05);
+  }
+  
+  .wetu-acc-bento__video-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+  }
+  
+  .wetu-acc-bento__video-card:hover .wetu-acc-bento__video-thumb img {
+    transform: scale(1.05);
+  }
+  
+  .wetu-acc-bento__video-play {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.3);
+    color: #fff;
+    transition: background 0.2s ease;
+  }
+  
+  .wetu-acc-bento__video-card:hover .wetu-acc-bento__video-play {
+    background: rgba(0, 0, 0, 0.5);
+  }
+  
+  .wetu-acc-bento__video-title {
+    font-size: 0.875rem;
+    line-height: 1.4;
+    color: rgba(var(--color-foreground-rgb), 0.8);
+  }
+  
+  /* View All Link */
+  .wetu-acc-bento__view-all {
+    display: inline-block;
+    margin-top: 12px;
+    font-size: 0.875rem;
+    color: var(--color-primary, rgba(var(--color-foreground-rgb), 0.7));
+    text-decoration: none;
+  }
+  
+  .wetu-acc-bento__view-all:hover {
+    text-decoration: underline;
+  }
+  
+  /* === BENTO IMAGE CARDS === */
+  .wetu-acc-bento__img-card {
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    border: none;
+    padding: 0;
+    background: rgba(var(--color-foreground-rgb), 0.05);
+    display: block;
+    aspect-ratio: 1 / 1;
+  }
+  
+  /* Variation classes for bento variety - aspect ratios ensure flush rows */
+  .wetu-acc-bento__img--wide {
+    grid-column: span 2;
+    aspect-ratio: 2 / 1;
+  }
+  
+  .wetu-acc-bento__img--tall {
+    grid-row: span 2;
+    aspect-ratio: 1 / 2;
+  }
+  
+  .wetu-acc-bento__img--big {
+    grid-column: span 2;
+    grid-row: span 2;
+    aspect-ratio: 1 / 1;
+  }
+  
+  /* Mobile: Adjust for 2-column grid */
+  @media (max-width: 749px) {
+    .wetu-acc-bento__img-card {
+      aspect-ratio: 4 / 3;
+    }
+    
+    .wetu-acc-bento__img--wide,
+    .wetu-acc-bento__img--big {
+      grid-column: span 2;
+      aspect-ratio: 2 / 1;
+    }
+    
+    .wetu-acc-bento__img--tall {
+      grid-row: span 1;
+      aspect-ratio: 4 / 3;
+    }
+    
+    .wetu-acc-bento__img--big {
+      grid-row: span 1;
+    }
+  }
+  
+  .wetu-acc-bento__img-card-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.6s ease;
+  }
+  
+  .wetu-acc-bento__img-card:hover .wetu-acc-bento__img-card-image {
+    transform: scale(1.05);
+  }
+  
+  .wetu-acc-bento__img-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0);
+    color: #fff;
+    opacity: 0;
+    transition: opacity 0.3s ease, background 0.3s ease;
+  }
+  
+  .wetu-acc-bento__img-card:hover .wetu-acc-bento__img-overlay {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.3);
+  }
+  
+  /* === FULLSCREEN GALLERY === */
+  .wetu-acc-bento__fullscreen {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .wetu-acc-bento__fullscreen[hidden] {
+    display: none;
+  }
+  
+  .wetu-acc-bento__fullscreen-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.95);
+  }
+  
+  .wetu-acc-bento__fullscreen-close {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 10001;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: none;
+    border-radius: 50%;
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.2s ease;
+  }
+  
+  .wetu-acc-bento__fullscreen-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.05);
+  }
+  
+  .wetu-acc-bento__fullscreen-counter {
+    position: fixed;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10001;
+    padding: 8px 16px;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #fff;
+    letter-spacing: 0.02em;
+  }
+  
+  .wetu-acc-bento__fullscreen-scroller {
+    position: relative;
+    z-index: 10000;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    padding: 80px 0 40px;
+  }
+  
+  .wetu-acc-bento__fullscreen-item {
+    width: 100%;
+    max-width: 100%;
+    margin-bottom: 2px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .wetu-acc-bento__fullscreen-img {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+  
+  .wetu-acc-bento__fullscreen-caption {
+    width: 100%;
+    padding: 12px 24px;
+    margin: 0;
+    background: rgba(0, 0, 0, 0.6);
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.875rem;
+    text-align: center;
+  }
+  
+  /* Focus states for accessibility */
+  .wetu-acc-bento__img-card:focus-visible,
+  .wetu-acc-bento__fullscreen-close:focus-visible {
+    outline: 2px solid var(--color-primary, #d4a574);
+    outline-offset: 2px;
+  }
+  
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .wetu-acc-bento__img-card-image,
+    .wetu-acc-bento__img-overlay,
+    .wetu-acc-bento__fullscreen-close,
+    .wetu-acc-bento__video-thumb img {
+      transition: none;
+    }
+    
+    .wetu-acc-bento__img-card:hover .wetu-acc-bento__img-card-image,
+    .wetu-acc-bento__video-card:hover .wetu-acc-bento__video-thumb img {
+      transform: none;
+    }
+    
+    .wetu-acc-bento__fullscreen-scroller {
+      scroll-behavior: auto;
+    }
+  }
+</style>
+
+<script>
+(function() {
+  'use strict';
+  
+  const uniqueId = '{{ unique_id }}';
+  const container = document.getElementById('acc-bento-{{ unique_id }}');
+  if (!container) return;
+  
+  const triggers = container.querySelectorAll('[data-gallery-trigger="{{ unique_id }}"]');
+  const fullscreen = document.getElementById('fullscreen-gallery-{{ unique_id }}');
+  if (!fullscreen || triggers.length === 0) return;
+  
+  const closeBtn = fullscreen.querySelector('.wetu-acc-bento__fullscreen-close');
+  const backdrop = fullscreen.querySelector('.wetu-acc-bento__fullscreen-backdrop');
+  const scroller = fullscreen.querySelector('.wetu-acc-bento__fullscreen-scroller');
+  const counterCurrent = fullscreen.querySelector('[data-current-index]');
+  const galleryItems = fullscreen.querySelectorAll('[data-fullscreen-image-index]');
+  
+  function openGallery(startIndex) {
+    fullscreen.hidden = false;
+    fullscreen.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    
+    const targetItem = fullscreen.querySelector(`[data-fullscreen-image-index="${startIndex}"]`);
+    if (targetItem) {
+      requestAnimationFrame(() => {
+        targetItem.scrollIntoView({ behavior: 'instant', block: 'start' });
+      });
+    }
+    
+    updateCounter();
+    closeBtn.focus();
+  }
+  
+  function closeGallery() {
+    fullscreen.hidden = true;
+    fullscreen.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+  }
+  
+  function updateCounter() {
+    if (!counterCurrent || !scroller) return;
+    
+    const scrollerRect = scroller.getBoundingClientRect();
+    const scrollerCenter = scrollerRect.top + scrollerRect.height / 2;
+    
+    let currentIndex = 0;
+    galleryItems.forEach((item, index) => {
+      const itemRect = item.getBoundingClientRect();
+      if (itemRect.top <= scrollerCenter && itemRect.bottom >= scrollerCenter) {
+        currentIndex = index;
+      }
+    });
+    
+    counterCurrent.textContent = currentIndex + 1;
+  }
+  
+  triggers.forEach(trigger => {
+    trigger.addEventListener('click', () => {
+      const index = parseInt(trigger.dataset.imageIndex, 10) || 0;
+      openGallery(index);
+    });
+  });
+  
+  closeBtn.addEventListener('click', closeGallery);
+  backdrop.addEventListener('click', closeGallery);
+  
+  fullscreen.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeGallery();
+    }
+  });
+  
+  scroller.addEventListener('scroll', updateCounter, { passive: true });
+  
+  fullscreen.addEventListener('wheel', (e) => {
+    e.stopPropagation();
+  }, { passive: true });
+})();
+</script>

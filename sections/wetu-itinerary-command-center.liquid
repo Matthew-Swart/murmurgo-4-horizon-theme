@@ -1,0 +1,1186 @@
+{%- liquid
+  assign itinerary_json_raw = product.metafields.wetu.itinerary_json.value | default: product.metafields.wetu.itinerary_json
+  assign itinerary_source_json_raw = product.metafields.wetu.itinerary_source_json.value | default: product.metafields.wetu.itinerary_source_json
+  assign itinerary_identifier_raw = product.metafields.wetu.itinerary_identifier.value | default: product.metafields.wetu.itinerary_identifier
+  assign hero_video_raw = product.metafields.wetu.hero_video.value | default: product.metafields.wetu.hero_video
+
+  assign canonical_json_url = product.metafields.wetu.itinerary_source_json_cdn_url.value | default: product.metafields.wetu.itinerary_source_json_cdn_url
+  if canonical_json_url == blank and itinerary_source_json_raw != blank and itinerary_source_json_raw.storage == 'shopify_file'
+    assign canonical_json_url = itinerary_source_json_raw.cdn_url
+  endif
+
+  assign fallback_json_url = product.metafields.wetu.itinerary_json_cdn_url.value | default: product.metafields.wetu.itinerary_json_cdn_url
+  if fallback_json_url == blank and itinerary_json_raw != blank and itinerary_json_raw.storage == 'shopify_file'
+    assign fallback_json_url = itinerary_json_raw.cdn_url
+  endif
+
+  assign component_products = product.metafields.wetu_itinerary.component_products.value
+  assign pin_ids_list = ''
+  assign handles_list = ''
+
+  capture component_product_candidates_json
+    echo '['
+    assign component_candidate_emitted = false
+    if component_products.size > 0
+      for comp_product in component_products
+        if comp_product.handle
+          assign prod_obj = comp_product
+        else
+          assign prod_obj = all_products[comp_product]
+        endif
+
+        assign prod_handle = prod_obj.handle
+        assign prod_primary_pin = prod_obj.metafields.wetu.pin_id.value | default: prod_obj.metafields.wetu.pin_id | default: prod_obj.metafields.wetu.content_entity_id.value | default: prod_obj.metafields.wetu.content_entity_id
+        assign prod_content_pin = prod_obj.metafields.wetu.content_entity_id.value | default: prod_obj.metafields.wetu.content_entity_id
+        assign prod_linked_activity_pin = prod_obj.metafields.wetu_linked_activity.parent_pin_id.value | default: prod_obj.metafields.wetu_linked_activity.parent_pin_id
+        assign prod_linked_restaurant_pin = prod_obj.metafields.wetu_linked_restaurant.parent_pin_id.value | default: prod_obj.metafields.wetu_linked_restaurant.parent_pin_id
+        assign prod_linked_spa_pin = prod_obj.metafields.wetu_linked_spa.parent_pin_id.value | default: prod_obj.metafields.wetu_linked_spa.parent_pin_id
+        assign prod_linked_collection_pin = prod_obj.metafields.wetu_collection.parent_pin_id.value | default: prod_obj.metafields.wetu_collection.parent_pin_id
+        assign prod_wetu_type = prod_obj.metafields.wetu.type.value | default: prod_obj.metafields.wetu.type
+        assign prod_wetu_category = prod_obj.metafields.wetu.category.value | default: prod_obj.metafields.wetu.category
+        assign prod_wetu_subcategory = prod_obj.metafields.wetu.subcategory.value | default: prod_obj.metafields.wetu.subcategory
+        assign prod_position = prod_obj.metafields.wetu.position.value | default: prod_obj.metafields.wetu.position
+        assign prod_latitude = prod_position.latitude
+        assign prod_longitude = prod_position.longitude
+        assign prod_driving_latitude = prod_position.driving_latitude | default: prod_latitude
+        assign prod_driving_longitude = prod_position.driving_longitude | default: prod_longitude
+        assign prod_tagline = prod_obj.metafields.wetu.tagline.value | default: prod_obj.metafields.wetu.tagline
+        assign prod_featured_image_thumb = prod_obj.featured_image | image_url: width: 80
+        assign prod_featured_image_large = prod_obj.featured_image | image_url: width: 1600
+        assign emitted_pin_tokens = ''
+
+        if prod_handle != blank
+          if prod_primary_pin != blank
+            assign candidate_pin = prod_primary_pin
+            assign candidate_pin_token = '|' | append: candidate_pin | append: '|'
+            assign emitted_pin_tokens = emitted_pin_tokens | append: candidate_pin_token
+            unless component_candidate_emitted == false
+              echo ','
+            endunless
+            echo '{'
+            echo '"pin":'
+            echo candidate_pin | json
+            echo ',"handle":'
+            echo prod_handle | json
+            echo ',"url":'
+            echo prod_obj.url | json
+            echo ',"featured_image":'
+            echo prod_featured_image_thumb | json
+            echo ',"featured_image_large":'
+            echo prod_featured_image_large | json
+            echo ',"title":'
+            echo prod_obj.title | json
+            echo ',"tagline":'
+            echo prod_tagline | json
+            echo ',"template_suffix":'
+            echo prod_obj.template_suffix | json
+            echo ',"product_type":'
+            echo prod_obj.type | json
+            echo ',"tags":'
+            echo prod_obj.tags | json
+            echo ',"wetu_type":'
+            echo prod_wetu_type | json
+            echo ',"wetu_category":'
+            echo prod_wetu_category | json
+            echo ',"wetu_subcategory":'
+            echo prod_wetu_subcategory | json
+            echo ',"content_entity_id":'
+            echo prod_content_pin | json
+            echo ',"primary_pin":'
+            echo prod_primary_pin | json
+            echo ',"latitude":'
+            echo prod_latitude | json
+            echo ',"longitude":'
+            echo prod_longitude | json
+            echo ',"driving_latitude":'
+            echo prod_driving_latitude | json
+            echo ',"driving_longitude":'
+            echo prod_driving_longitude | json
+            echo ',"source":'
+            echo 'component_products' | json
+            echo ',"pin_field":'
+            echo 'wetu.pin_id' | json
+            echo ',"component_index":'
+            echo forloop.index0 | json
+            echo '}'
+            assign component_candidate_emitted = true
+          endif
+
+          if prod_content_pin != blank
+            assign candidate_pin = prod_content_pin
+            assign candidate_pin_token = '|' | append: candidate_pin | append: '|'
+            unless emitted_pin_tokens contains candidate_pin_token
+              assign emitted_pin_tokens = emitted_pin_tokens | append: candidate_pin_token
+              unless component_candidate_emitted == false
+                echo ','
+              endunless
+              echo '{'
+              echo '"pin":'
+              echo candidate_pin | json
+              echo ',"handle":'
+              echo prod_handle | json
+              echo ',"url":'
+              echo prod_obj.url | json
+              echo ',"featured_image":'
+              echo prod_featured_image_thumb | json
+              echo ',"featured_image_large":'
+              echo prod_featured_image_large | json
+              echo ',"title":'
+              echo prod_obj.title | json
+              echo ',"tagline":'
+              echo prod_tagline | json
+              echo ',"template_suffix":'
+              echo prod_obj.template_suffix | json
+              echo ',"product_type":'
+              echo prod_obj.type | json
+              echo ',"tags":'
+              echo prod_obj.tags | json
+              echo ',"wetu_type":'
+              echo prod_wetu_type | json
+              echo ',"wetu_category":'
+              echo prod_wetu_category | json
+              echo ',"wetu_subcategory":'
+              echo prod_wetu_subcategory | json
+              echo ',"content_entity_id":'
+              echo prod_content_pin | json
+              echo ',"primary_pin":'
+              echo prod_primary_pin | json
+              echo ',"latitude":'
+              echo prod_latitude | json
+              echo ',"longitude":'
+              echo prod_longitude | json
+              echo ',"driving_latitude":'
+              echo prod_driving_latitude | json
+              echo ',"driving_longitude":'
+              echo prod_driving_longitude | json
+              echo ',"source":'
+              echo 'component_products' | json
+              echo ',"pin_field":'
+              echo 'wetu.content_entity_id' | json
+              echo ',"component_index":'
+              echo forloop.index0 | json
+              echo '}'
+              assign component_candidate_emitted = true
+            endunless
+          endif
+
+          if prod_linked_activity_pin != blank
+            assign candidate_pin = prod_linked_activity_pin
+            assign candidate_pin_token = '|' | append: candidate_pin | append: '|'
+            unless emitted_pin_tokens contains candidate_pin_token
+              assign emitted_pin_tokens = emitted_pin_tokens | append: candidate_pin_token
+              unless component_candidate_emitted == false
+                echo ','
+              endunless
+              echo '{'
+              echo '"pin":'
+              echo candidate_pin | json
+              echo ',"handle":'
+              echo prod_handle | json
+              echo ',"url":'
+              echo prod_obj.url | json
+              echo ',"featured_image":'
+              echo prod_featured_image_thumb | json
+              echo ',"featured_image_large":'
+              echo prod_featured_image_large | json
+              echo ',"title":'
+              echo prod_obj.title | json
+              echo ',"tagline":'
+              echo prod_tagline | json
+              echo ',"template_suffix":'
+              echo prod_obj.template_suffix | json
+              echo ',"product_type":'
+              echo prod_obj.type | json
+              echo ',"tags":'
+              echo prod_obj.tags | json
+              echo ',"wetu_type":'
+              echo prod_wetu_type | json
+              echo ',"wetu_category":'
+              echo prod_wetu_category | json
+              echo ',"wetu_subcategory":'
+              echo prod_wetu_subcategory | json
+              echo ',"content_entity_id":'
+              echo prod_content_pin | json
+              echo ',"primary_pin":'
+              echo prod_primary_pin | json
+              echo ',"latitude":'
+              echo prod_latitude | json
+              echo ',"longitude":'
+              echo prod_longitude | json
+              echo ',"driving_latitude":'
+              echo prod_driving_latitude | json
+              echo ',"driving_longitude":'
+              echo prod_driving_longitude | json
+              echo ',"source":'
+              echo 'component_products' | json
+              echo ',"pin_field":'
+              echo 'wetu_linked_activity.parent_pin_id' | json
+              echo ',"component_index":'
+              echo forloop.index0 | json
+              echo '}'
+              assign component_candidate_emitted = true
+            endunless
+          endif
+
+          if prod_linked_restaurant_pin != blank
+            assign candidate_pin = prod_linked_restaurant_pin
+            assign candidate_pin_token = '|' | append: candidate_pin | append: '|'
+            unless emitted_pin_tokens contains candidate_pin_token
+              assign emitted_pin_tokens = emitted_pin_tokens | append: candidate_pin_token
+              unless component_candidate_emitted == false
+                echo ','
+              endunless
+              echo '{'
+              echo '"pin":'
+              echo candidate_pin | json
+              echo ',"handle":'
+              echo prod_handle | json
+              echo ',"url":'
+              echo prod_obj.url | json
+              echo ',"featured_image":'
+              echo prod_featured_image_thumb | json
+              echo ',"featured_image_large":'
+              echo prod_featured_image_large | json
+              echo ',"title":'
+              echo prod_obj.title | json
+              echo ',"tagline":'
+              echo prod_tagline | json
+              echo ',"template_suffix":'
+              echo prod_obj.template_suffix | json
+              echo ',"product_type":'
+              echo prod_obj.type | json
+              echo ',"tags":'
+              echo prod_obj.tags | json
+              echo ',"wetu_type":'
+              echo prod_wetu_type | json
+              echo ',"wetu_category":'
+              echo prod_wetu_category | json
+              echo ',"wetu_subcategory":'
+              echo prod_wetu_subcategory | json
+              echo ',"content_entity_id":'
+              echo prod_content_pin | json
+              echo ',"primary_pin":'
+              echo prod_primary_pin | json
+              echo ',"latitude":'
+              echo prod_latitude | json
+              echo ',"longitude":'
+              echo prod_longitude | json
+              echo ',"driving_latitude":'
+              echo prod_driving_latitude | json
+              echo ',"driving_longitude":'
+              echo prod_driving_longitude | json
+              echo ',"source":'
+              echo 'component_products' | json
+              echo ',"pin_field":'
+              echo 'wetu_linked_restaurant.parent_pin_id' | json
+              echo ',"component_index":'
+              echo forloop.index0 | json
+              echo '}'
+              assign component_candidate_emitted = true
+            endunless
+          endif
+
+          if prod_linked_spa_pin != blank
+            assign candidate_pin = prod_linked_spa_pin
+            assign candidate_pin_token = '|' | append: candidate_pin | append: '|'
+            unless emitted_pin_tokens contains candidate_pin_token
+              assign emitted_pin_tokens = emitted_pin_tokens | append: candidate_pin_token
+              unless component_candidate_emitted == false
+                echo ','
+              endunless
+              echo '{'
+              echo '"pin":'
+              echo candidate_pin | json
+              echo ',"handle":'
+              echo prod_handle | json
+              echo ',"url":'
+              echo prod_obj.url | json
+              echo ',"featured_image":'
+              echo prod_featured_image_thumb | json
+              echo ',"featured_image_large":'
+              echo prod_featured_image_large | json
+              echo ',"title":'
+              echo prod_obj.title | json
+              echo ',"tagline":'
+              echo prod_tagline | json
+              echo ',"template_suffix":'
+              echo prod_obj.template_suffix | json
+              echo ',"product_type":'
+              echo prod_obj.type | json
+              echo ',"tags":'
+              echo prod_obj.tags | json
+              echo ',"wetu_type":'
+              echo prod_wetu_type | json
+              echo ',"wetu_category":'
+              echo prod_wetu_category | json
+              echo ',"wetu_subcategory":'
+              echo prod_wetu_subcategory | json
+              echo ',"content_entity_id":'
+              echo prod_content_pin | json
+              echo ',"primary_pin":'
+              echo prod_primary_pin | json
+              echo ',"latitude":'
+              echo prod_latitude | json
+              echo ',"longitude":'
+              echo prod_longitude | json
+              echo ',"driving_latitude":'
+              echo prod_driving_latitude | json
+              echo ',"driving_longitude":'
+              echo prod_driving_longitude | json
+              echo ',"source":'
+              echo 'component_products' | json
+              echo ',"pin_field":'
+              echo 'wetu_linked_spa.parent_pin_id' | json
+              echo ',"component_index":'
+              echo forloop.index0 | json
+              echo '}'
+              assign component_candidate_emitted = true
+            endunless
+          endif
+
+          if prod_linked_collection_pin != blank
+            assign candidate_pin = prod_linked_collection_pin
+            assign candidate_pin_token = '|' | append: candidate_pin | append: '|'
+            unless emitted_pin_tokens contains candidate_pin_token
+              assign emitted_pin_tokens = emitted_pin_tokens | append: candidate_pin_token
+              unless component_candidate_emitted == false
+                echo ','
+              endunless
+              echo '{'
+              echo '"pin":'
+              echo candidate_pin | json
+              echo ',"handle":'
+              echo prod_handle | json
+              echo ',"url":'
+              echo prod_obj.url | json
+              echo ',"featured_image":'
+              echo prod_featured_image_thumb | json
+              echo ',"featured_image_large":'
+              echo prod_featured_image_large | json
+              echo ',"title":'
+              echo prod_obj.title | json
+              echo ',"tagline":'
+              echo prod_tagline | json
+              echo ',"template_suffix":'
+              echo prod_obj.template_suffix | json
+              echo ',"product_type":'
+              echo prod_obj.type | json
+              echo ',"tags":'
+              echo prod_obj.tags | json
+              echo ',"wetu_type":'
+              echo prod_wetu_type | json
+              echo ',"wetu_category":'
+              echo prod_wetu_category | json
+              echo ',"wetu_subcategory":'
+              echo prod_wetu_subcategory | json
+              echo ',"content_entity_id":'
+              echo prod_content_pin | json
+              echo ',"primary_pin":'
+              echo prod_primary_pin | json
+              echo ',"latitude":'
+              echo prod_latitude | json
+              echo ',"longitude":'
+              echo prod_longitude | json
+              echo ',"driving_latitude":'
+              echo prod_driving_latitude | json
+              echo ',"driving_longitude":'
+              echo prod_driving_longitude | json
+              echo ',"source":'
+              echo 'component_products' | json
+              echo ',"pin_field":'
+              echo 'wetu_collection.parent_pin_id' | json
+              echo ',"component_index":'
+              echo forloop.index0 | json
+              echo '}'
+              assign component_candidate_emitted = true
+            endunless
+          endif
+        endif
+      endfor
+    endif
+    echo ']'
+  endcapture
+
+  if component_products.size > 0
+    for comp_product in component_products
+      if comp_product.handle
+        assign prod_obj = comp_product
+      else
+        assign prod_obj = all_products[comp_product]
+      endif
+
+      assign prod_pin = prod_obj.metafields.wetu.pin_id.value | default: prod_obj.metafields.wetu.content_entity_id.value
+      assign prod_handle = prod_obj.handle
+
+      if prod_pin != blank and prod_handle != blank
+        if pin_ids_list == ''
+          assign pin_ids_list = prod_pin
+          assign handles_list = prod_handle
+        else
+          assign pin_ids_list = pin_ids_list | append: ',' | append: prod_pin
+          assign handles_list = handles_list | append: ',' | append: prod_handle
+        endif
+      endif
+    endfor
+  endif
+
+  assign pin_ids_array = pin_ids_list | split: ','
+  assign handles_array = handles_list | split: ','
+
+  capture pin_map_json
+    echo '{'
+    for pin_id in pin_ids_array
+      if pin_id != blank
+        unless forloop.first
+          echo ','
+        endunless
+        echo '"'
+        echo pin_id
+        echo '":"'
+        echo handles_array[forloop.index0] | default: ''
+        echo '"'
+      endif
+    endfor
+    echo '}'
+  endcapture
+
+  assign link_manifest_raw = product.metafields.wetu_itinerary.link_manifest.value | default: product.metafields.wetu_itinerary.link_manifest | default: '{}'
+
+  assign has_data = false
+  if canonical_json_url != blank or fallback_json_url != blank
+    assign has_data = true
+  endif
+
+  assign workspace_layout = 'layout-center-only'
+  if section.settings.show_sidebar and section.settings.show_inspector
+    assign workspace_layout = 'layout-three'
+  elsif section.settings.show_sidebar
+    assign workspace_layout = 'layout-left-center'
+  elsif section.settings.show_inspector
+    assign workspace_layout = 'layout-center-right'
+  endif
+-%}
+
+<section
+  class="itin-command-center color-{{ section.settings.color_scheme }} is-initial-inspector-hydrating"
+  id="itinerary-command-center"
+  data-section-id="{{ section.id }}"
+  data-canonical-json-url="{{ canonical_json_url | escape }}"
+  data-fallback-json-url="{{ fallback_json_url | escape }}"
+  data-itinerary-identifier="{{ itinerary_identifier_raw | escape }}"
+  data-pin-map="{% if section.settings.enable_pin_map %}{{ pin_map_json | strip | escape }}{% else %}{}{% endif %}"
+  data-component-product-candidates="{{ component_product_candidates_json | strip | escape }}"
+  data-link-manifest="{% if section.settings.enable_link_manifest %}{{ link_manifest_raw | escape }}{% else %}{}{% endif %}"
+  data-product-handle="{{ product.handle | escape }}"
+  data-product-id="{{ product.id }}"
+  data-product-selected-variant-id="{{ product.selected_or_first_available_variant.id }}"
+  data-locale-code="{{ request.locale.iso_code | default: shop.locale | escape }}"
+  data-currency-code="{{ localization.country.currency.iso_code | default: cart.currency.iso_code | default: shop.currency | escape }}"
+  data-mapbox-token="{{ section.settings.mapbox_public_token | strip | escape }}"
+  data-mapbox-style="{{ section.settings.mapbox_style | strip | escape }}"
+  data-mapbox-geocode-hint="{{ section.settings.mapbox_geocode_hint | strip | escape }}"
+>
+  <div class="itin-command-center__mode-flash" data-command-center-mode-flash aria-hidden="true"></div>
+  <div class="itin-command-center__desktop-scroll-wrapper" data-command-center-scroll-wrapper>
+    {% if section.settings.show_hero %}
+      <header class="itin-command-center__hero" data-command-center-hero>
+        <div class="itin-command-center__hero-media" aria-hidden="true">
+          {% if hero_video_raw != blank %}
+            {% if hero_video_raw.sources != blank %}
+              {{
+                hero_video_raw
+                | video_tag:
+                  class: 'itin-command-center__hero-video',
+                  image_size: '2400x',
+                  autoplay: true,
+                  loop: true,
+                  muted: true,
+                  controls: false,
+                  playsinline: true
+              }}
+            {% else %}
+              <video
+                class="itin-command-center__hero-video"
+                muted
+                loop
+                playsinline
+                preload="metadata"
+                {% if product.featured_image != blank %}
+                  poster="{{ product.featured_image | image_url: width: 2400 }}"
+                {% endif %}
+              >
+                <source src="{{ hero_video_raw | file_url }}" type="video/mp4">
+              </video>
+            {% endif %}
+          {% elsif product.featured_image != blank %}
+            {{
+              product.featured_image
+              | image_url: width: 2400
+              | image_tag:
+                class: 'itin-command-center__hero-image',
+                loading: 'eager',
+                widths: '900, 1400, 1800, 2200, 2400',
+                sizes: '100vw',
+                alt: product.featured_image.alt | default: product.title
+            }}
+          {% endif %}
+        </div>
+        <div class="itin-command-center__hero-inner">
+          <h1 class="itin-command-center__hero-title">{{ product.title }}</h1>
+          <p class="itin-command-center__hero-locations" data-command-center-hero-locations>Locations loading...</p>
+          <p class="itin-command-center__hero-days" data-command-center-hero-days>-- days</p>
+          <button
+            type="button"
+            class="itin-command-center__theme-toggle"
+            data-command-center-theme-toggle
+            aria-label="Switch to dark mode"
+            title="Switch to dark mode"
+          >
+            <span class="itin-command-center__theme-toggle-icon itin-command-center__theme-toggle-icon--sun" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                <circle cx="12" cy="12" r="3.75"></circle>
+                <path d="M12 1.5v2.5"></path>
+                <path d="M12 20v2.5"></path>
+                <path d="M4.58 4.58l1.77 1.77"></path>
+                <path d="M17.65 17.65l1.77 1.77"></path>
+                <path d="M1.5 12h2.5"></path>
+                <path d="M20 12h2.5"></path>
+                <path d="M4.58 19.42l1.77-1.77"></path>
+                <path d="M17.65 6.35l1.77-1.77"></path>
+              </svg>
+            </span>
+            <span class="itin-command-center__theme-toggle-icon itin-command-center__theme-toggle-icon--moon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                <path d="M20.13 15.48A9 9 0 1 1 8.52 3.87a7 7 0 1 0 11.61 11.61Z"></path>
+              </svg>
+            </span>
+            <span class="itin-command-center__visually-hidden" data-command-center-theme-toggle-label>Switch to dark mode</span>
+          </button>
+        </div>
+      </header>
+    {% endif %}
+
+    {% if section.settings.show_tour_overview %}
+      <section class="itin-command-center__tour-summary" data-command-center-tour-summary>
+        <div class="itin-command-center__tour-summary-shell itin-command-center__tour-summary-shell--{{ workspace_layout }}">
+          <div class="itin-command-center__tour-summary-rail">
+            <p class="itin-command-center__tour-summary-rail-label">Tour metrics</p>
+            <dl class="itin-command-center__tour-summary-facts">
+              <div class="itin-command-center__tour-summary-fact">
+                <dt>Days</dt>
+                <dd data-command-center-tour-summary-fact="days">--</dd>
+              </div>
+              <div class="itin-command-center__tour-summary-fact">
+                <dt>Legs</dt>
+                <dd data-command-center-tour-summary-fact="legs">--</dd>
+              </div>
+              <div class="itin-command-center__tour-summary-fact">
+                <dt>Routes</dt>
+                <dd data-command-center-tour-summary-fact="routes">--</dd>
+              </div>
+              <div class="itin-command-center__tour-summary-fact">
+                <dt>Stops</dt>
+                <dd data-command-center-tour-summary-fact="stops">--</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div class="itin-command-center__tour-summary-main">
+            <p class="itin-command-center__tour-summary-overview-line" data-command-center-tour-summary-stats>Loading itinerary metrics...</p>
+            <div class="itin-command-center__tour-summary-prose" data-command-center-tour-summary-copy>
+              <p>Loading itinerary summary...</p>
+            </div>
+            <div class="itin-command-center__tour-summary-leg-rail" data-command-center-tour-summary-leg-rail></div>
+          </div>
+
+          <div class="itin-command-center__tour-summary-side">
+            <section class="itin-command-center__booking itin-command-center__tour-summary-booking" data-inspector-booking data-command-center-tour-summary-booking>
+              <p class="itin-command-center__ui-label">Booking console</p>
+              <p class="itin-command-center__booking-itinerary" data-inspector-booking-itinerary-title>Itinerary</p>
+              <div class="itin-command-center__booking-price-panel" aria-live="polite" aria-atomic="true">
+                <p class="itin-command-center__booking-price-row">
+                  <strong data-inspector-booking-base-price>—</strong>
+                  <span>per person</span>
+                </p>
+                <p class="itin-command-center__booking-total-line" data-inspector-booking-total-price-line>—</p>
+              </div>
+              <div class="itin-command-center__booking-field">
+                <p class="itin-command-center__booking-label">Party size</p>
+                <p class="itin-command-center__booking-guest-context" data-inspector-booking-party-context>--</p>
+                <div class="itin-command-center__booking-stepper" role="group" aria-label="Guest count">
+                  <button type="button" class="itin-command-center__booking-stepper-button" data-inspector-booking-guest-decrement aria-label="Decrease guests">-</button>
+                  <input
+                    class="itin-command-center__booking-stepper-input"
+                    data-inspector-booking-guest-input
+                    type="number"
+                    min="1"
+                    max="12"
+                    value="1"
+                    inputmode="numeric"
+                    pattern="[0-9]*"
+                    aria-label="Guests"
+                  >
+                  <button type="button" class="itin-command-center__booking-stepper-button" data-inspector-booking-guest-increment aria-label="Increase guests">+</button>
+                </div>
+              </div>
+              <p class="itin-command-center__booking-status" data-inspector-booking-status role="status" aria-live="polite" hidden></p>
+              <a class="itin-command-center__booking-cta" data-inspector-booking-cta href="#">Confirm journey</a>
+              <a class="itin-command-center__booking-cta itin-command-center__booking-cta--secondary" data-inspector-booking-secondary-cta href="/pages/contact">Customize this plan</a>
+              <p class="itin-command-center__booking-checkout-note" data-inspector-booking-note hidden></p>
+            </section>
+
+            <section class="itin-command-center__inspector-consultant itin-command-center__tour-summary-consultant" data-command-center-tour-summary-consultant hidden>
+              <p class="itin-command-center__inspector-consultant-avatar" aria-hidden="true" data-command-center-tour-summary-consultant-initials></p>
+              <p class="itin-command-center__inspector-consultant-name" data-command-center-tour-summary-consultant-name></p>
+              <p class="itin-command-center__inspector-consultant-role" data-command-center-tour-summary-consultant-role></p>
+              <a class="itin-command-center__inspector-consultant-link" data-command-center-tour-summary-consultant-phone href="#" hidden></a>
+              <a class="itin-command-center__inspector-consultant-link" data-command-center-tour-summary-consultant-email href="#" hidden></a>
+            </section>
+          </div>
+        </div>
+      </section>
+    {% endif %}
+
+    <div class="itin-command-center__workspace itin-command-center__workspace--desktop-fixed itin-command-center__workspace--{{ workspace_layout }}" data-command-center-workspace>
+      {% if section.settings.show_sidebar %}
+        <aside class="itin-command-center__workspace-pane itin-command-center__workspace-pane--left" data-command-center-sidebar>
+          <div class="itin-command-center__pane-body" data-command-center-sidebar-body>
+            <div class="itin-command-center__nav-group">
+              <div class="itin-command-center__loading-skeleton itin-command-center__loading-skeleton--sidebar" aria-hidden="true">
+                <span class="itin-command-center__loading-bar itin-command-center__loading-bar--label"></span>
+                <span class="itin-command-center__loading-bar itin-command-center__loading-bar--line"></span>
+                <span class="itin-command-center__loading-bar itin-command-center__loading-bar--line"></span>
+                <span class="itin-command-center__loading-bar itin-command-center__loading-bar--line-short"></span>
+              </div>
+            </div>
+          </div>
+        </aside>
+      {% endif %}
+
+      <main class="itin-command-center__workspace-pane itin-command-center__workspace-pane--center" data-command-center-narrative>
+        <div class="itin-command-center__pane-body" data-command-center-narrative-body>
+          <article class="itin-command-center__card itin-command-center__card--feature itin-command-center__card--loading-shell" data-command-center-loading-shell aria-hidden="true">
+            <div class="itin-command-center__loading-skeleton itin-command-center__loading-skeleton--center">
+              <span class="itin-command-center__loading-bar itin-command-center__loading-bar--label"></span>
+              <span class="itin-command-center__loading-bar itin-command-center__loading-bar--title"></span>
+              <span class="itin-command-center__loading-bar itin-command-center__loading-bar--line"></span>
+              <span class="itin-command-center__loading-bar itin-command-center__loading-bar--line"></span>
+              <span class="itin-command-center__loading-bar itin-command-center__loading-bar--line-short"></span>
+            </div>
+          </article>
+
+          {% if section.settings.show_inspector %}
+            <section class="itin-command-center__tablet-inspector" data-command-center-tablet-inspector>
+              <p class="itin-command-center__ui-label">Inspector summary</p>
+              <article class="itin-command-center__card">
+                <h3 class="itin-command-center__day-title">Selection context</h3>
+                <p class="itin-command-center__card-copy">On tablet, inspector details condense into narrative cards to preserve reading flow without sacrificing booking context.</p>
+              </article>
+            </section>
+          {% endif %}
+        </div>
+      </main>
+
+      {% if section.settings.show_inspector %}
+        <aside class="itin-command-center__workspace-pane itin-command-center__workspace-pane--right" data-command-center-inspector>
+          <div data-command-center-overview-proxy-controls hidden>
+            <button type="button" data-command-center-overview-detail="overview">Overview details</button>
+            <button type="button" data-command-center-overview-detail="participants">Participants details</button>
+            <button type="button" data-command-center-overview-detail="pricing">Pricing details</button>
+          </div>
+          <div
+            class="itin-command-center__pane-body"
+            data-command-center-inspector-body
+            id="command-center-journey-panel-{{ section.id }}"
+            role="region"
+            aria-label="Journey map"
+            aria-live="polite"
+            aria-busy="true"
+          >
+            <div class="itin-command-center__loading-skeleton itin-command-center__loading-skeleton--inspector" data-command-center-loading-shell aria-hidden="true">
+              <span class="itin-command-center__loading-bar itin-command-center__loading-bar--label"></span>
+              <span class="itin-command-center__loading-bar itin-command-center__loading-bar--title"></span>
+              <span class="itin-command-center__loading-bar itin-command-center__loading-bar--line"></span>
+              <span class="itin-command-center__loading-bar itin-command-center__loading-bar--line"></span>
+              <span class="itin-command-center__loading-bar itin-command-center__loading-bar--line-short"></span>
+            </div>
+          </div>
+        </aside>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if section.settings.show_inspector or section.settings.show_mobile_sheet %}
+    <div class="itin-command-center__inspector-templates" aria-hidden="true" hidden>
+      <template data-command-center-inspector-template="booking-rail">
+        <section class="itin-command-center__booking" data-inspector-booking>
+          <p class="itin-command-center__ui-label">Booking console</p>
+          <p class="itin-command-center__booking-itinerary" data-inspector-booking-itinerary-title>Itinerary</p>
+          <div class="itin-command-center__booking-price-panel" aria-live="polite" aria-atomic="true">
+            <p class="itin-command-center__booking-price-row">
+              <strong data-inspector-booking-base-price>—</strong>
+              <span>per person</span>
+            </p>
+            <p class="itin-command-center__booking-total-line" data-inspector-booking-total-price-line>—</p>
+          </div>
+          <div class="itin-command-center__booking-field">
+            <p class="itin-command-center__booking-label">Party size</p>
+            <p class="itin-command-center__booking-guest-context" data-inspector-booking-party-context>--</p>
+            <div class="itin-command-center__booking-stepper" role="group" aria-label="Guest count">
+              <button type="button" class="itin-command-center__booking-stepper-button" data-inspector-booking-guest-decrement aria-label="Decrease guests">-</button>
+              <input
+                class="itin-command-center__booking-stepper-input"
+                data-inspector-booking-guest-input
+                type="number"
+                min="1"
+                max="12"
+                value="1"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                aria-label="Guests"
+              >
+              <button type="button" class="itin-command-center__booking-stepper-button" data-inspector-booking-guest-increment aria-label="Increase guests">+</button>
+            </div>
+          </div>
+          <p class="itin-command-center__booking-status" data-inspector-booking-status role="status" aria-live="polite" hidden></p>
+          <a class="itin-command-center__booking-cta" data-inspector-booking-cta href="#">Confirm journey</a>
+          <a class="itin-command-center__booking-cta itin-command-center__booking-cta--secondary" data-inspector-booking-secondary-cta href="/pages/contact">Customize this plan</a>
+          <p class="itin-command-center__booking-checkout-note" data-inspector-booking-note hidden></p>
+        </section>
+      </template>
+
+      <template data-command-center-inspector-template="default">
+        <article class="itin-command-center__inspector-panel">
+          <section class="itin-command-center__booking" data-inspector-booking>
+            <p class="itin-command-center__ui-label">Booking console</p>
+            <p class="itin-command-center__booking-itinerary" data-inspector-booking-itinerary-title>Itinerary</p>
+            <div class="itin-command-center__booking-price-panel" aria-live="polite" aria-atomic="true">
+              <p class="itin-command-center__booking-price-row">
+                <strong data-inspector-booking-base-price>—</strong>
+                <span>per person</span>
+              </p>
+              <p class="itin-command-center__booking-total-line" data-inspector-booking-total-price-line>—</p>
+            </div>
+            <div class="itin-command-center__booking-field">
+              <p class="itin-command-center__booking-label">Party size</p>
+              <p class="itin-command-center__booking-guest-context" data-inspector-booking-party-context>--</p>
+              <div class="itin-command-center__booking-stepper" role="group" aria-label="Guest count">
+                <button type="button" class="itin-command-center__booking-stepper-button" data-inspector-booking-guest-decrement aria-label="Decrease guests">-</button>
+                <input
+                  class="itin-command-center__booking-stepper-input"
+                  data-inspector-booking-guest-input
+                  type="number"
+                  min="1"
+                  max="12"
+                  value="1"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  aria-label="Guests"
+                >
+                <button type="button" class="itin-command-center__booking-stepper-button" data-inspector-booking-guest-increment aria-label="Increase guests">+</button>
+              </div>
+            </div>
+            <p class="itin-command-center__booking-status" data-inspector-booking-status role="status" aria-live="polite" hidden></p>
+            <a class="itin-command-center__booking-cta" data-inspector-booking-cta href="#">Confirm journey</a>
+            <a class="itin-command-center__booking-cta itin-command-center__booking-cta--secondary" data-inspector-booking-secondary-cta href="/pages/contact">Customize this plan</a>
+            <p class="itin-command-center__booking-checkout-note" data-inspector-booking-note hidden></p>
+          </section>
+          <section class="itin-command-center__inspector-includes" data-inspector-landing-includes-section hidden>
+            <p class="itin-command-center__ui-label">What&apos;s included</p>
+            <ul class="itin-command-center__inspector-includes-list" data-inspector-landing-includes-list></ul>
+          </section>
+          <section class="itin-command-center__inspector-consultant" data-inspector-landing-consultant hidden>
+            <p class="itin-command-center__inspector-consultant-avatar" aria-hidden="true" data-inspector-landing-consultant-initials></p>
+            <p class="itin-command-center__inspector-consultant-name" data-inspector-landing-consultant-name></p>
+            <p class="itin-command-center__inspector-consultant-role" data-inspector-landing-consultant-role></p>
+            <a class="itin-command-center__inspector-consultant-link" data-inspector-landing-consultant-phone href="#" hidden></a>
+            <a class="itin-command-center__inspector-consultant-link" data-inspector-landing-consultant-email href="#" hidden></a>
+          </section>
+        </article>
+      </template>
+
+      <template data-command-center-inspector-template="default-detail">
+        <article class="itin-command-center__inspector-panel">
+          <section class="itin-command-center__inspector-includes" data-inspector-landing-includes-section hidden>
+            <p class="itin-command-center__ui-label">What&apos;s included</p>
+            <ul class="itin-command-center__inspector-includes-list" data-inspector-landing-includes-list></ul>
+          </section>
+          <section class="itin-command-center__inspector-consultant" data-inspector-landing-consultant hidden>
+            <p class="itin-command-center__inspector-consultant-avatar" aria-hidden="true" data-inspector-landing-consultant-initials></p>
+            <p class="itin-command-center__inspector-consultant-name" data-inspector-landing-consultant-name></p>
+            <p class="itin-command-center__inspector-consultant-role" data-inspector-landing-consultant-role></p>
+            <a class="itin-command-center__inspector-consultant-link" data-inspector-landing-consultant-phone href="#" hidden></a>
+            <a class="itin-command-center__inspector-consultant-link" data-inspector-landing-consultant-email href="#" hidden></a>
+          </section>
+        </article>
+      </template>
+
+      <template data-command-center-inspector-template="product">
+        <section class="itin-command-center__inspector-product-surface" data-inspector-product-surface>
+          <div class="itin-command-center__inspector-product-content" data-inspector-product-content aria-live="polite"></div>
+        </section>
+      </template>
+
+      <template data-command-center-inspector-template="route-selfdrive">
+        <article class="itin-command-center__card itin-command-center__inspector-shell">
+          <p class="itin-command-center__ui-label">Logistics routing</p>
+          <h3 class="itin-command-center__day-title itin-command-center__inspector-title" data-inspector-route-title></h3>
+          <p class="itin-command-center__verse itin-command-center__inspector-meta" data-inspector-route-meta></p>
+          <div class="itin-command-center__inspector-route-grid">
+            <p class="itin-command-center__card-copy" data-inspector-route-path></p>
+            <p class="itin-command-center__card-copy" data-inspector-route-window></p>
+            <p class="itin-command-center__card-copy" data-inspector-route-duration></p>
+            <p class="itin-command-center__card-copy" data-inspector-route-vehicle></p>
+          </div>
+          <div class="itin-command-center__inspector-route-map" data-inspector-route-map-shell>
+            <p class="itin-command-center__inspector-route-map-title" data-inspector-route-map-title>Self-drive route map</p>
+            <p class="itin-command-center__inspector-route-map-copy" data-inspector-route-map-copy>Route preview appears when map coordinates are available.</p>
+          </div>
+        </article>
+      </template>
+
+      <template data-command-center-inspector-template="route-flight">
+        <article class="itin-command-center__card itin-command-center__inspector-shell">
+          <p class="itin-command-center__ui-label">Logistics routing</p>
+          <h3 class="itin-command-center__day-title itin-command-center__inspector-title" data-inspector-route-title></h3>
+          <p class="itin-command-center__verse itin-command-center__inspector-meta" data-inspector-route-meta></p>
+          <div class="itin-command-center__inspector-route-grid">
+            <p class="itin-command-center__card-copy" data-inspector-route-path></p>
+            <p class="itin-command-center__card-copy" data-inspector-route-window></p>
+            <p class="itin-command-center__card-copy" data-inspector-route-duration></p>
+            <p class="itin-command-center__card-copy" data-inspector-route-agency></p>
+          </div>
+          <div class="itin-command-center__inspector-route-map" data-inspector-route-map-shell>
+            <p class="itin-command-center__inspector-route-map-title" data-inspector-route-map-title>Scheduled flight path</p>
+            <p class="itin-command-center__inspector-route-map-copy" data-inspector-route-map-copy>Flight route preview appears when map coordinates are available.</p>
+          </div>
+        </article>
+      </template>
+
+      <template data-command-center-inspector-template="route-transfer">
+        <article class="itin-command-center__card itin-command-center__inspector-shell">
+          <p class="itin-command-center__ui-label">Logistics routing</p>
+          <h3 class="itin-command-center__day-title itin-command-center__inspector-title" data-inspector-route-title></h3>
+          <p class="itin-command-center__verse itin-command-center__inspector-meta" data-inspector-route-meta></p>
+          <div class="itin-command-center__inspector-route-grid">
+            <p class="itin-command-center__card-copy" data-inspector-route-path></p>
+            <p class="itin-command-center__card-copy" data-inspector-route-window></p>
+            <p class="itin-command-center__card-copy" data-inspector-route-duration></p>
+            <p class="itin-command-center__card-copy" data-inspector-route-vehicle></p>
+          </div>
+          <div class="itin-command-center__inspector-route-map" data-inspector-route-map-shell>
+            <p class="itin-command-center__inspector-route-map-title" data-inspector-route-map-title>Private transfer map</p>
+            <p class="itin-command-center__inspector-route-map-copy" data-inspector-route-map-copy>Transfer route preview appears when map coordinates are available.</p>
+          </div>
+        </article>
+      </template>
+
+      <template data-command-center-inspector-template="logistics">
+        <article class="itin-command-center__card itin-command-center__inspector-shell itin-command-center__route-detail">
+          <p class="itin-command-center__route-detail-mode" data-inspector-logistics-mode></p>
+          <h3 class="itin-command-center__route-detail-title" data-inspector-logistics-title></h3>
+
+          <div class="itin-command-center__route-detail-endpoints" data-inspector-logistics-endpoints hidden>
+            <div class="itin-command-center__route-detail-endpoint">
+              <span class="itin-command-center__route-detail-label">FROM</span>
+              <span class="itin-command-center__route-detail-value" data-inspector-logistics-origin></span>
+            </div>
+            <div class="itin-command-center__route-detail-endpoint">
+              <span class="itin-command-center__route-detail-label">TO</span>
+              <span class="itin-command-center__route-detail-value" data-inspector-logistics-destination></span>
+            </div>
+          </div>
+
+          <div class="itin-command-center__route-detail-timing" data-inspector-logistics-timing hidden>
+            <div class="itin-command-center__route-detail-time-col">
+              <span class="itin-command-center__route-detail-label">DEPARTURE</span>
+              <span class="itin-command-center__route-detail-time-value" data-inspector-logistics-departure></span>
+            </div>
+            <div class="itin-command-center__route-detail-time-col">
+              <span class="itin-command-center__route-detail-label">DURATION</span>
+              <span class="itin-command-center__route-detail-time-value" data-inspector-logistics-duration></span>
+            </div>
+            <div class="itin-command-center__route-detail-time-col">
+              <span class="itin-command-center__route-detail-label">ARRIVAL</span>
+              <span class="itin-command-center__route-detail-time-value" data-inspector-logistics-arrival></span>
+            </div>
+          </div>
+
+          <div class="itin-command-center__route-detail-description" data-inspector-logistics-description hidden></div>
+          <div class="itin-command-center__route-detail-directions" data-inspector-logistics-directions hidden></div>
+
+          <hr class="itin-command-center__route-detail-separator" data-inspector-logistics-separator hidden>
+
+          <div class="itin-command-center__route-detail-section" data-inspector-logistics-contact-section hidden>
+            <span class="itin-command-center__route-detail-label">CONTACT</span>
+            <span class="itin-command-center__route-detail-value" data-inspector-logistics-contact-name></span>
+            <a class="itin-command-center__route-detail-link" data-inspector-logistics-contact-phone hidden></a>
+            <a class="itin-command-center__route-detail-link" data-inspector-logistics-contact-email hidden></a>
+          </div>
+
+          <div class="itin-command-center__route-detail-section" data-inspector-logistics-meeting-section hidden>
+            <span class="itin-command-center__route-detail-label">MEETING POINT</span>
+            <span class="itin-command-center__route-detail-value" data-inspector-logistics-meeting></span>
+          </div>
+
+          <div class="itin-command-center__route-detail-section" data-inspector-logistics-reference-section hidden>
+            <span class="itin-command-center__route-detail-label">REFERENCE</span>
+            <span class="itin-command-center__route-detail-value" data-inspector-logistics-reference></span>
+          </div>
+
+          <div class="itin-command-center__route-detail-section" data-inspector-logistics-flight-section hidden>
+            <span class="itin-command-center__route-detail-label">FLIGHT</span>
+            <span class="itin-command-center__route-detail-value" data-inspector-logistics-flight-code></span>
+            <span class="itin-command-center__route-detail-value" data-inspector-logistics-terminal hidden></span>
+          </div>
+
+          <a class="itin-command-center__route-detail-maps-link" data-inspector-logistics-maps-link hidden target="_blank" rel="noopener noreferrer">Open route in Google Maps →</a>
+
+          <div class="itin-command-center__route-detail-map-container" data-inspector-logistics-map-shell>
+            <div class="itin-command-center__route-detail-mapbox" data-inspector-logistics-mapbox-container></div>
+          </div>
+        </article>
+      </template>
+
+      <template data-command-center-inspector-template="travel-stop">
+        <article class="itin-command-center__card itin-command-center__inspector-shell">
+          <p class="itin-command-center__ui-label">Stay movement</p>
+          <h3 class="itin-command-center__day-title itin-command-center__inspector-title" data-inspector-travel-stop-title></h3>
+          <p class="itin-command-center__verse itin-command-center__inspector-meta" data-inspector-travel-stop-meta></p>
+          <div class="itin-command-center__inspector-route-grid">
+            <p class="itin-command-center__card-copy" data-inspector-travel-stop-path></p>
+            <p class="itin-command-center__card-copy" data-inspector-travel-stop-window></p>
+            <p class="itin-command-center__card-copy" data-inspector-travel-stop-summary></p>
+          </div>
+          <div class="itin-command-center__inspector-route-map" data-inspector-travel-stop-map-shell>
+            <p class="itin-command-center__inspector-route-map-title" data-inspector-travel-stop-map-title>Stay movement map</p>
+            <p class="itin-command-center__inspector-route-map-copy" data-inspector-travel-stop-map-copy>Movement preview appears when map coordinates are available.</p>
+          </div>
+        </article>
+      </template>
+
+      <template data-command-center-inspector-template="timeline-detail">
+        <article class="itin-command-center__card itin-command-center__inspector-shell">
+          <p class="itin-command-center__ui-label" data-inspector-timeline-label>Timeline detail</p>
+          <h3 class="itin-command-center__day-title itin-command-center__inspector-title" data-inspector-timeline-title></h3>
+          <p class="itin-command-center__verse itin-command-center__inspector-meta" data-inspector-timeline-meta></p>
+          <div class="itin-command-center__inspector-route-grid">
+            <p class="itin-command-center__card-copy" data-inspector-timeline-summary></p>
+            <p class="itin-command-center__card-copy" data-inspector-timeline-source></p>
+          </div>
+        </article>
+      </template>
+
+      <template data-command-center-inspector-template="context-detail">
+        <article class="itin-command-center__card itin-command-center__inspector-shell itin-command-center__inspector-context">
+          <p class="itin-command-center__ui-label" data-inspector-context-label>Context detail</p>
+          <h3 class="itin-command-center__day-title itin-command-center__inspector-title" data-inspector-context-title></h3>
+          <p class="itin-command-center__verse itin-command-center__inspector-meta" data-inspector-context-meta></p>
+          <p class="itin-command-center__card-copy itin-command-center__inspector-context-copy" data-inspector-context-summary></p>
+          <div class="itin-command-center__inspector-context-body" data-inspector-context-body></div>
+          <p class="itin-command-center__inspector-context-source" data-inspector-context-source hidden></p>
+        </article>
+      </template>
+
+      <template data-command-center-inspector-template="guests">
+        <article class="itin-command-center__card itin-command-center__inspector-shell itin-command-center__guest-detail">
+          <p class="itin-command-center__guest-detail-mode" data-inspector-guests-mode>Guest list</p>
+          <h3 class="itin-command-center__guest-detail-title" data-inspector-guests-title>Your Travel Party</h3>
+          <p class="itin-command-center__guest-detail-meta" data-inspector-guests-meta hidden></p>
+          <p class="itin-command-center__guest-detail-summary" data-inspector-guests-summary hidden></p>
+          <div class="itin-command-center__guest-detail-groups" data-inspector-guests-groups></div>
+          <p class="itin-command-center__card-copy itin-command-center__guest-detail-empty" data-inspector-guests-empty hidden>Traveller profiles will appear here once details are available.</p>
+        </article>
+      </template>
+
+      <template data-command-center-inspector-template="pricing">
+        <article class="itin-command-center__card itin-command-center__inspector-shell itin-command-center__pricing-detail">
+          <p class="itin-command-center__pricing-detail-mode" data-inspector-pricing-mode></p>
+          <h3 class="itin-command-center__pricing-detail-title" data-inspector-pricing-title></h3>
+
+          <div class="itin-command-center__pricing-detail-totals" data-inspector-pricing-totals>
+            <div class="itin-command-center__pricing-detail-total-row">
+              <span class="itin-command-center__pricing-detail-label">PER PERSON</span>
+              <span class="itin-command-center__pricing-detail-amount" data-inspector-pricing-per-person>—</span>
+            </div>
+            <div class="itin-command-center__pricing-detail-total-row">
+              <span class="itin-command-center__pricing-detail-label">TOTAL INVESTMENT</span>
+              <span class="itin-command-center__pricing-detail-amount itin-command-center__pricing-detail-amount--total" data-inspector-pricing-total>—</span>
+            </div>
+            <p class="itin-command-center__pricing-detail-party-note" data-inspector-pricing-party-note hidden></p>
+          </div>
+
+          <div class="itin-command-center__pricing-detail-summary-metrics" data-inspector-pricing-summary-metrics hidden>
+            <p class="itin-command-center__pricing-detail-metric" data-inspector-pricing-metric-adult hidden></p>
+            <p class="itin-command-center__pricing-detail-metric" data-inspector-pricing-metric-child hidden></p>
+            <p class="itin-command-center__pricing-detail-metric" data-inspector-pricing-metric-logistics hidden></p>
+          </div>
+
+          <hr class="itin-command-center__pricing-detail-separator" data-inspector-pricing-phases-separator hidden>
+
+          <div class="itin-command-center__pricing-detail-phases" data-inspector-pricing-phases hidden>
+            <p class="itin-command-center__pricing-detail-section-label">PHASES</p>
+            <div class="itin-command-center__pricing-detail-phases-list" data-inspector-pricing-phases-list></div>
+          </div>
+
+          <hr class="itin-command-center__pricing-detail-separator" data-inspector-pricing-inclusions-separator hidden>
+
+          <div class="itin-command-center__pricing-detail-inclusions" data-inspector-pricing-inclusions-section hidden>
+            <p class="itin-command-center__pricing-detail-section-label">INCLUDES</p>
+            <ul class="itin-command-center__pricing-detail-bullet-list" data-inspector-pricing-includes-list></ul>
+          </div>
+
+          <div class="itin-command-center__pricing-detail-exclusions" data-inspector-pricing-exclusions-section hidden>
+            <p class="itin-command-center__pricing-detail-section-label">EXCLUDES</p>
+            <ul class="itin-command-center__pricing-detail-bullet-list" data-inspector-pricing-excludes-list></ul>
+          </div>
+
+          <hr class="itin-command-center__pricing-detail-separator" data-inspector-pricing-schedule-separator hidden>
+
+          <div class="itin-command-center__pricing-detail-schedule" data-inspector-pricing-schedule hidden>
+            <p class="itin-command-center__pricing-detail-section-label">PAYMENT SCHEDULE</p>
+            <div class="itin-command-center__pricing-detail-schedule-list" data-inspector-pricing-schedule-list></div>
+          </div>
+        </article>
+      </template>
+    </div>
+  {% endif %}
+
+  {% if section.settings.show_mobile_picker %}
+    <div class="itin-command-center__mobile-picker" data-command-center-mobile-picker>
+      <div class="itin-command-center__mobile-picker-track" data-command-center-mobile-track>
+        <button type="button" class="itin-command-center__mobile-pill is-active">Overview</button>
+        <button type="button" class="itin-command-center__mobile-pill">Day 01</button>
+        <button type="button" class="itin-command-center__mobile-pill">Day 02</button>
+      </div>
+    </div>
+  {% endif %}
+
+  {% if section.settings.show_mobile_sheet %}
+    <div class="itin-command-center__mobile-sheet" data-command-center-mobile-sheet hidden aria-hidden="true">
+      <div class="itin-command-center__mobile-sheet-overlay" data-command-center-mobile-sheet-dismiss></div>
+      <div
+        class="itin-command-center__mobile-sheet-panel"
+        data-command-center-mobile-sheet-panel
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="command-center-mobile-sheet-title-{{ section.id }}"
+      >
+        <div class="itin-command-center__mobile-sheet-handle" aria-hidden="true"></div>
+        <div class="itin-command-center__pane-header itin-command-center__mobile-sheet-header">
+          <div>
+            <p class="itin-command-center__pane-eyebrow">Mobile details</p>
+            <p class="itin-command-center__pane-title" id="command-center-mobile-sheet-title-{{ section.id }}">Inspector summary</p>
+          </div>
+          <button
+            type="button"
+            class="itin-command-center__mobile-sheet-close"
+            data-command-center-mobile-sheet-close
+            aria-label="Close detail sheet"
+          >
+            Close
+          </button>
+        </div>
+        <div class="itin-command-center__pane-body itin-command-center__mobile-sheet-body" data-command-center-mobile-sheet-body>
+          <article class="itin-command-center__card itin-command-center__card--feature">
+            <p class="itin-command-center__ui-label">Inspector</p>
+            <h3 class="itin-command-center__day-title">Select a card to inspect</h3>
+            <p class="itin-command-center__card-copy">Tap any selectable card to open linked product details or transfer metadata.</p>
+          </article>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+</section>
+
+{% render 'wetu-itinerary-command-center-styles', section: section %}
+{% render 'wetu-itinerary-inspector-renderer', section: section %}
+{% render 'wetu-itinerary-command-center-script', section: section %}
+{% render 'wetu-itinerary-command-center-mapbox', section: section %}
+
+{% schema %}
+{
+  "name": "WETU command center",
+  "tag": "section",
+  "class": "section-itin-command-center",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-5"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_hero",
+      "label": "Show hero",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_sidebar",
+      "label": "Show sidebar pane",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_inspector",
+      "label": "Show inspector pane",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_mobile_picker",
+      "label": "Show mobile picker",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_mobile_sheet",
+      "label": "Show mobile bottom sheet",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_tour_overview",
+      "label": "Show tour overview bar",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_pin_map",
+      "label": "Expose pin map data",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_link_manifest",
+      "label": "Expose link manifest data",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "mapbox_public_token",
+      "label": "Mapbox public token (pk.*)",
+      "default": "pk.your_mapbox_public_token"
+    },
+    {
+      "type": "text",
+      "id": "mapbox_style",
+      "label": "Mapbox style URL",
+      "default": "mapbox://styles/mapbox/satellite-streets-v12"
+    },
+    {
+      "type": "text",
+      "id": "mapbox_geocode_hint",
+      "label": "Map geocode country/region hint",
+      "default": "South Africa"
+    }
+  ],
+  "presets": [
+    {
+      "name": "WETU command center"
+    }
+  ]
+}
+{% endschema %}

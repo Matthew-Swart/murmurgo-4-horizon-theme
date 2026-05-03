@@ -1,0 +1,223 @@
+{% comment %}
+  Horizon-Style Full-Screen Scrollable Gallery
+  
+  This creates a full-screen overlay with vertically scrolling images.
+  Click any image to close the gallery.
+  
+  Include once at the end of the page.
+{% endcomment %}
+
+<div id="fullscreen-gallery" class="fs-gallery" aria-hidden="true" role="dialog" aria-modal="true">
+  <button class="fs-gallery__close" aria-label="Close gallery">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+    </svg>
+  </button>
+  <div class="fs-gallery__title"></div>
+  <div class="fs-gallery__scroll">
+    <div class="fs-gallery__images"></div>
+  </div>
+  <div class="fs-gallery__scroll-hint">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polyline points="6 9 12 15 18 9"/>
+    </svg>
+    Scroll to view more
+  </div>
+</div>
+
+<style>
+.fs-gallery {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: #000;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+  overflow: hidden;
+}
+
+.fs-gallery[aria-hidden="false"] {
+  opacity: 1;
+  visibility: visible;
+}
+
+.fs-gallery__close {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.fs-gallery__close:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.fs-gallery__title {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 10;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.fs-gallery__scroll {
+  height: 100vh;
+  overflow-y: auto;
+  scroll-snap-type: y proximity;
+  -webkit-overflow-scrolling: touch;
+}
+
+.fs-gallery__images {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.fs-gallery__images img {
+  width: 100%;
+  max-height: 100vh;
+  object-fit: contain;
+  scroll-snap-align: start;
+  cursor: pointer;
+}
+
+.fs-gallery__scroll-hint {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.75rem;
+  animation: fs-gallery-bounce 2s infinite;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+.fs-gallery__scroll-hint.is-hidden {
+  opacity: 0;
+}
+
+@keyframes fs-gallery-bounce {
+  0%, 20%, 50%, 80%, 100% { transform: translateX(-50%) translateY(0); }
+  40% { transform: translateX(-50%) translateY(-10px); }
+  60% { transform: translateX(-50%) translateY(-5px); }
+}
+</style>
+
+<script>
+(function() {
+  'use strict';
+  
+  const gallery = document.getElementById('fullscreen-gallery');
+  if (!gallery) return;
+  
+  const closeBtn = gallery.querySelector('.fs-gallery__close');
+  const titleEl = gallery.querySelector('.fs-gallery__title');
+  const imagesContainer = gallery.querySelector('.fs-gallery__images');
+  const scrollContainer = gallery.querySelector('.fs-gallery__scroll');
+  const scrollHint = gallery.querySelector('.fs-gallery__scroll-hint');
+  
+  function openGallery(galleryId, startIndex) {
+    const dataEl = document.querySelector(`[data-gallery-images="${galleryId}"]`);
+    const titleEl2 = document.querySelector(`[data-gallery-id="${galleryId}"]`);
+    
+    if (!dataEl) return;
+    
+    try {
+      const images = JSON.parse(dataEl.textContent);
+      const title = titleEl2?.dataset.galleryTitle || '';
+      
+      titleEl.textContent = title;
+      
+      imagesContainer.innerHTML = images.map((img, i) => `
+        <img 
+          src="${img.src}" 
+          srcset="${img.srcset}" 
+          sizes="100vw"
+          alt="${img.alt}"
+          loading="${i < 3 ? 'eager' : 'lazy'}"
+          data-index="${i}"
+        >
+      `).join('');
+      
+      gallery.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+      
+      if (scrollHint) {
+        scrollHint.classList.remove('is-hidden');
+      }
+      
+      if (startIndex > 0) {
+        requestAnimationFrame(() => {
+          const targetImg = imagesContainer.children[startIndex];
+          if (targetImg) {
+            targetImg.scrollIntoView({ behavior: 'instant' });
+          }
+        });
+      }
+      
+    } catch (e) {
+      console.error('Gallery error:', e);
+    }
+  }
+  
+  function closeGallery() {
+    gallery.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+    imagesContainer.innerHTML = '';
+  }
+  
+  document.addEventListener('click', function(e) {
+    const btn = e.target.closest('[data-gallery-open]');
+    if (btn) {
+      e.preventDefault();
+      const galleryId = btn.dataset.galleryOpen;
+      const index = parseInt(btn.dataset.galleryIndex, 10) || 0;
+      openGallery(galleryId, index);
+    }
+  });
+  
+  closeBtn.addEventListener('click', closeGallery);
+  
+  imagesContainer.addEventListener('click', function(e) {
+    if (e.target.tagName === 'IMG') {
+      closeGallery();
+    }
+  });
+  
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && gallery.getAttribute('aria-hidden') === 'false') {
+      closeGallery();
+    }
+  });
+  
+  if (scrollContainer && scrollHint) {
+    scrollContainer.addEventListener('scroll', function() {
+      if (scrollContainer.scrollTop > 50) {
+        scrollHint.classList.add('is-hidden');
+      }
+    });
+  }
+})();
+</script>

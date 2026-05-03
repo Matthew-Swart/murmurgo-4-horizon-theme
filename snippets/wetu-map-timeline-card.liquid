@@ -1,0 +1,137 @@
+{% comment %}
+  ============================================================================
+  WETU MAP TIMELINE CARD
+  ============================================================================
+  
+  A card component for the fullscreen map timeline showing accommodation details.
+  
+  PARAMETERS:
+    - leg: The itinerary leg metaobject
+    - property: The linked Shopify product for this accommodation
+    - day_start: Starting day number
+    - day_end: Ending day number
+    - nights: Number of nights
+    - index: Stop index (0-based)
+    - content_id: The WETU content entity ID
+    - position: The position object with lat/lng
+    - is_first: Boolean for first stop
+    - is_last: Boolean for last stop
+  
+  ============================================================================
+{% endcomment %}
+
+{% assign accommodation_name = leg.accommodation_name.value | default: property.title | default: "Accommodation" %}
+{% assign category = property.metafields.wetu.category.value | default: "Accommodation" %}
+{% assign destination = position.destination | default: position.area | default: "" %}
+{% assign country = position.country | default: "" %}
+
+<article 
+  class="wetu-timeline-card {% if is_first %}wetu-timeline-card--first{% endif %} {% if is_last %}wetu-timeline-card--last{% endif %}"
+  data-timeline-card
+  data-marker-id="marker-{{ content_id }}"
+  data-stop-index="{{ index }}"
+  data-lat="{{ position.latitude }}"
+  data-lng="{{ position.longitude }}"
+>
+  {% comment %} Day indicator {% endcomment %}
+  <div class="wetu-timeline-card__day-badge">
+    <span class="wetu-timeline-card__day-number">{{ index | plus: 1 }}</span>
+  </div>
+  
+  {% comment %} Content wrapper {% endcomment %}
+  <div class="wetu-timeline-card__content">
+    {% comment %} 16:9 Thumbnail Image {% endcomment %}
+    <div class="wetu-timeline-card__image-wrapper">
+      {% if property.featured_image != blank %}
+        <img 
+          src="{{ property.featured_image | image_url: width: 320, height: 180, crop: 'center' }}"
+          srcset="{{ property.featured_image | image_url: width: 320, height: 180, crop: 'center' }} 320w,
+                  {{ property.featured_image | image_url: width: 640, height: 360, crop: 'center' }} 640w"
+          sizes="(max-width: 749px) 100vw, 280px"
+          alt="{{ accommodation_name }}"
+          loading="lazy"
+          class="wetu-timeline-card__image"
+        >
+      {% else %}
+        <div class="wetu-timeline-card__image wetu-timeline-card__image--placeholder">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M3 21h18M5 21V7l8-4 8 4v14M9 21v-8h6v8"/>
+          </svg>
+        </div>
+      {% endif %}
+      
+      {% comment %} Days badge overlay {% endcomment %}
+      <div class="wetu-timeline-card__days-overlay">
+        {% if nights == 1 %}
+          Day {{ day_start }}
+        {% else %}
+          Days {{ day_start }}-{{ day_end }}
+        {% endif %}
+      </div>
+    </div>
+    
+    {% comment %} Card details {% endcomment %}
+    <div class="wetu-timeline-card__details">
+      <h3 class="wetu-timeline-card__name">{{ accommodation_name }}</h3>
+      
+      <div class="wetu-timeline-card__meta">
+        {% if destination != blank %}
+          <span class="wetu-timeline-card__location">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+            {{ destination }}{% if country != blank %}, {{ country }}{% endif %}
+          </span>
+        {% endif %}
+        
+        <span class="wetu-timeline-card__nights">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+          {{ nights }} {{ nights | pluralize: 'night', 'nights' }}
+        </span>
+      </div>
+      
+{% comment %} Activities section (Desktop only - hidden via CSS on mobile) {% endcomment %}
+      {% if activities.size > 0 %}
+        <div class="wetu-timeline-card__activities">
+          <div class="wetu-timeline-card__activities-header">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+            </svg>
+            <span>Activities</span>
+          </div>
+          <div class="wetu-timeline-card__activities-list">
+            {% for activity in activities %}
+              {% assign activity_name = activity.title | default: 'Activity' %}
+              {% assign activity_type = activity.metafields.wetu.category.value | default: 'Activity' %}
+              <a 
+                href="{{ activity.url }}" 
+                class="wetu-timeline-card__activity-link"
+                target="_blank"
+                rel="noopener"
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                </svg>
+                <span class="wetu-timeline-card__activity-name">{{ activity_name }}</span>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                  <polyline points="15 3 21 3 21 9"/>
+                  <line x1="10" y1="14" x2="21" y2="3"/>
+                </svg>
+              </a>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+  
+  {% comment %} Connecting line to next stop {% endcomment %}
+  {% unless is_last %}
+    <div class="wetu-timeline-card__connector"></div>
+  {% endunless %}
+</article>
+

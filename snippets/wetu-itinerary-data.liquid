@@ -1,0 +1,445 @@
+{% comment %}
+  ============================================================================
+  WETU ITINERARY DATA ACCESS SNIPPET
+  ============================================================================
+  
+  This snippet centralizes data loading for WETU itinerary products.
+  Include it at the start of any section that needs itinerary data.
+  
+  USAGE:
+    {% render 'wetu-itinerary-data', product: product %}
+  
+  AVAILABLE VARIABLES AFTER RENDER:
+    - wetu_itinerary          : The main metaobject with all itinerary data
+    - wetu_legs               : Array of leg metaobjects (sorted by sequence)
+    - wetu_routes             : Array of route metaobjects (sorted by sequence)
+    - wetu_total_days         : Total number of days
+    - wetu_total_nights       : Total number of nights across all legs
+    
+  LINKED PRODUCT ARRAYS (direct product references):
+    - wetu_accommodation_products : Array of accommodation product objects
+    - wetu_destination_products   : Array of destination product objects
+    - wetu_activity_products      : Array of activity product objects
+    - wetu_all_component_products : Array of all linked product objects
+    
+  PIN ID TO PRODUCT MAPPING:
+    - wetu_pin_to_product_map     : JSON map of pin_id -> product handle
+    - wetu_product_handles_list   : Comma-separated list of product handles
+    - wetu_pin_ids_list           : Comma-separated list of PIN IDs
+  
+  ============================================================================
+  METAFIELD STRUCTURE (from WETU Sync)
+  ============================================================================
+  
+  Product Metafields (namespace: wetu_itinerary):
+    - component_products    : list.product_reference (all linked products)
+    - component_pin_ids     : list.single_line_text_field (corresponding PIN IDs)
+    - accommodations        : list.product_reference (accommodation products only)
+    - destinations          : list.product_reference (destination products only)
+    - activities            : list.product_reference (activity products only)
+  
+  Product Metafields (namespace: wetu):
+    - itinerary_identifier  : The WETU UUID for this itinerary
+    - itinerary_days        : Total days
+    - itinerary_type        : Personal, Sample, DayTour, etc.
+    - itinerary_metaobject  : metaobject_reference to wetu_itinerary metaobject
+    - map_view_url          : URL for the WETU map image
+    - itinerary_summary     : JSON with overview data
+  
+  ============================================================================
+  LINKING LEG content_entity_id TO PRODUCTS
+  ============================================================================
+  
+  Each leg has a content_entity_id (PIN ID). To find the corresponding product:
+  
+  1. Get the PIN ID from the leg: leg.content_entity_id.value
+  2. Find index in wetu_pin_ids_list where PIN ID matches
+  3. Get product handle from wetu_product_handles_list at same index
+  4. Look up product: all_products[handle]
+  
+  Or use the helper snippet:
+    {% render 'wetu-pin-to-product', pin_id: leg.content_entity_id.value %}
+  
+  ============================================================================
+{% endcomment %}
+
+{% comment %} ----------------------------------------------------------------
+  LOAD MAIN ITINERARY METAOBJECT
+---------------------------------------------------------------- {% endcomment %}
+
+{% assign wetu_itinerary_metaobject = product.metafields.wetu.itinerary_metaobject.value %}
+{% assign wetu_itinerary_json_raw = product.metafields.wetu.itinerary_json.value | default: product.metafields.wetu.itinerary_json %}
+{% assign wetu_itinerary_source_json_raw = product.metafields.wetu.itinerary_source_json.value | default: product.metafields.wetu.itinerary_source_json %}
+
+{% assign wetu_itinerary_json = wetu_itinerary_json_raw %}
+
+{% assign wetu_itinerary_source_json = wetu_itinerary_source_json_raw %}
+
+{% assign wetu_itinerary_json_cdn_url = product.metafields.wetu.itinerary_json_cdn_url.value | default: product.metafields.wetu.itinerary_json_cdn_url %}
+{% if wetu_itinerary_json_cdn_url == blank and wetu_itinerary_json != blank and wetu_itinerary_json.storage == 'shopify_file' %}
+  {% assign wetu_itinerary_json_cdn_url = wetu_itinerary_json.cdn_url %}
+{% endif %}
+
+{% assign wetu_itinerary_source_json_cdn_url = product.metafields.wetu.itinerary_source_json_cdn_url.value | default: product.metafields.wetu.itinerary_source_json_cdn_url %}
+{% if wetu_itinerary_source_json_cdn_url == blank and wetu_itinerary_source_json != blank and wetu_itinerary_source_json.storage == 'shopify_file' %}
+  {% assign wetu_itinerary_source_json_cdn_url = wetu_itinerary_source_json.cdn_url %}
+{% endif %}
+
+{% assign wetu_itinerary = wetu_itinerary_metaobject %}
+{% assign wetu_itinerary_data_source = 'metaobject' %}
+{% if wetu_itinerary == blank and wetu_itinerary_json != blank and wetu_itinerary_json.storage != 'shopify_file' %}
+  {% assign wetu_itinerary = wetu_itinerary_json %}
+  {% assign wetu_itinerary_data_source = 'itinerary_json_inline' %}
+{% endif %}
+{% if wetu_itinerary == blank and wetu_itinerary_source_json != blank and wetu_itinerary_source_json.storage != 'shopify_file' %}
+  {% assign wetu_itinerary = wetu_itinerary_source_json %}
+  {% assign wetu_itinerary_data_source = 'itinerary_source_json_inline' %}
+{% endif %}
+
+{% comment %} Quick access metafields for performance {% endcomment %}
+{% assign wetu_identifier = product.metafields.wetu.itinerary_identifier.value %}
+{% assign wetu_total_days = product.metafields.wetu.itinerary_days.value | default: wetu_itinerary.days.value | default: 0 %}
+{% assign wetu_type = product.metafields.wetu.itinerary_type.value | default: wetu_itinerary.type.value %}
+{% assign wetu_summary_json = product.metafields.wetu.itinerary_summary.value %}
+{% assign wetu_map_url = product.metafields.wetu.map_view_url.value %}
+
+{% comment %} ----------------------------------------------------------------
+  LOAD LINKED PRODUCT REFERENCES
+  
+  These are direct product_reference lists from the WETU sync.
+  They contain actual Shopify product objects we can iterate through.
+---------------------------------------------------------------- {% endcomment %}
+
+{% comment %} Get all linked products by category {% endcomment %}
+{% assign wetu_accommodation_products = product.metafields.wetu_itinerary.accommodations.value %}
+{% assign wetu_destination_products = product.metafields.wetu_itinerary.destinations.value %}
+{% assign wetu_activity_products = product.metafields.wetu_itinerary.activities.value %}
+
+{% comment %} 
+  component_products contains ALL linked products (handles as strings)
+  component_pin_ids contains the corresponding WETU PIN IDs
+{% endcomment %}
+{% assign wetu_component_handles = product.metafields.wetu_itinerary.component_products.value %}
+{% assign wetu_component_pin_ids = product.metafields.wetu_itinerary.component_pin_ids.value %}
+
+{% comment %} ----------------------------------------------------------------
+  BUILD PIN ID TO PRODUCT HANDLE MAP
+  
+  Creates parallel arrays that map WETU PIN IDs to Shopify product handles.
+  This enables looking up the correct product for each leg's content_entity_id.
+  
+  Example:
+    PIN IDs:  ["87045", "7173", "14838", ...]
+    Handles:  ["the-silo-hotel", "mosselberg-on-grotto-beach", ...]
+---------------------------------------------------------------- {% endcomment %}
+
+{% comment %} 
+  =====================================================================
+  RELIABLE PIN TO PRODUCT MAPPING
+  =====================================================================
+  Build arrays from component_products by reading each product's own 
+  pin_id metafield. This ensures pin_id and handle stay paired correctly.
+{% endcomment %}
+
+{% assign wetu_pin_ids_list = '' %}
+{% assign wetu_product_handles_list = '' %}
+
+{% if wetu_component_handles.size > 0 %}
+  {% for comp_product in wetu_component_handles %}
+    {% comment %} Get the product object and its pin_id {% endcomment %}
+    {% if comp_product.handle %}
+      {% assign prod_obj = comp_product %}
+    {% else %}
+      {% assign prod_obj = all_products[comp_product] %}
+    {% endif %}
+    
+    {% comment %} Get PIN ID from the product's own metafield {% endcomment %}
+    {% assign prod_pin = prod_obj.metafields.wetu.pin_id.value | default: prod_obj.metafields.wetu.content_entity_id.value %}
+    {% assign prod_handle = prod_obj.handle %}
+    
+    {% if prod_pin != blank and prod_handle != blank %}
+      {% if wetu_pin_ids_list == '' %}
+        {% assign wetu_pin_ids_list = prod_pin %}
+        {% assign wetu_product_handles_list = prod_handle %}
+      {% else %}
+        {% assign wetu_pin_ids_list = wetu_pin_ids_list | append: ',' | append: prod_pin %}
+        {% assign wetu_product_handles_list = wetu_product_handles_list | append: ',' | append: prod_handle %}
+      {% endif %}
+    {% endif %}
+  {% endfor %}
+{% endif %}
+
+{% comment %} Convert to arrays for indexed lookup {% endcomment %}
+{% assign wetu_pin_ids_array = wetu_pin_ids_list | split: ',' %}
+{% assign wetu_handles_array = wetu_product_handles_list | split: ',' %}
+
+{% comment %} Build JSON map for JavaScript use {% endcomment %}
+{% capture wetu_pin_to_product_map_json %}
+{
+  {% for pin_id in wetu_pin_ids_array %}
+    {% if pin_id != blank %}
+      {% unless forloop.first %},{% endunless %}
+      "{{ pin_id }}": "{{ wetu_handles_array[forloop.index0] | default: '' }}"
+    {% endif %}
+  {% endfor %}
+}
+{% endcapture %}
+{% assign wetu_pin_to_product_map = wetu_pin_to_product_map_json %}
+
+{% comment %} ----------------------------------------------------------------
+  LOAD AND SORT LEGS BY SEQUENCE
+  
+  Legs represent each stay/accommodation in the itinerary.
+  They are ordered by sequence number (0-based).
+  
+  Leg Types:
+  - Standard   : Regular accommodation stay
+  - Mobile     : Mobile/camping accommodation
+  - Departure  : Final departure (usually 0 nights)
+---------------------------------------------------------------- {% endcomment %}
+
+{% assign wetu_legs_unsorted = wetu_itinerary.legs.value | default: wetu_itinerary.legs %}
+{% if wetu_itinerary_data_source == 'metaobject' %}
+  {% assign wetu_legs = wetu_legs_unsorted | sort: 'sequence.value' %}
+{% else %}
+  {% assign wetu_legs = wetu_legs_unsorted | sort: 'sequence' %}
+{% endif %}
+
+{% comment %} Calculate total nights {% endcomment %}
+{% assign wetu_total_nights = 0 %}
+{% for leg in wetu_legs %}
+  {% assign leg_nights = leg.nights.value | default: 0 %}
+  {% assign wetu_total_nights = wetu_total_nights | plus: leg_nights %}
+{% endfor %}
+
+{% comment %} ----------------------------------------------------------------
+  LOAD AND SORT ROUTES BY SEQUENCE
+  
+  Routes represent transfers between locations.
+  
+  Route Modes:
+  - Transfer        : Ground transfer (car, bus, etc.)
+  - ScheduledFlight : Commercial flight
+  - CharterFlight   : Private/charter flight
+  - Selfdrive       : Self-drive segment
+  - Train           : Rail transport
+  - Boat            : Water transport
+---------------------------------------------------------------- {% endcomment %}
+
+{% assign wetu_routes_unsorted = wetu_itinerary.routes.value | default: wetu_itinerary.routes %}
+{% if wetu_itinerary_data_source == 'metaobject' %}
+  {% assign wetu_routes = wetu_routes_unsorted | sort: 'sequence.value' %}
+{% else %}
+  {% assign wetu_routes = wetu_routes_unsorted | sort: 'sequence' %}
+{% endif %}
+
+{% comment %} Count route types {% endcomment %}
+{% assign wetu_flight_count = 0 %}
+{% assign wetu_drive_count = 0 %}
+{% for route in wetu_routes %}
+  {% assign route_mode = route.mode.value | downcase %}
+  {% if route_mode contains 'flight' %}
+    {% assign wetu_flight_count = wetu_flight_count | plus: 1 %}
+  {% elsif route_mode contains 'drive' or route_mode contains 'transfer' %}
+    {% assign wetu_drive_count = wetu_drive_count | plus: 1 %}
+  {% endif %}
+{% endfor %}
+
+{% comment %} ----------------------------------------------------------------
+  HELPER FUNCTION: Look up product by PIN ID
+  
+  Usage in other templates:
+    {% assign pin_id = leg.content_entity_id.value %}
+    {% assign pin_index = -1 %}
+    {% for check_pin in wetu_pin_ids_array %}
+      {% if check_pin == pin_id %}
+        {% assign pin_index = forloop.index0 %}
+        {% break %}
+      {% endif %}
+    {% endfor %}
+    {% if pin_index >= 0 %}
+      {% assign linked_handle = wetu_handles_array[pin_index] %}
+      {% assign linked_product = all_products[linked_handle] %}
+    {% endif %}
+---------------------------------------------------------------- {% endcomment %}
+
+{% comment %} ----------------------------------------------------------------
+  BUILD ACCOMMODATION LOOKUP MAP
+  
+  Creates a JSON object mapping content_entity_id to accommodation details.
+  Uses the new PIN ID to handle mapping.
+---------------------------------------------------------------- {% endcomment %}
+
+{% capture wetu_accommodation_map_json %}
+{
+  {% for leg in wetu_legs %}
+    {% assign leg_type = leg.type.value | default: 'Standard' %}
+    {% if leg_type != 'Departure' %}
+      {% assign acc_id = leg.content_entity_id.value %}
+      {% assign acc_name = leg.accommodation_name.value %}
+      {% assign acc_nights = leg.nights.value | default: 0 %}
+      
+      {% if acc_id != blank %}
+        {% comment %} Find the product handle for this PIN ID {% endcomment %}
+        {% assign linked_handle = nil %}
+        {% assign pin_index = -1 %}
+        {% for check_pin in wetu_pin_ids_array %}
+          {% if check_pin == acc_id %}
+            {% assign pin_index = forloop.index0 %}
+            {% break %}
+          {% endif %}
+        {% endfor %}
+        {% if pin_index >= 0 %}
+          {% assign linked_handle = wetu_handles_array[pin_index] %}
+        {% endif %}
+        
+        {% assign linked_product = all_products[linked_handle] %}
+        
+        {% unless forloop.first %},{% endunless %}
+        "{{ acc_id }}": {
+          "name": {{ acc_name | json }},
+          "handle": {{ linked_handle | json }},
+          "nights": {{ acc_nights }},
+          "sequence": {{ leg.sequence.value | default: forloop.index0 }},
+          "type": {{ leg_type | json }},
+          {% if linked_product != empty %}
+            "product_url": {{ linked_product.url | json }},
+            "image_url": {{ linked_product.featured_image | image_url: width: 800 | json }},
+            {% assign position = linked_product.metafields.wetu.position.value %}
+            {% if position %}
+              "latitude": {{ position.latitude | default: 'null' }},
+              "longitude": {{ position.longitude | default: 'null' }},
+            {% else %}
+              "latitude": null,
+              "longitude": null,
+            {% endif %}
+            "has_product": true
+          {% else %}
+            "product_url": null,
+            "image_url": null,
+            "latitude": null,
+            "longitude": null,
+            "has_product": false
+          {% endif %}
+        }
+      {% endif %}
+    {% endif %}
+  {% endfor %}
+}
+{% endcapture %}
+
+{% assign wetu_accommodation_map = wetu_accommodation_map_json %}
+
+{% comment %} ----------------------------------------------------------------
+  EXTRACT UNIQUE DESTINATIONS
+  
+  Builds an array of unique destination names from legs and routes.
+---------------------------------------------------------------- {% endcomment %}
+
+{% assign wetu_destinations_string = '' %}
+{% assign wetu_destinations_seen = '' %}
+
+{% for leg in wetu_legs %}
+  {% assign acc_name = leg.accommodation_name.value %}
+  {% if acc_name != blank %}
+    {% assign check_name = acc_name | append: '|' %}
+    {% unless wetu_destinations_seen contains check_name %}
+      {% assign wetu_destinations_seen = wetu_destinations_seen | append: check_name %}
+      {% if wetu_destinations_string != '' %}
+        {% assign wetu_destinations_string = wetu_destinations_string | append: '|||' %}
+      {% endif %}
+      {% assign wetu_destinations_string = wetu_destinations_string | append: acc_name %}
+    {% endunless %}
+  {% endif %}
+{% endfor %}
+
+{% assign wetu_destinations = wetu_destinations_string | split: '|||' %}
+
+{% comment %} ----------------------------------------------------------------
+  BUILD COORDINATES ARRAY FOR MAPPING
+  
+  Uses linked products from the new metafield structure.
+---------------------------------------------------------------- {% endcomment %}
+
+{% capture wetu_coordinates_json %}
+[
+  {% assign coord_index = 0 %}
+  
+  {%- comment -%} Add coordinates from accommodation products {%- endcomment -%}
+  {% if wetu_accommodation_products.size > 0 %}
+    {% for acc_product in wetu_accommodation_products %}
+      {% assign position = acc_product.metafields.wetu.position.value %}
+      {% if position.latitude != blank and position.longitude != blank %}
+        {% if coord_index > 0 %},{% endif %}
+        {
+          "lat": {{ position.latitude }},
+          "lng": {{ position.longitude }},
+          "name": {{ acc_product.title | json }},
+          "type": "accommodation",
+          "handle": {{ acc_product.handle | json }}
+        }
+        {% assign coord_index = coord_index | plus: 1 %}
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+  
+  {%- comment -%} Add coordinates from destination products {%- endcomment -%}
+  {% if wetu_destination_products.size > 0 %}
+    {% for dest_product in wetu_destination_products %}
+      {% assign position = dest_product.metafields.wetu.position.value %}
+      {% if position.latitude != blank and position.longitude != blank %}
+        {% if coord_index > 0 %},{% endif %}
+        {
+          "lat": {{ position.latitude }},
+          "lng": {{ position.longitude }},
+          "name": {{ dest_product.title | json }},
+          "type": "destination",
+          "handle": {{ dest_product.handle | json }}
+        }
+        {% assign coord_index = coord_index | plus: 1 %}
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+]
+{% endcapture %}
+
+{% assign wetu_coordinates = wetu_coordinates_json %}
+
+{% comment %} ----------------------------------------------------------------
+  ITINERARY STATUS FLAGS
+---------------------------------------------------------------- {% endcomment %}
+
+{% assign wetu_has_legs = false %}
+{% if wetu_legs.size > 0 %}
+  {% assign wetu_has_legs = true %}
+{% endif %}
+
+{% assign wetu_has_routes = false %}
+{% if wetu_routes.size > 0 %}
+  {% assign wetu_has_routes = true %}
+{% endif %}
+
+{% assign wetu_has_accommodations = false %}
+{% if wetu_accommodation_products.size > 0 %}
+  {% assign wetu_has_accommodations = true %}
+{% endif %}
+
+{% assign wetu_has_activities = false %}
+{% if wetu_activity_products.size > 0 %}
+  {% assign wetu_has_activities = true %}
+{% endif %}
+
+{% assign wetu_has_destinations = false %}
+{% if wetu_destination_products.size > 0 %}
+  {% assign wetu_has_destinations = true %}
+{% endif %}
+
+{% assign wetu_has_client = false %}
+{% if wetu_itinerary.client_name.value != blank %}
+  {% assign wetu_has_client = true %}
+{% endif %}
+
+{% assign wetu_has_pricing = false %}
+{% if wetu_itinerary.price.value != blank or product.price > 0 %}
+  {% assign wetu_has_pricing = true %}
+{% endif %}

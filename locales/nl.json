@@ -1,0 +1,640 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin language editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "accessibility": {
+    "account": "Account",
+    "cart": "Winkelwagen",
+    "cart_count": "Totaal aantal artikelen in winkelwagen",
+    "close_dialog": "Dialoogvenster sluiten",
+    "country_region": "Land/Regio",
+    "country_results_count": "{{ count }} resultaten",
+    "decrease_quantity": "Hoeveelheid verminderen",
+    "discount": "Een kortingscode toepassen",
+    "discount_menu": "Kortingscodes",
+    "discount_applied": "Toegepaste kortingscode: {{ code }}",
+    "filters": "Filters",
+    "filter_count": {
+      "one": "{{ count }} filter toegepast",
+      "other": "{{ count }} filters toegepast"
+    },
+    "increase_quantity": "Hoeveelheid verhogen",
+    "inventory_status": "Voorraadstatus",
+    "localization_region_and_language": "Regio- en taalkiezer",
+    "menu": "Menu",
+    "nested_product": "{{ product_title }} voor {{ parent_title }}",
+    "new_window": "Opent in een nieuw venster.",
+    "quantity": "Hoeveelheid",
+    "pause_video": "Video pauzeren",
+    "play_model": "3D-model afspelen",
+    "play_video": "Video afspelen",
+    "loading_product_recommendations": "Productaanbevelingen laden",
+    "rating": "Beoordeling van dit product is {{ rating }} van de 5",
+    "remove_item": "{{ title }} verwijderen",
+    "reset_search": "Zoekopdracht resetten",
+    "scroll_to": "Scroll naar {{ title }}",
+    "search_results_count": "{{ count }} zoekresultaten gevonden voor \"{{ query }}\"",
+    "search_results_no_results": "Geen resultaten gevonden voor \"{{ query }}\"",
+    "skip_to_product_info": "Naar productinformatie springen",
+    "skip_to_results_list": "Naar resultatentlijst springen",
+    "skip_to_text": "Naar inhoud springen",
+    "slide_status": "Dia {{ index }} van {{ length }}",
+    "slideshow_next": "Volgende dia",
+    "slideshow_pause": "Diavoorstelling pauzeren",
+    "slideshow_play": "Diavoorstelling afspelen",
+    "slideshow_previous": "Vorige dia",
+    "unit_price": "Eenheidsprijs",
+    "find_country": "Land zoeken"
+  },
+  "actions": {
+    "add": "Toevoegen",
+    "add_to_cart": "Toevoegen aan winkelwagen",
+    "added": "Toegevoegd",
+    "apply": "Toepassen",
+    "back": "Terug",
+    "choose": "Kiezen",
+    "clear": "Wissen",
+    "clear_all": "Alles wissen",
+    "close": "Sluiten",
+    "open": "Openen",
+    "continue_shopping": "Verder winkelen",
+    "enter_password": "Wachtwoord invoeren",
+    "log_in_html": "Heeft u al een account? <a href=\"{{ link }}\">Log in</a> om sneller af te rekenen.",
+    "log_in": "Inloggen",
+    "log_out": "Uitloggen",
+    "open_image_in_full_screen": "Afbeelding op volledig scherm openen",
+    "remove": "Verwijderen",
+    "remove_discount": "Korting {{ code }} verwijderen",
+    "show_all_options": "Alle opties weergeven",
+    "see_items": {
+      "one": "Bekijk {{ count }} artikel",
+      "other": "Bekijk {{ count }} artikelen"
+    },
+    "show_filters": "Filteren",
+    "show_less": "Minder weergeven",
+    "show_more": "Meer weergeven",
+    "sign_in_options": "Andere aanmeldopties",
+    "view_in_your_space": "Bekijken in uw ruimte",
+    "view_all": "Alles bekijken",
+    "more": "Meer",
+    "zoom": "Zoomen",
+    "close_dialog": "Dialoogvenster sluiten",
+    "reset": "Resetten",
+    "enter_using_password": "Toegang met wachtwoord",
+    "sign_up": "Aanmelden",
+    "submit": "Verzenden",
+    "view_store_information": "Winkelinformatie bekijken",
+    "sort": "Sorteren"
+  },
+  "blocks": {
+    "contact_form": {
+      "name": "Naam",
+      "email": "E-mail",
+      "phone": "Telefoon",
+      "comment": "Opmerking",
+      "post_success": "Bedankt voor uw bericht. We nemen zo snel mogelijk contact met u op.",
+      "error_heading": "Corrigeer het volgende:"
+    },
+    "email_signup": {
+      "label": "E-mail",
+      "placeholder": "E-mailadres",
+      "success": "Bedankt voor uw inschrijving!"
+    },
+    "filter": "Filter",
+    "load_video": "Video laden: {{ description }}",
+    "sold_out": "Uitverkocht",
+    "payment_methods": "Betaalmethoden"
+  },
+  "blogs": {
+    "article": {
+      "comments_heading": {
+        "one": "{{ count }} opmerking",
+        "other": "{{ count }} opmerkingen"
+      },
+      "comment_author_separator": "•"
+    },
+    "comment_form": {
+      "email": "E-mail",
+      "error": "Opmerking kon niet worden geplaatst, corrigeer het volgende:",
+      "heading": "Laat een opmerking achter",
+      "message": "Bericht",
+      "moderated": "Let op: opmerkingen moeten worden goedgekeurd voordat ze worden gepubliceerd.",
+      "name": "Naam",
+      "post": "Opmerking plaatsen",
+      "success_moderated": "Opmerking geplaatst, wacht op moderatie",
+      "success": "Reactie geplaatst"
+    }
+  },
+  "content": {
+    "discount": "Korting",
+    "account_title": "Account",
+    "terms_and_policies": "Voorwaarden en beleid",
+    "account_title_personalized": "Hoi {{ first_name }}",
+    "account_orders": "Bestellingen",
+    "account_profile": "Profiel",
+    "blog_details_separator": "|",
+    "cart_estimated_total": "Geschat totaal",
+    "cart_title": "Winkelwagen",
+    "cart_subtotal": "Subtotaal",
+    "cart_total": "Totaal winkelwagen",
+    "checkout": "Afrekenen",
+    "collection_placeholder": "Collectietitel",
+    "discount_code": "Kortingscode",
+    "shipping_discount_error": "Verzendkortingen worden getoond bij het afrekenen na het toevoegen van een adres",
+    "discount_code_error": "Kortingscode kan niet worden toegepast op uw winkelwagen",
+    "discounts": "Kortingen",
+    "duties_and_taxes_included": "Invoerrechten en belastingen inbegrepen.",
+    "duties_and_taxes_included_shipping_at_checkout_with_policy_html": "Invoerrechten en belastingen inbegrepen. Kortingen en <a href=\"{{ link }}\">verzending</a> worden berekend bij het afrekenen.",
+    "duties_and_taxes_included_shipping_at_checkout_with_policy_without_discounts_html": "Invoerrechten en belastingen inbegrepen. Verzending wordt berekend bij het afrekenen.",
+    "duties_and_taxes_included_shipping_at_checkout_without_policy": "Invoerrechten en belastingen inbegrepen. Kortingen en verzending worden berekend bij het afrekenen.",
+    "duties_and_taxes_included_shipping_at_checkout_without_policy_without_discounts": "Invoerrechten en belastingen inbegrepen. Verzending wordt berekend bij het afrekenen.",
+    "duties_included": "Invoerrechten inbegrepen.",
+    "duties_included_taxes_at_checkout_shipping_at_checkout_with_policy_html": "Invoerrechten inbegrepen. Belastingen, kortingen en <a href=\"{{ link }}\">verzending</a> worden berekend bij het afrekenen.",
+    "duties_included_taxes_at_checkout_shipping_at_checkout_with_policy_without_discounts_html": "Invoerrechten inbegrepen. Verzending wordt berekend bij het afrekenen.",
+    "duties_included_taxes_at_checkout_shipping_at_checkout_without_policy": "Invoerrechten inbegrepen. Belastingen, kortingen en verzending worden berekend bij het afrekenen.",
+    "duties_included_taxes_at_checkout_shipping_at_checkout_without_policy_without_discounts": "Invoerrechten inbegrepen. Verzending wordt berekend bij het afrekenen.",
+    "featured_products": "Uitgelichte producten",
+    "filters": "Filters",
+    "grid_view": {
+      "default_view": "Standaard",
+      "grid_fieldset": "Kolomraster",
+      "single_item": "Enkel",
+      "zoom_out": "Uitzoomen"
+    },
+    "inventory_low_stock_show_count": {
+      "one": "nog {{ count }}",
+      "other": "nog {{ count }}"
+    },
+    "inventory_low_stock": "Lage voorraad",
+    "inventory_in_stock": "Op voorraad",
+    "inventory_out_of_stock": "Niet op voorraad",
+    "item_count": {
+      "one": "{{ count }} artikel",
+      "other": "{{ count }} artikelen"
+    },
+    "language": "Taal",
+    "localization_region_and_language": "Regio en taal",
+    "no_products_found": "Geen producten gevonden.",
+    "no_results_found": "Geen resultaten gevonden",
+    "page_placeholder_title": "Paginatitel",
+    "page_placeholder_content": "Selecteer een pagina om de inhoud ervan weer te geven.",
+    "pagination": {
+      "nav_label": "Paginanavigatie",
+      "previous": "Vorige",
+      "next": "Volgende",
+      "page": "Pagina {{ page }}"
+    },
+    "pickup_available_at_html": "Afhalen beschikbaar bij <b>{{ location }}</b>",
+    "pickup_available_in": "Afhalen beschikbaar, {{ pickup_time }}",
+    "pickup_not_available": "Afhalen momenteel niet beschikbaar",
+    "pickup_ready_in": "{{ pickup_time }}",
+    "powered_by": "Deze winkel wordt mogelijk gemaakt door",
+    "price": "Prijs",
+    "price_compare_at": "Vergelijkingsprijs",
+    "price_from": "Vanaf {{ price }}",
+    "price_regular": "Normale prijs",
+    "price_sale": "Aanbiedingsprijs",
+    "price_filter_html": "De hoogste prijs is {{ price }}",
+    "product_image": "Productafbeelding",
+    "product_information": "Productinformatie",
+    "product_total": "Producttotaal",
+    "product_badge_sold_out": "Uitverkocht",
+    "product_badge_sale": "Aanbieding",
+    "product_card_placeholder": "Producttitel",
+    "placeholder_image": "Plaatsaanduiding afbeelding",
+    "quantity": "Aantal",
+    "recently_viewed_products": "Recent bekeken",
+    "reviews": "recensies",
+    "read_more": "Lees meer...",
+    "search_input_label": "Zoeken",
+    "search_input_placeholder": "Zoeken",
+    "search": "Zoeken",
+    "search_results": "Zoekresultaten",
+    "search_results_label": "Zoekresultaten",
+    "search_results_no_results": "Geen resultaten gevonden voor \"{{ terms }}\". Probeer een andere zoekopdracht.",
+    "search_results_no_results_check_spelling": "Geen resultaten gevonden voor \"{{ terms }}\". Controleer de spelling of gebruik een ander woord of een andere zin.",
+    "search_results_resource_articles": "Blogberichten",
+    "search_results_resource_collections": "Collecties",
+    "search_results_resource_pages": "Pagina's",
+    "search_results_resource_products": "Producten",
+    "search_results_resource_products_count": {
+      "one": "{{ count }} product",
+      "other": "{{ count }} producten"
+    },
+    "search_results_resource_queries": "Zoeksuggesties",
+    "search_results_view_all": "Alles bekijken",
+    "search_results_view_all_button": "Alles bekijken",
+    "seller_note": "Speciale instructies",
+    "shipping_policy": "Verzendkosten berekend bij het afrekenen.",
+    "shipping_policy_html": "<a href=\"{{ link }}\">Verzendkosten</a> berekend bij het afrekenen.",
+    "store_owner_link_html": "Bent u de winkeleigenaar? <a href=\"{{ link }}\">Log hier in</a>",
+    "taxes_at_checkout_shipping_at_checkout_with_policy_html": "Belastingen, kortingen en <a href=\"{{ link }}\">verzending</a> berekend bij het afrekenen.",
+    "taxes_at_checkout_shipping_at_checkout_with_policy_without_discounts_html": "Belastingen en <a href=\"{{ link }}\">verzending</a> berekend bij het afrekenen.",
+    "taxes_at_checkout_shipping_at_checkout_without_policy": "Belastingen, kortingen en verzendkosten berekend bij het afrekenen.",
+    "taxes_at_checkout_shipping_at_checkout_without_policy_without_discounts": "Belastingen en verzendkosten berekend bij het afrekenen.",
+    "taxes_included": "Inclusief belastingen.",
+    "taxes_included_shipping_at_checkout_with_policy_html": "Inclusief belastingen. Kortingen en <a href=\"{{ link }}\">verzending</a> berekend bij het afrekenen.",
+    "taxes_included_shipping_at_checkout_with_policy_without_discounts_html": "Inclusief belastingen. Verzendkosten worden berekend bij het afrekenen.",
+    "taxes_included_shipping_at_checkout_without_policy": "Inclusief belastingen. Kortingen en verzendkosten worden berekend bij het afrekenen.",
+    "taxes_included_shipping_at_checkout_without_policy_without_discounts": "Inclusief belastingen. Verzendkosten worden berekend bij het afrekenen.",
+    "unavailable": "Niet beschikbaar",
+    "use_fewer_filters_html": "Probeer minder filters te gebruiken, of <a class=\"{{ class }}\" href=\"{{ link }}\">wis alle filters</a>.",
+    "view_more_details": "Meer details bekijken",
+    "your_cart_is_empty": "Je winkelwagen is leeg",
+    "product_count": "Aantal producten",
+    "errors": "Fouten",
+    "wrong_password": "Verkeerd wachtwoord",
+    "recipient_form_send_to": "Verzenden naar",
+    "recipient_form_email_label": "E-mailadres ontvanger",
+    "recipient_form_email_label_my_email": "Mijn e-mailadres",
+    "recipient_form_email_address": "E-mailadres ontvanger",
+    "recipient_form_name_label": "Naam ontvanger (optioneel)",
+    "recipient_form_message": "Bericht (optioneel)",
+    "recipient_form_characters_used": "{{ used_chars }}/{{ max_chars }} tekens gebruikt",
+    "recipient_form_send_on": "JJJJ-MM-DD",
+    "recipient_form_send_on_label": "Verzenden op (optioneel)",
+    "recipient_form_fields_visible": "De velden van het ontvangersformulier zijn nu zichtbaar",
+    "recipient_form_fields_hidden": "De velden van het ontvangersformulier zijn nu verborgen",
+    "recipient_form_error": "Er is een fout opgetreden bij het indienen van het formulier",
+    "product_custom_property_character_count": "{{ used_chars }}/{{ max_chars }} tekens gebruikt"
+  },
+  "fields": {
+    "separator": "tot"
+  },
+  "gift_cards": {
+    "issued": {
+      "how_to_use_gift_card": "Gebruik de cadeauboncode online of de QR-code in de winkel",
+      "title": "Dit is je cadeaubonsaldo van {{ value }} voor {{ shop }}!",
+      "subtext": "Je cadeaubon",
+      "shop_link": "Bezoek de online winkel",
+      "add_to_apple_wallet": "Toevoegen aan Apple Wallet",
+      "qr_image_alt": "QR-code — scan om de cadeaubon in te wisselen",
+      "copy_code": "Cadeauboncode kopiëren",
+      "expiration_date": "Verloopt op {{ expires_on }}",
+      "copy_code_success": "Code succesvol gekopieerd",
+      "expired": "Verlopen"
+    }
+  },
+  "placeholders": {
+    "password": "Wachtwoord",
+    "search": "Zoeken",
+    "product_title": "Producttitel",
+    "collection_title": "Collectietitel",
+    "blog_posts": "Blogberichten",
+    "blog_post_title": "Titel",
+    "blog_post_author": "Auteur",
+    "blog_post_date": "Datum",
+    "blog_post_description": "Een fragment van de inhoud van je blogbericht"
+  },
+  "products": {
+    "product": {
+      "add_to_cart": "Toevoegen aan winkelwagen",
+      "adding_to_cart": "Toevoegen...",
+      "added_to_cart": "Toegevoegd aan winkelwagen",
+      "add_to_cart_error": "Fout bij toevoegen aan winkelwagen",
+      "quantity_error_max": "Dit artikel heeft een maximum van {{ maximum }}",
+      "sold_out": "Uitverkocht",
+      "unavailable": "Niet beschikbaar",
+      "quantity": "Aantal",
+      "quantity_increments": "Stappen van {{ increment }}",
+      "quantity_minimum": "Minimum van {{ minimum }}",
+      "quantity_maximum": "Maximum van {{ maximum }}",
+      "in_cart": "in winkelwagen",
+      "from": "Vanaf",
+      "per_person_sharing": "per persoon op basis van delen",
+      "single": "eenpersoons",
+      "per_room": "per kamer",
+      "per_night": "per nacht"
+    },
+    "general": {
+      "no_video": "Geen video beschikbaar voor dit product."
+    }
+  },
+  "general": {
+    "redirecting": "Doorverwijzen naar accommodatie..."
+  },
+  "collections": {
+    "no_products": "Momenteel geen accommodaties beschikbaar."
+  },
+  "travel_search": {
+    "title": "Vind Uw Perfecte Verblijf",
+    "subtitle": "Zoek accommodaties op locatie, data en gasten",
+    "placeholder": "Waar gaat u heen?",
+    "dates_label": "Reisdata",
+    "check_in": "Inchecken",
+    "check_out": "Uitchecken",
+    "guests": "Gasten",
+    "search_button": "Zoek Accommodaties",
+    "searching": "Zoeken...",
+    "no_results": "Geen accommodaties of locaties gevonden",
+    "error": "Er is een fout opgetreden. Probeer het opnieuw.",
+    "destinations": "Bestemmingen",
+    "properties": "Accommodaties",
+    "select_checkin": "Selecteer uw incheckdatum",
+    "select_checkout": "Selecteer uw uitcheckdatum",
+    "hover_for_nights": "Beweeg over de data om het aantal nachten te zien",
+    "one_night": "1 nacht",
+    "nights_count": "{{ count }} nachten",
+    "guest_options": {
+      "one_adult": "1 Volwassene, 1 Kamer",
+      "two_adults": "2 Volwassenen, 1 Kamer",
+      "three_adults": "3 Volwassenen, 1 Kamer",
+      "four_adults_one": "4 Volwassenen, 1 Kamer",
+      "four_adults_two": "4 Volwassenen, 2 Kamers",
+      "six_adults_two": "6 Volwassenen, 2 Kamers",
+      "six_adults_three": "6 Volwassenen, 3 Kamers"
+    }
+  },
+  "wetu": {
+    "property": {
+      "total_rooms": "Totaal aantal kamers",
+      "perfect_for": "Perfect voor",
+      "key_details": "Belangrijkste details",
+      "property_facilities": "Faciliteiten accommodatie",
+      "available_services": "Beschikbare services",
+      "check_times": "Inchecken & Uitchecken",
+      "check_in": "Inchecktijd",
+      "check_out": "Uitchecktijd",
+      "languages_spoken": "Gesproken talen",
+      "contact": "Contact",
+      "telephone": "Telefoon",
+      "email": "E-mail"
+    },
+    "accommodation": {
+      "room": "Kamer",
+      "occupancy": "Bezetting",
+      "guests_count": "{{ count }} gasten",
+      "adults_children": "{{ adults }} volwassenen, {{ children }} kinderen",
+      "bed_configuration": "Bedconfiguratie",
+      "meal_plan": "Maaltijdplan",
+      "key_details": "Kamerdetails",
+      "room_amenities": "Kamerfaciliteiten",
+      "special_features": "Speciale kenmerken",
+      "room_features": "Kamerkenmerken",
+      "view": "Uitzicht",
+      "has_balcony": "Privébalkon",
+      "has_jacuzzi": "Privéjacuzzi",
+      "property": "Accommodatie",
+      "view_property": "Bekijk details van {{ property }}"
+    },
+    "rates": {
+      "title": "Tarieven & prijzen",
+      "from": "vanaf",
+      "to": "tot",
+      "view_details": "Bekijk gedetailleerde tarieven en beschikbaarheid",
+      "view_full_details": "Bekijk volledige details",
+      "special_offers": "Speciale aanbiedingen",
+      "valid_from": "Geldig vanaf",
+      "valid_to": "Geldig tot",
+      "valid_dates": "Geldige data",
+      "terms_conditions": "Algemene voorwaarden",
+      "per_person_sharing": "Per persoon op basis van delen",
+      "single_occupancy": "Eenpersoonsbezetting",
+      "per_room": "Per kamer",
+      "pricing": "Prijzen",
+      "seasonal_pricing": "Seizoenstarieven",
+      "room_rates": "Kamerprijzen",
+      "included": "Inbegrepen",
+      "conditions": "Voorwaarden",
+      "amenities": "Voorzieningen",
+      "rates": "tarieven",
+      "items": "items"
+    },
+    "pricing": {
+      "title": "Tarieven & speciale aanbiedingen",
+      "from": "Vanaf",
+      "range_note": "Tarieven variëren van {{ min }} tot {{ max }} per persoon per nacht, afhankelijk van accommodatietype en seizoen.",
+      "special_offers": "Speciale aanbiedingen",
+      "current_offers": "Huidige speciale aanbiedingen",
+      "all_accommodation_rates": "Alle accommodatieopties en seizoenstarieven",
+      "accommodation_options": "Accommodatieopties & seizoenstarieven",
+      "valid_dates": "Geldig:",
+      "terms_conditions": "Algemene voorwaarden",
+      "accommodation_rates": "Accommodatietarieven",
+      "per_unit_night": "per eenheid per nacht",
+      "per_person_night": "per persoon per nacht",
+      "per_person_sharing": "Per persoon per nacht, op basis van delen",
+      "view_rates": "Bekijk seizoenstarieven",
+      "notice_title": "Belangrijke prijsinformatie",
+      "notice_text": "Alle tarieven zijn onder voorbehoud van beschikbaarheid en kunnen zonder voorafgaande kennisgeving wijzigen. Extra natuurbeschermingskosten en transfers kunnen van toepassing zijn. Neem contact met ons op voor een gedetailleerde offerte, afgestemd op uw specifieke reisdata en vereisten.",
+      "seasonal_rates": "Seizoenstarieven",
+      "rates_intro": "Alle tarieven worden chronologisch per seizoen weergegeven. Selecteer een periode om gedetailleerde prijzen en voorwaarden te bekijken.",
+      "rate_periods": "Tariefperiodes",
+      "rate_includes": "Tarief is inclusief",
+      "available_offers": "Beschikbare speciale aanbiedingen",
+      "view_details": "Bekijk details"
+    },
+    "videos": {
+      "heading": "Gerelateerde video's"
+    },
+    "documents": {
+      "heading": "Documenten & Bronnen",
+      "opens_new_window": "Opent PDF in een nieuw venster",
+      "other": "Overige documenten"
+    }
+  },
+  "sections": {
+    "collection": {
+      "empty": "Geen producten gevonden in deze collectie.",
+      "view_all": "Alles bekijken"
+    },
+    "property_highlights": {
+      "name": "Hoogtepunten van de accommodaties",
+      "collection_summary": "Onze collectie omvat vijf zorgvuldig samengestelde accommodaties, elk strategisch gepositioneerd om compromisloze toegang te bieden tot de meest gevierde wildbestemmingen van Kenia en een gecombineerd totaal van 68 elegant ingerichte accommodaties te bieden.",
+      "masai_mara_detail": "Drie accommodaties binnen het Masai Mara-ecosysteem, waaronder ons vlaggenschip Governors' Camp, opgericht in 1972",
+      "naivasha_detail": "Loldia House aan de oevers van het Naivashameer, met diverse landschappen en activiteiten",
+      "laikipia_detail": "Governors' Mugie House op het Laikipia Plateau, dat exclusieve toegang biedt tot de wildernis van Noord-Kenia",
+      "experience_summary": "Van de legendarische Grote Migratie tot intieme ontmoetingen met wilde dieren, culturele onderdompeling en natuurbeschermingsinitiatieven, elke accommodatie levert authentieke safari-ervaringen, verfijnd gedurende vijf decennia van bedrijfsvoering.",
+      "settings": {
+        "heading": {
+          "label": "Kop"
+        },
+        "description": {
+          "label": "Beschrijving"
+        },
+        "button_text": {
+          "label": "Knoptekst"
+        },
+        "button_url": {
+          "label": "Knop-URL"
+        }
+      },
+      "presets": {
+        "property_highlights": {
+          "name": "Hoogtepunten van de accommodaties"
+        }
+      }
+    },
+    "property_collection_highlights": {
+      "properties": "Accommodaties",
+      "accommodations": "Accommodaties",
+      "activities": "Activiteiten",
+      "dining": "Dinergelegenheden",
+      "wellness": "Wellness",
+      "room_types": "Kamertypes",
+      "dining_venues": "Dineren",
+      "spa": "Spa",
+      "geography_intro": "Gepositioneerd in onderscheidende regio's:",
+      "view_property": "Bekijk accommodatie",
+      "view_all_properties": "Bekijk alle accommodaties",
+      "no_properties": "Geen accommodaties beschikbaar"
+    },
+    "group_highlights": {
+      "unique_properties": "Unieke accommodaties",
+      "luxury_spaces": "Luxe tenten, suites & cottages",
+      "iconic_destinations": "Iconische bestemmingen",
+      "explore": "Ontdek",
+      "view_collection": "Bekijk collectie"
+    }
+  },
+  "plekify_homepage": {
+    "hero": {
+      "title": "Shopify voor Reizen",
+      "subtitle": "gemaakt in CAPE TOWN",
+      "tagline": "Transformeer uw reisbedrijf met het Shopify e-commerce platform en de Plekify App."
+    },
+    "intro": {
+      "paragraph_1": "Plekify integreert uw bestaande reissystemen—zoals ResRequest of Wetu—met de kracht van Shopify, het 's werelds toonaangevende e-commerce platform.",
+      "paragraph_2": "Plekify automatiseert het creëren en bijwerken van een aangepaste Shopify winkel op uw eigen domein, ontworpen voor reizen, met behulp van informatie van uw bestaande reserveringsplatform."
+    },
+    "features": {
+      "own_data": {
+        "title": "Bezit Uw Boekingen, Bezit Uw Data",
+        "description": "Leg elke directe reservering op uw domein vast, inclusief betaling. Behoud exclusieve toegang tot uw eigen gastgegevens voor gepersonaliseerde remarketing, terwijl u moeiteloos integreert met uw bestaande PMS-systeem. Resultaat: Hogere winsten door lagere commissies en herhalingsaankopen."
+      },
+      "multilanguage": {
+        "title": "Moeiteloos Meertalig Bereik",
+        "description": "Bereik wereldwijde reizigers in maximaal 20 talen, waaronder Engels, Duits, Frans, Nederlands, Italiaans, Spaans, Portugees en Mandarijn. De ingebouwde tools van Shopify verzorgen vertalingen, SEO en gelokaliseerde valuta's—perfect voor luxe safari's en boetieklodges die zich richten op internationale markten."
+      },
+      "addons": {
+        "title": "Verkoop Meer met Add-Ons en Extra's",
+        "description": "Bied samengestelde ervaringen aan die verder gaan dan kamers: spabehandelingen, game drives, transfers, wijnproeverijen en meer. Gasten voegen extra's toe bij het afrekenen, waardoor de gemiddelde orderwaarde met 20-30% stijgt."
+      },
+      "marketing": {
+        "title": "Krachtige Marketing Ingebouwd",
+        "description_1": "Re-activeer en communiceer op een persoonlijke manier met uw eerdere klanten.",
+        "description_2": "Segment en automatiseer e-mails met Klaviyo integratie.",
+        "description_3": "Herstel verlaten winkelwagentjes, verstuur beoordelingen na het verblijf en voer loyaliteitsprogramma's uit.",
+        "description_4": "Volg campagnes via verschillende kanalen—uw site, Instagram, Google—vanaf één dashboard."
+      },
+      "financial": {
+        "title": "Financiële Duidelijkheid en Schaalbaarheid",
+        "description_1": "Maak verbinding met gateways zoals Peach Payments voor rechtstreekse afwikkelingen naar uw bank.",
+        "description_2": "Maak eenvoudig verbinding met moderne ERP-platforms zoals Acumatica Cloud ERP of Oracle Netsuite.",
+        "description_3": "AirBnB's kunnen eenvoudig de boekhouding koppelen aan QuickBooks of Xero."
+      },
+      "delight": {
+        "title": "Plezier in Dagelijks Gebruik",
+        "description": "Intuïtieve bruikbaarheid voor niet-technische gebruikers, real-time analyses en 24/7 ondersteuning. Shopify is een genot—snel, betrouwbaar en prachtig ontworpen."
+      }
+    },
+    "founder": {
+      "title": "Opgericht door Travel Innovation Pioneer",
+      "description": "Plekify is gemaakt door Matthew Swart, die in 1999 SafariNow.com medeoprichtte, het baanbrekende reisboekingsplatform van Zuid-Afrika. Lees zijn reis.",
+      "quote": "Ik heb Plekify in 2025 gemaakt omdat ik geloof dat Shopify nu de slimste keuze is voor reizen en toerisme op elke locatie—schaalbaar, veilig en gebouwd voor winst."
+    },
+    "prototypes": {
+      "heading": "Prototype Sites",
+      "royal": {
+        "title": "The Royal Portfolio",
+        "description": "Ontdek een exclusieve collectie van design-geïnspireerde hotels, luxe safarilodges en privé villa's die op maat gemaakte ervaringen bieden in de meest iconische bestemmingen van Zuid-Afrika.",
+        "prototype_for": "prototype for theroyalportfolio.com",
+        "password": "password plekify",
+        "button": "Bekijk The Royal Portfolio"
+      },
+      "matetsi": {
+        "title": "Matetsi Victoria Falls",
+        "description": "Bekroonde luxe safari retreat op 15 km privé Zambezi rivieroever in de buurt van Victoria Falls UNESCO site",
+        "prototype_for": "prototype for matetsivictoriafalls.com",
+        "password": "password plekify",
+        "button": "Bekijk Matetsi Victoria Falls"
+      },
+      "governors": {
+        "title": "Governors' Camp Collection",
+        "description": "Pionier van de ultieme safari-ervaring, aan de oevers van de Mara-rivier sinds 1972, volledig ondergedompeld in het hart van de belangrijkste gebieden voor het bekijken van wild.",
+        "prototype_for": "prototype for governorscamp.com",
+        "password": "password plekify",
+        "button": "Bekijk The Governors' Collection"
+      },
+      "fundu": {
+        "title": "Fundu Lagoon",
+        "description": "Barefoot luxe op Pemba Island met ongerepte stranden en duiken van wereldklasse, avonturen wachten!",
+        "prototype_for": "prototype for fundulagoon.com",
+        "password": "password plekify",
+        "button": "Bekijk Fundu Lagoon"
+      }
+    },
+    "plekify_definition": {
+      "word": "ple·ki·fy",
+      "pronunciation": "/ˈplɛkɪˌfaɪ/",
+      "part_of_speech": "werkwoord",
+      "forms": "(geplekificeerd, plekificerend)",
+      "definition": "Om high-end reisboekingen naadloos te integreren met e-commerce functionaliteit; om gefragmenteerde lodge-reserveringssystemen te transformeren in uniforme, on-domain Shopify ervaringen.",
+      "etymology": "Van Afrikaans plek (plaats) + -ify (maken of veroorzaken dat iets wordt), letterlijk \"om plaatsbaar te maken\" of \"om plaats boekbaar te maken op Shopify.\"",
+      "usage_heading": "Gebruiksvoorbeelden:",
+      "usage_1": "\"We hebben ons hele portfolio van safarilodges afgelopen kwartaal geplekificeerd.\"",
+      "usage_2": "\"Sinds het plekificeren zijn de websiteboekingen van het hotel enorm gestegen\"",
+      "related_forms": "plekificatie (zelfstandig naamwoord), plekificeerbaar (bijvoeglijk naamwoord)",
+      "synonyms": "stroomlijnen, integreren, optimaliseren (reisboekingen)",
+      "antonyms": "fragmenteren, ontkoppelen, compliceren"
+    },
+    "chatgpt": {
+      "title": "ChatGPT en AI-klaar.",
+      "description": "Plekify sites integreren direct met ChatGPT. Kijk en luister om de details te krijgen..."
+    },
+    "contact": {
+      "title": "Ga Vandaag Nog Aan De Slag",
+      "description": "Aangepaste implementaties zijn beschikbaar via direct overleg met oprichter Matthew Swart.",
+      "email_heading": "E-mail",
+      "email_address": "hello@plekify.com",
+      "whatsapp_heading": "WhatsApp",
+      "whatsapp_number": "+27 60 937 4204"
+    },
+    "resrequest": {
+      "intro": "Plekify integreert volledig met ResResquest.com om een Shopify-site te bouwen met uw ResRequest-gegevens.",
+      "search_booking": "Klanten kunnen vervolgens op uw site zoeken en live prijzen en beschikbaarheid bekijken, en afrekenen en betalen via Shopify Checkout.",
+      "book_now": "<strong>Nu boeken</strong> is soepel en snel, met tot <a href=\"https://www.shopify.com/za/checkout\" target=\"_blank\" title=\"https://www.shopify.com/za/checkout\">15% betere conversie</a> dan andere checkouts.",
+      "add_to_cart": "<strong>Toevoegen aan winkelwagen</strong> stelt een klant in staat om meer dan één boeking of aankoop met één transactie te doen, geweldig voor reizen met meerdere verblijven of het kopen van extra's."
+    },
+    "prototypes_intro": {
+      "wetu_integration": "Plekify-sites zijn volledig geïntegreerd met het content- en reisschemaplatform van Wetu.",
+      "site_qualities": "De sites zijn visueel rijk, informatief dicht, intuïtief gestructureerd en aangenaam snel.",
+      "also": "ook",
+      "feature_multilang": "Meertalig",
+      "feature_ai": "Geoptimaliseerd voor AI-agents zoals ChatGPT",
+      "feature_seo": "Geoptimaliseerd voor Google SEO",
+      "feature_fast_media": "Snel ladende video's en afbeeldingen",
+      "feature_own_domain": "Alles op uw eigen domein",
+      "conclusion": "Van enkele AirBnB-accommodaties tot grote hotelgroepen, Plekify publiceert uw informatie online op een ideale manier"
+    },
+    "property_group_sites": {
+      "title": "Eigendom & Groepssites",
+      "description_1": "Een grote uitgebreide website met veel pagina's, elke entiteit in uw bedrijf wordt gepubliceerd in de 'Travel & leisure'-ruimte.",
+      "description_2": "Geoptimaliseerd voor mensen, en gemakkelijk vindbaar op internet.",
+      "everything_gets_page": "Alles krijgt zijn eigen pagina",
+      "item_properties": "Eigendommen",
+      "item_accommodation": "Accommodatie",
+      "item_seasonal_rates": "Seizoenstarieven",
+      "item_travel_docs": "Reisdocumenten",
+      "item_activities": "Activiteiten",
+      "item_dining": "Dineren",
+      "item_spa": "Spa-faciliteiten",
+      "item_videos": "Video's",
+      "item_3d_panoramas": "3D-panorama's",
+      "item_maps": "Kaarten"
+    },
+    "travel_itinerary_sites": {
+      "title": "Reisschema Sites",
+      "available_soon": "*binnenkort beschikbaar",
+      "description": "Publiceer en deel uw Wetu-reisschema's met Plekify voor de snelst ladende, meest visueel indrukwekkende versie van uw product.",
+      "feature_payment": "Neem eenvoudig betalingen aan op uw eigen domein",
+      "feature_multilang": "Meertalige reisschema's en checkout."
+    }
+  }
+}
