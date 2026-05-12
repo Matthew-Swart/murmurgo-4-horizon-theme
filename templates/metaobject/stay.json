@@ -1,0 +1,56 @@
+{
+  "sections": {
+    "stay_hero_gallery": {
+      "type": "stay-hero-gallery",
+      "settings": {}
+    },
+    "stay_header": {
+      "type": "stay-header",
+      "settings": {}
+    },
+    "stay_quick_facts": {
+      "type": "stay-quick-facts",
+      "settings": {}
+    },
+    "stay_description": {
+      "type": "stay-description",
+      "settings": {}
+    },
+    "stay_map": {
+      "type": "stay-map",
+      "settings": {}
+    },
+    "stay_rooms": {
+      "type": "stay-rooms",
+      "settings": {}
+    },
+    "stay_amenities": {
+      "type": "stay-amenities",
+      "settings": {}
+    },
+    "stay_nearby": {
+      "type": "stay-nearby",
+      "settings": {}
+    },
+    "stay_cta_bar": {
+      "type": "stay-cta-bar",
+      "settings": {}
+    },
+    "stay_jsonld": {
+      "type": "stay-jsonld",
+      "settings": {}
+    }
+  },
+  "order": [
+    "stay_hero_gallery",
+    "stay_header",
+    "stay_quick_facts",
+    "stay_description",
+    "stay_map",
+    "stay_rooms",
+    "stay_amenities",
+    "stay_nearby",
+    "stay_cta_bar",
+    "stay_jsonld"
+  ]
+}

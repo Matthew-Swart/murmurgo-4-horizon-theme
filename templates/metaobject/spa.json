@@ -1,0 +1,51 @@
+{
+  "sections": {
+    "spa_hero": {
+      "type": "spa-hero",
+      "settings": {}
+    },
+    "spa_header": {
+      "type": "spa-header",
+      "settings": {}
+    },
+    "spa_details": {
+      "type": "spa-details",
+      "settings": {}
+    },
+    "spa_description": {
+      "type": "spa-description",
+      "settings": {}
+    },
+    "spa_treatments": {
+      "type": "spa-treatments",
+      "settings": {}
+    },
+    "spa_map": {
+      "type": "spa-map",
+      "settings": {}
+    },
+    "spa_reviews": {
+      "type": "spa-reviews",
+      "settings": {}
+    },
+    "spa_similar": {
+      "type": "spa-similar",
+      "settings": {}
+    },
+    "spa_cta": {
+      "type": "spa-cta",
+      "settings": {}
+    }
+  },
+  "order": [
+    "spa_hero",
+    "spa_header",
+    "spa_details",
+    "spa_description",
+    "spa_treatments",
+    "spa_map",
+    "spa_reviews",
+    "spa_similar",
+    "spa_cta"
+  ]
+}

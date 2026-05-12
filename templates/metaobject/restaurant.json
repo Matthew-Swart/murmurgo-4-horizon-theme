@@ -1,0 +1,51 @@
+{
+  "sections": {
+    "restaurant_hero": {
+      "type": "restaurant-hero",
+      "settings": {}
+    },
+    "restaurant_header": {
+      "type": "restaurant-header",
+      "settings": {}
+    },
+    "restaurant_details": {
+      "type": "restaurant-details",
+      "settings": {}
+    },
+    "restaurant_description": {
+      "type": "restaurant-description",
+      "settings": {}
+    },
+    "restaurant_menu": {
+      "type": "restaurant-menu",
+      "settings": {}
+    },
+    "restaurant_map": {
+      "type": "restaurant-map",
+      "settings": {}
+    },
+    "restaurant_reviews": {
+      "type": "restaurant-reviews",
+      "settings": {}
+    },
+    "restaurant_similar": {
+      "type": "restaurant-similar",
+      "settings": {}
+    },
+    "restaurant_cta": {
+      "type": "restaurant-cta",
+      "settings": {}
+    }
+  },
+  "order": [
+    "restaurant_hero",
+    "restaurant_header",
+    "restaurant_details",
+    "restaurant_description",
+    "restaurant_menu",
+    "restaurant_map",
+    "restaurant_reviews",
+    "restaurant_similar",
+    "restaurant_cta"
+  ]
+}

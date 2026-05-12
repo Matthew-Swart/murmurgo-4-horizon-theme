@@ -1,0 +1,46 @@
+{
+  "sections": {
+    "park_hero": {
+      "type": "park-hero",
+      "settings": {}
+    },
+    "park_header": {
+      "type": "park-header",
+      "settings": {}
+    },
+    "park_details": {
+      "type": "park-details",
+      "settings": {}
+    },
+    "park_description": {
+      "type": "park-description",
+      "settings": {}
+    },
+    "park_map": {
+      "type": "park-map",
+      "settings": {}
+    },
+    "park_activities": {
+      "type": "park-activities",
+      "settings": {}
+    },
+    "park_similar": {
+      "type": "park-similar",
+      "settings": {}
+    },
+    "park_cta": {
+      "type": "park-cta",
+      "settings": {}
+    }
+  },
+  "order": [
+    "park_hero",
+    "park_header",
+    "park_details",
+    "park_description",
+    "park_map",
+    "park_activities",
+    "park_similar",
+    "park_cta"
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "sections": {
+    "venue_hero": {
+      "type": "venue-hero",
+      "settings": {}
+    },
+    "venue_header": {
+      "type": "venue-header",
+      "settings": {}
+    },
+    "venue_details": {
+      "type": "venue-details",
+      "settings": {}
+    },
+    "venue_description": {
+      "type": "venue-description",
+      "settings": {}
+    },
+    "venue_capacity": {
+      "type": "venue-capacity",
+      "settings": {}
+    },
+    "venue_map": {
+      "type": "venue-map",
+      "settings": {}
+    },
+    "venue_reviews": {
+      "type": "venue-reviews",
+      "settings": {}
+    },
+    "venue_similar": {
+      "type": "venue-similar",
+      "settings": {}
+    },
+    "venue_cta": {
+      "type": "venue-cta",
+      "settings": {}
+    }
+  },
+  "order": [
+    "venue_hero",
+    "venue_header",
+    "venue_details",
+    "venue_description",
+    "venue_capacity",
+    "venue_map",
+    "venue_reviews",
+    "venue_similar",
+    "venue_cta"
+  ]
+}

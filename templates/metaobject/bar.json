@@ -1,0 +1,46 @@
+{
+  "sections": {
+    "bar_hero": {
+      "type": "bar-hero",
+      "settings": {}
+    },
+    "bar_header": {
+      "type": "bar-header",
+      "settings": {}
+    },
+    "bar_details": {
+      "type": "bar-details",
+      "settings": {}
+    },
+    "bar_description": {
+      "type": "bar-description",
+      "settings": {}
+    },
+    "bar_map": {
+      "type": "bar-map",
+      "settings": {}
+    },
+    "bar_reviews": {
+      "type": "bar-reviews",
+      "settings": {}
+    },
+    "bar_similar": {
+      "type": "bar-similar",
+      "settings": {}
+    },
+    "bar_cta": {
+      "type": "bar-cta",
+      "settings": {}
+    }
+  },
+  "order": [
+    "bar_hero",
+    "bar_header",
+    "bar_details",
+    "bar_description",
+    "bar_map",
+    "bar_reviews",
+    "bar_similar",
+    "bar_cta"
+  ]
+}

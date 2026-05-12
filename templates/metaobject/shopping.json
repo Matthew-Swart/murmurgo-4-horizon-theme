@@ -1,0 +1,46 @@
+{
+  "sections": {
+    "shopping_hero": {
+      "type": "shopping-hero",
+      "settings": {}
+    },
+    "shopping_header": {
+      "type": "shopping-header",
+      "settings": {}
+    },
+    "shopping_details": {
+      "type": "shopping-details",
+      "settings": {}
+    },
+    "shopping_description": {
+      "type": "shopping-description",
+      "settings": {}
+    },
+    "shopping_map": {
+      "type": "shopping-map",
+      "settings": {}
+    },
+    "shopping_reviews": {
+      "type": "shopping-reviews",
+      "settings": {}
+    },
+    "shopping_similar": {
+      "type": "shopping-similar",
+      "settings": {}
+    },
+    "shopping_cta": {
+      "type": "shopping-cta",
+      "settings": {}
+    }
+  },
+  "order": [
+    "shopping_hero",
+    "shopping_header",
+    "shopping_details",
+    "shopping_description",
+    "shopping_map",
+    "shopping_reviews",
+    "shopping_similar",
+    "shopping_cta"
+  ]
+}
