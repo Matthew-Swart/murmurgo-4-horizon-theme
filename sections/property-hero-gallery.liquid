@@ -1,0 +1,100 @@
+{% comment %}
+  property-hero-gallery.liquid
+  Horizon-style rectangular photo grid.
+  Desktop: 1 large + 4 thumbnails. Mobile: full-width carousel.
+{% endcomment %}
+
+{% assign photos = metaobject.photos.value | default: empty_array %}
+{% assign hero = metaobject.hero_photo.value %}
+
+<section class="m-property-hero" data-section-id="{{ section.id }}">
+  {% if photos.size > 0 or hero != blank %}
+    {% assign all_photos = photos %}
+    {% if hero != blank and all_photos.size == 0 %}
+      {% assign all_photos = all_photos | append: hero %}
+    {% endif %}
+
+    <div class="m-property-hero__grid" data-photos-count="{{ all_photos.size }}">
+      {% if all_photos.size > 0 %}
+        <div class="m-property-hero__main">
+          <img
+            src="{{ all_photos[0] }}?w=800"
+            srcset="{{ all_photos[0] }}?w=400 400w, {{ all_photos[0] }}?w=800 800w, {{ all_photos[0] }}?w=1200 1200w"
+            sizes="(max-width: 768px) 100vw, 60vw"
+            alt="{{ metaobject.name.value | escape }}"
+            loading="eager"
+            width="1200"
+            height="800"
+            class="m-property-hero__img"
+            data-gallery-index="0"
+          >
+        </div>
+      {% endif %}
+
+      {% if all_photos.size > 1 %}
+        <div class="m-property-hero__thumbs">
+          {% for photo in all_photos offset: 1 limit: 4 %}
+            <div class="m-property-hero__thumb">
+              <img
+                src="{{ photo }}?w=300"
+                srcset="{{ photo }}?w=150 150w, {{ photo }}?w=300 300w, {{ photo }}?w=600 600w"
+                sizes="(max-width: 768px) 25vw, 150px"
+                alt="{{ metaobject.name.value | escape }} — photo {{ forloop.index | plus: 1 }}"
+                loading="{% if forloop.index < 3 %}eager{% else %}lazy{% endif %}"
+                width="300"
+                height="200"
+                class="m-property-hero__img"
+                data-gallery-index="{{ forloop.index }}"
+              >
+              {% if forloop.index == 4 and all_photos.size > 5 %}
+                <button class="m-property-hero__more" data-open-gallery>
+                  +{{ all_photos.size | minus: 5 }} more
+                </button>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    {% comment %} Mobile carousel {% endcomment %}
+    <div class="m-property-hero__carousel">
+      <div class="m-property-hero__track">
+        {% for photo in all_photos limit: 10 %}
+          <div class="m-property-hero__slide">
+            <img
+              src="{{ photo }}?w=600"
+              srcset="{{ photo }}?w=400 400w, {{ photo }}?w=600 600w, {{ photo }}?w=800 800w"
+              sizes="100vw"
+              alt="{{ metaobject.name.value | escape }}"
+              loading="{% if forloop.first %}eager{% else %}lazy{% endif %}"
+              width="800"
+              height="600"
+              class="m-property-hero__img"
+            >
+          </div>
+        {% endfor %}
+      </div>
+      <div class="m-property-hero__dots">
+        {% for photo in all_photos limit: 10 %}
+          <span class="m-property-hero__dot{% if forloop.first %} is-active{% endif %}"></span>
+        {% endfor %}
+      </div>
+    </div>
+  {% else %}
+    <div class="m-property-hero__fallback">
+      <div class="m-property-hero__fallback-inner">
+        <span>{{ metaobject.name.value | escape }}</span>
+      </div>
+    </div>
+  {% endif %}
+</section>
+
+{% schema %}
+{
+  "name": "Property Hero Gallery",
+  "class": "section-property-hero-gallery",
+  "settings": [],
+  "presets": [{ "name": "Property Hero Gallery" }]
+}
+{% endschema %}

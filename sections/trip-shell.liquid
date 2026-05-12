@@ -1,0 +1,36 @@
+{% comment %}
+  trip-shell.liquid
+  Shopify page shell for the /trip JS app.
+  Loads murmurgo-trip.js and renders into #murmurgo-trip-root.
+{% endcomment %}
+
+<section class="m-trip-shell" data-section-id="{{ section.id }}">
+  <div class="m-trip-shell__header" id="murmurgo-trip-header">
+    <div class="m-trip-shell__loading">
+      <p>Loading trip…</p>
+    </div>
+  </div>
+
+  <div class="m-trip-shell__tabs" id="murmurgo-trip-tabs">
+    <button class="m-trip-shell__tab" data-tab="timeline">Timeline</button>
+    <button class="m-trip-shell__tab" data-tab="grid">Day Grid</button>
+    <button class="m-trip-shell__tab" data-tab="map">Map</button>
+    <button class="m-trip-shell__share" id="murmurgo-trip-share">Share</button>
+  </div>
+
+  <div id="murmurgo-trip-root" class="m-trip-shell__root">
+    {% comment %} Populated by murmurgo-trip.js {% endcomment %}
+  </div>
+</section>
+
+<script src="{{ 'murmurgo-shared.js' | asset_url }}" defer></script>
+<script src="{{ 'murmurgo-trip.js' | asset_url }}" defer></script>
+
+{% schema %}
+{
+  "name": "Trip Shell",
+  "class": "section-trip-shell",
+  "settings": [],
+  "presets": [{ "name": "Trip Shell" }]
+}
+{% endschema %}

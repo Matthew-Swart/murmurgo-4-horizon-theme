@@ -1,0 +1,163 @@
+{% comment %}
+  ai-conversation.liquid
+  Container for the AI conversation app.
+  All content is rendered by murmurgo-ai.js into #murmurgo-conversation-root.
+{% endcomment %}
+
+<div id="murmurgo-conversation-root" class="m-ai-conversation">
+  <div class="m-ai-conversation__loading" data-ai-loading>
+    <p>What kind of trip are you planning?</p>
+  </div>
+</div>
+
+{% comment %} Preview pane overlay {% endcomment %}
+<div id="murmurgo-preview-pane" class="m-preview-pane" data-preview-pane>
+  <div class="m-preview-pane__inner" data-preview-content>
+    <button class="m-preview-pane__close" data-preview-close aria-label="Close preview">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="4" y1="4" x2="16" y2="16"/>
+        <line x1="16" y1="4" x2="4" y2="16"/>
+      </svg>
+    </button>
+    <div class="m-preview-pane__body" data-preview-body>
+      {% comment %} Populated by JS {% endcomment %}
+    </div>
+  </div>
+</div>
+
+{% comment %} Shortlist bar {% endcomment %}
+<div id="murmurgo-shortlist-bar" class="m-shortlist-bar" data-shortlist-bar>
+  <div class="m-shortlist-bar__summary">
+    <span data-shortlist-count>0 places</span>
+    <span data-shortlist-nights></span>
+  </div>
+  <button class="m-shortlist-bar__btn" data-shortlist-build>Build itinerary</button>
+</div>
+
+{% comment %} Shortlist drawer {% endcomment %}
+<div id="murmurgo-shortlist-drawer" class="m-shortlist-drawer" data-shortlist-drawer>
+  <div class="m-shortlist-drawer__header">
+    <h3>Your trip</h3>
+    <button class="m-shortlist-drawer__close" data-shortlist-close aria-label="Close shortlist">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="4" y1="4" x2="16" y2="16"/>
+        <line x1="16" y1="4" x2="4" y2="16"/>
+      </svg>
+    </button>
+  </div>
+  <div class="m-shortlist-drawer__list" data-shortlist-list>
+    {% comment %} Populated by JS {% endcomment %}
+  </div>
+  <div class="m-shortlist-drawer__footer">
+    <button class="m-shortlist-drawer__btn" data-shortlist-build-drawer>Build itinerary</button>
+  </div>
+</div>
+
+{% comment %} Day Assignment View {% endcomment %}
+<div id="murmurgo-day-assignment" class="m-day-assignment" data-day-assignment>
+  <div class="m-day-assignment__header">
+    <div class="m-day-assignment__tabs">
+      <button class="m-day-assignment__tab is-active" data-tab="grid">Day Grid</button>
+      <button class="m-day-assignment__tab" data-tab="timeline">Timeline</button>
+      <button class="m-day-assignment__tab" data-tab="map">Map</button>
+    </div>
+    <div class="m-day-assignment__actions">
+      <button class="m-day-assignment__save" data-save-trip>Save trip</button>
+      <button class="m-day-assignment__share" data-share-trip>Share</button>
+    </div>
+  </div>
+  <div class="m-day-assignment__body">
+    <div class="m-day-assignment__main" data-assignment-main>
+      {% comment %} Day grid or timeline rendered here {% endcomment %}
+    </div>
+    <div class="m-day-assignment__sidebar" data-assignment-sidebar>
+      <h4 class="m-day-assignment__sidebar-title">Shortlist</h4>
+      <div class="m-day-assignment__sidebar-list" data-assignment-shortlist>
+        {% comment %} Unassigned shortlist items rendered here {% endcomment %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% comment %} Trip Map Panel {% endcomment %}
+<div id="murmurgo-trip-map-panel" class="m-trip-map-panel" data-trip-map-panel>
+  <div class="m-trip-map-panel__canvas" id="murmurgo-trip-map"></div>
+  <div class="m-trip-map-panel__controls">
+    <button class="m-trip-map-panel__zoom-fit" data-map-zoom-fit>Fit route</button>
+    <div class="m-trip-map-panel__filter">
+      <label>Days:</label>
+      <select data-map-day-filter>
+        <option value="all">All</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+{% comment %} Save / Share Modal {% endcomment %}
+<div id="murmurgo-save-modal" class="m-save-modal" data-save-modal>
+  <div class="m-save-modal__overlay" data-save-modal-overlay></div>
+  <div class="m-save-modal__content">
+    <button class="m-save-modal__close" data-save-modal-close aria-label="Close">&times;</button>
+    <h3 class="m-save-modal__title">Trip Details</h3>
+    <div class="m-save-modal__field">
+      <label>Trip name</label>
+      <input type="text" data-trip-name placeholder="Untitled Trip" value="Untitled Trip">
+    </div>
+    <div class="m-save-modal__field">
+      <label>Start date</label>
+      <input type="date" data-trip-start-date>
+    </div>
+    <div class="m-save-modal__field">
+      <label>Travelers</label>
+      <div class="m-save-modal__travelers">
+        <div><label>Adults</label><input type="number" data-travelers-adults value="2" min="1"></div>
+        <div><label>Children</label><input type="number" data-travelers-children value="0" min="0"></div>
+        <div><label>Infants</label><input type="number" data-travelers-infants value="0" min="0"></div>
+      </div>
+    </div>
+    <div class="m-save-modal__field">
+      <label>Budget estimate</label>
+      <span data-trip-budget>—</span>
+    </div>
+    <button class="m-save-modal__btn" data-save-modal-submit>Save trip</button>
+    <div class="m-save-modal__share" data-share-section style="display:none;">
+      <p>Share this trip:</p>
+      <div class="m-save-modal__share-link">
+        <input type="text" data-share-link readonly>
+        <button data-copy-link>Copy</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% comment %} Undo Toast {% endcomment %}
+<div id="murmurgo-undo-toast" class="m-undo-toast" data-undo-toast>
+  <span data-undo-message>Removed</span>
+  <button data-undo-action>Undo</button>
+</div>
+
+{% comment %} Confirm Dialog {% endcomment %}
+<div id="murmurgo-confirm-dialog" class="m-confirm-dialog" data-confirm-dialog>
+  <div class="m-confirm-dialog__overlay" data-confirm-overlay></div>
+  <div class="m-confirm-dialog__content">
+    <p class="m-confirm-dialog__message" data-confirm-message></p>
+    <div class="m-confirm-dialog__actions">
+      <button class="m-confirm-dialog__cancel" data-confirm-cancel>Cancel</button>
+      <button class="m-confirm-dialog__confirm" data-confirm-confirm></button>
+    </div>
+  </div>
+</div>
+
+{% comment %} Activity Search Modal {% endcomment %}
+<div id="murmurgo-activity-search" class="m-activity-search" data-activity-search>
+  <div class="m-activity-search__overlay" data-activity-search-overlay></div>
+  <div class="m-activity-search__content">
+    <button class="m-activity-search__close" data-activity-search-close aria-label="Close">&times;</button>
+    <h3 class="m-activity-search__title" data-activity-search-title>Add activity</h3>
+    <input type="text" class="m-activity-search__input" data-activity-search-input placeholder="Search activities...">
+    <div class="m-activity-search__results" data-activity-search-results></div>
+  </div>
+</div>
+
+<script src="{{ 'murmurgo-shared.js' | asset_url }}" defer></script>
+<script src="{{ 'murmurgo-ai.js' | asset_url }}" defer></script>

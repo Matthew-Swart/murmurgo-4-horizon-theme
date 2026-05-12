@@ -1,0 +1,39 @@
+{% comment %} region-map.liquid {% endcomment %}
+{% assign lat = metaobject.latitude.value %}
+{% assign lng = metaobject.longitude.value %}
+{% assign geojson = metaobject.polygon_geojson.value %}
+{% if lat != blank and lng != blank %}
+<section class="m-region-map" data-section-id="{{ section.id }}">
+  <div class="page-width">
+    <h2 class="m-region-map__title">Map</h2>
+    <div id="region-map-{{ section.id }}" class="m-region-map__canvas" data-lat="{{ lat }}" data-lng="{{ lng }}" data-geojson="{{ geojson | escape }}"></div>
+  </div>
+</section>
+<script>
+(function() {
+  var config = window.MURMURGO_CONFIG || {};
+  var el = document.getElementById('region-map-{{ section.id }}');
+  if (!el || !window.maplibregl) return;
+  var map = new window.maplibregl.Map({
+    container: el,
+    style: config.maplibreStyle || 'https://demotiles.maplibre.org/style.json',
+    center: [parseFloat(el.dataset.lng), parseFloat(el.dataset.lat)],
+    zoom: 9,
+    attributionControl: false
+  });
+  map.addControl(new window.maplibregl.AttributionControl({ compact: true }));
+  var geojson = el.dataset.geojson;
+  if (geojson) {
+    try {
+      var data = JSON.parse(geojson);
+      map.on('load', function() {
+        map.addSource('region-polygon', { type: 'geojson', data: data });
+        map.addLayer({ id: 'region-fill', type: 'fill', source: 'region-polygon', paint: { 'fill-color': '#D4A373', 'fill-opacity': 0.2 } });
+        map.addLayer({ id: 'region-border', type: 'line', source: 'region-polygon', paint: { 'line-color': '#D4A373', 'line-width': 2 } });
+      });
+    } catch(e) {}
+  }
+})();
+</script>
+{% endif %}
+{% schema %}{ "name": "Region Map", "class": "section-region-map", "settings": [], "presets": [{ "name": "Region Map" }] }{% endschema %}

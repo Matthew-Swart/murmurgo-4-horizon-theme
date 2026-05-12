@@ -1,0 +1,68 @@
+{% comment %}
+  property-quick-facts.liquid
+  Horizontal scroll on mobile. Icon + label for each fact.
+{% endcomment %}
+
+{% assign amenities = metaobject.amenities.value | default: empty_array %}
+
+<section class="m-property-facts" data-section-id="{{ section.id }}">
+  <div class="page-width">
+    <div class="m-property-facts__bar">
+      <div class="m-property-facts__item">
+        <span class="m-property-facts__icon">{% render 'icon-bed' %}</span>
+        <span class="m-property-facts__label">{{ metaobject.type.value | default: 'Property' | capitalize }}</span>
+      </div>
+
+      {% if amenities contains 'wifi' or amenities contains 'WiFi' %}
+        <div class="m-property-facts__item">
+          <span class="m-property-facts__icon">{% render 'icon-wifi' %}</span>
+          <span class="m-property-facts__label">WiFi</span>
+        </div>
+      {% endif %}
+
+      {% if amenities contains 'pool' or amenities contains 'Pool' %}
+        <div class="m-property-facts__item">
+          <span class="m-property-facts__icon">{% render 'icon-pool' %}</span>
+          <span class="m-property-facts__label">Pool</span>
+        </div>
+      {% endif %}
+
+      {% if amenities contains 'restaurant' or amenities contains 'Restaurant' %}
+        <div class="m-property-facts__item">
+          <span class="m-property-facts__icon">{% render 'icon-restaurant' %}</span>
+          <span class="m-property-facts__label">Restaurant</span>
+        </div>
+      {% endif %}
+
+      {% if amenities contains 'air_conditioning' or amenities contains 'Air conditioning' %}
+        <div class="m-property-facts__item">
+          <span class="m-property-facts__icon">{% render 'icon-ac' %}</span>
+          <span class="m-property-facts__label">Air conditioning</span>
+        </div>
+      {% endif %}
+
+      {% if amenities contains 'spa' or amenities contains 'Spa' %}
+        <div class="m-property-facts__item">
+          <span class="m-property-facts__icon">{% render 'icon-spa' %}</span>
+          <span class="m-property-facts__label">Spa</span>
+        </div>
+      {% endif %}
+
+      {% if amenities contains 'parking' or amenities contains 'Parking' %}
+        <div class="m-property-facts__item">
+          <span class="m-property-facts__icon">{% render 'icon-parking' %}</span>
+          <span class="m-property-facts__label">Parking</span>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Property Quick Facts",
+  "class": "section-property-quick-facts",
+  "settings": [],
+  "presets": [{ "name": "Property Quick Facts" }]
+}
+{% endschema %}

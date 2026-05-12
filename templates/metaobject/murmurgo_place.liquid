@@ -1,0 +1,412 @@
+{% comment %}
+  Murmurgo Place Detail Page
+  Renders a single murmurgo_place metaobject with map, copy, and metadata
+{% endcomment %}
+
+<div class="murmurgo-place-page">
+  <div class="page-width">
+
+    {% comment %} Header {% endcomment %}
+    <header class="place-header">
+      <nav class="place-breadcrumb">
+        {% if metaobject.country_iso.value != blank %}
+          <span class="place-breadcrumb__item">{{ metaobject.country_iso.value | upcase }}</span>
+        {% endif %}
+        {% assign region_poly = metaobject.region_polygon_ref.value %}
+        {% if region_poly.name != blank %}
+          <span class="place-breadcrumb__sep"> / </span>
+          <span class="place-breadcrumb__item">{{ region_poly.name.value }}</span>
+        {% endif %}
+      </nav>
+
+      <h1 class="place-title">{{ metaobject.name.value }}</h1>
+
+      {% if metaobject.ai_snippet.value != blank %}
+        <p class="place-essence">{{ metaobject.ai_snippet.value }}</p>
+      {% elsif metaobject.tagline.value != blank %}
+        <p class="place-essence">{{ metaobject.tagline.value }}</p>
+      {% endif %}
+
+      <div class="place-meta">
+        {% if metaobject.rating_avg.value != blank %}
+          <span class="place-rating">⭐ {{ metaobject.rating_avg.value }}</span>
+        {% endif %}
+        {% if metaobject.rating_count.value != blank %}
+          <span class="place-reviews">({{ metaobject.rating_count.value }} reviews)</span>
+        {% endif %}
+        {% if metaobject.primary_type.value != blank %}
+          <span class="place-type">{{ metaobject.primary_type.value | replace: '_', ' ' | capitalize }}</span>
+        {% endif %}
+        {% if metaobject.quality_tier.value != blank %}
+          <span class="place-tier tier-{{ metaobject.quality_tier.value }}">{{ metaobject.quality_tier.value }}</span>
+        {% endif %}
+        {% if metaobject.price_band.value != blank %}
+          <span class="place-price">{{ metaobject.price_band.value }}</span>
+        {% endif %}
+      </div>
+    </header>
+
+    {% comment %} Hero Image {% endcomment %}
+    {% assign hero_image = metaobject.hero_image_ref.value %}
+    {% if hero_image.cdn_url != blank %}
+      <div class="place-hero-image">
+        <img
+          src="{{ hero_image.cdn_url }}"
+          alt="{{ hero_image.alt | default: metaobject.name.value }}"
+          loading="eager"
+          width="{{ hero_image.width | default: 1200 }}"
+          height="{{ hero_image.height | default: 800 }}"
+        >
+      </div>
+    {% endif %}
+
+    {% comment %} Map Section {% endcomment %}
+    {% if metaobject.lat.value != blank and metaobject.lon.value != blank %}
+      <div class="place-map-container">
+        <div id="place-map"
+             data-lat="{{ metaobject.lat.value }}"
+             data-lon="{{ metaobject.lon.value }}"
+             data-name="{{ metaobject.name.value | escape }}"
+             data-type="{{ metaobject.primary_type.value }}">
+        </div>
+      </div>
+    {% endif %}
+
+    {% comment %} Main Content {% endcomment %}
+    <div class="place-content">
+      {% if metaobject.description.value != blank %}
+        <div class="place-description rte">
+          {{ metaobject.description.value }}
+        </div>
+      {% endif %}
+
+      {% if metaobject.canonical_url.value != blank %}
+        <div class="place-website">
+          <a href="{{ metaobject.canonical_url.value }}" target="_blank" rel="noopener">
+            Visit website →
+          </a>
+        </div>
+      {% endif %}
+    </div>
+
+    {% comment %} Plan a Trip CTA {% endcomment %}
+    <div class="place-actions">
+      <a href="/pages/travel-brief?destination={{ metaobject.name.value | url_encode }}" class="place-btn place-btn--primary">
+        Plan a Trip to {{ metaobject.name.value }}
+      </a>
+      {% assign current_iso = metaobject.country_iso.value %}
+      {% if current_iso != blank %}
+        {% for place in shop.metaobjects.murmurgo_place.values %}
+          {% if place.primary_type.value == 'country' and place.country_iso.value == current_iso %}
+            <a href="{{ place.system.url }}" class="place-btn place-btn--secondary">
+              More in {{ place.name.value }}
+            </a>
+            {% break %}
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+    </div>
+
+    {% comment %} Related Places (same country, T1, not country/region) {% endcomment %}
+    {% assign current_country = metaobject.country_iso.value %}
+    {% assign current_type = metaobject.primary_type.value %}
+    {% assign current_name = metaobject.name.value %}
+
+    {% if current_country != blank %}
+      <div class="place-related">
+        <h2>More in {{ current_country | upcase }}</h2>
+        <div class="related-grid">
+          {% for related_place in shop.metaobjects.murmurgo_place.values %}
+            {% if related_place.country_iso.value == current_country
+               and related_place.name.value != current_name
+               and related_place.quality_tier.value == 'T1'
+               and related_place.primary_type.value != 'country' %}
+              <div class="related-card">
+                <a href="{{ related_place.system.url }}">
+                  <h3>{{ related_place.name.value }}</h3>
+                  <p>{{ related_place.ai_snippet.value | default: related_place.description.value | truncate: 120 }}</p>
+                  <div class="related-card-meta">
+                    {% if related_place.rating_avg.value != blank %}
+                      <span class="related-rating">⭐ {{ related_place.rating_avg.value }}</span>
+                    {% endif %}
+                    <span class="related-type">{{ related_place.primary_type.value | replace: '_', ' ' | capitalize }}</span>
+                  </div>
+                </a>
+              </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+  </div>
+</div>
+
+{% comment %} MapLibre Map {% endcomment %}
+<script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+<link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const mapContainer = document.getElementById('place-map');
+  if (!mapContainer) return;
+
+  const lat = parseFloat(mapContainer.dataset.lat);
+  const lon = parseFloat(mapContainer.dataset.lon);
+  const name = mapContainer.dataset.name;
+
+  const map = new maplibregl.Map({
+    container: 'place-map',
+    style: {
+      version: 8,
+      sources: {
+        'osm': {
+          type: 'raster',
+          tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+          tileSize: 256,
+          attribution: '&copy; OpenStreetMap'
+        }
+      },
+      layers: [
+        {
+          id: 'osm',
+          type: 'raster',
+          source: 'osm'
+        }
+      ]
+    },
+    center: [lon, lat],
+    zoom: 14
+  });
+
+  map.addControl(new maplibregl.NavigationControl());
+
+  new maplibregl.Marker({ color: '#e74c3c' })
+    .setLngLat([lon, lat])
+    .setPopup(new maplibregl.Popup().setHTML('<h3>' + name + '</h3>'))
+    .addTo(map);
+});
+</script>
+
+<style>
+.murmurgo-place-page {
+  padding: 2rem 0;
+}
+
+.place-breadcrumb {
+  font-size: 0.875rem;
+  color: #666;
+  margin-bottom: 1rem;
+}
+
+.place-breadcrumb__item {
+  color: #333;
+}
+
+.place-breadcrumb__sep {
+  margin: 0 0.5rem;
+  color: #999;
+}
+
+.place-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+  line-height: 1.2;
+}
+
+.place-essence {
+  font-size: 1.125rem;
+  color: #555;
+  font-style: italic;
+  margin: 0 0 1rem;
+  line-height: 1.5;
+}
+
+.place-meta {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.place-rating {
+  font-weight: 600;
+}
+
+.place-type {
+  background: #f0f0f0;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  text-transform: capitalize;
+}
+
+.place-tier {
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.tier-T1 { background: #d4edda; color: #155724; }
+.tier-T2 { background: #fff3cd; color: #856404; }
+.tier-T3 { background: #f8d7da; color: #721c24; }
+
+.place-price {
+  font-size: 0.875rem;
+  color: #666;
+}
+
+.place-hero-image {
+  width: 100%;
+  margin-bottom: 2rem;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.place-hero-image img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.place-map-container {
+  width: 100%;
+  height: 400px;
+  margin-bottom: 2rem;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+#place-map {
+  width: 100%;
+  height: 100%;
+}
+
+.place-description {
+  font-size: 1.0625rem;
+  line-height: 1.7;
+  color: #333;
+  margin-bottom: 2rem;
+}
+
+.place-website {
+  margin-bottom: 2rem;
+}
+
+.place-website a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #0066cc;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.place-actions {
+  display: flex;
+  gap: 1rem;
+  margin: 2rem 0;
+  flex-wrap: wrap;
+}
+
+.place-btn {
+  padding: 0.875rem 1.5rem;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 1rem;
+}
+
+.place-btn--primary {
+  background: #e74c3c;
+  color: #fff;
+}
+
+.place-btn--secondary {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.place-related {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid #e0e0e0;
+}
+
+.place-related h2 {
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.related-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.related-card {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1.25rem;
+  transition: box-shadow 0.2s;
+}
+
+.related-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.related-card a {
+  text-decoration: none;
+  color: inherit;
+}
+
+.related-card h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.125rem;
+}
+
+.related-card p {
+  margin: 0 0 0.75rem;
+  font-size: 0.9375rem;
+  color: #555;
+  line-height: 1.5;
+}
+
+.related-card-meta {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.related-rating {
+  font-size: 0.875rem;
+  color: #666;
+}
+
+.related-type {
+  background: #f0f0f0;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  text-transform: capitalize;
+}
+
+@media (max-width: 768px) {
+  .place-title {
+    font-size: 1.75rem;
+  }
+
+  .place-map-container {
+    height: 300px;
+  }
+
+  .related-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

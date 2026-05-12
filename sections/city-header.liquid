@@ -1,0 +1,16 @@
+{% comment %} city-header.liquid {% endcomment %}
+{% assign country_name = metaobject.country.value.name.value | default: metaobject.country.value | default: '' %}
+<section class="m-city-header" data-section-id="{{ section.id }}">
+  <div class="page-width">
+    <h1 class="m-city-header__title">{{ metaobject.name.value | escape }}</h1>
+    <p class="m-city-header__meta">
+      {% if country_name != blank %}
+        <a href="{{ metaobject.country.value.system.url | default: '#' }}">{{ country_name }}</a>
+      {% endif %}
+      {% if metaobject.property_count.value != blank %}
+        <span>· {{ metaobject.property_count.value }} places to stay</span>
+      {% endif %}
+    </p>
+  </div>
+</section>
+{% schema %}{ "name": "City Header", "class": "section-city-header", "settings": [], "presets": [{ "name": "City Header" }] }{% endschema %}

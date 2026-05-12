@@ -1,0 +1,28 @@
+{% comment %} activity-map.liquid {% endcomment %}
+{% assign lat = metaobject.latitude.value %}
+{% assign lng = metaobject.longitude.value %}
+{% if lat != blank and lng != blank %}
+<section class="m-activity-map" data-section-id="{{ section.id }}">
+  <div class="page-width">
+    <h2 class="m-activity-map__title">Where it is</h2>
+    <div id="activity-map-{{ section.id }}" class="m-activity-map__canvas" data-lat="{{ lat }}" data-lng="{{ lng }}"></div>
+  </div>
+</section>
+<script>
+(function() {
+  var config = window.MURMURGO_CONFIG || {};
+  var el = document.getElementById('activity-map-{{ section.id }}');
+  if (!el || !window.maplibregl) return;
+  var map = new window.maplibregl.Map({
+    container: el,
+    style: config.maplibreStyle || 'https://demotiles.maplibre.org/style.json',
+    center: [parseFloat(el.dataset.lng), parseFloat(el.dataset.lat)],
+    zoom: 13,
+    attributionControl: false
+  });
+  map.addControl(new window.maplibregl.AttributionControl({ compact: true }));
+  new window.maplibregl.Marker().setLngLat([parseFloat(el.dataset.lng), parseFloat(el.dataset.lat)]).addTo(map);
+})();
+</script>
+{% endif %}
+{% schema %}{ "name": "Activity Map", "class": "section-activity-map", "settings": [], "presets": [{ "name": "Activity Map" }] }{% endschema %}

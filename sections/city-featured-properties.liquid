@@ -1,0 +1,11 @@
+{% comment %} city-featured-properties.liquid {% endcomment %}
+{% assign city_slug = metaobject.slug.value %}
+<section class="m-city-properties" data-section-id="{{ section.id }}" data-city="{{ city_slug }}">
+  <div class="page-width">
+    <h2 class="m-city-properties__title">Places to stay</h2>
+    <div class="m-city-properties__track" data-properties-container>
+      <div class="m-city-properties__loading">Loading properties...</div>
+    </div>
+  </div>
+</section>
+{% schema %}{ "name": "City Featured Properties", "class": "section-city-featured-properties", "settings": [], "presets": [{ "name": "City Featured Properties" }] }{% endschema %}

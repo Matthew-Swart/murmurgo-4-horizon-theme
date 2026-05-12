@@ -1,0 +1,41 @@
+{
+  "sections": {
+    "activity_hero": {
+      "type": "activity-hero",
+      "settings": {}
+    },
+    "activity_header": {
+      "type": "activity-header",
+      "settings": {}
+    },
+    "activity_details": {
+      "type": "activity-details",
+      "settings": {}
+    },
+    "activity_description": {
+      "type": "activity-description",
+      "settings": {}
+    },
+    "activity_map": {
+      "type": "activity-map",
+      "settings": {}
+    },
+    "activity_similar": {
+      "type": "activity-similar",
+      "settings": {}
+    },
+    "activity_cta": {
+      "type": "activity-cta",
+      "settings": {}
+    }
+  },
+  "order": [
+    "activity_hero",
+    "activity_header",
+    "activity_details",
+    "activity_description",
+    "activity_map",
+    "activity_similar",
+    "activity_cta"
+  ]
+}

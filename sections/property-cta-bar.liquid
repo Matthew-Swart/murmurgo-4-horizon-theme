@@ -1,0 +1,30 @@
+{% comment %}
+  property-cta-bar.liquid
+  Sticky on mobile. Add to trip, View on map, Share.
+{% endcomment %}
+
+<section class="m-property-cta" data-section-id="{{ section.id }}">
+  <div class="m-property-cta__bar">
+    <button class="m-property-cta__primary" data-action="add-to-trip">
+      Add to trip
+    </button>
+    <a
+      href="/pages/browse?lat={{ metaobject.latitude.value }}&lng={{ metaobject.longitude.value }}"
+      class="m-property-cta__secondary"
+    >
+      View on map
+    </a>
+    <button class="m-property-cta__icon" data-action="share" aria-label="Share">
+      {% render 'icon-share' %}
+    </button>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Property CTA Bar",
+  "class": "section-property-cta-bar",
+  "settings": [],
+  "presets": [{ "name": "Property CTA Bar" }]
+}
+{% endschema %}

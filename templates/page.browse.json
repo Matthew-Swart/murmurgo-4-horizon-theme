@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "browse_shell": {
+      "type": "browse-shell",
+      "settings": {}
+    }
+  },
+  "order": ["browse_shell"]
+}

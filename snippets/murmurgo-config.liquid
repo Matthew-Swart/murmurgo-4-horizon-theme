@@ -1,0 +1,41 @@
+{% comment %}
+  murmurgo-config.liquid
+  Injects window.MURMURGO_CONFIG for JS apps.
+  Include in layout/theme.liquid before closing </head>.
+{% endcomment %}
+
+<script>
+  window.MURMURGO_CONFIG = {
+    apiBase: '{{ shop.metafields.murmurgo.api_base | default: "/apps/murmurgo/api" }}',
+    mapboxToken: '{{ settings.mapbox_token | default: "" }}',
+    maplibreStyle: '{{ settings.maplibre_style | default: "https://demotiles.maplibre.org/style.json" }}',
+    cdnBase: 'https://cdn.plekify.com',
+    shopDomain: '{{ shop.domain }}',
+    aiEnabled: true,
+    conversationApi: '{{ shop.metafields.murmurgo.api_base | default: "/apps/murmurgo/api" }}/conversation',
+    itineraryApi: '{{ shop.metafields.murmurgo.api_base | default: "/apps/murmurgo/api" }}/itinerary',
+    itinerariesApi: '{{ shop.metafields.murmurgo.api_base | default: "/apps/murmurgo/api" }}/itineraries',
+    placeId: '{{ metaobject.system.id | default: null }}',
+    entityType: '{{ metaobject.type | default: null }}',
+    entityHandle: '{{ metaobject.system.handle | default: null }}',
+    locale: '{{ request.locale.iso_code }}',
+
+    // Route helpers for Shopify domain
+    routes: {
+      trip: function(id) { return '/pages/trip?id=' + encodeURIComponent(id); },
+      browse: function(params) {
+        var q = new URLSearchParams(params || {}).toString();
+        return q ? '/pages/browse?' + q : '/pages/browse';
+      },
+      ai: function() { return '/pages/ai'; },
+      property: function(handle) { return '/pages/' + encodeURIComponent(handle); },
+      city: function(handle) { return '/pages/' + encodeURIComponent(handle); },
+      absolute: function(path) {
+        return 'https://{{ shop.domain }}' + path;
+      }
+    }
+  };
+</script>
+
+<link rel="stylesheet" href="{{ 'murmurgo-styles.css' | asset_url }}" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="{{ 'murmurgo-styles.css' | asset_url }}"></noscript>

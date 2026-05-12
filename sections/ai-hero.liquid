@@ -1,0 +1,101 @@
+{% comment %}
+  ai-hero.liquid
+  Full-viewport hero with video, headline, input line, and sample prompt chips.
+  Transition to conversation mode on submit.
+{% endcomment %}
+
+<section class="m-ai-hero" data-ai-hero>
+  {% comment %} Video / Image Background {% endcomment %}
+  <div class="m-ai-hero__media">
+    <video
+      class="m-ai-hero__video"
+      data-hero-video
+      autoplay
+      muted
+      loop
+      playsinline
+      poster="https://cdn.plekify.com/murmurgo/hero-fallback-dawn.jpg"
+    >
+      <source src="https://cdn.plekify.com/murmurgo/hero-dawn-savanna.webm" type="video/webm">
+      <source src="https://cdn.plekify.com/murmurgo/hero-dawn-savanna.mp4" type="video/mp4">
+    </video>
+    <img
+      class="m-ai-hero__fallback-img"
+      src="https://cdn.plekify.com/murmurgo/hero-fallback-dawn.jpg?w=1200"
+      srcset="https://cdn.plekify.com/murmurgo/hero-fallback-dawn.jpg?w=600 600w, https://cdn.plekify.com/murmurgo/hero-fallback-dawn.jpg?w=1200 1200w, https://cdn.plekify.com/murmurgo/hero-fallback-dawn.jpg?w=1920 1920w"
+      sizes="100vw"
+      alt="Dawn over the African savanna"
+      loading="eager"
+      width="1920"
+      height="1080"
+    >
+  </div>
+
+  {% comment %} Overlay {% endcomment %}
+  <div class="m-ai-hero__overlay"></div>
+
+  {% comment %} Content {% endcomment %}
+  <div class="m-ai-hero__content">
+    <h1 class="m-ai-hero__headline">Build your trip.</h1>
+
+    {% comment %} Input Line {% endcomment %}
+    <div class="m-ai-hero__input-wrap">
+      <input
+        type="text"
+        class="m-ai-hero__input"
+        data-ai-input
+        placeholder="I want to be in the bush by Thursday"
+        autocomplete="off"
+        aria-label="Describe your trip"
+      >
+      <button
+        class="m-ai-hero__mic"
+        data-ai-mic
+        aria-label="Voice input"
+        title="Tap to speak"
+      >
+        <svg class="m-ai-hero__mic-icon" data-mic-icon width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+          <path d="M10 12a2 2 0 002-2V5a2 2 0 00-4 0v5a2 2 0 002 2z"/>
+          <path d="M6 9a1 1 0 011 1v1a3 3 0 006 0v-1a1 1 0 112 0v1a5 5 0 01-10 0v-1a1 1 0 011-1zM10 15v3"/>
+          <path d="M7 18h6"/>
+        </svg>
+        <span class="m-ai-hero__mic-pulse" data-mic-pulse></span>
+      </button>
+    </div>
+
+    {% comment %} Sample Prompt Chips {% endcomment %}
+    <div class="m-ai-hero__chips" data-ai-chips>
+      <button class="m-ai-hero__chip" data-chip="7 nights, Cape Town + bush">7 nights, Cape Town + bush</button>
+      <button class="m-ai-hero__chip" data-chip="Honeymoon, no crowds">Honeymoon, no crowds</button>
+      <button class="m-ai-hero__chip" data-chip="Family safari, kids under 10">Family safari, kids under 10</button>
+      <button class="m-ai-hero__chip" data-chip="Long weekend from Joburg">Long weekend from Joburg</button>
+      <button class="m-ai-hero__chip" data-chip="Winelands by bicycle">Winelands by bicycle</button>
+      <button class="m-ai-hero__chip" data-chip="Best light for photography">Best light for photography</button>
+      <button class="m-ai-hero__chip" data-chip="Beach after safari">Beach after safari</button>
+      <button class="m-ai-hero__chip" data-chip="Under R5000 per night">Under R5000 per night</button>
+      <button class="m-ai-hero__chip" data-chip="Small lodge, Big Five">Small lodge, Big Five</button>
+      <button class="m-ai-hero__chip" data-chip="Road trip Garden Route">Road trip Garden Route</button>
+    </div>
+  </div>
+
+  {% comment %} Sticky input bar (hidden until transition) {% endcomment %}
+  <div class="m-ai-hero__sticky" data-ai-sticky>
+    <div class="m-ai-hero__sticky-inner">
+      <input
+        type="text"
+        class="m-ai-hero__sticky-input"
+        data-ai-sticky-input
+        placeholder="I want to be in the bush by Thursday"
+        autocomplete="off"
+        aria-label="Describe your trip"
+      >
+      <button class="m-ai-hero__sticky-mic" data-ai-sticky-mic aria-label="Voice input">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+          <path d="M10 12a2 2 0 002-2V5a2 2 0 00-4 0v5a2 2 0 002 2z"/>
+          <path d="M6 9a1 1 0 011 1v1a3 3 0 006 0v-1a1 1 0 112 0v1a5 5 0 01-10 0v-1a1 1 0 011-1zM10 15v3"/>
+          <path d="M7 18h6"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</section>

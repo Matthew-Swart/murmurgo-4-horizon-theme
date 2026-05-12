@@ -1,0 +1,381 @@
+{% comment %}
+  Plekify Brief Video Hero — v3 (iframe)
+
+  Clean full-viewport iframe loading the Journey Canvas from app.plekify.com.
+  The app handles: video background, QMD semantic search, chat, property cards.
+  The theme handles: viewport sizing, subscription pills, plan modal.
+{% endcomment %}
+
+<style>
+  .plekify-brief-hero-v3 {
+    position: relative;
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .plekify-brief-hero-v3__frame {
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 100vh;
+    border: none;
+    display: block;
+  }
+
+  /* Subscription pills — fixed at bottom, outside iframe */
+  .plekify-brief-hero-v3__pills {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 100%);
+    pointer-events: none;
+  }
+
+  .plekify-brief-hero-v3__pills .pill {
+    pointer-events: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.5rem 1rem;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50px;
+    color: #fff;
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border: none;
+    font-family: inherit;
+  }
+
+  .plekify-brief-hero-v3__pills .pill:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+  }
+
+  .plekify-brief-hero-v3__pills .pill .price {
+    color: rgba(255, 255, 255, 0.75);
+    font-weight: 400;
+  }
+
+  /* Plan Modal */
+  .plan-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+  }
+
+  .plan-modal.is-open {
+    display: flex;
+  }
+
+  .plan-modal__content {
+    background: #fff;
+    border-radius: 20px;
+    max-width: 480px;
+    width: 90%;
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 2rem;
+    position: relative;
+    animation: planModalIn 0.25s ease;
+  }
+
+  @keyframes planModalIn {
+    from { opacity: 0; transform: scale(0.96) translateY(10px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  .plan-modal__close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0,0,0,0.06);
+    color: #333;
+    font-size: 1.25rem;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .plan-modal__close:hover { background: rgba(0,0,0,0.12); }
+
+  .plan-modal__title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0 0 0.25rem;
+    color: #1a1a1a;
+  }
+
+  .plan-modal__price {
+    font-size: 1.125rem;
+    color: #555;
+    margin-bottom: 1.25rem;
+  }
+
+  .plan-modal__features {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1.5rem;
+  }
+
+  .plan-modal__features li {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #eee;
+    color: #444;
+    font-size: 0.9375rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .plan-modal__features li::before {
+    content: "✓";
+    color: #16a34a;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .plan-modal__cta {
+    width: 100%;
+    padding: 0.875rem;
+    border-radius: 12px;
+    border: none;
+    background: #1a1a1a;
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+  }
+
+  .plan-modal__cta:hover { background: #333; }
+
+  .plan-modal__note {
+    text-align: center;
+    font-size: 0.8125rem;
+    color: #888;
+    margin-top: 0.75rem;
+  }
+
+  @media (max-width: 640px) {
+    .plekify-brief-hero-v3__pills {
+      gap: 0.35rem;
+      padding: 0.5rem;
+    }
+    .plekify-brief-hero-v3__pills .pill {
+      padding: 0.4rem 0.75rem;
+      font-size: 0.8rem;
+    }
+  }
+</style>
+
+<div class="plekify-brief-hero-v3" data-section-id="{{ section.id }}">
+  <iframe
+    id="plekify-brief-frame"
+    class="plekify-brief-hero-v3__frame"
+    src="https://app.plekify.com/apps/plekify/brief?shop={{ shop.permanent_domain }}&theme_color={{ section.settings.theme_color | default: 'dark' }}&site={{ section.settings.site_identifier | default: 'murmurgo' }}"
+    style="width:100%;min-height:100vh;border:none;display:block;"
+    allow="microphone"
+    title="Plan Your Journey"
+    loading="eager"
+  ></iframe>
+
+  {%- comment -%} Subscription pills — rendered by theme, outside iframe {%- endcomment -%}
+  <div class="plekify-brief-hero-v3__pills" id="subscription-pills">
+    <button type="button" class="pill" data-plan="weekend" aria-label="Weekend plan details">
+      Weekend <span class="price">R99/mo</span>
+    </button>
+    <button type="button" class="pill" data-plan="explorer" aria-label="Explorer plan details">
+      Explorer <span class="price">R299/mo</span>
+    </button>
+    <button type="button" class="pill" data-plan="pro" aria-label="Pro Agent plan details">
+      Pro Agent <span class="price">R999/mo</span>
+    </button>
+    <button type="button" class="pill" data-plan="enterprise" aria-label="Enterprise plan details">
+      Enterprise
+    </button>
+  </div>
+</div>
+
+{%- comment -%} Plan Detail Modal {%- endcomment -%}
+<div class="plan-modal" id="plan-modal" role="dialog" aria-modal="true" aria-label="Subscription plan details">
+  <div class="plan-modal__content">
+    <button type="button" class="plan-modal__close" id="plan-modal-close" aria-label="Close">×</button>
+    <h2 class="plan-modal__title" id="plan-modal-title">Plan</h2>
+    <p class="plan-modal__price" id="plan-modal-price"></p>
+    <ul class="plan-modal__features" id="plan-modal-features"></ul>
+    <a href="/pages/contact" class="plan-modal__cta" id="plan-modal-cta">Contact us to get started</a>
+    <p class="plan-modal__note">Subscription checkout coming soon. Reach out and we'll set you up manually.</p>
+  </div>
+</div>
+
+<script>
+  (function() {
+    // ---- Iframe resize (same pattern as murmurgo-2) ----
+    var frame = document.getElementById('plekify-brief-frame');
+    window.addEventListener('message', function(e) {
+      // Accept resize messages from app.plekify.com
+      if (e.data && e.data.type === 'plekify-resize' && frame) {
+        frame.style.height = e.data.height + 'px';
+      }
+    });
+
+    // ---- Plan modal ----
+    var modal      = document.getElementById('plan-modal');
+    var closeBtn   = document.getElementById('plan-modal-close');
+    var titleEl    = document.getElementById('plan-modal-title');
+    var priceEl    = document.getElementById('plan-modal-price');
+    var featuresEl = document.getElementById('plan-modal-features');
+    var ctaEl      = document.getElementById('plan-modal-cta');
+
+    var PLANS = {
+      weekend: {
+        title: 'Weekend',
+        price: 'R99 / month',
+        features: [
+          '5 trip designs per month',
+          'AI-powered destination matching',
+          'Basic itinerary generation',
+          'Email support'
+        ],
+        cta: 'Get Weekend'
+      },
+      explorer: {
+        title: 'Explorer',
+        price: 'R299 / month',
+        features: [
+          '20 trip designs per month',
+          'QMD semantic place search',
+          'Advanced itinerary with maps',
+          'Priority email support',
+          'Save & share itineraries'
+        ],
+        cta: 'Get Explorer'
+      },
+      pro: {
+        title: 'Pro Agent',
+        price: 'R999 / month',
+        features: [
+          'Unlimited trip designs',
+          'White-label itinerary PDFs',
+          'Client management tools',
+          'Wetu integration',
+          'Priority phone & email support',
+          'Commission tracking'
+        ],
+        cta: 'Get Pro Agent'
+      },
+      enterprise: {
+        title: 'Enterprise',
+        price: 'Custom pricing',
+        features: [
+          'Everything in Pro Agent',
+          'Dedicated account manager',
+          'Custom API access',
+          'Own-domain white label',
+          'Bulk user provisioning',
+          'SLA guarantee'
+        ],
+        cta: 'Talk to Sales'
+      }
+    };
+
+    function openPlan(key) {
+      var plan = PLANS[key];
+      if (!plan) return;
+      titleEl.textContent = plan.title;
+      priceEl.textContent = plan.price;
+      ctaEl.textContent = plan.cta;
+      featuresEl.innerHTML = plan.features.map(function(f) {
+        return '<li>' + f + '</li>';
+      }).join('');
+      modal.classList.add('is-open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closePlan() {
+      modal.classList.remove('is-open');
+      document.body.style.overflow = '';
+    }
+
+    document.querySelectorAll('[data-plan]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        openPlan(btn.getAttribute('data-plan'));
+      });
+    });
+
+    closeBtn.addEventListener('click', closePlan);
+    modal.addEventListener('click', function(e) {
+      if (e.target === modal) closePlan();
+    });
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && modal.classList.contains('is-open')) closePlan();
+    });
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Journey Canvas",
+  "tag": "section",
+  "class": "section-journey-canvas",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Embedded App"
+    },
+    {
+      "type": "text",
+      "id": "app_proxy_path",
+      "label": "App Proxy Path",
+      "default": "/apps/plekify/brief",
+      "info": "Deprecated — iframe now loads directly from app.plekify.com"
+    },
+    {
+      "type": "text",
+      "id": "theme_color",
+      "label": "Theme Color",
+      "default": "dark",
+      "info": "Passed to the embedded app for theming"
+    },
+    {
+      "type": "text",
+      "id": "site_identifier",
+      "label": "Site Identifier",
+      "default": "murmurgo",
+      "info": "Used by the app to style per site"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Journey Canvas"
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,17 @@
+{% comment %} city-quick-facts.liquid {% endcomment %}
+<section class="m-city-facts" data-section-id="{{ section.id }}">
+  <div class="page-width">
+    <div class="m-city-facts__bar">
+      {% if metaobject.population.value != blank %}
+        <div class="m-city-facts__item"><span class="m-city-facts__label">Population</span><span class="m-city-facts__value">{{ metaobject.population.value | number_with_delimiter }}</span></div>
+      {% endif %}
+      {% if metaobject.timezone.value != blank %}
+        <div class="m-city-facts__item"><span class="m-city-facts__label">Timezone</span><span class="m-city-facts__value">{{ metaobject.timezone.value }}</span></div>
+      {% endif %}
+      {% if metaobject.airport_code.value != blank %}
+        <div class="m-city-facts__item"><span class="m-city-facts__label">Airport</span><span class="m-city-facts__value">{{ metaobject.airport_code.value }}</span></div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% schema %}{ "name": "City Quick Facts", "class": "section-city-quick-facts", "settings": [], "presets": [{ "name": "City Quick Facts" }] }{% endschema %}

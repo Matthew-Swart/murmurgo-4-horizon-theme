@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "trip_shell": {
+      "type": "trip-shell",
+      "settings": {}
+    }
+  },
+  "order": ["trip_shell"]
+}

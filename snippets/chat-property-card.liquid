@@ -1,0 +1,175 @@
+{% comment %}
+  Chat Property Card
+
+  Renders a property card for use in the chat interface.
+  Follows 280×147px (1.91:1) image ratio specification.
+
+  Usage:
+  {% render 'chat-property-card',
+    property: property_object,
+    state: 'suggested',
+    cdn_base: 'https://cdn.plekify.com'
+  %}
+
+  Parameters:
+  - property: Object with id, name, location, image, rating, description
+  - state: 'suggested' | 'exploring' | 'confirmed' (default: 'suggested')
+  - cdn_base: Base URL for Cloudflare CDN (default: 'https://cdn.plekify.com')
+  - show_actions: Boolean to show action buttons (default: true)
+{% endcomment %}
+
+{% assign card_state = state | default: 'suggested' %}
+{% assign cdn = cdn_base | default: 'https://cdn.plekify.com' %}
+{% assign show_btns = show_actions | default: true %}
+
+{% comment %}
+  Generate optimized image URL for 280x147 (1.91:1) chat card.
+  cdn.plekify.com is fronted by Cloudflare Image Resizing - use /cdn-cgi/image/
+  syntax (query strings are silently ignored by R2).
+{% endcomment %}
+{% assign image_url = property.image %}
+{% assign already_cf_resized = false %}
+{% if image_url contains '/cdn-cgi/image/' %}{% assign already_cf_resized = true %}{% endif %}
+{% if image_url contains 'cdn.plekify.com/' and already_cf_resized == false %}
+  {% assign image_url = image_url | replace: 'https://cdn.plekify.com/', 'https://cdn.plekify.com/cdn-cgi/image/width=560,height=294,fit=cover,quality=85,format=auto/' %}
+{% elsif image_url contains 'imagedelivery.net' %}
+  {% assign separator = '?' %}
+  {% if image_url contains '?' %}{% assign separator = '&' %}{% endif %}
+  {% assign image_url = image_url | append: separator | append: 'width=560&height=294&fit=cover' %}
+{% endif %}
+
+<article
+  class="chat-card chat-card--{{ card_state }}"
+  data-property-id="{{ property.id }}"
+  data-state="{{ card_state }}"
+  tabindex="0"
+  role="button"
+  aria-label="{{ property.name }}, {{ property.location }}"
+>
+  <img
+    class="chat-card__image"
+    src="{{ image_url }}"
+    alt="{{ property.name }}"
+    width="280"
+    height="147"
+    loading="lazy"
+  >
+
+  <div class="chat-card__content">
+    <h4 class="chat-card__name">{{ property.name }}</h4>
+
+    <div class="chat-card__meta">
+      {% if property.location %}
+        <span class="chat-card__location">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+            <circle cx="12" cy="10" r="3"/>
+          </svg>
+          {{ property.location }}
+        </span>
+      {% endif %}
+
+      {% if property.rating %}
+        <span class="chat-card__rating">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+          {{ property.rating }}
+        </span>
+      {% endif %}
+    </div>
+
+    {% if property.style %}
+      <p class="chat-card__style">{{ property.style }}</p>
+    {% endif %}
+  </div>
+
+  {% comment %} Confirmed state checkmark badge {% endcomment %}
+  <div class="chat-card__state-badge" aria-hidden="true">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+  </div>
+
+  {% if show_btns %}
+    <div class="chat-card__actions">
+      <button
+        type="button"
+        class="chat-card__btn chat-card__btn--explore"
+        data-action="explore"
+        data-property-id="{{ property.id }}"
+        aria-label="Learn more about {{ property.name }}"
+      >
+        Explore
+      </button>
+      <button
+        type="button"
+        class="chat-card__btn chat-card__btn--confirm"
+        data-action="confirm"
+        data-property-id="{{ property.id }}"
+        aria-label="Add {{ property.name }} to trip"
+      >
+        Add to Trip
+      </button>
+    </div>
+  {% endif %}
+</article>
+
+<style>
+  .chat-card__actions {
+    display: none;
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    right: 12px;
+    gap: 8px;
+  }
+
+  .chat-card:hover .chat-card__actions,
+  .chat-card:focus .chat-card__actions {
+    display: flex;
+  }
+
+  .chat-card__btn {
+    flex: 1;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 150ms, transform 150ms;
+  }
+
+  .chat-card__btn:active {
+    transform: scale(0.97);
+  }
+
+  .chat-card__btn--explore {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+  }
+
+  .chat-card__btn--explore:hover {
+    background: rgba(255, 255, 255, 0.25);
+  }
+
+  .chat-card__btn--confirm {
+    background: var(--chat-success, #10b981);
+    border: none;
+    color: white;
+  }
+
+  .chat-card__btn--confirm:hover {
+    background: #059669;
+  }
+
+  .chat-card__style {
+    font-size: 11px;
+    color: var(--chat-text-muted, rgba(255, 255, 255, 0.6));
+    margin-top: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+</style>

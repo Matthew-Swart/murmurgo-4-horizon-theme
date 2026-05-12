@@ -1,0 +1,12 @@
+{% comment %} country-header.liquid {% endcomment %}
+<section class="m-country-header" data-section-id="{{ section.id }}">
+  <div class="page-width">
+    <h1 class="m-country-header__title">{{ metaobject.name.value | escape }}</h1>
+    <p class="m-country-header__meta">
+      {% if metaobject.continent.value != blank %}{{ metaobject.continent.value }}{% endif %}
+      {% if metaobject.property_count.value != blank %}· {{ metaobject.property_count.value }} properties{% endif %}
+      {% if metaobject.city_count.value != blank %}· {{ metaobject.city_count.value }} cities{% endif %}
+    </p>
+  </div>
+</section>
+{% schema %}{ "name": "Country Header", "class": "section-country-header", "settings": [], "presets": [{ "name": "Country Header" }] }{% endschema %}

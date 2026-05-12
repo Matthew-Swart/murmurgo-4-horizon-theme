@@ -1,0 +1,16 @@
+{% comment %} country-description.liquid {% endcomment %}
+<section class="m-country-desc" data-section-id="{{ section.id }}">
+  <div class="page-width">
+    <h2 class="m-country-desc__headline">{{ metaobject.name.value | escape }}</h2>
+    <div class="m-country-desc__body">
+      {% if metaobject.description.value != blank %}
+        <p>{{ metaobject.description.value | strip_html | truncate: 600 }}</p>
+      {% elsif metaobject.short_description.value != blank %}
+        <p>{{ metaobject.short_description.value | strip_html | truncate: 600 }}</p>
+      {% else %}
+        <p>{{ metaobject.name.value | escape }}. Placeholder description.</p>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% schema %}{ "name": "Country Description", "class": "section-country-description", "settings": [], "presets": [{ "name": "Country Description" }] }{% endschema %}

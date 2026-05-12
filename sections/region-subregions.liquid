@@ -1,0 +1,10 @@
+{% comment %} region-subregions.liquid {% endcomment %}
+<section class="m-region-subregions" data-section-id="{{ section.id }}" data-region="{{ metaobject.slug.value }}">
+  <div class="page-width">
+    <h2 class="m-region-subregions__title">Sub-areas</h2>
+    <div class="m-region-subregions__grid" data-subregions-container>
+      <div class="m-region-subregions__loading">Loading sub-areas...</div>
+    </div>
+  </div>
+</section>
+{% schema %}{ "name": "Region Sub-regions", "class": "section-region-subregions", "settings": [], "presets": [{ "name": "Region Sub-regions" }] }{% endschema %}

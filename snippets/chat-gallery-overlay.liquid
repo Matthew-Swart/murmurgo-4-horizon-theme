@@ -1,0 +1,178 @@
+{% comment %}
+  Chat Gallery Overlay
+
+  Full-screen gallery overlay with:
+  - Vertical thumbnail strip (right side, no gaps)
+  - Floor-fade gradient with contextual info (bottom-left)
+  - Keyboard navigation support
+  - Touch-friendly controls
+
+  This component is primarily controlled via JavaScript.
+  The HTML structure is rendered here for SSR/initial state.
+
+  Usage:
+  {% render 'chat-gallery-overlay' %}
+
+  JavaScript will populate images and context dynamically.
+{% endcomment %}
+
+<div
+  class="gallery-overlay"
+  id="gallery-overlay"
+  data-gallery
+  aria-hidden="true"
+  role="dialog"
+  aria-modal="true"
+  aria-label="Image gallery"
+>
+  {% comment %} Main image viewing area {% endcomment %}
+  <div class="gallery-overlay__main">
+
+    {% comment %} Close button {% endcomment %}
+    <button
+      class="gallery-overlay__close"
+      data-gallery-close
+      type="button"
+      aria-label="Close gallery"
+    >
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <line x1="18" y1="6" x2="6" y2="18"/>
+        <line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+
+    {% comment %} Previous navigation {% endcomment %}
+    <button
+      class="gallery-overlay__nav gallery-overlay__nav--prev"
+      data-gallery-prev
+      type="button"
+      aria-label="Previous image"
+    >
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+    </button>
+
+    {% comment %} Main image {% endcomment %}
+    <img
+      class="gallery-overlay__image"
+      data-gallery-image
+      src=""
+      alt=""
+      draggable="false"
+    >
+
+    {% comment %} Next navigation {% endcomment %}
+    <button
+      class="gallery-overlay__nav gallery-overlay__nav--next"
+      data-gallery-next
+      type="button"
+      aria-label="Next image"
+    >
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+    </button>
+
+    {% comment %} Floor-fade context overlay (bottom-left) {% endcomment %}
+    <div class="gallery-overlay__context" data-gallery-context>
+      <h3 class="gallery-overlay__title" data-gallery-title></h3>
+      <p class="gallery-overlay__subtitle" data-gallery-subtitle></p>
+
+      <div class="gallery-overlay__actions">
+        <button
+          class="gallery-overlay__btn gallery-overlay__btn--primary"
+          data-gallery-confirm
+          type="button"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          Add to Trip
+        </button>
+
+        <button
+          class="gallery-overlay__btn gallery-overlay__btn--secondary"
+          data-gallery-explore
+          type="button"
+        >
+          Learn More
+        </button>
+      </div>
+    </div>
+
+    {% comment %} Image counter {% endcomment %}
+    <div class="gallery-overlay__counter" data-gallery-counter aria-live="polite">
+      <span data-gallery-current>1</span> / <span data-gallery-total>1</span>
+    </div>
+  </div>
+
+  {% comment %} Thumbnail strip (vertical scroll, no gaps) {% endcomment %}
+  <div
+    class="gallery-overlay__strip"
+    data-gallery-strip
+    role="tablist"
+    aria-label="Gallery thumbnails"
+  >
+    {% comment %} Thumbnails populated by JavaScript {% endcomment %}
+  </div>
+</div>
+
+<style>
+  /* Counter position */
+  .gallery-overlay__counter {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    padding: 8px 14px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 20px;
+    font-size: 13px;
+    color: white;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Keyboard focus enhancement */
+  .gallery-overlay__thumb:focus-visible {
+    outline: 2px solid var(--chat-accent, #3b82f6);
+    outline-offset: -2px;
+  }
+
+  /* Loading state for main image */
+  .gallery-overlay__image[src=""] {
+    opacity: 0;
+  }
+
+  .gallery-overlay__image {
+    transition: opacity 200ms ease;
+  }
+
+  /* Swipe hint on mobile */
+  @media (max-width: 768px) {
+    .gallery-overlay__main::after {
+      content: '';
+      position: absolute;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 40px;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 2px;
+      opacity: 0;
+      animation: swipeHint 2s ease-in-out 1s forwards;
+    }
+
+    @keyframes swipeHint {
+      0%, 100% { opacity: 0; transform: translateX(-50%); }
+      10%, 90% { opacity: 1; }
+      25% { transform: translateX(-70%); }
+      75% { transform: translateX(-30%); }
+    }
+  }
+
+  /* Hide strip on small screens when there are few images */
+  .gallery-overlay__strip:has(.gallery-overlay__thumb:only-child) {
+    display: none;
+  }
+</style>

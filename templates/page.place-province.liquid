@@ -1,0 +1,184 @@
+{% comment %}
+  page.place-province.liquid
+  Province/State destination hub — cities as sub-regions + optional category rows
+  Reads from page.metafields.plekify_region.*
+{% endcomment %}
+
+{% assign prov_id = page.metafields.plekify_region.hierarchy_id.value %}
+{% assign prov_name = page.metafields.plekify_region.name.value | default: page.title %}
+{% assign prov_level = page.metafields.plekify_region.level.value %}
+{% assign prov_country_code = page.metafields.plekify_region.country_code.value %}
+{% assign prov_lat = page.metafields.plekify_region.center_lat.value %}
+{% assign prov_lng = page.metafields.plekify_region.center_lng.value %}
+{% assign prov_place_count = page.metafields.plekify_region.place_count.value %}
+{% assign prov_description = page.metafields.plekify_region.description.value | default: page.content %}
+{% assign prov_photos_json = page.metafields.plekify_region.photos.value %}
+{% assign prov_children_json = page.metafields.plekify_region.children.value %}
+
+{% assign has_photos = false %}
+{% assign first_photo = "" %}
+{% if prov_photos_json != blank and prov_photos_json != "[]" and prov_photos_json != "null" %}
+  {% assign photos_array = prov_photos_json | json %}
+  {% assign first_photo = photos_array | split: '"' | slice: 1 | first | replace: '\\/', '/' %}
+  {% if first_photo != blank %}
+    {% assign has_photos = true %}
+  {% endif %}
+{% endif %}
+
+{% assign has_children = false %}
+{% if prov_children_json != blank and prov_children_json != "[]" and prov_children_json != "null" %}
+  {% assign has_children = true %}
+{% endif %}
+
+{% assign has_map = false %}
+{% if prov_lat != blank and prov_lng != blank %}
+  {% assign has_map = true %}
+{% endif %}
+
+<!-- JSON-LD -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "AdministrativeArea",
+  "name": {{ prov_name | json }},
+  "description": {{ prov_description | strip_html | truncate: 300 | json }},
+  "url": {{ canonical_url | json }}{% if has_map %},
+  "geo": {
+    "@type": "GeoCoordinates",
+    "latitude": {{ prov_lat | json }},
+    "longitude": {{ prov_lng | json }}
+  }{% endif %}{% if first_photo != blank %},
+  "image": {{ first_photo | json }}{% endif %}
+}
+</script>
+
+<!-- MapLibre -->
+<link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+<script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+
+<!-- Shared styles -->
+{{ 'place-hub.css' | asset_url | stylesheet_tag }}
+
+<div class="place-hub-page">
+
+  <!-- Hero -->
+  <section class="ph-hero">
+    {% if has_photos %}
+      <div class="ph-hero__bg" style="background-image: url('{{ first_photo | escape }}');"></div>
+    {% endif %}
+    <div class="ph-hero__overlay"></div>
+    <div class="ph-hero__content">
+      <nav class="ph-hero__breadcrumb" aria-label="Breadcrumb">
+        <a href="/">Home</a>
+        {% if prov_country_code != blank %}
+          <span> / </span><a href="/pages/{{ prov_country_code | handleize }}">{{ prov_country_code }}</a>
+        {% endif %}
+        <span> / {{ prov_name | escape }}</span>
+      </nav>
+      <h1 class="ph-hero__title">{{ prov_name | escape }}</h1>
+      <div class="ph-hero__meta">
+        <span class="ph-hero__badge">Province</span>
+        {% if prov_place_count != blank %}
+          <span>{{ prov_place_count | append: ' places' }}</span>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  <!-- Overview -->
+  {% if prov_description != blank %}
+  <section class="ph-overview">
+    <h2>About {{ prov_name | escape }}</h2>
+    <div class="ph-description">
+      {{ prov_description | newline_to_br }}
+    </div>
+    {% if prov_place_count != blank %}
+    <div class="ph-stats">
+      <div class="ph-stat">
+        <div class="ph-stat__value">{{ prov_place_count }}</div>
+        <div class="ph-stat__label">Places</div>
+      </div>
+      {% if has_children %}
+      <div class="ph-stat">
+        <div class="ph-stat__value" id="stat-cities">—</div>
+        <div class="ph-stat__label">Cities</div>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  <!-- Cities -->
+  <section class="ph-subregions" id="subregions-section" style="display:none;" data-children-json='{{ page.metafields.plekify_region.children.value | json }}'>
+    <div class="ph-subregions__header">
+      <h2>Cities in {{ prov_name | escape }}</h2>
+    </div>
+    <div class="ph-subregions__scroll" id="subregions-scroll"></div>
+  </section>
+
+  <!-- Map -->
+  {% if has_map %}
+  <section class="ph-map-section">
+    <h2>Map of {{ prov_name | escape }}</h2>
+    <div class="ph-map-container" id="province-map"
+         data-lat="{{ prov_lat }}"
+         data-lng="{{ prov_lng }}"
+         data-name="{{ prov_name | escape }}"
+         data-level="region">
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- Category Rows (only for provinces with major cities) -->
+  <section class="ph-categories" id="categories-section" style="display:none;">
+    <div id="category-rows"></div>
+  </section>
+
+  <!-- Photos -->
+  {% if has_photos %}
+  <section class="ph-photos-section">
+    <h2>Photos</h2>
+    <div class="ph-photos-grid" id="photos-grid">
+      {% assign photo_list = prov_photos_json | replace: '[', '' | replace: ']', '' | replace: '"', '' | split: ',' %}
+      {% for photo_url in photo_list limit: 20 %}
+        {% assign photo_url = photo_url | strip %}
+        {% if photo_url != blank %}
+          <div class="ph-photo" data-index="{{ forloop.index0 }}" data-src="{{ photo_url | escape }}">
+            <img src="{{ photo_url | escape }}" alt="{{ prov_name | escape }} - photo {{ forloop.index }}" loading="lazy">
+          </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+</div>
+
+<!-- Fullscreen Gallery -->
+<div class="ph-gallery-overlay" id="gallery-overlay">
+  <div class="ph-gallery-counter" id="gallery-counter">1 / 1</div>
+  <button class="ph-gallery-close" id="gallery-close" aria-label="Close">&times;</button>
+  <div class="ph-gallery-main" id="gallery-main">
+    <div class="ph-gallery-stack" id="gallery-stack"></div>
+  </div>
+  <div class="ph-gallery-sidebar" id="gallery-sidebar"></div>
+</div>
+
+<!-- Shared JS -->
+<script src="{{ 'place-hub.js' | asset_url }}" defer></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  window.renderSubRegions('subregions-section', 'subregions-scroll', 'stat-cities');
+  window.initGallery('.ph-photo', 'gallery-overlay', 'gallery-stack', 'gallery-sidebar', 'gallery-counter', 'gallery-close');
+  window.initMap('province-map');
+
+  // Category rows for province — show with larger radius to cover province-wide places
+  const mapContainer = document.getElementById('province-map');
+  if (mapContainer) {
+    const lat = mapContainer.dataset.lat;
+    const lng = mapContainer.dataset.lng;
+    window.loadCategoryRows('categories-section', 'category-rows', lat, lng, 50, true);
+  }
+});
+</script>

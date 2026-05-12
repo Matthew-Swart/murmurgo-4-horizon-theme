@@ -1,0 +1,1781 @@
+/**
+ * Plekify Brief Capture v2 — Location-First Chat Interface
+ *
+ * Design System:
+ * - Warm, safari-inspired palette
+ * - Clean, conversational layout
+ * - Card-based destination/property display
+ */
+
+/* ============================================
+   CSS Custom Properties (Plekify Brand)
+   ============================================ */
+
+.plekify-chat {
+  --plekify-bg: #FDF8F3;
+  --plekify-bg-alt: #F5EDE4;
+  --plekify-primary: #D4A574;
+  --plekify-primary-dark: #B8895C;
+  --plekify-primary-light: #E8C9A8;
+  --plekify-text: #3D3229;
+  --plekify-text-muted: #6B5D52;
+  --plekify-secondary: #7A9E7E;
+  --plekify-secondary-dark: #5C7A60;
+  --plekify-card-bg: #FFFFFF;
+  --plekify-border: rgba(61, 50, 41, 0.1);
+  --plekify-border-strong: rgba(61, 50, 41, 0.2);
+  --plekify-user-bubble: #EDE5DC;
+  --plekify-ai-bubble: #FFFFFF;
+  --plekify-shadow: 0 2px 8px rgba(61, 50, 41, 0.08);
+  --plekify-shadow-lg: 0 4px 20px rgba(61, 50, 41, 0.12);
+  --plekify-radius: 12px;
+  --plekify-radius-sm: 8px;
+  --plekify-radius-lg: 16px;
+  --plekify-transition: 0.2s ease;
+  --plekify-font: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* ============================================
+   Base Section Styles
+   ============================================ */
+
+.plekify-chat {
+  font-family: var(--plekify-font);
+  color: var(--plekify-text);
+  background: var(--plekify-bg);
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.plekify-chat *,
+.plekify-chat *::before,
+.plekify-chat *::after {
+  box-sizing: border-box;
+}
+
+/* ============================================
+   LANDING STATE
+   ============================================ */
+
+.plekify-chat__landing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 2rem;
+}
+
+.landing__container {
+  width: 100%;
+  max-width: 580px;
+  text-align: center;
+}
+
+/* Logo/Icon */
+.landing__icon {
+  margin-bottom: 1.5rem;
+}
+
+.plekify-logo {
+  width: 64px;
+  height: 64px;
+  color: var(--plekify-primary);
+}
+
+/* Title */
+.landing__title {
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 600;
+  color: var(--plekify-text);
+  margin: 0 0 0.5rem;
+  line-height: 1.2;
+}
+
+.landing__subtitle {
+  font-size: 1.125rem;
+  color: var(--plekify-text-muted);
+  margin: 0 0 2rem;
+}
+
+/* Input Area */
+.landing__input-wrapper {
+  position: relative;
+  background: var(--plekify-card-bg);
+  border-radius: var(--plekify-radius-lg);
+  box-shadow: var(--plekify-shadow-lg);
+  border: 1px solid var(--plekify-border);
+  overflow: hidden;
+}
+
+.landing__input {
+  width: 100%;
+  padding: 1.25rem;
+  padding-right: 100px;
+  font-size: 1rem;
+  font-family: inherit;
+  color: var(--plekify-text);
+  background: transparent;
+  border: none;
+  resize: none;
+  outline: none;
+  line-height: 1.5;
+}
+
+.landing__input::placeholder {
+  color: var(--plekify-text-muted);
+  opacity: 0.7;
+}
+
+.landing__voice-btn,
+.landing__submit-btn {
+  position: absolute;
+  bottom: 12px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--plekify-transition);
+}
+
+.landing__voice-btn {
+  right: 60px;
+  background: var(--plekify-bg-alt);
+  color: var(--plekify-text-muted);
+}
+
+.landing__voice-btn:hover {
+  background: var(--plekify-primary-light);
+  color: var(--plekify-primary-dark);
+}
+
+.landing__voice-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.landing__submit-btn {
+  right: 12px;
+  background: var(--plekify-primary);
+  color: white;
+}
+
+.landing__submit-btn:hover:not(:disabled) {
+  background: var(--plekify-primary-dark);
+}
+
+.landing__submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.landing__submit-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Quick Tags */
+.landing__quick-tags {
+  margin-top: 2rem;
+}
+
+.quick-tags__label {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--plekify-text-muted);
+  margin-bottom: 0.75rem;
+}
+
+.quick-tags__list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.quick-tag {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-family: inherit;
+  color: var(--plekify-text);
+  background: var(--plekify-card-bg);
+  border: 1px solid var(--plekify-border);
+  border-radius: 2rem;
+  cursor: pointer;
+  transition: all var(--plekify-transition);
+}
+
+.quick-tag:hover {
+  background: var(--plekify-primary-light);
+  border-color: var(--plekify-primary);
+  color: var(--plekify-primary-dark);
+}
+
+/* ============================================
+   CONVERSATION STATE
+   ============================================ */
+
+.plekify-chat__conversation {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* Header */
+.conversation__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: var(--plekify-card-bg);
+  border-bottom: 1px solid var(--plekify-border);
+  flex-shrink: 0;
+}
+
+.header__back-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-family: inherit;
+  color: var(--plekify-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--plekify-radius-sm);
+  cursor: pointer;
+  transition: all var(--plekify-transition);
+}
+
+.header__back-btn:hover {
+  color: var(--plekify-text);
+  background: var(--plekify-bg-alt);
+}
+
+.header__back-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* MVB Progress Chips */
+.header__mvb-progress {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.mvb-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  color: var(--plekify-text-muted);
+  background: var(--plekify-bg-alt);
+  border-radius: 2rem;
+  transition: all var(--plekify-transition);
+}
+
+.mvb-chip[data-complete="true"] {
+  color: var(--plekify-secondary-dark);
+  background: rgba(122, 158, 126, 0.15);
+}
+
+.mvb-chip[data-complete="true"] .mvb-icon {
+  color: var(--plekify-secondary);
+}
+
+.mvb-chip[data-complete="true"] .mvb-icon::before {
+  content: '\2713';
+}
+
+.mvb-icon {
+  font-size: 0.875rem;
+}
+
+@media (max-width: 640px) {
+  .mvb-chip .mvb-label {
+    display: none;
+  }
+}
+
+/* Messages Container */
+.conversation__messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Chat Messages */
+.chat-message {
+  display: flex;
+  gap: 0.75rem;
+  max-width: 85%;
+  animation: messageSlideIn 0.3s ease;
+}
+
+@keyframes messageSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.chat-message--user {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.chat-message--ai {
+  align-self: flex-start;
+}
+
+.message__avatar {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--plekify-primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.message__avatar svg {
+  width: 20px;
+  height: 20px;
+}
+
+.message__content {
+  background: var(--plekify-ai-bubble);
+  border-radius: var(--plekify-radius);
+  padding: 0.875rem 1rem;
+  box-shadow: var(--plekify-shadow);
+}
+
+.chat-message--user .message__content {
+  background: var(--plekify-user-bubble);
+  box-shadow: none;
+}
+
+.message__text {
+  margin: 0;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.message__cards {
+  margin-top: 1rem;
+}
+
+.message__questions {
+  margin-top: 1rem;
+}
+
+/* ============================================
+   DESTINATION CARDS
+   ============================================ */
+
+.destination-cards-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.destination-card {
+  background: var(--plekify-card-bg);
+  border: 1px solid var(--plekify-border);
+  border-radius: var(--plekify-radius);
+  padding: 1rem;
+  transition: all var(--plekify-transition);
+}
+
+.destination-card:hover {
+  border-color: var(--plekify-primary);
+  box-shadow: var(--plekify-shadow);
+}
+
+.destination-card.is-locked {
+  border-color: var(--plekify-secondary);
+  background: rgba(122, 158, 126, 0.05);
+}
+
+.destination-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.destination-card__days {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--plekify-primary-dark);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.destination-card__locked-badge {
+  font-size: 0.75rem;
+  color: var(--plekify-secondary-dark);
+  font-weight: 500;
+}
+
+.destination-card__name {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+  color: var(--plekify-text);
+}
+
+.destination-card__matches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-bottom: 0.5rem;
+}
+
+.match-tag {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.7rem;
+  color: var(--plekify-secondary-dark);
+  background: rgba(122, 158, 126, 0.15);
+  border-radius: 1rem;
+}
+
+.destination-card__drive {
+  font-size: 0.8rem;
+  color: var(--plekify-text-muted);
+  margin: 0;
+}
+
+.destination-card__actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+/* ============================================
+   PROPERTY CARDS
+   ============================================ */
+
+.property-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.property-card {
+  background: var(--plekify-card-bg);
+  border: 1px solid var(--plekify-border);
+  border-radius: var(--plekify-radius);
+  overflow: hidden;
+  transition: all var(--plekify-transition);
+}
+
+.property-card:hover {
+  border-color: var(--plekify-primary);
+  box-shadow: var(--plekify-shadow);
+}
+
+.property-card.is-selected {
+  border-color: var(--plekify-secondary);
+  box-shadow: 0 0 0 2px var(--plekify-secondary);
+}
+
+.property-card__image {
+  aspect-ratio: 4/3;
+  overflow: hidden;
+  background: var(--plekify-bg-alt);
+}
+
+.property-card__image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.property-card__content {
+  padding: 0.75rem;
+}
+
+.property-card__name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0 0 0.25rem;
+  color: var(--plekify-text);
+}
+
+.property-card__rating {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  color: var(--plekify-primary-dark);
+  margin-bottom: 0.25rem;
+}
+
+.rating__stars {
+  color: var(--plekify-primary);
+}
+
+.property-card__style {
+  font-size: 0.75rem;
+  color: var(--plekify-text-muted);
+  margin: 0;
+}
+
+.property-card__actions {
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid var(--plekify-border);
+}
+
+/* ============================================
+   ROUTE SKELETON
+   ============================================ */
+
+.route-skeleton {
+  background: var(--plekify-card-bg);
+  border: 1px solid var(--plekify-border);
+  border-radius: var(--plekify-radius);
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+.route-skeleton__title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 1rem;
+  color: var(--plekify-text);
+}
+
+.route-skeleton__title svg {
+  width: 20px;
+  height: 20px;
+  color: var(--plekify-primary);
+}
+
+.route-skeleton__count {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--plekify-text-muted);
+}
+
+.route-skeleton__timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-left: 0.5rem;
+  border-left: 2px solid var(--plekify-border);
+  padding-left: 1rem;
+}
+
+.timeline-stop {
+  position: relative;
+  padding: 0.5rem 0;
+}
+
+.timeline-stop::before {
+  content: '';
+  position: absolute;
+  left: -1.375rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 10px;
+  height: 10px;
+  background: var(--plekify-card-bg);
+  border: 2px solid var(--plekify-primary);
+  border-radius: 50%;
+}
+
+.timeline-stop.is-locked::before {
+  background: var(--plekify-secondary);
+  border-color: var(--plekify-secondary);
+}
+
+.timeline-stop__name {
+  font-weight: 500;
+  color: var(--plekify-text);
+}
+
+.timeline-stop__meta {
+  font-size: 0.8rem;
+  color: var(--plekify-text-muted);
+}
+
+.route-skeleton__actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+/* ============================================
+   SUGGESTION CHIPS (Follow-up Questions)
+   ============================================ */
+
+.suggestion-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.suggestion-chip {
+  display: inline-block;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  font-family: inherit;
+  color: var(--plekify-text);
+  background: var(--plekify-bg);
+  border: 1px solid var(--plekify-border-strong);
+  border-radius: 2rem;
+  cursor: pointer;
+  transition: all var(--plekify-transition);
+  text-align: left;
+  line-height: 1.4;
+}
+
+.suggestion-chip:hover {
+  background: var(--plekify-primary-light);
+  border-color: var(--plekify-primary);
+  color: var(--plekify-primary-dark);
+  transform: translateY(-1px);
+}
+
+.suggestion-chip:active {
+  transform: translateY(0);
+}
+
+/* Legacy support for clarifying-questions class */
+.clarifying-questions {
+  margin-top: 0.75rem;
+}
+
+.questions__intro {
+  display: none; /* Hide the "Questions to refine:" label */
+}
+
+.questions__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.question-item {
+  margin: 0;
+  padding: 0;
+}
+
+.question-btn {
+  display: inline-block;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  font-family: inherit;
+  color: var(--plekify-text);
+  background: var(--plekify-bg);
+  border: 1px solid var(--plekify-border-strong);
+  border-radius: 2rem;
+  cursor: pointer;
+  transition: all var(--plekify-transition);
+  text-align: left;
+  line-height: 1.4;
+}
+
+.question-btn:hover {
+  background: var(--plekify-primary-light);
+  border-color: var(--plekify-primary);
+  color: var(--plekify-primary-dark);
+  transform: translateY(-1px);
+}
+
+.question-btn:active {
+  transform: translateY(0);
+}
+
+/* ============================================
+   BUTTONS
+   ============================================ */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-family: inherit;
+  font-weight: 500;
+  border-radius: var(--plekify-radius-sm);
+  cursor: pointer;
+  transition: all var(--plekify-transition);
+  border: 1px solid transparent;
+}
+
+.btn--lock {
+  background: var(--plekify-secondary);
+  color: white;
+  border-color: var(--plekify-secondary);
+}
+
+.btn--lock:hover {
+  background: var(--plekify-secondary-dark);
+}
+
+.btn--properties {
+  background: transparent;
+  color: var(--plekify-text);
+  border-color: var(--plekify-border-strong);
+}
+
+.btn--properties:hover {
+  background: var(--plekify-bg-alt);
+  border-color: var(--plekify-text-muted);
+}
+
+.btn--select {
+  background: var(--plekify-primary);
+  color: white;
+  width: 100%;
+}
+
+.btn--select:hover {
+  background: var(--plekify-primary-dark);
+}
+
+.btn--map,
+.btn--adjust {
+  background: transparent;
+  color: var(--plekify-text-muted);
+  border-color: var(--plekify-border);
+  font-size: 0.8rem;
+}
+
+.btn--map:hover,
+.btn--adjust:hover {
+  background: var(--plekify-bg-alt);
+  color: var(--plekify-text);
+}
+
+/* ============================================
+   INPUT AREA (Conversation)
+   ============================================ */
+
+.conversation__input-area {
+  flex-shrink: 0;
+  padding: 1rem;
+  background: var(--plekify-card-bg);
+  border-top: 1px solid var(--plekify-border);
+}
+
+.input-area__wrapper {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  background: var(--plekify-bg);
+  border: 1px solid var(--plekify-border);
+  border-radius: var(--plekify-radius);
+  padding: 0.5rem;
+}
+
+.input-area__textarea {
+  flex: 1;
+  padding: 0.5rem;
+  font-size: 1rem;
+  font-family: inherit;
+  color: var(--plekify-text);
+  background: transparent;
+  border: none;
+  resize: none;
+  outline: none;
+  line-height: 1.4;
+  max-height: 120px;
+}
+
+.input-area__textarea::placeholder {
+  color: var(--plekify-text-muted);
+  opacity: 0.7;
+}
+
+.input-area__voice-btn,
+.input-area__send-btn {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--plekify-transition);
+}
+
+.input-area__voice-btn {
+  background: var(--plekify-bg-alt);
+  color: var(--plekify-text-muted);
+}
+
+.input-area__voice-btn:hover {
+  background: var(--plekify-primary-light);
+  color: var(--plekify-primary-dark);
+}
+
+.input-area__voice-btn.is-recording {
+  background: #ef4444;
+  color: white;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.input-area__voice-btn svg,
+.input-area__send-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.input-area__send-btn {
+  background: var(--plekify-primary);
+  color: white;
+}
+
+.input-area__send-btn:hover:not(:disabled) {
+  background: var(--plekify-primary-dark);
+}
+
+.input-area__send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Generate Button */
+.input-area__generate {
+  margin-top: 0.75rem;
+}
+
+.generate-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.875rem 1.5rem;
+  font-size: 1rem;
+  font-family: inherit;
+  font-weight: 600;
+  color: white;
+  background: linear-gradient(135deg, var(--plekify-primary), var(--plekify-primary-dark));
+  border: none;
+  border-radius: var(--plekify-radius);
+  cursor: pointer;
+  transition: all var(--plekify-transition);
+  box-shadow: var(--plekify-shadow);
+}
+
+.generate-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--plekify-shadow-lg);
+}
+
+.generate-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.generate-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* ============================================
+   GENERATING STATE
+   ============================================ */
+
+.plekify-chat__generating {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 2rem;
+}
+
+.generating__container {
+  text-align: center;
+  max-width: 400px;
+}
+
+.generating__spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid var(--plekify-border);
+  border-top-color: var(--plekify-primary);
+  border-radius: 50%;
+  margin: 0 auto 1.5rem;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.generating__title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+  color: var(--plekify-text);
+}
+
+.generating__status {
+  font-size: 1rem;
+  color: var(--plekify-text-muted);
+  margin: 0 0 2rem;
+}
+
+.generating__progress {
+  height: 4px;
+  background: var(--plekify-border);
+  border-radius: 2px;
+  margin-bottom: 2rem;
+  overflow: hidden;
+}
+
+.progress__bar {
+  height: 100%;
+  background: var(--plekify-primary);
+  border-radius: 2px;
+  width: 0%;
+  transition: width 0.3s ease;
+}
+
+.generating__steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  text-align: left;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  color: var(--plekify-text-muted);
+  transition: color var(--plekify-transition);
+}
+
+.step.is-active {
+  color: var(--plekify-text);
+}
+
+.step.is-complete {
+  color: var(--plekify-secondary-dark);
+}
+
+.step__icon {
+  font-size: 1.125rem;
+}
+
+.step.is-active .step__icon::before {
+  content: '\25C9';
+  color: var(--plekify-primary);
+}
+
+.step.is-complete .step__icon::before {
+  content: '\2713';
+  color: var(--plekify-secondary);
+}
+
+.step__label {
+  font-size: 0.95rem;
+}
+
+/* ============================================
+   RESPONSIVE ADJUSTMENTS
+   ============================================ */
+
+@media (max-width: 640px) {
+  .landing__container {
+    padding: 0 0.5rem;
+  }
+
+  .landing__title {
+    font-size: 1.5rem;
+  }
+
+  .landing__input {
+    padding-right: 90px;
+  }
+
+  .conversation__header {
+    padding: 0.5rem;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .header__mvb-progress {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .chat-message {
+    max-width: 95%;
+  }
+
+  .destination-card__actions {
+    flex-direction: column;
+  }
+
+  .property-cards-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================
+   DARK MODE SUPPORT (optional)
+   ============================================ */
+
+@media (prefers-color-scheme: dark) {
+  .plekify-chat[data-theme="auto"] {
+    --plekify-bg: #1A1714;
+    --plekify-bg-alt: #252019;
+    --plekify-text: #F5EDE4;
+    --plekify-text-muted: #A89B8E;
+    --plekify-card-bg: #252019;
+    --plekify-border: rgba(245, 237, 228, 0.1);
+    --plekify-border-strong: rgba(245, 237, 228, 0.2);
+    --plekify-user-bubble: #352E27;
+    --plekify-ai-bubble: #252019;
+    --plekify-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    --plekify-shadow-lg: 0 4px 20px rgba(0, 0, 0, 0.4);
+  }
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ============================================
+   STATE TRANSITIONS
+   ============================================ */
+
+/* Smooth transitions between states */
+.plekify-chat__landing,
+.plekify-chat__conversation,
+.plekify-chat__generating {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* Landing state exit animation */
+.plekify-chat[data-state="conversation"] .plekify-chat__landing,
+.plekify-chat[data-state="generating"] .plekify-chat__landing {
+  opacity: 0;
+  transform: translateY(-20px);
+  pointer-events: none;
+}
+
+/* Conversation state enter animation */
+.plekify-chat__conversation {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.plekify-chat[data-state="conversation"] .plekify-chat__conversation {
+  opacity: 1;
+  transform: translateY(0);
+  animation: slideUpFadeIn 0.4s ease forwards;
+}
+
+@keyframes slideUpFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Generating state enter animation */
+.plekify-chat__generating {
+  opacity: 0;
+}
+
+.plekify-chat[data-state="generating"] .plekify-chat__generating {
+  opacity: 1;
+  animation: fadeIn 0.3s ease forwards;
+}
+
+/* ============================================
+   AI THINKING INDICATOR
+   ============================================ */
+
+.plekify-thinking {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  max-width: 85%;
+  animation: messageSlideIn 0.3s ease;
+}
+
+.plekify-thinking__avatar {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--plekify-primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.plekify-thinking__avatar svg {
+  width: 20px;
+  height: 20px;
+}
+
+.plekify-thinking__content {
+  background: var(--plekify-ai-bubble);
+  border-radius: var(--plekify-radius);
+  padding: 0.875rem 1rem;
+  box-shadow: var(--plekify-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.plekify-thinking__dots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.plekify-thinking__dot {
+  width: 8px;
+  height: 8px;
+  background: var(--plekify-primary);
+  border-radius: 50%;
+  animation: plekifyPulse 1.4s ease-in-out infinite;
+}
+
+.plekify-thinking__dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.plekify-thinking__dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes plekifyPulse {
+  0%, 80%, 100% {
+    transform: scale(0.6);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.plekify-thinking__text {
+  font-size: 0.875rem;
+  color: var(--plekify-text-muted);
+  font-style: italic;
+  transition: opacity 0.2s ease;
+}
+
+@keyframes thinkingTextFade {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+/* ============================================
+   PROPERTY CARD GALLERY (16:9 Thumbnails)
+   ============================================ */
+
+.property-card__gallery {
+  position: relative;
+  cursor: pointer;
+}
+
+.gallery__main {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: var(--plekify-bg-alt);
+}
+
+.gallery__hero {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.property-card:hover .gallery__hero {
+  transform: scale(1.03);
+}
+
+.gallery__count {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.65);
+  color: white;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  backdrop-filter: blur(4px);
+}
+
+.gallery__thumbs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.gallery__thumbs::-webkit-scrollbar {
+  height: 4px;
+}
+
+.gallery__thumbs::-webkit-scrollbar-thumb {
+  background: var(--plekify-border-strong);
+  border-radius: 2px;
+}
+
+.gallery__thumb {
+  flex-shrink: 0;
+  width: 48px;
+  height: 27px; /* 16:9 ratio */
+  border-radius: 4px;
+  overflow: hidden;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+  cursor: pointer;
+}
+
+.gallery__thumb:hover,
+.gallery__thumb.is-active {
+  opacity: 1;
+}
+
+.gallery__thumb.is-active {
+  outline: 2px solid var(--plekify-primary);
+  outline-offset: 1px;
+}
+
+.gallery__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Description in property card */
+.property-card__description {
+  font-size: 0.8rem;
+  color: var(--plekify-text-muted);
+  margin: 0.5rem 0 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ============================================
+   DESTINATION GALLERY (Inline in Chat)
+   ============================================ */
+
+.destination-gallery {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: var(--plekify-card-bg);
+  border: 1px solid var(--plekify-border);
+  border-radius: var(--plekify-radius);
+}
+
+.destination-gallery__header {
+  margin-bottom: 0.75rem;
+}
+
+.destination-gallery__title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.25rem;
+  color: var(--plekify-text);
+}
+
+.destination-gallery__subtitle {
+  font-size: 0.8rem;
+  color: var(--plekify-text-muted);
+}
+
+.destination-gallery__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.destination-gallery__item {
+  aspect-ratio: 16 / 9;
+  border-radius: var(--plekify-radius-sm);
+  overflow: hidden;
+  cursor: pointer;
+  position: relative;
+  background: var(--plekify-bg-alt);
+}
+
+.destination-gallery__item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.destination-gallery__item:hover img {
+  transform: scale(1.05);
+}
+
+.destination-gallery__item::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent 60%, rgba(0,0,0,0.4) 100%);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.destination-gallery__item:hover::after {
+  opacity: 1;
+}
+
+.destination-gallery__more {
+  background: var(--plekify-bg-alt);
+}
+
+.destination-gallery__more-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: background 0.2s ease;
+}
+
+.destination-gallery__more:hover .destination-gallery__more-overlay {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+/* ============================================
+   FULLSCREEN GALLERY OVERLAY (Horizon-style)
+   ============================================ */
+
+.plekify-gallery-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  background: rgba(0, 0, 0, 0.95);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.plekify-gallery-overlay[aria-hidden="false"] {
+  opacity: 1;
+  visibility: visible;
+}
+
+.gallery-overlay__backdrop {
+  position: absolute;
+  inset: 0;
+  background: transparent;
+}
+
+.gallery-overlay__container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  z-index: 1;
+}
+
+/* Gallery Header */
+.gallery-overlay__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  background: rgba(0, 0, 0, 0.5);
+  flex-shrink: 0;
+}
+
+.gallery-header__info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.gallery-header__title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: white;
+  margin: 0;
+}
+
+.gallery-header__counter {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.gallery-header__close {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 50%;
+  color: white;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.gallery-header__close:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.gallery-header__close svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* Gallery Main Area */
+.gallery-overlay__main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 1rem;
+  min-height: 0;
+}
+
+.gallery-main__viewport {
+  position: relative;
+  max-width: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.gallery-main__image {
+  max-width: 100%;
+  max-height: calc(100vh - 200px);
+  object-fit: contain;
+  border-radius: 4px;
+  user-select: none;
+  animation: galleryImageFadeIn 0.3s ease;
+}
+
+@keyframes galleryImageFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.gallery-main__caption {
+  margin-top: 1rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.8);
+  max-width: 600px;
+  line-height: 1.5;
+}
+
+/* Navigation Buttons */
+.gallery-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 50%;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 2;
+}
+
+.gallery-nav:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-50%) scale(1.05);
+}
+
+.gallery-nav:active {
+  transform: translateY(-50%) scale(0.95);
+}
+
+.gallery-nav--prev {
+  left: 1rem;
+}
+
+.gallery-nav--next {
+  right: 1rem;
+}
+
+.gallery-nav svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* Thumbnail Strip */
+.gallery-overlay__thumbs {
+  flex-shrink: 0;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.5);
+  overflow-x: auto;
+}
+
+.gallery-thumbs__track {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  min-width: max-content;
+}
+
+.gallery-thumb-item {
+  flex-shrink: 0;
+  width: 80px;
+  height: 45px; /* 16:9 ratio */
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+}
+
+.gallery-thumb-item:hover {
+  opacity: 0.8;
+}
+
+.gallery-thumb-item.is-active {
+  opacity: 1;
+  border-color: var(--plekify-primary);
+}
+
+.gallery-thumb-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Responsive adjustments for gallery */
+@media (max-width: 768px) {
+  .gallery-overlay__header {
+    padding: 0.75rem 1rem;
+  }
+
+  .gallery-header__title {
+    font-size: 1rem;
+  }
+
+  .gallery-header__close {
+    width: 40px;
+    height: 40px;
+  }
+
+  .gallery-nav {
+    width: 40px;
+    height: 40px;
+  }
+
+  .gallery-nav--prev {
+    left: 0.5rem;
+  }
+
+  .gallery-nav--next {
+    right: 0.5rem;
+  }
+
+  .gallery-thumb-item {
+    width: 60px;
+    height: 34px;
+  }
+
+  .gallery-main__image {
+    max-height: calc(100vh - 180px);
+  }
+}
+
+/* Keyboard focus states */
+.gallery-header__close:focus-visible,
+.gallery-nav:focus-visible,
+.gallery-thumb-item:focus-visible {
+  outline: 2px solid var(--plekify-primary);
+  outline-offset: 2px;
+}
+
+/* Hide scrollbar but allow scroll */
+.gallery-overlay__thumbs::-webkit-scrollbar {
+  height: 4px;
+}
+
+.gallery-overlay__thumbs::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+}
+
+/* Prevent body scroll when gallery is open */
+body.gallery-open {
+  overflow: hidden;
+}
+
+/* ============================================
+   COLLAPSIBLE USER MESSAGES
+   ============================================ */
+
+.message__text-truncated,
+.message__text-full {
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+.message__expand-btn {
+  display: inline-block;
+  margin-top: 0.5rem;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.8rem;
+  font-family: inherit;
+  color: var(--plekify-primary-dark);
+  background: var(--plekify-primary-light);
+  border: none;
+  border-radius: 1rem;
+  cursor: pointer;
+  transition: all var(--plekify-transition);
+}
+
+.message__expand-btn:hover {
+  background: var(--plekify-primary);
+  color: white;
+}
+
+/* ============================================
+   CONSTRAINT MATCH TAGS (Property Cards)
+   ============================================ */
+
+.property-card__constraint-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+}
+
+.constraint-tag {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: var(--plekify-secondary-dark);
+  background: rgba(122, 158, 126, 0.15);
+  border-radius: 1rem;
+  white-space: nowrap;
+}
+
+.constraint-tag:first-child {
+  background: rgba(212, 165, 116, 0.2);
+  color: var(--plekify-primary-dark);
+}
+
+/* ============================================
+   PLACEHOLDER GALLERY STATE
+   ============================================ */
+
+.gallery--placeholder {
+  position: relative;
+}
+
+.gallery--placeholder::after {
+  content: 'Images coming soon';
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.65);
+  color: white;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-style: italic;
+}

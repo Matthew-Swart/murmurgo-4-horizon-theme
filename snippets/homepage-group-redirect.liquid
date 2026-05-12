@@ -2,14 +2,14 @@
   Homepage Redirect Logic (Simplified)
   ====================================
   Handles two store scenarios based on shop metafield:
-  
+
   1. NATIVE (default): Show templates/index.json - no redirect
   2. PROPERTY_REDIRECT: Redirect to the single wetu-property product
-  
+
   Configuration:
   - Shop metafield: shop.metafields.plekify.home_behavior
   - Values: 'native' (default), 'property_redirect'
-  
+
   Usage: Rendered in theme.liquid <head> before any other content
 {% endcomment %}
 
@@ -19,84 +19,68 @@
   if template == 'index' or template.name == 'index'
     assign is_homepage = true
   endif
-  
+
   # Also check request.path as fallback
   if request.path == '/' or request.path == ''
     assign is_homepage = true
   endif
-  
-  # Exit early if not homepage
-  unless is_homepage
-    break
-  endunless
-  
-  # NEVER redirect in theme editor - allows homepage customization
-  if request.design_mode
-    break
-  endif
-
-  # Get home behavior from shop metafield (default to 'native' = no redirect)
-  assign home_behavior = shop.metafields.plekify.home_behavior.value | default: 'native'
-  
-  # NATIVE mode: Show index.json template (no redirect)
-  if home_behavior == 'native' or home_behavior == blank
-    break
-  endif
-
-  # PROPERTY_REDIRECT mode: Redirect to single property product
-  assign should_redirect = false
-  assign redirect_url = nil
-
-  if home_behavior == 'property_redirect'
-    # Find the single wetu-property product
-    assign source_collection = collections['all-properties'] | default: collections['properties']
-    
-    if source_collection
-      for prod in source_collection.products limit: 5
-        if prod.type == 'wetu-property'
-          assign redirect_url = prod.url
-          assign should_redirect = true
-          break
-        endif
-      endfor
-    endif
-    
-    # Fallback: Search all products if no collection found
-    unless should_redirect
-      for prod in shop.products limit: 20
-        if prod.type == 'wetu-property'
-          assign redirect_url = prod.url
-          assign should_redirect = true
-          break
-        endif
-      endfor
-    endunless
-  endif
 -%}
 
-{%- if should_redirect and redirect_url != blank -%}
-  <script>
-    (function() {
-      // Only redirect from true homepage
-      var currentPath = window.location.pathname;
-      if (currentPath === '/' || currentPath === '') {
-        window.location.replace('{{ redirect_url }}');
-      }
-    })();
-  </script>
-  <noscript>
-    <meta http-equiv="refresh" content="0;url={{ redirect_url }}">
-  </noscript>
-{%- endif -%}
-
-{% comment %} DEBUG: HTML comment for troubleshooting {% endcomment %}
 {%- if is_homepage -%}
-  <!-- Homepage Redirect Debug:
-    template={{ template }}
-    is_homepage={{ is_homepage }}
-    design_mode={{ request.design_mode }}
-    home_behavior="{{ home_behavior }}"
-    should_redirect={{ should_redirect }}
-    redirect_url="{{ redirect_url | default: 'nil' }}"
-  -->
+  {%- unless request.design_mode -%}
+    {%- assign home_behavior = shop.metafields.plekify.home_behavior.value | default: 'native' -%}
+
+    {%- unless home_behavior == 'native' or home_behavior == blank -%}
+      {%- assign should_redirect = false -%}
+      {%- assign redirect_url = nil -%}
+
+      {%- if home_behavior == 'property_redirect' -%}
+        {%- assign source_collection = collections['all-properties'] | default: collections['properties'] -%}
+
+        {%- if source_collection -%}
+          {%- for prod in source_collection.products limit: 5 -%}
+            {%- if prod.type == 'wetu-property' -%}
+              {%- assign redirect_url = prod.url -%}
+              {%- assign should_redirect = true -%}
+              {%- break -%}
+            {%- endif -%}
+          {%- endfor -%}
+        {%- endif -%}
+
+        {%- unless should_redirect -%}
+          {%- for prod in shop.products limit: 20 -%}
+            {%- if prod.type == 'wetu-property' -%}
+              {%- assign redirect_url = prod.url -%}
+              {%- assign should_redirect = true -%}
+              {%- break -%}
+            {%- endif -%}
+          {%- endfor -%}
+        {%- endunless -%}
+      {%- endif -%}
+
+      {%- if should_redirect and redirect_url != blank -%}
+        <script>
+          (function() {
+            var currentPath = window.location.pathname;
+            if (currentPath === '/' || currentPath === '') {
+              window.location.replace('{{ redirect_url }}');
+            }
+          })();
+        </script>
+        <noscript>
+          <meta http-equiv="refresh" content="0;url={{ redirect_url }}">
+        </noscript>
+      {%- endif -%}
+
+      {% comment %} DEBUG: HTML comment for troubleshooting {% endcomment %}
+      <!-- Homepage Redirect Debug:
+        template={{ template }}
+        is_homepage={{ is_homepage }}
+        design_mode={{ request.design_mode }}
+        home_behavior="{{ home_behavior }}"
+        should_redirect={{ should_redirect }}
+        redirect_url="{{ redirect_url | default: 'nil' }}"
+      -->
+    {%- endunless -%}
+  {%- endunless -%}
 {%- endif -%}

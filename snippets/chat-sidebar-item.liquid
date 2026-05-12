@@ -1,0 +1,97 @@
+{% comment %}
+  Chat Sidebar Item
+
+  Renders a confirmed selection in the trip sidebar.
+  Used to display properties/activities that the user has added to their trip.
+
+  Usage:
+  {% render 'chat-sidebar-item',
+    item: item_object,
+    cdn_base: 'https://cdn.plekify.com',
+    show_remove: true
+  %}
+
+  Parameters:
+  - item: Object with id, name, location, image, dates (optional), type (optional)
+  - cdn_base: Base URL for Cloudflare CDN
+  - show_remove: Boolean to show remove button (default: true)
+  - day_number: Optional day number for grouping
+{% endcomment %}
+
+{% assign cdn = cdn_base | default: 'https://cdn.plekify.com' %}
+{% assign show_remove_btn = show_remove | default: true %}
+
+{% comment %}
+  Generate optimized thumbnail URL (120x120 = 60x60 @2x).
+  cdn.plekify.com is fronted by Cloudflare Image Resizing, which only
+  honours the /cdn-cgi/image/ path syntax. Query-string params are ignored.
+{% endcomment %}
+{% assign thumb_url = item.image %}
+{% assign already_cf_resized = false %}
+{% if thumb_url contains '/cdn-cgi/image/' %}{% assign already_cf_resized = true %}{% endif %}
+{% if thumb_url contains 'cdn.plekify.com/' and already_cf_resized == false %}
+  {% assign thumb_url = thumb_url | replace: 'https://cdn.plekify.com/', 'https://cdn.plekify.com/cdn-cgi/image/width=120,height=120,fit=cover,quality=85,format=auto/' %}
+{% elsif thumb_url contains 'imagedelivery.net' %}
+  {% assign separator = '?' %}
+  {% if thumb_url contains '?' %}{% assign separator = '&' %}{% endif %}
+  {% assign thumb_url = thumb_url | append: separator | append: 'width=120&height=120&fit=cover' %}
+{% endif %}
+
+<article
+  class="sidebar-item"
+  data-sidebar-item="{{ item.id }}"
+  data-item-type="{{ item.type | default: 'property' }}"
+>
+  <img
+    class="sidebar-item__image"
+    src="{{ thumb_url }}"
+    alt="{{ item.name }}"
+    width="60"
+    height="60"
+    loading="lazy"
+  >
+
+  <div class="sidebar-item__content">
+    <h4 class="sidebar-item__name">{{ item.name }}</h4>
+
+    {% if item.location %}
+      <p class="sidebar-item__meta">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" style="vertical-align: -1px; margin-right: 2px;">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+          <circle cx="12" cy="10" r="3"/>
+        </svg>
+        {{ item.location }}
+      </p>
+    {% endif %}
+
+    {% if item.dates %}
+      <p class="sidebar-item__dates">{{ item.dates }}</p>
+    {% endif %}
+
+    {% if item.nights %}
+      <p class="sidebar-item__nights">{{ item.nights }} night{% if item.nights != 1 %}s{% endif %}</p>
+    {% endif %}
+  </div>
+
+  {% if show_remove_btn %}
+    <button
+      class="sidebar-item__remove"
+      data-remove="{{ item.id }}"
+      type="button"
+      aria-label="Remove {{ item.name }} from trip"
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <line x1="18" y1="6" x2="6" y2="18"/>
+        <line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+  {% endif %}
+</article>
+
+<style>
+  .sidebar-item__nights {
+    font-size: 11px;
+    color: var(--chat-success, #10b981);
+    margin-top: 2px;
+  }
+</style>

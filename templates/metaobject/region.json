@@ -1,0 +1,41 @@
+{
+  "sections": {
+    "region_hero": {
+      "type": "region-hero",
+      "settings": {}
+    },
+    "region_header": {
+      "type": "region-header",
+      "settings": {}
+    },
+    "region_map": {
+      "type": "region-map",
+      "settings": {}
+    },
+    "region_description": {
+      "type": "region-description",
+      "settings": {}
+    },
+    "region_featured_properties": {
+      "type": "region-featured-properties",
+      "settings": {}
+    },
+    "region_subregions": {
+      "type": "region-subregions",
+      "settings": {}
+    },
+    "region_cta": {
+      "type": "region-cta",
+      "settings": {}
+    }
+  },
+  "order": [
+    "region_hero",
+    "region_header",
+    "region_map",
+    "region_description",
+    "region_featured_properties",
+    "region_subregions",
+    "region_cta"
+  ]
+}

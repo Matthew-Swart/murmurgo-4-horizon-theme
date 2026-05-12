@@ -1,0 +1,27 @@
+{% comment %}
+  property-rooms.liquid
+  Room type cards with photos, name, capacity, price.
+  Horizontal scroll on mobile.
+  Placeholder — Wetu room data loaded via JS if available.
+{% endcomment %}
+
+<section class="m-property-rooms" data-section-id="{{ section.id }}" data-property-id="{{ metaobject.system.id }}">
+  <div class="page-width">
+    <h2 class="m-property-rooms__title">Rooms</h2>
+    <div class="m-property-rooms__grid" data-rooms-container>
+      {% comment %} Rooms populated by JS from /api/places/:id {% endcomment %}
+      <div class="m-property-rooms__placeholder">
+        <p>Room details loading...</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Property Rooms",
+  "class": "section-property-rooms",
+  "settings": [],
+  "presets": [{ "name": "Property Rooms" }]
+}
+{% endschema %}

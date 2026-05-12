@@ -1,0 +1,206 @@
+{% comment %}
+  Plekify Chat Interface Section
+
+  A conversational AI travel planning interface featuring:
+  - Voice + text input
+  - Rich inline media (property cards, thumbnails)
+  - Full-screen gallery with contextual overlays
+  - Progressive trip building with selection states
+  - Persistent trip sidebar
+
+  Data sources:
+  - Primary: Google/Clickify database via Hetzner API
+  - Images: Cloudflare CDN
+{% endcomment %}
+
+{{ 'plekify-chat.css' | asset_url | stylesheet_tag }}
+
+<style>
+  #PlekifyChat-{{ section.id }} {
+    /* Section-scoped custom properties */
+    --section-padding-top: {{ section.settings.padding_top }}px;
+    --section-padding-bottom: {{ section.settings.padding_bottom }}px;
+  }
+
+  {% if section.settings.custom_accent_color != blank %}
+  #PlekifyChat-{{ section.id }} {
+    --chat-accent: {{ section.settings.custom_accent_color }};
+    --chat-accent-soft: {{ section.settings.custom_accent_color | color_modify: 'alpha', 0.2 }};
+  }
+  {% endif %}
+
+  {% if section.settings.custom_success_color != blank %}
+  #PlekifyChat-{{ section.id }} {
+    --chat-success: {{ section.settings.custom_success_color }};
+    --chat-success-soft: {{ section.settings.custom_success_color | color_modify: 'alpha', 0.2 }};
+  }
+  {% endif %}
+</style>
+
+<section
+  id="PlekifyChat-{{ section.id }}"
+  class="plekify-chat-section color-{{ section.settings.color_scheme }}"
+  data-section-type="plekify-chat"
+  data-section-id="{{ section.id }}"
+>
+  <plekify-chat-interface
+    api-base="{{ section.settings.api_base | default: '/api' }}"
+    briefing-api-base="{{ section.settings.briefing_api_base | default: 'https://app.plekify.com/api/briefing' }}"
+    cdn-base="{{ section.settings.cdn_base | default: 'https://cdn.plekify.com' }}"
+    placeholder="{{ section.settings.placeholder | default: 'Tell us about your dream African adventure...' }}"
+    welcome-message="{{ section.settings.welcome_message | escape }}"
+    quick-tags="{{ section.settings.quick_tags }}"
+    video-url="{{ section.settings.video_url | default: 'https://cdn.shopify.com/videos/c/o/v/9a699ef836da4143881c5ef33479d146.mp4' }}"
+    {% if section.settings.debug_mode %}data-debug="true"{% endif %}
+  >
+    <!-- Fallback content for no-JS -->
+    <noscript>
+      <div class="chat-fallback" style="padding: 40px; text-align: center; color: white; background: rgba(0,0,0,0.8);">
+        <h2>JavaScript Required</h2>
+        <p>Please enable JavaScript to use our travel planning assistant.</p>
+        <p>Alternatively, <a href="/pages/contact" style="color: #3b82f6;">contact us directly</a>.</p>
+      </div>
+    </noscript>
+  </plekify-chat-interface>
+</section>
+
+<script src="{{ 'plekify-chat.js' | asset_url }}" defer></script>
+
+{% schema %}
+{
+  "name": "Plekify Chat Interface",
+  "tag": "section",
+  "class": "plekify-chat-wrapper",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Video Background"
+    },
+    {
+      "type": "video",
+      "id": "background_video",
+      "label": "Background Video",
+      "info": "Upload a video for the landing page background. Recommended: 1920x1080, MP4 format, under 10MB."
+    },
+    {
+      "type": "text",
+      "id": "video_url",
+      "label": "Video URL (fallback)",
+      "default": "https://cdn.shopify.com/videos/c/o/v/9a699ef836da4143881c5ef33479d146.mp4",
+      "info": "External video URL if not using uploaded video"
+    },
+    {
+      "type": "header",
+      "content": "Chat Settings"
+    },
+    {
+      "type": "text",
+      "id": "placeholder",
+      "label": "Input Placeholder",
+      "default": "Tell us about your dream African adventure..."
+    },
+    {
+      "type": "textarea",
+      "id": "welcome_message",
+      "label": "Welcome Message",
+      "default": "Hi! I'm your travel planning assistant. Tell me about your dream trip - where you'd like to go, who's traveling, and what experiences matter most to you.",
+      "info": "First message shown to the user"
+    },
+    {
+      "type": "textarea",
+      "id": "quick_tags",
+      "label": "Example Prompts",
+      "default": "I'm planning a proposal. She loves wine, architecture, and giraffes. I need something that looks effortless but is actually meticulously planned. Secret itinerary.|Corporate retreat for 12 executives. 4 nights max. Needs to feel exclusive, with game drives and a private chef. Connectivity for one half-day meeting essential.|My parents are turning 70 and we want to surprise them with the trip of a lifetime. Big Five safari, maybe Victoria Falls, finishing at a quiet beach lodge. Budget around $80k for 8 people.|We're relocating to Dubai and have 3 weeks to show our kids (8 and 11) what Africa is about before we leave. Mix of wildlife, culture, and adventure. Malaria-free if possible.|Solo photography trip. I want to spend 10 days chasing the best light — Namibia's dunes, Botswana's elephants, maybe the Drakensberg. Off-grid is fine.",
+      "info": "Pipe-separated (|) list of aspirational travel briefs shown as example cards"
+    },
+    {
+      "type": "header",
+      "content": "API Configuration"
+    },
+    {
+      "type": "text",
+      "id": "api_base",
+      "label": "API Base URL",
+      "default": "https://app.plekify.com/api",
+      "info": "Base URL for general API calls"
+    },
+    {
+      "type": "text",
+      "id": "briefing_api_base",
+      "label": "Briefing API URL",
+      "default": "https://app.plekify.com/api/briefing",
+      "info": "URL for the chat/briefing API endpoint"
+    },
+    {
+      "type": "text",
+      "id": "cdn_base",
+      "label": "CDN Base URL",
+      "default": "https://cdn.plekify.com",
+      "info": "Cloudflare CDN for optimized images"
+    },
+    {
+      "type": "header",
+      "content": "Appearance"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color Scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "color",
+      "id": "custom_accent_color",
+      "label": "Accent Color (optional)",
+      "info": "Override the default blue accent color"
+    },
+    {
+      "type": "color",
+      "id": "custom_success_color",
+      "label": "Success Color (optional)",
+      "info": "Override the default green confirmation color"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "Padding Top",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "default": 0,
+      "unit": "px"
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "Padding Bottom",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "default": 0,
+      "unit": "px"
+    },
+    {
+      "type": "header",
+      "content": "Advanced"
+    },
+    {
+      "type": "checkbox",
+      "id": "debug_mode",
+      "label": "Debug Mode",
+      "default": false,
+      "info": "Enable console logging for development"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Plekify Chat",
+      "settings": {
+        "placeholder": "Tell us about your dream African adventure...",
+        "welcome_message": "Hi! I'm your travel planning assistant. Tell me about your dream trip - where you'd like to go, who's traveling, and what experiences matter most to you.",
+        "quick_tags": "I'm planning a proposal. She loves wine, architecture, and giraffes. I need something that looks effortless but is actually meticulously planned. Secret itinerary.|Corporate retreat for 12 executives. 4 nights max. Needs to feel exclusive, with game drives and a private chef. Connectivity for one half-day meeting essential.|My parents are turning 70 and we want to surprise them with the trip of a lifetime. Big Five safari, maybe Victoria Falls, finishing at a quiet beach lodge. Budget around $80k for 8 people.|We're relocating to Dubai and have 3 weeks to show our kids (8 and 11) what Africa is about before we leave. Mix of wildlife, culture, and adventure. Malaria-free if possible.|Solo photography trip. I want to spend 10 days chasing the best light — Namibia's dunes, Botswana's elephants, maybe the Drakensberg. Off-grid is fine."
+      }
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,49 @@
+{% comment %}
+  property-amenities.liquid
+  Grid of amenity icons + labels.
+  "Full list" expands to show all.
+{% endcomment %}
+
+{% assign amenities = metaobject.amenities.value | default: empty_array %}
+
+<section class="m-property-amenities" data-section-id="{{ section.id }}">
+  <div class="page-width">
+    <h2 class="m-property-amenities__title">What you get</h2>
+
+    {% if amenities.size > 0 %}
+      <div class="m-property-amenities__grid" data-amenities-grid>
+        {% for amenity in amenities limit: 8 %}
+          <div class="m-property-amenities__item">
+            <span class="m-property-amenities__icon">{% render 'icon-check' %}</span>
+            <span class="m-property-amenities__label">{{ amenity | capitalize }}</span>
+          </div>
+        {% endfor %}
+      </div>
+
+      {% if amenities.size > 8 %}
+        <div class="m-property-amenities__all" data-amenities-all hidden>
+          {% for amenity in amenities offset: 8 %}
+            <div class="m-property-amenities__item">
+              <span class="m-property-amenities__icon">{% render 'icon-check' %}</span>
+              <span class="m-property-amenities__label">{{ amenity | capitalize }}</span>
+            </div>
+          {% endfor %}
+        </div>
+        <button class="m-property-amenities__toggle" data-toggle-amenities>
+          Show all {{ amenities.size }} amenities
+        </button>
+      {% endif %}
+    {% else %}
+      <p class="m-property-amenities__empty">Amenity details coming soon.</p>
+    {% endif %}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Property Amenities",
+  "class": "section-property-amenities",
+  "settings": [],
+  "presets": [{ "name": "Property Amenities" }]
+}
+{% endschema %}

@@ -1,0 +1,46 @@
+{
+  "sections": {
+    "country_hero": {
+      "type": "country-hero",
+      "settings": {}
+    },
+    "country_header": {
+      "type": "country-header",
+      "settings": {}
+    },
+    "country_quick_facts": {
+      "type": "country-quick-facts",
+      "settings": {}
+    },
+    "country_description": {
+      "type": "country-description",
+      "settings": {}
+    },
+    "country_map": {
+      "type": "country-map",
+      "settings": {}
+    },
+    "country_featured_cities": {
+      "type": "country-featured-cities",
+      "settings": {}
+    },
+    "country_regions": {
+      "type": "country-regions",
+      "settings": {}
+    },
+    "country_cta": {
+      "type": "country-cta",
+      "settings": {}
+    }
+  },
+  "order": [
+    "country_hero",
+    "country_header",
+    "country_quick_facts",
+    "country_description",
+    "country_map",
+    "country_featured_cities",
+    "country_regions",
+    "country_cta"
+  ]
+}

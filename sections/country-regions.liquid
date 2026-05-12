@@ -1,0 +1,10 @@
+{% comment %} country-regions.liquid {% endcomment %}
+<section class="m-country-regions" data-section-id="{{ section.id }}" data-country="{{ metaobject.slug.value }}">
+  <div class="page-width">
+    <h2 class="m-country-regions__title">Regions</h2>
+    <div class="m-country-regions__grid" data-regions-container>
+      <div class="m-country-regions__loading">Loading regions...</div>
+    </div>
+  </div>
+</section>
+{% schema %}{ "name": "Country Regions", "class": "section-country-regions", "settings": [], "presets": [{ "name": "Country Regions" }] }{% endschema %}

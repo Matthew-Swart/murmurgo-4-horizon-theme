@@ -46,6 +46,9 @@
 
     {{ content_for_header }}
   {% include 'murmurgo-meta' %}
+  {% render 'murmurgo-config' %}
+  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+  <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
   </head>
 
   <body class="page-width-{{ settings.page_width }} card-hover-effect-{{ settings.card_hover_effect }}">

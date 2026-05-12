@@ -1,0 +1,37 @@
+{% comment %}
+  property-description.liquid
+  Headline max 6 words, body max 2 lines per paragraph on mobile.
+  Placeholder template — final copy generated later.
+{% endcomment %}
+
+{% assign desc = metaobject.description.value | default: '' %}
+{% assign short_desc = metaobject.short_description.value | default: '' %}
+{% assign city_name = metaobject.city.value.name.value | default: metaobject.city.value | default: '' %}
+{% assign region_name = metaobject.region.value.name.value | default: metaobject.region.value | default: '' %}
+
+<section class="m-property-desc" data-section-id="{{ section.id }}">
+  <div class="page-width">
+    <h2 class="m-property-desc__headline">
+      {{ metaobject.name.value | escape }} in {{ city_name | default: region_name | escape }}
+    </h2>
+
+    <div class="m-property-desc__body">
+      {% if desc != blank %}
+        <p>{{ desc | strip_html | truncate: 500 }}</p>
+      {% elsif short_desc != blank %}
+        <p>{{ short_desc | strip_html | truncate: 500 }}</p>
+      {% else %}
+        <p>{{ metaobject.name.value | escape }} is in {{ city_name | default: region_name | escape }}. Placeholder description. Specific facts will be added during content generation.</p>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Property Description",
+  "class": "section-property-description",
+  "settings": [],
+  "presets": [{ "name": "Property Description" }]
+}
+{% endschema %}

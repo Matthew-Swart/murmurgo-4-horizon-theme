@@ -1,0 +1,10 @@
+{% comment %} city-activities.liquid {% endcomment %}
+<section class="m-city-activities" data-section-id="{{ section.id }}">
+  <div class="page-width">
+    <h2 class="m-city-activities__title">Things to do</h2>
+    <div class="m-city-activities__track" data-activities-container>
+      <div class="m-city-activities__loading">Loading activities...</div>
+    </div>
+  </div>
+</section>
+{% schema %}{ "name": "City Activities", "class": "section-city-activities", "settings": [], "presets": [{ "name": "City Activities" }] }{% endschema %}

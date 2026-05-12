@@ -129,6 +129,10 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 
+<!-- MapLibre -->
+<link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+<script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+
 <style>
   :root {
     --mg-bg: #FAFAF8;
@@ -611,67 +615,143 @@
     font-size: 0.85rem;
   }
 
-  /* Lightbox */
-  .mg-lightbox {
+  /* Fullscreen Gallery */
+  .mg-gallery-overlay {
     position: fixed;
     inset: 0;
-    z-index: 1000;
-    background: rgba(0,0,0,0.92);
+    z-index: 99999;
+    background: #000;
     display: none;
-    align-items: center;
-    justify-content: center;
+    flex-direction: row;
   }
 
-  .mg-lightbox--open {
+  .mg-gallery-overlay--open {
     display: flex;
   }
 
-  .mg-lightbox__img {
-    max-width: 90vw;
-    max-height: 85vh;
-    object-fit: contain;
-    border-radius: 4px;
+  .mg-gallery__main {
+    flex: 1;
+    height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
   }
 
-  .mg-lightbox__close,
-  .mg-lightbox__prev,
-  .mg-lightbox__next {
-    position: absolute;
-    background: rgba(255,255,255,0.1);
-    border: none;
-    color: var(--mg-white);
+  .mg-gallery__main::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .mg-gallery__main::-webkit-scrollbar-track {
+    background: #111;
+  }
+
+  .mg-gallery__main::-webkit-scrollbar-thumb {
+    background: #444;
+    border-radius: 3px;
+  }
+
+  .mg-gallery__stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .mg-gallery__stack img {
+    width: 100%;
+    height: auto;
+    display: block;
+    cursor: pointer;
+  }
+
+  .mg-gallery__sidebar {
+    width: 120px;
+    height: 100vh;
+    background: rgba(0,0,0,0.9);
+    border-left: 1px solid rgba(255,255,255,0.1);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 60px 8px 20px;
+    gap: 8px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mg-gallery__sidebar::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .mg-gallery__sidebar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .mg-gallery__sidebar::-webkit-scrollbar-thumb {
+    background: #444;
+    border-radius: 2px;
+  }
+
+  .mg-gallery__thumb {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    border-radius: 4px;
+    overflow: hidden;
+    cursor: pointer;
+    opacity: 0.5;
+    transition: opacity 0.2s, transform 0.2s;
+    border: 2px solid transparent;
+    flex-shrink: 0;
+  }
+
+  .mg-gallery__thumb:hover {
+    opacity: 0.8;
+  }
+
+  .mg-gallery__thumb--active {
+    opacity: 1;
+    border-color: var(--mg-accent);
+  }
+
+  .mg-gallery__thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .mg-gallery__close {
+    position: fixed;
+    top: 16px;
+    right: 136px;
+    z-index: 100001;
     width: 44px;
     height: 44px;
-    border-radius: 50%;
-    cursor: pointer;
-    font-size: 1.2rem;
     display: flex;
     align-items: center;
     justify-content: center;
+    background: rgba(255,255,255,0.1);
+    backdrop-filter: blur(8px);
+    border: none;
+    border-radius: 50%;
+    color: var(--mg-white);
+    cursor: pointer;
     transition: background 0.2s;
+    font-size: 1.5rem;
+    line-height: 1;
   }
 
-  .mg-lightbox__close:hover,
-  .mg-lightbox__prev:hover,
-  .mg-lightbox__next:hover {
+  .mg-gallery__close:hover {
     background: rgba(255,255,255,0.25);
   }
 
-  .mg-lightbox__close {
-    top: 20px;
-    right: 20px;
-  }
-
-  .mg-lightbox__prev {
-    left: 20px;
-    top: 50%;
-    transform: translateY(-50%);
-  }
-
-  .mg-lightbox__next {
-    right: 20px;
-    top: 50%;
-    transform: translateY(-50%);
+  .mg-gallery__counter {
+    position: fixed;
+    top: 24px;
+    left: 24px;
+    z-index: 100001;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: rgba(255,255,255,0.7);
   }
 
   /* Responsive */
@@ -694,6 +774,12 @@
   }
 
   @media (max-width: 767px) {
+    .mg-gallery__sidebar {
+      display: none;
+    }
+    .mg-gallery__close {
+      right: 16px;
+    }
     .mg-overview {
       grid-template-columns: 1fr;
     }
@@ -903,8 +989,15 @@
           {% assign photo_url = photo | split: '"url"' | last | split: '"' | slice: 1 | first | replace: '\\/', '/' %}
         {% endif %}
         {% if photo_url != blank %}
-          <div class="mg-photo" data-index="{{ forloop.index0 }}" data-src="{{ photo_url | escape }}">
-            <img src="{{ photo_url | escape }}" alt="{{ page.title | escape }} - photo {{ forloop.index }}" loading="lazy" width="{{ photo.width | default: 600 }}" height="{{ photo.height | default: 450 }}">
+          <div class="mg-photo" data-index="{{ forloop.index0 }}" data-src="{{ photo_url | escape }}" data-src-full="{{ photo_url | escape }}">
+            <img src="{{ photo_url | escape }}?w=600"
+                 srcset="{{ photo_url | escape }}?w=300 300w, {{ photo_url | escape }}?w=600 600w, {{ photo_url | escape }}?w=900 900w"
+                 sizes="(max-width: 767px) 50vw, (max-width: 1023px) 33vw, 25vw"
+                 alt="{{ page.title | escape }} - photo {{ forloop.index }}"
+                 loading="{% if forloop.index < 5 %}eager{% else %}lazy{% endif %}"
+                 width="{{ photo.width | default: 600 }}"
+                 height="{{ photo.height | default: 450 }}"
+                 decoding="async">
           </div>
         {% endif %}
       {% endfor %}
@@ -940,12 +1033,14 @@
 
 </div>
 
-<!-- Lightbox -->
-<div class="mg-lightbox" id="lightbox">
-  <button class="mg-lightbox__close" id="lightbox-close" aria-label="Close">&times;</button>
-  <button class="mg-lightbox__prev" id="lightbox-prev" aria-label="Previous">&#10094;</button>
-  <img class="mg-lightbox__img" id="lightbox-img" src="" alt="">
-  <button class="mg-lightbox__next" id="lightbox-next" aria-label="Next">&#10095;</button>
+<!-- Fullscreen Gallery -->
+<div class="mg-gallery-overlay" id="place-gallery">
+  <div class="mg-gallery__counter" id="place-gallery-counter">1 / 1</div>
+  <button class="mg-gallery__close" id="place-gallery-close" aria-label="Close">&times;</button>
+  <div class="mg-gallery__main" id="place-gallery-main">
+    <div class="mg-gallery__stack" id="place-gallery-stack"></div>
+  </div>
+  <div class="mg-gallery__sidebar" id="place-gallery-sidebar"></div>
 </div>
 
 <script>
@@ -984,46 +1079,120 @@
     }
   }
 
-  // ---- Lightbox ----
-  const photos = [];
+  // ---- Fullscreen Gallery ----
+  const galleryPhotos = [];
   document.querySelectorAll('.mg-photo').forEach(el => {
-    photos.push(el.dataset.src);
+    galleryPhotos.push(el.dataset.srcFull || el.dataset.src);
   });
-  let currentPhoto = 0;
-  const lightbox = document.getElementById('lightbox');
-  const lightboxImg = document.getElementById('lightbox-img');
 
-  function openLightbox(index) {
-    currentPhoto = index;
-    lightboxImg.src = photos[index];
-    lightbox.classList.add('mg-lightbox--open');
+  const gallery = document.getElementById('place-gallery');
+  const galleryStack = document.getElementById('place-gallery-stack');
+  const gallerySidebar = document.getElementById('place-gallery-sidebar');
+  const galleryCounter = document.getElementById('place-gallery-counter');
+  const galleryMain = document.getElementById('place-gallery-main');
+  let currentIndex = 0;
+
+  function openGallery(startIndex) {
+    currentIndex = startIndex;
+    galleryStack.innerHTML = '';
+    gallerySidebar.innerHTML = '';
+
+    galleryPhotos.forEach((src, i) => {
+      const img = document.createElement('img');
+      img.src = src + '?w=1200';
+      img.srcset = src + '?w=600 600w, ' + src + '?w=1200 1200w, ' + src + '?w=1920 1920w';
+      img.sizes = '100vw';
+      img.alt = '';
+      img.dataset.index = i;
+      img.loading = i < 3 ? 'eager' : 'lazy';
+      img.decoding = 'async';
+      galleryStack.appendChild(img);
+
+      const thumb = document.createElement('div');
+      thumb.className = 'mg-gallery__thumb' + (i === startIndex ? ' mg-gallery__thumb--active' : '');
+      thumb.dataset.index = i;
+      const thumbImg = document.createElement('img');
+      thumbImg.src = src + '?w=150';
+      thumbImg.srcset = src + '?w=80 80w, ' + src + '?w=150 150w';
+      thumbImg.sizes = '100px';
+      thumbImg.alt = '';
+      thumbImg.loading = 'lazy';
+      thumbImg.decoding = 'async';
+      thumb.appendChild(thumbImg);
+      gallerySidebar.appendChild(thumb);
+
+      thumb.addEventListener('click', () => scrollToImage(i));
+    });
+
+    gallery.classList.add('mg-gallery-overlay--open');
     document.body.style.overflow = 'hidden';
+    updateCounter();
+    scrollToImage(startIndex);
   }
-  function closeLightbox() {
-    lightbox.classList.remove('mg-lightbox--open');
+
+  function closeGallery() {
+    gallery.classList.remove('mg-gallery-overlay--open');
     document.body.style.overflow = '';
   }
-  function prevPhoto() {
-    currentPhoto = (currentPhoto - 1 + photos.length) % photos.length;
-    lightboxImg.src = photos[currentPhoto];
+
+  function scrollToImage(index) {
+    currentIndex = index;
+    const target = galleryStack.children[index];
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    updateThumbs();
+    updateCounter();
   }
-  function nextPhoto() {
-    currentPhoto = (currentPhoto + 1) % photos.length;
-    lightboxImg.src = photos[currentPhoto];
+
+  function updateThumbs() {
+    Array.from(gallerySidebar.children).forEach((thumb, i) => {
+      thumb.classList.toggle('mg-gallery__thumb--active', i === currentIndex);
+      if (i === currentIndex) {
+        thumb.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    });
+  }
+
+  function updateCounter() {
+    galleryCounter.textContent = (currentIndex + 1) + ' / ' + galleryPhotos.length;
   }
 
   document.querySelectorAll('.mg-photo').forEach(el => {
-    el.addEventListener('click', () => openLightbox(parseInt(el.dataset.index, 10)));
+    el.addEventListener('click', () => openGallery(parseInt(el.dataset.index, 10)));
   });
-  document.getElementById('lightbox-close').addEventListener('click', closeLightbox);
-  document.getElementById('lightbox-prev').addEventListener('click', prevPhoto);
-  document.getElementById('lightbox-next').addEventListener('click', nextPhoto);
-  lightbox.addEventListener('click', e => { if (e.target === lightbox) closeLightbox(); });
+
+  document.getElementById('place-gallery-close').addEventListener('click', closeGallery);
+
+  galleryStack.addEventListener('click', function(e) {
+    if (e.target.tagName === 'IMG') closeGallery();
+  });
+
+  // Scroll spy for thumbnails
+  if (galleryMain && galleryStack) {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          currentIndex = parseInt(entry.target.dataset.index, 10);
+          updateThumbs();
+          updateCounter();
+        }
+      });
+    }, { root: galleryMain, threshold: 0.5 });
+
+    gallery.addEventListener('transitionend', function handler() {
+      if (gallery.classList.contains('mg-gallery-overlay--open')) {
+        Array.from(galleryStack.children).forEach(img => observer.observe(img));
+      }
+      gallery.removeEventListener('transitionend', handler);
+    });
+  }
+
   document.addEventListener('keydown', e => {
-    if (!lightbox.classList.contains('mg-lightbox--open')) return;
-    if (e.key === 'Escape') closeLightbox();
-    if (e.key === 'ArrowLeft') prevPhoto();
-    if (e.key === 'ArrowRight') nextPhoto();
+    if (!gallery.classList.contains('mg-gallery-overlay--open')) return;
+    if (e.key === 'Escape') closeGallery();
+    if (e.key === 'ArrowDown' && currentIndex < galleryPhotos.length - 1) scrollToImage(currentIndex + 1);
+    if (e.key === 'ArrowUp' && currentIndex > 0) scrollToImage(currentIndex - 1);
   });
 
   // ---- MapLibre ----
@@ -1033,7 +1202,7 @@
     const lng = parseFloat(mapContainer.dataset.lng);
     const map = new maplibregl.Map({
       container: 'map-container',
-      style: 'https://demotiles.maplibre.org/style.json',
+      style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
       center: [lng, lat],
       zoom: 13
     });
@@ -1057,7 +1226,7 @@
         nearbyGrid.innerHTML = data.map(p => `
           <a href="${p.slug ? '/pages/' + p.slug : '/a/murmurgo/place/' + p.id}" class="mg-card" style="text-decoration:none;color:inherit;">
             <div style="aspect-ratio:4/3;border-radius:8px;overflow:hidden;margin-bottom:12px;background:#e5e5e5;">
-              <img src="${p.thumbnail || p.hero_image || ''}" alt="${p.name}" loading="lazy" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">
+              <img src="${(p.thumbnail || p.hero_image || '') + '?w=400'}" srcset="${(p.thumbnail || p.hero_image || '') + '?w=200 200w, ' + (p.thumbnail || p.hero_image || '') + '?w=400 400w'}" sizes="(max-width: 767px) 50vw, 25vw" alt="${p.name}" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">
             </div>
             <div style="font-weight:600;font-size:0.95rem;color:var(--mg-text);margin-bottom:4px;">${p.name}</div>
             <div style="font-size:0.8rem;color:var(--mg-text-secondary);">

@@ -1,0 +1,62 @@
+{% comment %}
+  property-map.liquid
+  MapLibre GL JS embedded map with single pin.
+  Static map fallback for no-JS.
+{% endcomment %}
+
+{% assign lat = metaobject.latitude.value %}
+{% assign lng = metaobject.longitude.value %}
+
+{% if lat != blank and lng != blank %}
+<section class="m-property-map" data-section-id="{{ section.id }}">
+  <div class="page-width">
+    <h2 class="m-property-map__title">Where it is</h2>
+    <div
+      id="property-map-{{ section.id }}"
+      class="m-property-map__canvas"
+      data-lat="{{ lat }}"
+      data-lng="{{ lng }}"
+      data-name="{{ metaobject.name.value | escape }}"
+    >
+      {% comment %} Static fallback {% endcomment %}
+      <noscript>
+        <img
+          src="https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/static/pin-s+000({{ lng }},{{ lat }})/{{ lng }},{{ lat }},12,0/800x400@2x?access_token={{ settings.mapbox_token }}"
+          alt="Map showing {{ metaobject.name.value | escape }}"
+          width="800"
+          height="400"
+          class="m-property-map__static"
+        >
+      </noscript>
+    </div>
+  </div>
+</section>
+
+<script>
+(function() {
+  var config = window.MURMURGO_CONFIG || {};
+  var mapEl = document.getElementById('property-map-{{ section.id }}');
+  if (!mapEl || !window.maplibregl) return;
+  var lat = parseFloat(mapEl.dataset.lat);
+  var lng = parseFloat(mapEl.dataset.lng);
+  var map = new window.maplibregl.Map({
+    container: mapEl,
+    style: config.maplibreStyle || 'https://demotiles.maplibre.org/style.json',
+    center: [lng, lat],
+    zoom: 13,
+    attributionControl: false
+  });
+  map.addControl(new window.maplibregl.AttributionControl({ compact: true }));
+  new window.maplibregl.Marker().setLngLat([lng, lat]).addTo(map);
+})();
+</script>
+{% endif %}
+
+{% schema %}
+{
+  "name": "Property Map",
+  "class": "section-property-map",
+  "settings": [],
+  "presets": [{ "name": "Property Map" }]
+}
+{% endschema %}

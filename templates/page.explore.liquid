@@ -1,0 +1,338 @@
+{% comment %}
+  Murmurgo Explore Page
+  Secondary discovery page for countries, regions, and places.
+{% endcomment %}
+
+{% assign t1_places = shop.metaobjects.murmurgo_place.values | where: 'quality_tier', 'T1' %}
+{% assign countries = t1_places | where: 'primary_type', 'country' %}
+{% assign non_country_places = t1_places | where_not: 'primary_type', 'country' %}
+
+<section class="explore-hero">
+  <div class="page-width">
+    <h1>{{ page.title | default: "Explore Africa" }}</h1>
+    <p class="explore-subtitle">{{ page.description | default: "Discover extraordinary places across the continent." }}</p>
+  </div>
+</section>
+
+<section class="explore-countries">
+  <div class="page-width">
+    <h2>Countries</h2>
+    <div class="country-grid">
+      {% for country in countries %}
+        {% assign country_code = country.country_iso.value | default: country.name.value | handleize %}
+        {% assign place_count = 0 %}
+        {% for place in non_country_places %}
+          {% if place.country_iso.value == country.country_iso.value %}
+            {% assign place_count = place_count | plus: 1 %}
+          {% endif %}
+        {% endfor %}
+
+        <a href="/collections/country/{{ country.handle }}" class="country-card">
+          <div class="country-card-content">
+            <h3>{{ country.name.value }}</h3>
+            <span class="country-count">{{ place_count }} place{% if place_count != 1 %}s{% endif %}</span>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="explore-places">
+  <div class="page-width">
+    <h2>Places</h2>
+
+    <div class="place-filters">
+      <div class="filter-group filter-search">
+        <label for="place-search">Search</label>
+        <input type="text" id="place-search" placeholder="Search places...">
+      </div>
+      <div class="filter-group">
+        <label for="country-filter">Country</label>
+        <select id="country-filter">
+          <option value="">All Countries</option>
+          {% for country in countries %}
+            <option value="{{ country.country_iso.value | escape }}">{{ country.name.value }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="type-filter">Type</label>
+        <select id="type-filter">
+          <option value="">All Types</option>
+          <option value="accommodation">Accommodation</option>
+          <option value="restaurant">Restaurant</option>
+          <option value="activity">Activity</option>
+          <option value="spa">Spa</option>
+          <option value="bar">Bar</option>
+          <option value="park">Park</option>
+          <option value="general">General</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="place-grid" id="place-grid">
+      {% assign place_card_count = 0 %}
+      {% for place in non_country_places %}
+        {% assign place_card_count = place_card_count | plus: 1 %}
+        {% assign hero_img = place.hero_image_ref.value %}
+        <div class="place-card"
+             data-country="{{ place.country_iso.value | escape }}"
+             data-type="{{ place.primary_type.value }}"
+             data-name="{{ place.name.value | escape }}">
+          <a href="/pages/murmurgo-place/{{ place.handle }}">
+            <div class="place-card-image">
+              {% if hero_img.cdn_url != blank %}
+                <img src="{{ hero_img.cdn_url }}"
+                     alt="{{ hero_img.alt | default: place.name.value }}"
+                     loading="lazy"
+                     width="400"
+                     height="260">
+              {% else %}
+                <div class="place-card-placeholder">
+                  <span>{{ place.name.value | slice: 0 | upcase }}</span>
+                </div>
+              {% endif %}
+            </div>
+            <div class="place-card-content">
+              <h3>{{ place.name.value }}</h3>
+              {% if place.ai_snippet.value != blank %}
+                <p>{{ place.ai_snippet.value | truncate: 140 }}</p>
+              {% elsif place.description.value != blank %}
+                <p>{{ place.description.value | truncate: 140 }}</p>
+              {% endif %}
+              <div class="place-card-meta">
+                {% if place.rating_avg.value != blank %}
+                  <span>⭐ {{ place.rating_avg.value }}</span>
+                {% endif %}
+                {% if place.primary_type.value != blank %}
+                  <span class="card-type">{{ place.primary_type.value | replace: '_', ' ' | capitalize }}</span>
+                {% endif %}
+                {% if place.country_iso.value != blank %}
+                  <span>{{ place.country_iso.value | upcase }}</span>
+                {% endif %}
+              </div>
+            </div>
+          </a>
+        </div>
+      {% endfor %}
+    </div>
+
+    {% if place_card_count == 0 %}
+      <p class="place-empty">No places found.</p>
+    {% endif %}
+  </div>
+</section>
+
+<style>
+  .explore-hero {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    color: #fff;
+    padding: 4rem 0 3rem;
+    text-align: center;
+  }
+  .explore-hero h1 {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+    font-weight: 700;
+  }
+  .explore-subtitle {
+    font-size: 1.125rem;
+    opacity: 0.85;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .explore-countries, .explore-places {
+    padding: 3rem 0;
+  }
+  .explore-countries h2, .explore-places h2 {
+    font-size: 1.75rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .country-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .country-card {
+    display: block;
+    background: #f8f8f8;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 1.25rem;
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .country-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  }
+  .country-card h3 {
+    margin: 0 0 0.25rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+  .country-count {
+    font-size: 0.875rem;
+    color: #666;
+  }
+
+  .place-filters {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    align-items: flex-end;
+  }
+  .filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .filter-group label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #555;
+  }
+  .filter-group input,
+  .filter-group select {
+    padding: 0.5rem 1rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 0.9375rem;
+    min-width: 180px;
+  }
+  .filter-search input {
+    min-width: 260px;
+  }
+
+  .place-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+  }
+  .place-card {
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+    background: #fff;
+  }
+  .place-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  }
+  .place-card a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+  }
+  .place-card-image {
+    aspect-ratio: 3 / 2;
+    overflow: hidden;
+    background: #f0f0f0;
+  }
+  .place-card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .place-card-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #d8cfbe, #b39e79);
+    color: #fff;
+    font-size: 3rem;
+    font-weight: 700;
+  }
+  .place-card-content {
+    padding: 1.25rem;
+  }
+  .place-card h3 {
+    margin: 0 0 0.5rem;
+    font-size: 1.15rem;
+    font-weight: 600;
+  }
+  .place-card p {
+    margin: 0 0 0.75rem;
+    font-size: 0.9rem;
+    color: #555;
+    line-height: 1.5;
+  }
+  .place-card-meta {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .card-type {
+    background: #f0f0f0;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    text-transform: capitalize;
+  }
+  .place-empty {
+    text-align: center;
+    color: #666;
+    padding: 3rem;
+  }
+  .place-card.hidden {
+    display: none;
+  }
+
+  @media (max-width: 768px) {
+    .country-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .place-grid {
+      grid-template-columns: 1fr;
+    }
+    .filter-search input {
+      min-width: 100%;
+    }
+  }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const searchInput = document.getElementById('place-search');
+  const countryFilter = document.getElementById('country-filter');
+  const typeFilter = document.getElementById('type-filter');
+  const cards = document.querySelectorAll('.explore-places .place-card');
+
+  function filterCards() {
+    const search = searchInput.value.toLowerCase().trim();
+    const country = countryFilter.value;
+    const type = typeFilter.value;
+
+    cards.forEach(card => {
+      const cardCountry = card.dataset.country;
+      const cardType = card.dataset.type;
+      const cardName = card.dataset.name.toLowerCase();
+
+      const searchMatch = !search || cardName.includes(search);
+      const countryMatch = !country || cardCountry === country;
+      const typeMatch = !type || cardType === type;
+
+      if (searchMatch && countryMatch && typeMatch) {
+        card.classList.remove('hidden');
+      } else {
+        card.classList.add('hidden');
+      }
+    });
+  }
+
+  searchInput.addEventListener('input', filterCards);
+  countryFilter.addEventListener('change', filterCards);
+  typeFilter.addEventListener('change', filterCards);
+});
+</script>

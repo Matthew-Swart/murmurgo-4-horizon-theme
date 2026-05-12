@@ -1,0 +1,51 @@
+{
+  "sections": {
+    "city_hero": {
+      "type": "city-hero",
+      "settings": {}
+    },
+    "city_header": {
+      "type": "city-header",
+      "settings": {}
+    },
+    "city_quick_facts": {
+      "type": "city-quick-facts",
+      "settings": {}
+    },
+    "city_description": {
+      "type": "city-description",
+      "settings": {}
+    },
+    "city_map": {
+      "type": "city-map",
+      "settings": {}
+    },
+    "city_featured_properties": {
+      "type": "city-featured-properties",
+      "settings": {}
+    },
+    "city_regions": {
+      "type": "city-regions",
+      "settings": {}
+    },
+    "city_activities": {
+      "type": "city-activities",
+      "settings": {}
+    },
+    "city_cta": {
+      "type": "city-cta",
+      "settings": {}
+    }
+  },
+  "order": [
+    "city_hero",
+    "city_header",
+    "city_quick_facts",
+    "city_description",
+    "city_map",
+    "city_featured_properties",
+    "city_regions",
+    "city_activities",
+    "city_cta"
+  ]
+}

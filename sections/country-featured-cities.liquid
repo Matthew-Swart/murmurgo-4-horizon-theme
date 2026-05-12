@@ -1,0 +1,10 @@
+{% comment %} country-featured-cities.liquid {% endcomment %}
+<section class="m-country-cities" data-section-id="{{ section.id }}" data-country="{{ metaobject.slug.value }}">
+  <div class="page-width">
+    <h2 class="m-country-cities__title">Cities</h2>
+    <div class="m-country-cities__track" data-cities-container>
+      <div class="m-country-cities__loading">Loading cities...</div>
+    </div>
+  </div>
+</section>
+{% schema %}{ "name": "Country Featured Cities", "class": "section-country-featured-cities", "settings": [], "presets": [{ "name": "Country Featured Cities" }] }{% endschema %}

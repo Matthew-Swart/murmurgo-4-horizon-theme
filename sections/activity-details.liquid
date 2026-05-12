@@ -1,0 +1,14 @@
+{% comment %} activity-details.liquid {% endcomment %}
+<section class="m-activity-details" data-section-id="{{ section.id }}">
+  <div class="page-width">
+    <div class="m-activity-details__bar">
+      {% if metaobject.duration_hours.value != blank %}
+        <div class="m-activity-details__item"><span class="m-activity-details__label">Duration</span><span class="m-activity-details__value">{{ metaobject.duration_hours.value }} hours</span></div>
+      {% endif %}
+      {% if metaobject.price_from.value != blank %}
+        <div class="m-activity-details__item"><span class="m-activity-details__label">From</span><span class="m-activity-details__value">${{ metaobject.price_from.value }}</span></div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% schema %}{ "name": "Activity Details", "class": "section-activity-details", "settings": [], "presets": [{ "name": "Activity Details" }] }{% endschema %}

@@ -1,0 +1,56 @@
+{
+  "sections": {
+    "property_hero_gallery": {
+      "type": "property-hero-gallery",
+      "settings": {}
+    },
+    "property_header": {
+      "type": "property-header",
+      "settings": {}
+    },
+    "property_quick_facts": {
+      "type": "property-quick-facts",
+      "settings": {}
+    },
+    "property_description": {
+      "type": "property-description",
+      "settings": {}
+    },
+    "property_map": {
+      "type": "property-map",
+      "settings": {}
+    },
+    "property_rooms": {
+      "type": "property-rooms",
+      "settings": {}
+    },
+    "property_amenities": {
+      "type": "property-amenities",
+      "settings": {}
+    },
+    "property_nearby": {
+      "type": "property-nearby",
+      "settings": {}
+    },
+    "property_cta_bar": {
+      "type": "property-cta-bar",
+      "settings": {}
+    },
+    "property_jsonld": {
+      "type": "property-jsonld",
+      "settings": {}
+    }
+  },
+  "order": [
+    "property_hero_gallery",
+    "property_header",
+    "property_quick_facts",
+    "property_description",
+    "property_map",
+    "property_rooms",
+    "property_amenities",
+    "property_nearby",
+    "property_cta_bar",
+    "property_jsonld"
+  ]
+}

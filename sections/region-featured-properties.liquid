@@ -1,0 +1,10 @@
+{% comment %} region-featured-properties.liquid {% endcomment %}
+<section class="m-region-properties" data-section-id="{{ section.id }}" data-region="{{ metaobject.slug.value }}">
+  <div class="page-width">
+    <h2 class="m-region-properties__title">Places to stay</h2>
+    <div class="m-region-properties__track" data-properties-container>
+      <div class="m-region-properties__loading">Loading properties...</div>
+    </div>
+  </div>
+</section>
+{% schema %}{ "name": "Region Featured Props", "class": "section-region-featured-properties", "settings": [], "presets": [{ "name": "Region Featured Props" }] }{% endschema %}

@@ -1,0 +1,7 @@
+{% comment %} city-cta.liquid {% endcomment %}
+<section class="m-city-cta" data-section-id="{{ section.id }}">
+  <div class="page-width">
+    <a href="/pages/browse?city={{ metaobject.slug.value }}" class="m-city-cta__btn">Browse all properties in {{ metaobject.name.value | escape }}</a>
+  </div>
+</section>
+{% schema %}{ "name": "City CTA", "class": "section-city-cta", "settings": [], "presets": [{ "name": "City CTA" }] }{% endschema %}

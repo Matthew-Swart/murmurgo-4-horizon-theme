@@ -1,0 +1,7 @@
+{% comment %} region-cta.liquid {% endcomment %}
+<section class="m-region-cta" data-section-id="{{ section.id }}">
+  <div class="page-width">
+    <a href="/pages/browse?region={{ metaobject.slug.value }}" class="m-region-cta__btn">Browse {{ metaobject.name.value | escape }}</a>
+  </div>
+</section>
+{% schema %}{ "name": "Region CTA", "class": "section-region-cta", "settings": [], "presets": [{ "name": "Region CTA" }] }{% endschema %}

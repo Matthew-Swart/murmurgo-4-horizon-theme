@@ -1,0 +1,10 @@
+{% comment %} activity-similar.liquid {% endcomment %}
+<section class="m-activity-similar" data-section-id="{{ section.id }}" data-category="{{ metaobject.category.value }}" data-exclude="{{ metaobject.system.id }}">
+  <div class="page-width">
+    <h2 class="m-activity-similar__title">Similar</h2>
+    <div class="m-activity-similar__track" data-similar-container>
+      <div class="m-activity-similar__loading">Loading similar activities...</div>
+    </div>
+  </div>
+</section>
+{% schema %}{ "name": "Activity Similar", "class": "section-activity-similar", "settings": [], "presets": [{ "name": "Activity Similar" }] }{% endschema %}

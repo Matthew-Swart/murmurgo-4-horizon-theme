@@ -1,0 +1,14 @@
+{% comment %} region-header.liquid {% endcomment %}
+{% assign country_name = metaobject.country.value.name.value | default: metaobject.country.value | default: '' %}
+{% assign parent = metaobject.parent_region.value.name.value | default: metaobject.parent_region.value | default: '' %}
+<section class="m-region-header" data-section-id="{{ section.id }}">
+  <div class="page-width">
+    <h1 class="m-region-header__title">{{ metaobject.name.value | escape }}</h1>
+    <p class="m-region-header__meta">
+      {% if country_name != blank %}<a href="{{ metaobject.country.value.system.url | default: '#' }}">{{ country_name }}</a>{% endif %}
+      {% if parent != blank %}· {{ parent }}{% endif %}
+      {% if metaobject.property_count.value != blank %}· {{ metaobject.property_count.value }} properties{% endif %}
+    </p>
+  </div>
+</section>
+{% schema %}{ "name": "Region Header", "class": "section-region-header", "settings": [], "presets": [{ "name": "Region Header" }] }{% endschema %}

@@ -1,0 +1,48 @@
+{% comment %}
+  property-jsonld.liquid
+  Schema.org LodgingBusiness structured data.
+{% endcomment %}
+
+{% assign lat = metaobject.latitude.value %}
+{% assign lng = metaobject.longitude.value %}
+{% assign photos = metaobject.photos.value | default: empty_array %}
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "LodgingBusiness",
+  "name": {{ metaobject.name.value | json }},
+  "description": {{ metaobject.short_description.value | default: metaobject.description.value | json }},
+  "url": {{ metaobject.system.url | json }},
+  "image": {{ photos | json }},
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": {{ metaobject.address.value | json }},
+    "addressLocality": {{ metaobject.city.value.name.value | json }},
+    "addressRegion": {{ metaobject.region.value.name.value | json }},
+    "addressCountry": {{ metaobject.country.value.name.value | json }}
+  },
+  "geo": {
+    "@type": "GeoCoordinates",
+    "latitude": {{ lat | json }},
+    "longitude": {{ lng | json }}
+  },
+  "telephone": {{ metaobject.phone.value | json }},
+  "email": {{ metaobject.email.value | json }},
+  "priceRange": {{ metaobject.price_level.value | json }},
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": {{ metaobject.rating.value | json }},
+    "reviewCount": {{ metaobject.review_count.value | json }}
+  }
+}
+</script>
+
+{% schema %}
+{
+  "name": "Property JSON-LD",
+  "class": "section-property-jsonld",
+  "settings": [],
+  "presets": [{ "name": "Property JSON-LD" }]
+}
+{% endschema %}

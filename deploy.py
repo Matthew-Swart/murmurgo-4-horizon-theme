@@ -69,6 +69,10 @@ def main():
             rel = os.path.relpath(path, LOCAL_DIR)
             if rel.startswith(".git") or rel.startswith("."):
                 continue
+            with open(path, "rb") as f:
+                raw = f.read(1024)
+            if b"\x00" in raw:
+                continue
             with open(path, "r", encoding="utf-8") as f:
                 content = f.read()
             files.append((rel, content))

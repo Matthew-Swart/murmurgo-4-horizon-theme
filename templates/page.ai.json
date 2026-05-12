@@ -1,0 +1,13 @@
+{
+  "sections": {
+    "ai_hero": {
+      "type": "ai-hero",
+      "settings": {}
+    },
+    "ai_conversation": {
+      "type": "ai-conversation",
+      "settings": {}
+    }
+  },
+  "order": ["ai_hero", "ai_conversation"]
+}

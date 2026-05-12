@@ -1,0 +1,19 @@
+{% comment %} city-hero.liquid {% endcomment %}
+{% assign hero = metaobject.hero_photo.value %}
+<section class="m-city-hero" data-section-id="{{ section.id }}">
+  {% if hero != blank %}
+    <img
+      src="{{ hero }}?w=800"
+      srcset="{{ hero }}?w=400 400w, {{ hero }}?w=800 800w, {{ hero }}?w=1200 1200w, {{ hero }}?w=1600 1600w"
+      sizes="100vw"
+      alt="{{ metaobject.name.value | escape }}"
+      loading="eager"
+      width="1600"
+      height="900"
+      class="m-city-hero__img"
+    >
+  {% else %}
+    <div class="m-city-hero__fallback">{{ metaobject.name.value | escape }}</div>
+  {% endif %}
+</section>
+{% schema %}{ "name": "City Hero", "class": "section-city-hero", "settings": [], "presets": [{ "name": "City Hero" }] }{% endschema %}

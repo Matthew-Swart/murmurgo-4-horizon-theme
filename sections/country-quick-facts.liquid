@@ -1,0 +1,15 @@
+{% comment %} country-quick-facts.liquid {% endcomment %}
+<section class="m-country-facts" data-section-id="{{ section.id }}">
+  <div class="page-width">
+    <div class="m-country-facts__bar">
+      {% if metaobject.currency.value != blank %}
+        <div class="m-country-facts__item"><span class="m-country-facts__label">Currency</span><span class="m-country-facts__value">{{ metaobject.currency.value }}</span></div>
+      {% endif %}
+      {% assign visa = metaobject.visa_required.value | default: empty_array %}
+      {% if visa.size > 0 %}
+        <div class="m-country-facts__item"><span class="m-country-facts__label">Visa</span><span class="m-country-facts__value">Required for {{ visa.size }} passport{{ visa.size | pluralize: '', 's' }}</span></div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% schema %}{ "name": "Country Quick Facts", "class": "section-country-quick-facts", "settings": [], "presets": [{ "name": "Country Quick Facts" }] }{% endschema %}

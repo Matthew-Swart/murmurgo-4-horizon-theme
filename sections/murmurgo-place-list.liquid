@@ -1,0 +1,288 @@
+{% comment %}
+  Murmurgo Place List Section
+  Displays a grid of T1 places with search/filter
+{% endcomment %}
+
+<div class="page-width">
+  <div class="place-list-header">
+    <h1>{{ section.settings.title | default: "Places" }}</h1>
+    {% if section.settings.subtitle != blank %}
+      <p>{{ section.settings.subtitle }}</p>
+    {% endif %}
+  </div>
+
+  <div class="place-filters">
+    <div class="filter-group filter-search">
+      <label>Search</label>
+      <input type="text" id="place-search" placeholder="Search places...">
+    </div>
+    <div class="filter-group">
+      <label>Country</label>
+      <select id="country-filter">
+        <option value="">All Countries</option>
+        {% for place in shop.metaobjects.murmurgo_place.values %}
+          {% if place.primary_type.value == 'country' %}
+            <option value="{{ place.country_iso.value | default: place.name.value }}">{{ place.name.value }}</option>
+          {% endif %}
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <label>Type</label>
+      <select id="type-filter">
+        <option value="">All Types</option>
+        <option value="accommodation">Accommodation</option>
+        <option value="restaurant">Restaurant</option>
+        <option value="activity">Activity</option>
+        <option value="spa">Spa</option>
+        <option value="bar">Bar</option>
+        <option value="park">Park</option>
+        <option value="general">General</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="place-grid">
+    {% assign place_count = 0 %}
+    {% for place in shop.metaobjects.murmurgo_place.values %}
+      {% if place.quality_tier.value == 'T1' and place.primary_type.value != 'country' %}
+        {% assign place_count = place_count | plus: 1 %}
+        {% assign hero_img = place.hero_image_ref.value %}
+        <div class="place-card"
+             data-country="{{ place.country_iso.value | escape }}"
+             data-type="{{ place.primary_type.value }}"
+             data-name="{{ place.name.value | escape }}">
+          <a href="/pages/murmurgo-place/{{ place.handle }}">
+            <div class="place-card-image">
+              {% if hero_img.cdn_url != blank %}
+                <img src="{{ hero_img.cdn_url }}?w=400"
+                     srcset="{{ hero_img.cdn_url }}?w=200 200w, {{ hero_img.cdn_url }}?w=400 400w, {{ hero_img.cdn_url }}?w=800 800w"
+                     sizes="(max-width: 768px) 100vw, 320px"
+                     alt="{{ hero_img.alt | default: place.name.value }}"
+                     loading="lazy"
+                     width="400"
+                     height="260"
+                     decoding="async">
+              {% else %}
+                <div class="place-card-placeholder">
+                  <span>{{ place.name.value | slice: 0 | upcase }}</span>
+                </div>
+              {% endif %}
+            </div>
+            <div class="place-card-content">
+              <h3>{{ place.name.value }}</h3>
+              {% if place.ai_snippet.value != blank %}
+                <p>{{ place.ai_snippet.value | truncate: 140 }}</p>
+              {% elsif place.description.value != blank %}
+                <p>{{ place.description.value | truncate: 140 }}</p>
+              {% endif %}
+              <div class="place-card-meta">
+                {% if place.rating_avg.value != blank %}
+                  <span>⭐ {{ place.rating_avg.value }}</span>
+                {% endif %}
+                {% if place.primary_type.value != blank %}
+                  <span class="card-type">{{ place.primary_type.value | replace: '_', ' ' | capitalize }}</span>
+                {% endif %}
+                {% if place.country_iso.value != blank %}
+                  <span>{{ place.country_iso.value | upcase }}</span>
+                {% endif %}
+              </div>
+            </div>
+          </a>
+        </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+
+  {% if place_count == 0 %}
+    <p class="place-empty">No places found.</p>
+  {% endif %}
+</div>
+
+<style>
+.place-list-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.place-list-header h1 {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.place-filters {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.filter-group label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #555;
+}
+
+.filter-group input,
+.filter-group select {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 0.9375rem;
+  min-width: 180px;
+}
+.filter-search input {
+  min-width: 260px;
+}
+
+.place-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+.place-card {
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.place-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+}
+
+.place-card a {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+.place-card-image {
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+  background: #f0f0f0;
+}
+.place-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.place-card-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #d8cfbe, #b39e79);
+  color: #fff;
+  font-size: 3rem;
+  font-weight: 700;
+}
+.place-card-content {
+  padding: 1.5rem;
+}
+
+.place-card h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.place-card p {
+  margin: 0 0 1rem;
+  font-size: 0.9375rem;
+  color: #555;
+  line-height: 1.5;
+}
+
+.place-card-meta {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.card-type {
+  background: #f0f0f0;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  text-transform: capitalize;
+}
+
+.place-empty {
+  text-align: center;
+  color: #666;
+  padding: 3rem;
+}
+
+@media (max-width: 768px) {
+  .place-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const searchInput = document.getElementById('place-search');
+  const countryFilter = document.getElementById('country-filter');
+  const typeFilter = document.getElementById('type-filter');
+  const cards = document.querySelectorAll('.place-card');
+
+  function filterCards() {
+    const search = searchInput ? searchInput.value.toLowerCase().trim() : '';
+    const country = countryFilter.value;
+    const type = typeFilter.value;
+
+    cards.forEach(card => {
+      const cardCountry = card.dataset.country;
+      const cardType = card.dataset.type;
+      const cardName = card.dataset.name ? card.dataset.name.toLowerCase() : '';
+
+      const searchMatch = !search || cardName.includes(search);
+      const countryMatch = !country || cardCountry === country;
+      const typeMatch = !type || cardType === type;
+
+      card.style.display = searchMatch && countryMatch && typeMatch ? 'block' : 'none';
+    });
+  }
+
+  if (searchInput) searchInput.addEventListener('input', filterCards);
+  countryFilter.addEventListener('change', filterCards);
+  typeFilter.addEventListener('change', filterCards);
+});
+</script>
+
+{% schema %}
+{
+  "name": "Murmurgo Place List",
+  "settings": [
+    {
+      "type": "text",
+      "id": "title",
+      "label": "Title",
+      "default": "Discover Places"
+    },
+    {
+      "type": "textarea",
+      "id": "subtitle",
+      "label": "Subtitle"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Murmurgo Place List"
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,16 @@
+{% comment %} activity-header.liquid {% endcomment %}
+{% assign country_name = metaobject.country.value.name.value | default: metaobject.country.value | default: '' %}
+{% assign region_name = metaobject.region.value.name.value | default: metaobject.region.value | default: '' %}
+{% assign city_name = metaobject.city.value.name.value | default: metaobject.city.value | default: '' %}
+<section class="m-activity-header" data-section-id="{{ section.id }}">
+  <div class="page-width">
+    <span class="m-activity-header__category">{{ metaobject.category.value | default: 'Activity' | capitalize }}</span>
+    <h1 class="m-activity-header__title">{{ metaobject.name.value | escape }}</h1>
+    <p class="m-activity-header__meta">
+      {% if city_name != blank %}{{ city_name }}{% endif %}
+      {% if region_name != blank %}· {{ region_name }}{% endif %}
+      {% if country_name != blank %}· <a href="{{ metaobject.country.value.system.url | default: '#' }}">{{ country_name }}</a>{% endif %}
+    </p>
+  </div>
+</section>
+{% schema %}{ "name": "Activity Header", "class": "section-activity-header", "settings": [], "presets": [{ "name": "Activity Header" }] }{% endschema %}

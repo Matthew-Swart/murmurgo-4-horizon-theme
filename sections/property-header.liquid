@@ -1,0 +1,62 @@
+{% comment %}
+  property-header.liquid
+  Name, breadcrumb, rating, price.
+{% endcomment %}
+
+{% assign country_name = metaobject.country.value.name.value | default: metaobject.country.value | default: '' %}
+{% assign region_name = metaobject.region.value.name.value | default: metaobject.region.value | default: '' %}
+{% assign city_name = metaobject.city.value.name.value | default: metaobject.city.value | default: '' %}
+
+<section class="m-property-header" data-section-id="{{ section.id }}">
+  <div class="page-width">
+    <nav class="m-property-header__breadcrumb" aria-label="Breadcrumb">
+      <ol>
+        {% if country_name != blank %}
+          <li><a href="{{ metaobject.country.value.system.url | default: '#' }}">{{ country_name }}</a></li>
+        {% endif %}
+        {% if region_name != blank %}
+          <li><a href="{{ metaobject.region.value.system.url | default: '#' }}">{{ region_name }}</a></li>
+        {% endif %}
+        {% if city_name != blank %}
+          <li><a href="{{ metaobject.city.value.system.url | default: '#' }}">{{ city_name }}</a></li>
+        {% endif %}
+      </ol>
+    </nav>
+
+    <h1 class="m-property-header__title">{{ metaobject.name.value | escape }}</h1>
+
+    <div class="m-property-header__meta">
+      {% assign rating = metaobject.rating.value %}
+      {% assign review_count = metaobject.review_count.value %}
+      {% if rating != blank %}
+        <span class="m-property-header__rating">
+          {{ rating | round: 1 }}★
+          {% if review_count != blank and review_count > 0 %}
+            <span class="m-property-header__reviews">from {{ review_count }} Google reviews</span>
+          {% endif %}
+        </span>
+      {% endif %}
+
+      {% assign price_level = metaobject.price_level.value %}
+      {% if price_level != blank %}
+        <span class="m-property-header__price">
+          {% case price_level %}
+            {% when 1 %}From $/night
+            {% when 2 %}From $$/night
+            {% when 3 %}From $$$/night
+            {% when 4 %}From $$$$/night
+          {% endcase %}
+        </span>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Property Header",
+  "class": "section-property-header",
+  "settings": [],
+  "presets": [{ "name": "Property Header" }]
+}
+{% endschema %}

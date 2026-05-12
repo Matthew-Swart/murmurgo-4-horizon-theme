@@ -1,0 +1,35 @@
+{% comment %}
+  property-nearby.liquid
+  4-6 nearby properties (same region).
+  Cards with photo, name, distance, price from.
+  Populated via JS from /api/places/nearby.
+{% endcomment %}
+
+{% assign lat = metaobject.latitude.value %}
+{% assign lng = metaobject.longitude.value %}
+
+<section
+  class="m-property-nearby"
+  data-section-id="{{ section.id }}"
+  data-lat="{{ lat }}"
+  data-lng="{{ lng }}"
+  data-exclude="{{ metaobject.system.id }}"
+>
+  <div class="page-width">
+    <h2 class="m-property-nearby__title">Nearby</h2>
+    <div class="m-property-nearby__track" data-nearby-container>
+      {% comment %} Populated by JS {% endcomment %}
+      <div class="m-property-nearby__loading">Loading nearby places...</div>
+    </div>
+    <a href="/pages/browse?lat={{ lat }}&lng={{ lng }}" class="m-property-nearby__cta">View map</a>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Property Nearby",
+  "class": "section-property-nearby",
+  "settings": [],
+  "presets": [{ "name": "Property Nearby" }]
+}
+{% endschema %}

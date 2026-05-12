@@ -1,0 +1,25 @@
+{% comment %}
+  browse-shell.liquid
+  Shopify page shell for the /browse JS app.
+  Loads murmurgo-browse.js and renders into #murmurgo-browse-root.
+{% endcomment %}
+
+<section class="m-browse-shell" data-section-id="{{ section.id }}">
+  <div id="murmurgo-browse-root" class="m-browse-shell__root">
+    <div class="m-browse-shell__loading">
+      <p>Loading map and places...</p>
+    </div>
+  </div>
+</section>
+
+<script src="{{ 'murmurgo-shared.js' | asset_url }}" defer></script>
+<script src="{{ 'murmurgo-browse.js' | asset_url }}" defer></script>
+
+{% schema %}
+{
+  "name": "Browse Shell",
+  "class": "section-browse-shell",
+  "settings": [],
+  "presets": [{ "name": "Browse Shell" }]
+}
+{% endschema %}

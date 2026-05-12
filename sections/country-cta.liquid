@@ -1,0 +1,7 @@
+{% comment %} country-cta.liquid {% endcomment %}
+<section class="m-country-cta" data-section-id="{{ section.id }}">
+  <div class="page-width">
+    <a href="/pages/ai?country={{ metaobject.slug.value }}" class="m-country-cta__btn">Start your {{ metaobject.name.value | escape }} itinerary</a>
+  </div>
+</section>
+{% schema %}{ "name": "Country CTA", "class": "section-country-cta", "settings": [], "presets": [{ "name": "Country CTA" }] }{% endschema %}
