@@ -89,7 +89,7 @@
       .m-browse__map-wrap { flex: 1 1 auto; position: relative; min-height: 50vh; min-width: 0; }
       .m-browse__map { position: absolute; inset: 0; width: 100%; height: 100%; }
       .m-browse__card { display: flex; gap: 0.75rem; text-decoration: none; color: inherit; border: 1px solid #e0e0e0; padding: 0.5rem; }
-      .m-browse__card-img { width: 80px; height: 80px; object-fit: cover; flex-shrink: 0; background: #f5f5f5; }
+      .m-browse__card-img { width: 120px; height: 120px; object-fit: cover; flex-shrink: 0; background: #f5f5f5; }
       .m-browse__card-body { min-width: 0; }
       .m-browse__card-name { font-weight: 500; font-size: 0.95rem; margin: 0 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .m-browse__card-meta { font-size: 0.8rem; color: #555; }
@@ -113,7 +113,7 @@
         <img
           src="${photoUrl}"
           srcset="${srcset}"
-          sizes="80px"
+          sizes="120px"
           width="400"
           height="300"
           loading="lazy"

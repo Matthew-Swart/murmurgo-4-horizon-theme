@@ -1,34 +1,49 @@
 {% comment %}
   ai-hero.liquid
   Full-viewport hero with video, headline, input line, and sample prompt chips.
-  Transition to conversation mode on submit.
+  Hero media is configurable via theme editor (Shopify CDN).
 {% endcomment %}
+
+{% assign hero_image = section.settings.hero_image | default: blank %}
+{% assign hero_video_mp4 = section.settings.hero_video_mp4 | default: blank %}
+{% assign hero_video_webm = section.settings.hero_video_webm | default: blank %}
+{% assign has_video = hero_video_mp4 != blank or hero_video_webm != blank %}
 
 <section class="m-ai-hero" data-ai-hero>
   {% comment %} Video / Image Background {% endcomment %}
   <div class="m-ai-hero__media">
-    <video
-      class="m-ai-hero__video"
-      data-hero-video
-      autoplay
-      muted
-      loop
-      playsinline
-      poster="https://cdn.plekify.com/murmurgo/hero-fallback-dawn.jpg"
-    >
-      <source src="https://cdn.plekify.com/murmurgo/hero-dawn-savanna.webm" type="video/webm">
-      <source src="https://cdn.plekify.com/murmurgo/hero-dawn-savanna.mp4" type="video/mp4">
-    </video>
-    <img
-      class="m-ai-hero__fallback-img"
-      src="https://cdn.plekify.com/murmurgo/hero-fallback-dawn.jpg?w=1200"
-      srcset="https://cdn.plekify.com/murmurgo/hero-fallback-dawn.jpg?w=600 600w, https://cdn.plekify.com/murmurgo/hero-fallback-dawn.jpg?w=1200 1200w, https://cdn.plekify.com/murmurgo/hero-fallback-dawn.jpg?w=1920 1920w"
-      sizes="100vw"
-      alt="Dawn over the African savanna"
-      loading="eager"
-      width="1920"
-      height="1080"
-    >
+    {% if has_video %}
+      <video
+        class="m-ai-hero__video"
+        data-hero-video
+        autoplay
+        muted
+        loop
+        playsinline
+        {% if hero_image != blank %}poster="{{ hero_image | image_url: width: 1200 }}"{% endif %}
+      >
+        {% if hero_video_webm != blank %}
+          <source src="{{ hero_video_webm }}" type="video/webm">
+        {% endif %}
+        {% if hero_video_mp4 != blank %}
+          <source src="{{ hero_video_mp4 }}" type="video/mp4">
+        {% endif %}
+      </video>
+    {% endif %}
+
+    {% if hero_image != blank %}
+      <img
+        class="m-ai-hero__fallback-img"
+        src="{{ hero_image | image_url: width: 1200 }}"
+        srcset="{{ hero_image | image_url: width: 600 }} 600w, {{ hero_image | image_url: width: 1200 }} 1200w, {{ hero_image | image_url: width: 1920 }} 1920w"
+        sizes="100vw"
+        alt="{{ section.settings.hero_alt | default: 'Dawn over the African savanna' }}"
+        loading="eager"
+        width="1920"
+        height="1080"
+        {% if has_video %}style="display:none;" data-hero-fallback{% endif %}
+      >
+    {% endif %}
   </div>
 
   {% comment %} Overlay {% endcomment %}
@@ -36,7 +51,7 @@
 
   {% comment %} Content {% endcomment %}
   <div class="m-ai-hero__content">
-    <h1 class="m-ai-hero__headline">Build your trip.</h1>
+    <h1 class="m-ai-hero__headline">{{ section.settings.headline | default: 'Build your trip.' }}</h1>
 
     {% comment %} Input Line {% endcomment %}
     <div class="m-ai-hero__input-wrap">
@@ -44,7 +59,7 @@
         type="text"
         class="m-ai-hero__input"
         data-ai-input
-        placeholder="I want to be in the bush by Thursday"
+        placeholder="{{ section.settings.input_placeholder | default: 'I want to be in the bush by Thursday' }}"
         autocomplete="off"
         aria-label="Describe your trip"
       >
@@ -85,7 +100,7 @@
         type="text"
         class="m-ai-hero__sticky-input"
         data-ai-sticky-input
-        placeholder="I want to be in the bush by Thursday"
+        placeholder="{{ section.settings.input_placeholder | default: 'I want to be in the bush by Thursday' }}"
         autocomplete="off"
         aria-label="Describe your trip"
       >
@@ -99,3 +114,53 @@
     </div>
   </div>
 </section>
+
+{% schema %}
+{
+  "name": "AI Hero",
+  "class": "section-ai-hero",
+  "settings": [
+    {
+      "type": "image_picker",
+      "id": "hero_image",
+      "label": "Hero background image",
+      "info": "Upload via Shopify CDN. Used as fallback when video fails or on mobile."
+    },
+    {
+      "type": "url",
+      "id": "hero_video_mp4",
+      "label": "Hero video (MP4)",
+      "info": "Upload to Shopify Files and paste URL here. Optional."
+    },
+    {
+      "type": "url",
+      "id": "hero_video_webm",
+      "label": "Hero video (WebM)",
+      "info": "Upload to Shopify Files and paste URL here. Optional."
+    },
+    {
+      "type": "text",
+      "id": "hero_alt",
+      "label": "Hero image alt text",
+      "default": "Dawn over the African savanna"
+    },
+    {
+      "type": "text",
+      "id": "headline",
+      "label": "Headline",
+      "default": "Build your trip."
+    },
+    {
+      "type": "text",
+      "id": "input_placeholder",
+      "label": "Input placeholder",
+      "default": "I want to be in the bush by Thursday"
+    }
+  ],
+  "presets": [
+    {
+      "name": "AI Hero"
+    }
+  ]
+}
+{% endschema %}
