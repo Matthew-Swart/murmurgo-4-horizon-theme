@@ -18,8 +18,8 @@
       {% if all_photos.size > 0 %}
         <div class="m-property-hero__main">
           <img
-            src="{% render 'cf-image-url', url: all_photos[0], width: 800 %}"
-            srcset="{% render 'cf-image-srcset', url: all_photos[0], widths: '400,800,1200' %}"
+            src="{{ all_photos[0] }}?w=800"
+            srcset="{{ all_photos[0] }}?w=400 400w, {{ all_photos[0] }}?w=800 800w, {{ all_photos[0] }}?w=1200 1200w"
             sizes="(max-width: 768px) 100vw, 60vw"
             alt="{{ metaobject.name.value | escape }}"
             loading="eager"
@@ -36,8 +36,8 @@
           {% for photo in all_photos offset: 1 limit: 4 %}
             <div class="m-property-hero__thumb">
               <img
-                src="{% render 'cf-image-url', url: photo, width: 300 %}"
-                srcset="{% render 'cf-image-srcset', url: photo, widths: '150,300,600' %}"
+                src="{{ photo }}?w=300"
+                srcset="{{ photo }}?w=150 150w, {{ photo }}?w=300 300w, {{ photo }}?w=600 600w"
                 sizes="(max-width: 768px) 25vw, 150px"
                 alt="{{ metaobject.name.value | escape }} — photo {{ forloop.index | plus: 1 }}"
                 loading="{% if forloop.index < 3 %}eager{% else %}lazy{% endif %}"
@@ -63,8 +63,8 @@
         {% for photo in all_photos limit: 10 %}
           <div class="m-property-hero__slide">
             <img
-              src="{% render 'cf-image-url', url: photo, width: 600 %}"
-              srcset="{% render 'cf-image-srcset', url: photo, widths: '400,600,800' %}"
+              src="{{ photo }}?w=600"
+              srcset="{{ photo }}?w=400 400w, {{ photo }}?w=600 600w, {{ photo }}?w=800 800w"
               sizes="100vw"
               alt="{{ metaobject.name.value | escape }}"
               loading="{% if forloop.first %}eager{% else %}lazy{% endif %}"

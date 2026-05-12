@@ -73,7 +73,9 @@
     const css = document.createElement('style');
     css.id = 'mg-browse-styles';
     css.textContent = `
-      .m-browse { display: flex; flex-direction: column; height: 100%; }
+      .m-browse-shell { width: 100%; min-height: calc(100vh - 120px); }
+      #murmurgo-browse-root { width: 100%; height: 100%; }
+      .m-browse { display: flex; flex-direction: column; width: 100%; height: 100%; }
       @media (min-width: 768px) { .m-browse { flex-direction: row; } }
       .m-browse__sidebar { flex: 0 0 100%; max-height: 50vh; overflow-y: auto; padding: 1rem; border-bottom: 1px solid #e0e0e0; }
       @media (min-width: 768px) { .m-browse__sidebar { flex: 0 0 400px; max-height: none; border-bottom: none; border-right: 1px solid #e0e0e0; } }
@@ -84,8 +86,8 @@
       .m-browse__results-info { font-size: 0.85rem; color: #555; margin-bottom: 0.5rem; }
       .m-browse__cards { display: grid; grid-template-columns: 1fr; gap: 1rem; }
       @media (min-width: 768px) { .m-browse__cards { grid-template-columns: 1fr; } }
-      .m-browse__map-wrap { flex: 1 1 auto; position: relative; min-height: 50vh; }
-      .m-browse__map { position: absolute; inset: 0; }
+      .m-browse__map-wrap { flex: 1 1 auto; position: relative; min-height: 50vh; min-width: 0; }
+      .m-browse__map { position: absolute; inset: 0; width: 100%; height: 100%; }
       .m-browse__card { display: flex; gap: 0.75rem; text-decoration: none; color: inherit; border: 1px solid #e0e0e0; padding: 0.5rem; }
       .m-browse__card-img { width: 80px; height: 80px; object-fit: cover; flex-shrink: 0; background: #f5f5f5; }
       .m-browse__card-body { min-width: 0; }
@@ -102,8 +104,8 @@
     const photo = place.photos && place.photos[0]
       ? (place.photos[0].master || place.photos[0].source || place.photos[0])
       : '';
-    const photoUrl = photo ? MG.imageUrl(photo, 400) : '';
-    const srcset = photo ? MG.imageSrcset(photo, [200, 400]) : '';
+    const photoUrl = photo ? `${photo}?w=400` : '';
+    const srcset = photo ? `${photo}?w=200 200w, ${photo}?w=400 400w` : '';
     const rating = place.google_rating != null ? `${place.google_rating}★` : '';
     const location = [place.city, place.country].filter(Boolean).join(', ');
     return `

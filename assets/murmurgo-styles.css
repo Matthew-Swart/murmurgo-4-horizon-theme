@@ -479,11 +479,14 @@
 
 /* ─── Browse Shell ──────────────────────────────────────────────── */
 .m-browse-shell {
-  min-height: 100vh;
+  width: 100%;
+  min-height: calc(100vh - 120px);
 }
 .m-browse-shell__root {
   display: flex;
   flex-direction: column;
+  width: 100%;
+  height: 100%;
 }
 @media (min-width: 768px) {
   .m-browse-shell__root {
@@ -495,6 +498,18 @@
   padding: var(--mg-space-xl);
   text-align: center;
   color: var(--mg-color-text-secondary);
+}
+
+/* ─── Hide Shopify Announcement Bar on Murmurgo pages ───────────── */
+.m-browse-shell ~ .announcement-bar,
+.m-browse-shell ~ .shopify-section-announcement-bar,
+.section-browse-shell ~ .announcement-bar,
+.section-browse-shell ~ .shopify-section-announcement-bar,
+body:has(.m-browse-shell) .announcement-bar,
+body:has(.section-browse-shell) .announcement-bar,
+body:has(.m-ai-conversation) .announcement-bar,
+body:has(.m-trip-shell) .announcement-bar {
+  display: none !important;
 }
 
 /* ─── Hero Sections (City, Country, Region, Activity) ───────────── */
