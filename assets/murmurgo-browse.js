@@ -102,8 +102,8 @@
     const photo = place.photos && place.photos[0]
       ? (place.photos[0].master || place.photos[0].source || place.photos[0])
       : '';
-    const photoUrl = photo ? `${photo}?w=400` : '';
-    const srcset = photo ? `${photo}?w=200 200w, ${photo}?w=400 400w` : '';
+    const photoUrl = photo ? MG.imageUrl(photo, 400) : '';
+    const srcset = photo ? MG.imageSrcset(photo, [200, 400]) : '';
     const rating = place.google_rating != null ? `${place.google_rating}★` : '';
     const location = [place.city, place.country].filter(Boolean).join(', ');
     return `

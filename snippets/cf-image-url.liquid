@@ -1,0 +1,13 @@
+{% comment %}
+  cf-image-url.liquid
+  Transforms a cdn.plekify.com URL to use Cloudflare Image Resizing.
+  Usage: {{ photo_url | cf_image_url: 400 }}
+  Or:    {% render 'cf-image-url', url: photo_url, width: 400 %}
+{% endcomment %}
+{%- if url contains 'cdn.plekify.com' -%}
+  {%- assign clean_url = url | split: '?' | first -%}
+  {%- assign path = clean_url | replace: 'https://cdn.plekify.com', '' -%}
+  https://cdn.plekify.com/cdn-cgi/image/width={{ width }},format=webp{{ path }}
+{%- else -%}
+  {{ url }}
+{%- endif -%}

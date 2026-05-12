@@ -60,9 +60,16 @@
   }
 
   // ─── Image Helpers ───────────────────────────────────────────────
+  // Cloudflare Image Resizing: https://cdn.plekify.com/cdn-cgi/image/width=400,format=webp/path
 
   function imageUrl(url, width) {
     if (!url) return '';
+    // Cloudflare R2 → use path-based image resizing
+    if (url.includes('cdn.plekify.com')) {
+      const base = url.split('?')[0];
+      return `https://cdn.plekify.com/cdn-cgi/image/width=${width},format=webp${base.replace('https://cdn.plekify.com', '')}`;
+    }
+    // Fallback for other CDNs
     const sep = url.includes('?') ? '&' : '?';
     return `${url}${sep}w=${width}`;
   }

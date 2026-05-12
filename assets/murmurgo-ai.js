@@ -378,8 +378,8 @@
 
   function renderEntityCard(entity, isComparison = false) {
     const photo = entity.hero_photo || (entity.photos && entity.photos[0] ? (entity.photos[0].master || entity.photos[0].source || entity.photos[0]) : '');
-    const photoUrl = photo ? `${photo}?w=400` : '';
-    const srcset = photo ? `${photo}?w=200 200w, ${photo}?w=400 400w` : '';
+    const photoUrl = photo ? MG.imageUrl(photo, 400) : '';
+    const srcset = photo ? MG.imageSrcset(photo, [200, 400]) : '';
     const rating = entity.rating != null ? `${entity.rating}★` : (entity.google_rating != null ? `${entity.google_rating}★` : '');
     const reviews = entity.google_review_count ? `from ${entity.google_review_count.toLocaleString()} Google reviews` : '';
     const location = [entity.city, entity.country].filter(Boolean).join(', ');
@@ -440,8 +440,8 @@
       ? `<div class="m-preview-pane__gallery">
           ${photos.map(ph => {
             const src = ph.master || ph.source || ph;
-            const url = src ? `${src}?w=600` : '';
-            const srcset = src ? `${src}?w=300 300w, ${src}?w=600 600w` : '';
+            const url = src ? MG.imageUrl(src, 600) : '';
+            const srcset = src ? MG.imageSrcset(src, [300, 600]) : '';
             return `<img src="${escapeHtml(url)}" srcset="${escapeHtml(srcset)}" sizes="(max-width: 768px) 100vw, 50vw" width="600" height="400" alt="${escapeHtml(p.name)}" loading="lazy" onerror="this.style.display='none'">`;
           }).join('')}
         </div>`
@@ -617,8 +617,8 @@
           </div>`
         : '';
 
-      const photoUrl = photo ? `${photo}?w=200` : '';
-      const photoSrcset = photo ? `${photo}?w=100 100w, ${photo}?w=200 200w` : '';
+      const photoUrl = photo ? MG.imageUrl(photo, 200) : '';
+      const photoSrcset = photo ? MG.imageSrcset(photo, [100, 200]) : '';
 
       return `
         <div class="m-shortlist-drawer__card" data-id="${escapeHtml(id)}" data-shortlist-index="${index}" draggable="true">
@@ -815,8 +815,8 @@
           <div class="m-day-grid__stay">
             ${entity ? (() => {
               const src = entity.hero_photo || '';
-              const url = src ? `${src}?w=300` : '';
-              const srcset = src ? `${src}?w=150 150w, ${src}?w=300 300w` : '';
+              const url = src ? MG.imageUrl(src, 300) : '';
+              const srcset = src ? MG.imageSrcset(src, [150, 300]) : '';
               return `<div class="m-day-grid__stay-card">
                 <img src="${escapeHtml(url)}" srcset="${escapeHtml(srcset)}" sizes="120px" width="300" height="225" alt="${escapeHtml(entity.name)}" loading="lazy" onerror="this.style.display='none'">
                 <span>${escapeHtml(entity.name)}</span>
@@ -881,8 +881,8 @@
             <p class="m-suggestion__message">${escapeHtml(s.message)}</p>
             ${sEntity ? (() => {
               const src = sEntity.hero_photo || '';
-              const url = src ? `${src}?w=300` : '';
-              const srcset = src ? `${src}?w=150 150w, ${src}?w=300 300w` : '';
+              const url = src ? MG.imageUrl(src, 300) : '';
+              const srcset = src ? MG.imageSrcset(src, [150, 300]) : '';
               return `<div class="m-suggestion__card">
                 <img src="${escapeHtml(url)}" srcset="${escapeHtml(srcset)}" sizes="120px" width="300" height="225" alt="${escapeHtml(sEntity.name)}" loading="lazy" onerror="this.style.display='none'">
                 <span>${escapeHtml(sEntity.name)}</span>
@@ -1221,8 +1221,8 @@
 
     results.innerHTML = places.map(p => {
       const src = p.hero_photo || '';
-      const url = src ? `${src}?w=200` : '';
-      const srcset = src ? `${src}?w=100 100w, ${src}?w=200 200w` : '';
+      const url = src ? MG.imageUrl(src, 200) : '';
+      const srcset = src ? MG.imageSrcset(src, [100, 200]) : '';
       return `
       <div class="m-activity-search__result" data-select-activity="${escapeHtml(p.id || p.handle)}">
         <img src="${escapeHtml(url)}" srcset="${escapeHtml(srcset)}" sizes="80px" width="200" height="150" alt="${escapeHtml(p.name)}" loading="lazy" onerror="this.style.display='none'">

@@ -1,0 +1,16 @@
+{% comment %}
+  cf-image-srcset.liquid
+  Generates a srcset string using Cloudflare Image Resizing.
+  Usage: {% render 'cf-image-srcset', url: photo_url, widths: '400,800,1200' %}
+{% endcomment %}
+{%- if url contains 'cdn.plekify.com' -%}
+  {%- assign clean_url = url | split: '?' | first -%}
+  {%- assign path = clean_url | replace: 'https://cdn.plekify.com', '' -%}
+  {%- assign width_list = widths | split: ',' -%}
+  {%- for w in width_list -%}
+    {%- unless forloop.first -%}, {% endunless -%}
+    https://cdn.plekify.com/cdn-cgi/image/width={{ w | strip }},format=webp{{ path }} {{ w | strip }}w
+  {%- endfor -%}
+{%- else -%}
+  {{ url }}
+{%- endif -%}
