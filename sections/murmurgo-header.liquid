@@ -1,0 +1,39 @@
+{% comment %}
+  murmurgo-header
+  Place header with rating, price, type, location.
+{% endcomment %}
+
+{% assign rating_avg = metaobject.rating_avg.value %}
+{% assign rating_count = metaobject.rating_count.value %}
+{% assign price_band = metaobject.price_band.value %}
+{% assign primary_type = metaobject.primary_type.value %}
+{% assign country_iso = metaobject.country_iso.value %}
+{% assign city = metaobject.city.value %}
+
+<div class="murmurgo-header">
+  <div class="murmurgo-header__meta">
+    {% if rating_avg != blank %}
+      <span class="murmurgo-header__rating">⭐ {{ rating_avg }}{% if rating_count != blank %} ({{ rating_count }} reviews){% endif %}</span>
+    {% endif %}
+    {% if primary_type != blank %}
+      <span class="murmurgo-header__type">{{ primary_type | replace: '_', ' ' | capitalize }}</span>
+    {% endif %}
+    {% if price_band != blank %}
+      <span class="murmurgo-header__price">{{ price_band }}</span>
+    {% endif %}
+    {% if city != blank %}
+      <span class="murmurgo-header__city">{{ city | escape }}</span>
+    {% endif %}
+    {% if country_iso != blank %}
+      <span class="murmurgo-header__country">{{ country_iso | upcase }}</span>
+    {% endif %}
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "Murmurgo Header",
+  "settings": [],
+  "presets": [{"name": "Murmurgo Header"}]
+}
+{% endschema %}

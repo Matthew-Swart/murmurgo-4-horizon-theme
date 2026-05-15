@@ -1,0 +1,50 @@
+{% comment %}
+  murmurgo-contact
+  Contact information from contact_json.
+{% endcomment %}
+
+{% assign contact = metaobject.contact_json.value %}
+
+<section class="murmurgo-contact">
+  <h2>Contact & Hours</h2>
+  <div class="murmurgo-contact__grid">
+    {% if contact.address != blank %}
+      <div class="murmurgo-contact__item">
+        <h3>Address</h3>
+        <p>{{ contact.address | escape | newline_to_br }}</p>
+      </div>
+    {% endif %}
+    {% if contact.phone != blank %}
+      <div class="murmurgo-contact__item">
+        <h3>Phone</h3>
+        <p><a href="tel:{{ contact.phone | escape }}">{{ contact.phone | escape }}</a></p>
+      </div>
+    {% endif %}
+    {% if contact.email != blank %}
+      <div class="murmurgo-contact__item">
+        <h3>Email</h3>
+        <p><a href="mailto:{{ contact.email | escape }}">{{ contact.email | escape }}</a></p>
+      </div>
+    {% endif %}
+    {% if contact.website != blank %}
+      <div class="murmurgo-contact__item">
+        <h3>Website</h3>
+        <p><a href="{{ contact.website | escape }}" target="_blank" rel="noopener">Visit website →</a></p>
+      </div>
+    {% endif %}
+    {% if contact.opening_hours != blank %}
+      <div class="murmurgo-contact__item">
+        <h3>Opening Hours</h3>
+        <p>{{ contact.opening_hours | escape | newline_to_br }}</p>
+      </div>
+    {% endif %}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Murmurgo Contact",
+  "settings": [],
+  "presets": [{"name": "Murmurgo Contact"}]
+}
+{% endschema %}

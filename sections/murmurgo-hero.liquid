@@ -1,0 +1,45 @@
+{% comment %}
+  murmurgo-hero
+  Generic hero section for murmurgo_place and murmurgo_polygon metaobjects.
+{% endcomment %}
+
+{% assign hero_image = metaobject.hero_image_ref.value %}
+{% assign name = metaobject.name.value %}
+{% assign tagline = metaobject.tagline.value %}
+{% assign primary_type = metaobject.primary_type.value %}
+{% assign quality_tier = metaobject.quality_tier.value %}
+
+<section class="murmurgo-hero">
+  {% if hero_image.cdn_url != blank %}
+    <div class="murmurgo-hero__bg" style="background-image: url('{{ hero_image.cdn_url | escape }}');"></div>
+  {% endif %}
+  <div class="murmurgo-hero__overlay"></div>
+  <div class="murmurgo-hero__content">
+    <nav class="murmurgo-hero__breadcrumb">
+      <a href="/">Home</a>
+      {% if metaobject.country_iso.value != blank %}
+        <span> / {{ metaobject.country_iso.value | upcase }}</span>
+      {% endif %}
+    </nav>
+    <h1 class="murmurgo-hero__title">{{ name | escape }}</h1>
+    {% if tagline != blank %}
+      <p class="murmurgo-hero__tagline">{{ tagline | escape }}</p>
+    {% endif %}
+    <div class="murmurgo-hero__meta">
+      {% if primary_type != blank %}
+        <span class="murmurgo-hero__badge">{{ primary_type | replace: '_', ' ' | capitalize }}</span>
+      {% endif %}
+      {% if quality_tier != blank %}
+        <span class="murmurgo-hero__tier tier-{{ quality_tier }}">{{ quality_tier }}</span>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Murmurgo Hero",
+  "settings": [],
+  "presets": [{"name": "Murmurgo Hero"}]
+}
+{% endschema %}

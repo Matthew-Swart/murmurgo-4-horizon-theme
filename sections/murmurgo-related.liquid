@@ -1,0 +1,46 @@
+{% comment %}
+  murmurgo-related
+  Related places in the same country.
+{% endcomment %}
+
+{% assign current_country = metaobject.country_iso.value %}
+{% assign current_handle = metaobject.handle %}
+
+{% if current_country != blank %}
+  <section class="murmurgo-related">
+    <h2>More in {{ current_country | upcase }}</h2>
+    <div class="murmurgo-related__grid">
+      {% assign count = 0 %}
+      {% for related in shop.metaobjects.murmurgo_place.values %}
+        {% if related.country_iso.value == current_country
+              and related.handle != current_handle
+              and related.quality_tier.value == 'T1'
+              and related.primary_type.value != 'country'
+              and related.primary_type.value != 'region'
+              and count < 6 %}
+          {% assign count = count | plus: 1 %}
+          <div class="murmurgo-related__card">
+            <a href="{{ related.system.url }}">
+              {% assign related_hero = related.hero_image_ref.value %}
+              {% if related_hero.cdn_url != blank %}
+                <img src="{{ related_hero.cdn_url | escape }}"
+                     alt="{{ related.name.value | escape }}"
+                     loading="lazy" width="400" height="300">
+              {% endif %}
+              <h3>{{ related.name.value | escape }}</h3>
+              <p>{{ related.ai_snippet.value | default: related.tagline.value | truncate: 120 }}</p>
+            </a>
+          </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </section>
+{% endif %}
+
+{% schema %}
+{
+  "name": "Murmurgo Related",
+  "settings": [],
+  "presets": [{"name": "Murmurgo Related"}]
+}
+{% endschema %}

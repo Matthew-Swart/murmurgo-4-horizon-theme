@@ -1,0 +1,54 @@
+{% comment %}
+  murmurgo-jsonld
+  Schema.org structured data for SEO.
+{% endcomment %}
+
+{% assign name = metaobject.name.value | escape %}
+{% assign desc = metaobject.ai_snippet.value | default: metaobject.tagline.value | strip_html | truncate: 300 %}
+{% assign hero = metaobject.hero_image_ref.value %}
+{% assign lat = metaobject.lat.value %}
+{% assign lon = metaobject.lon.value %}
+{% assign rating = metaobject.rating_avg.value %}
+{% assign rcount = metaobject.rating_count.value %}
+{% assign price = metaobject.price_band.value %}
+{% assign ptype = metaobject.primary_type.value %}
+
+{% assign schema_type = "TouristAttraction" %}
+{% if ptype contains "lodging" or ptype contains "hotel" or ptype contains "resort" %}
+  {% assign schema_type = "LodgingBusiness" %}
+{% elsif ptype contains "restaurant" or ptype contains "food" %}
+  {% assign schema_type = "Restaurant" %}
+{% elsif ptype contains "park" or ptype contains "nature" or ptype contains "reserve" %}
+  {% assign schema_type = "Park" %}
+{% endif %}
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "{{ schema_type }}",
+  "@id": {{ canonical_url | json }},
+  "name": {{ name | json }},
+  "description": {{ desc | json }},
+  "url": {{ canonical_url | json }}{% if lat != blank and lon != blank %},
+  "geo": {
+    "@type": "GeoCoordinates",
+    "latitude": {{ lat | json }},
+    "longitude": {{ lon | json }}
+  }{% endif %}{% if hero.cdn_url != blank %},
+  "image": {{ hero.cdn_url | json }}{% endif %}{% if rating != blank %},
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": {{ rating | json }},
+    "reviewCount": {{ rcount | default: 0 | json }}
+  }{% endif %}{% if price != blank %},
+  "priceRange": {{ price | json }}{% endif %}
+}
+</script>
+
+{% schema %}
+{
+  "name": "Murmurgo JSON-LD",
+  "settings": [],
+  "presets": [{"name": "Murmurgo JSON-LD"}]
+}
+{% endschema %}

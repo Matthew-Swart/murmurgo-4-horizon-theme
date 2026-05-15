@@ -1,0 +1,41 @@
+{% comment %}
+  murmurgo-map
+  MapLibre map for place or polygon.
+{% endcomment %}
+
+{% assign lat = metaobject.lat.value %}
+{% assign lon = metaobject.lon.value %}
+{% assign name = metaobject.name.value | escape %}
+
+{% if lat != blank and lon != blank %}
+  <section class="murmurgo-map">
+    <h2>Map</h2>
+    <div class="murmurgo-map__container" id="place-map" data-lat="{{ lat }}" data-lon="{{ lon }}" data-name="{{ name }}"></div>
+  </section>
+
+  <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      var el = document.getElementById('place-map');
+      if (!el) return;
+      var lat = parseFloat(el.dataset.lat);
+      var lon = parseFloat(el.dataset.lon);
+      var map = new maplibregl.Map({
+        container: 'place-map',
+        style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+        center: [lon, lat],
+        zoom: 12
+      });
+      new maplibregl.Marker().setLngLat([lon, lat]).addTo(map);
+    });
+  </script>
+{% endif %}
+
+{% schema %}
+{
+  "name": "Murmurgo Map",
+  "settings": [],
+  "presets": [{"name": "Murmurgo Map"}]
+}
+{% endschema %}

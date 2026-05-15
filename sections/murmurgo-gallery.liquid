@@ -1,0 +1,35 @@
+{% comment %}
+  murmurgo-gallery
+  Photo gallery from gallery_refs.
+{% endcomment %}
+
+{% assign gallery = metaobject.gallery_refs.value %}
+
+<section class="murmurgo-gallery">
+  <h2>Gallery</h2>
+  {% if gallery != blank %}
+    <div class="murmurgo-gallery__grid">
+      {% for image in gallery limit: 20 %}
+        {% if image.cdn_url != blank %}
+          <div class="murmurgo-gallery__item">
+            <img src="{{ image.cdn_url | escape }}"
+                 alt="{{ image.alt | default: metaobject.name.value | escape }}"
+                 loading="lazy"
+                 width="{{ image.width | default: 800 }}"
+                 height="{{ image.height | default: 600 }}">
+          </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="murmurgo-gallery__empty">No gallery photos available.</p>
+  {% endif %}
+</section>
+
+{% schema %}
+{
+  "name": "Murmurgo Gallery",
+  "settings": [],
+  "presets": [{"name": "Murmurgo Gallery"}]
+}
+{% endschema %}

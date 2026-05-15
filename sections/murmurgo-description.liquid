@@ -1,0 +1,40 @@
+{% comment %}
+  murmurgo-description
+  Rich text description with copy_json fallback.
+{% endcomment %}
+
+{% assign description = metaobject.description.value %}
+{% assign copy = metaobject.copy_json.value %}
+
+<section class="murmurgo-description">
+  <h2>About</h2>
+  {% if description != blank %}
+    <div class="murmurgo-description__content rte">
+      {{ description }}
+    </div>
+  {% elsif copy != blank %}
+    {% if copy.long != blank %}
+      <div class="murmurgo-description__content">
+        {{ copy.long | newline_to_br }}
+      </div>
+    {% elsif copy.medium != blank %}
+      <div class="murmurgo-description__content">
+        {{ copy.medium | newline_to_br }}
+      </div>
+    {% elsif copy.short != blank %}
+      <div class="murmurgo-description__content">
+        {{ copy.short | newline_to_br }}
+      </div>
+    {% endif %}
+  {% else %}
+    <p class="murmurgo-description__empty">No description available.</p>
+  {% endif %}
+</section>
+
+{% schema %}
+{
+  "name": "Murmurgo Description",
+  "settings": [],
+  "presets": [{"name": "Murmurgo Description"}]
+}
+{% endschema %}

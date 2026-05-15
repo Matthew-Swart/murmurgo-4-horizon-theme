@@ -1,0 +1,18 @@
+{
+  "sections": {
+    "murmurgo_hero": { "type": "murmurgo-hero", "settings": {} },
+    "murmurgo_header": { "type": "murmurgo-header", "settings": {} },
+    "murmurgo_description": { "type": "murmurgo-description", "settings": {} },
+    "murmurgo_map": { "type": "murmurgo-map", "settings": {} },
+    "murmurgo_related": { "type": "murmurgo-related", "settings": {} },
+    "murmurgo_jsonld": { "type": "murmurgo-jsonld", "settings": {} }
+  },
+  "order": [
+    "murmurgo_hero",
+    "murmurgo_header",
+    "murmurgo_description",
+    "murmurgo_map",
+    "murmurgo_related",
+    "murmurgo_jsonld"
+  ]
+}
