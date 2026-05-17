@@ -96,7 +96,7 @@
                   "type": "text",
                   "name": "t:names.heading",
                   "settings": {
-                    "text": "<p>{{ closest.product.metafields.travel.location.value.destination.value }}, {{ closest.product.metafields.travel.location.value.country.value }}</p>",
+                    "text": "<p></p>",
                     "width": "100%",
                     "max_width": "normal",
                     "alignment": "left",
@@ -156,7 +156,7 @@
               "type": "text",
               "name": "t:names.text",
               "settings": {
-                "text": "<p>{{ closest.product.metafields.wetu.tagline.value }}</p>",
+                "text": "<p></p>",
                 "width": "fit-content",
                 "max_width": "none",
                 "alignment": "left",
@@ -728,7 +728,7 @@
       },
       "name": "t:names.products_grid",
       "settings": {
-        "collection": "{{ product.metafields.wetu.accommodation_collection.value }}",
+        "collection": "",
         "layout_type": "grid",
         "carousel_on_mobile": false,
         "max_products": 16,
@@ -925,7 +925,7 @@
       "disabled": true,
       "name": "t:names.products_grid",
       "settings": {
-        "collection": "{{ product.metafields.wetu.restaurants_collection.value }}",
+        "collection": "",
         "layout_type": "grid",
         "carousel_on_mobile": false,
         "max_products": 16,
@@ -1121,7 +1121,7 @@
       },
       "name": "t:names.products_grid",
       "settings": {
-        "collection": "{{ product.metafields.wetu.activities_collection_ref.value }}",
+        "collection": "",
         "layout_type": "grid",
         "carousel_on_mobile": false,
         "max_products": 12,

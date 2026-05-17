@@ -153,7 +153,7 @@
                       "type": "text",
                       "name": "t:names.text",
                       "settings": {
-                        "text": "<p>{{ product.metafields.wetu.itinerary_days.value }} Days</p>",
+                        "text": "<p></p>",
                         "width": "fit-content",
                         "max_width": "none",
                         "alignment": "center",
@@ -174,7 +174,7 @@
                       "type": "text",
                       "name": "t:names.text",
                       "settings": {
-                        "text": "<p>{{ product.metafields.wetu.itinerary_type.value }}</p>",
+                        "text": "<p></p>",
                         "width": "fit-content",
                         "max_width": "none",
                         "alignment": "center",
@@ -222,7 +222,7 @@
       ],
       "settings": {
         "media_type_1": "video",
-        "video_1": "{{ product.metafields.wetu.hero_video.value }}",
+        "video_1": "",
         "media_type_2": "image",
         "image_2": "{{ product.featured_image }}",
         "stack_media_on_mobile": false,

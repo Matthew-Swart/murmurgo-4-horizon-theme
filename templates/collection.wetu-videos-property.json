@@ -135,7 +135,7 @@
           "type": "text",
           "name": "t:names.text",
           "settings": {
-            "text": "<p>{{ closest.collection.metafields.wetu.tagline.value }}</p>",
+            "text": "<p></p>",
             "width": "fit-content",
             "max_width": "normal",
             "alignment": "left",
