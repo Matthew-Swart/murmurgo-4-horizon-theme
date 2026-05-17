@@ -1,0 +1,23 @@
+{% comment %}
+  Placeholder section: stay-jsonld
+  TODO: Implement actual section content.
+{% endcomment %}
+
+<div class="section-placeholder" data-section-id="{{ section.id }}" style="padding: 2rem; text-align: center; color: #999;">
+  <p>{{ section.settings.placeholder_text | default: 'stay-jsonld' }}</p>
+</div>
+
+{% schema %}
+{
+  "name": "stay-jsonld",
+  "settings": [
+    {
+      "type": "text",
+      "id": "placeholder_text",
+      "label": "Placeholder text",
+      "default": "stay-jsonld"
+    }
+  ],
+  "presets": [{ "name": "stay-jsonld" }]
+}
+{% endschema %}

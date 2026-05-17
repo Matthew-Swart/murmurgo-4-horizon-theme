@@ -7,7 +7,10 @@
 {% assign hero_image = section.settings.hero_image | default: blank %}
 {% assign hero_video_mp4 = section.settings.hero_video_mp4 | default: blank %}
 {% assign hero_video_webm = section.settings.hero_video_webm | default: blank %}
-{% assign has_video = hero_video_mp4 != blank or hero_video_webm != blank %}
+{% assign has_video = false %}
+{% if hero_video_mp4 != blank or hero_video_webm != blank %}
+  {% assign has_video = true %}
+{% endif %}
 
 <section class="m-ai-hero" data-ai-hero>
   {% comment %} Video / Image Background {% endcomment %}

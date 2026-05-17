@@ -1,0 +1,23 @@
+{% comment %}
+  Placeholder section: stay-cta-bar
+  TODO: Implement actual section content.
+{% endcomment %}
+
+<div class="section-placeholder" data-section-id="{{ section.id }}" style="padding: 2rem; text-align: center; color: #999;">
+  <p>{{ section.settings.placeholder_text | default: 'stay-cta-bar' }}</p>
+</div>
+
+{% schema %}
+{
+  "name": "stay-cta-bar",
+  "settings": [
+    {
+      "type": "text",
+      "id": "placeholder_text",
+      "label": "Placeholder text",
+      "default": "stay-cta-bar"
+    }
+  ],
+  "presets": [{ "name": "stay-cta-bar" }]
+}
+{% endschema %}

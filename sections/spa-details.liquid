@@ -1,0 +1,23 @@
+{% comment %}
+  Placeholder section: spa-details
+  TODO: Implement actual section content.
+{% endcomment %}
+
+<div class="section-placeholder" data-section-id="{{ section.id }}" style="padding: 2rem; text-align: center; color: #999;">
+  <p>{{ section.settings.placeholder_text | default: 'spa-details' }}</p>
+</div>
+
+{% schema %}
+{
+  "name": "spa-details",
+  "settings": [
+    {
+      "type": "text",
+      "id": "placeholder_text",
+      "label": "Placeholder text",
+      "default": "spa-details"
+    }
+  ],
+  "presets": [{ "name": "spa-details" }]
+}
+{% endschema %}

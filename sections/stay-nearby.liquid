@@ -1,0 +1,23 @@
+{% comment %}
+  Placeholder section: stay-nearby
+  TODO: Implement actual section content.
+{% endcomment %}
+
+<div class="section-placeholder" data-section-id="{{ section.id }}" style="padding: 2rem; text-align: center; color: #999;">
+  <p>{{ section.settings.placeholder_text | default: 'stay-nearby' }}</p>
+</div>
+
+{% schema %}
+{
+  "name": "stay-nearby",
+  "settings": [
+    {
+      "type": "text",
+      "id": "placeholder_text",
+      "label": "Placeholder text",
+      "default": "stay-nearby"
+    }
+  ],
+  "presets": [{ "name": "stay-nearby" }]
+}
+{% endschema %}

@@ -1,0 +1,23 @@
+{% comment %}
+  Placeholder section: venue-cta
+  TODO: Implement actual section content.
+{% endcomment %}
+
+<div class="section-placeholder" data-section-id="{{ section.id }}" style="padding: 2rem; text-align: center; color: #999;">
+  <p>{{ section.settings.placeholder_text | default: 'venue-cta' }}</p>
+</div>
+
+{% schema %}
+{
+  "name": "venue-cta",
+  "settings": [
+    {
+      "type": "text",
+      "id": "placeholder_text",
+      "label": "Placeholder text",
+      "default": "venue-cta"
+    }
+  ],
+  "presets": [{ "name": "venue-cta" }]
+}
+{% endschema %}

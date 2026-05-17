@@ -1,0 +1,23 @@
+{% comment %}
+  Placeholder section: restaurant-map
+  TODO: Implement actual section content.
+{% endcomment %}
+
+<div class="section-placeholder" data-section-id="{{ section.id }}" style="padding: 2rem; text-align: center; color: #999;">
+  <p>{{ section.settings.placeholder_text | default: 'restaurant-map' }}</p>
+</div>
+
+{% schema %}
+{
+  "name": "restaurant-map",
+  "settings": [
+    {
+      "type": "text",
+      "id": "placeholder_text",
+      "label": "Placeholder text",
+      "default": "restaurant-map"
+    }
+  ],
+  "presets": [{ "name": "restaurant-map" }]
+}
+{% endschema %}

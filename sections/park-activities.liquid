@@ -1,0 +1,23 @@
+{% comment %}
+  Placeholder section: park-activities
+  TODO: Implement actual section content.
+{% endcomment %}
+
+<div class="section-placeholder" data-section-id="{{ section.id }}" style="padding: 2rem; text-align: center; color: #999;">
+  <p>{{ section.settings.placeholder_text | default: 'park-activities' }}</p>
+</div>
+
+{% schema %}
+{
+  "name": "park-activities",
+  "settings": [
+    {
+      "type": "text",
+      "id": "placeholder_text",
+      "label": "Placeholder text",
+      "default": "park-activities"
+    }
+  ],
+  "presets": [{ "name": "park-activities" }]
+}
+{% endschema %}

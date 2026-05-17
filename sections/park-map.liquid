@@ -1,0 +1,23 @@
+{% comment %}
+  Placeholder section: park-map
+  TODO: Implement actual section content.
+{% endcomment %}
+
+<div class="section-placeholder" data-section-id="{{ section.id }}" style="padding: 2rem; text-align: center; color: #999;">
+  <p>{{ section.settings.placeholder_text | default: 'park-map' }}</p>
+</div>
+
+{% schema %}
+{
+  "name": "park-map",
+  "settings": [
+    {
+      "type": "text",
+      "id": "placeholder_text",
+      "label": "Placeholder text",
+      "default": "park-map"
+    }
+  ],
+  "presets": [{ "name": "park-map" }]
+}
+{% endschema %}

@@ -1,0 +1,23 @@
+{% comment %}
+  Placeholder section: bar-header
+  TODO: Implement actual section content.
+{% endcomment %}
+
+<div class="section-placeholder" data-section-id="{{ section.id }}" style="padding: 2rem; text-align: center; color: #999;">
+  <p>{{ section.settings.placeholder_text | default: 'bar-header' }}</p>
+</div>
+
+{% schema %}
+{
+  "name": "bar-header",
+  "settings": [
+    {
+      "type": "text",
+      "id": "placeholder_text",
+      "label": "Placeholder text",
+      "default": "bar-header"
+    }
+  ],
+  "presets": [{ "name": "bar-header" }]
+}
+{% endschema %}
