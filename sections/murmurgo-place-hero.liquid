@@ -1,0 +1,243 @@
+{% comment %}
+  murmurgo-place-hero.liquid
+  Full-width hero for murmurgo_place metaobject pages.
+  Uses .value access pattern consistent with Horizon theme.
+{% endcomment %}
+
+{%- liquid
+  assign place_name = metaobject.name.value | default: metaobject.system.handle
+  assign hero_ref = metaobject.hero_image_ref.value
+  assign country = metaobject.country_iso.value
+  assign city = metaobject.city.value | default: ''
+  assign rating = metaobject.rating_avg.value
+  assign rating_count = metaobject.rating_count.value
+  assign primary_type = metaobject.primary_type.value
+  assign accent_color = '#2A9D8F'
+  if primary_type contains 'lodging' or primary_type contains 'hotel'
+    assign accent_color = '#D4A373'
+  elsif primary_type contains 'restaurant' or primary_type contains 'food' or primary_type contains 'bar' or primary_type contains 'cafe'
+    assign accent_color = '#E76F51'
+  elsif primary_type contains 'park' or primary_type contains 'nature' or primary_type contains 'reserve' or primary_type contains 'trail'
+    assign accent_color = '#52796F'
+  elsif primary_type contains 'spa' or primary_type contains 'wellness' or primary_type contains 'attraction' or primary_type contains 'tourist'
+    assign accent_color = '#2A9D8F'
+  endif
+
+  assign hero_src = ''
+  if hero_ref.cdn_url != blank
+    assign hero_src = hero_ref.cdn_url
+  elsif hero_ref.url != blank
+    assign hero_src = hero_ref.url
+  elsif hero_ref != blank
+    assign hero_src = hero_ref
+  endif
+-%}
+
+<section class="mgp-hero" data-section-id="{{ section.id }}" data-accent="{{ accent_color }}">
+  <div class="mgp-hero__media">
+    {%- if hero_src != blank -%}
+      <img
+        src="{{ hero_src | replace: 'media.plekify.com', 'media.murmurgo.com' | replace: 'cdn.plekify.com', 'media.murmurgo.com' }}"
+        alt="{{ place_name | escape }}"
+        loading="eager"
+        fetchpriority="high"
+        class="mgp-hero__img"
+        width="1600"
+        height="900"
+      >
+    {%- else -%}
+      <div class="mgp-hero__gradient" style="background: linear-gradient(135deg, {{ accent_color }} 0%, #1a1a1a 100%);"></div>
+    {%- endif -%}
+    <div class="mgp-hero__overlay"></div>
+  </div>
+
+  <div class="mgp-hero__content">
+    <nav class="mgp-hero__breadcrumb" aria-label="Breadcrumb">
+      <a href="/pages/browse">Home</a>
+      {%- if country -%}
+        <span aria-hidden="true"> / </span>
+        <a href="/pages/{{ country | downcase }}">{{ country | upcase }}</a>
+      {%- endif -%}
+      {%- if city -%}
+        <span aria-hidden="true"> / </span>
+        <a href="/pages/{{ city | downcase | replace: ' ', '-' }}">{{ city }}</a>
+      {%- endif -%}
+      <span aria-hidden="true"> / </span>
+      <span aria-current="page">{{ place_name }}</span>
+    </nav>
+
+    <h1 class="mgp-hero__title">{{ place_name }}</h1>
+
+    <div class="mgp-hero__meta">
+      {%- if city or country -%}
+        <span class="mgp-hero__location">
+          {%- if city -%}{{ city }}{%- endif -%}
+          {%- if city and country -%}, {%- endif -%}
+          {%- if country -%}{{ country | upcase }}{%- endif -%}
+        </span>
+      {%- endif -%}
+
+      {%- if rating -%}
+        <span class="mgp-hero__rating" aria-label="Rated {{ rating | round: 1 }} out of 5 stars">
+          <span class="mgp-hero__stars" aria-hidden="true">
+            {%- for i in (1..5) -%}
+              {%- if i <= rating -%}★{%- else -%}☆{%- endif -%}
+            {%- endfor -%}
+          </span>
+          <span>{{ rating | round: 1 }}</span>
+          {%- if rating_count -%}
+            <small>({{ rating_count }} reviews)</small>
+          {%- endif -%}
+        </span>
+      {%- endif -%}
+
+      {%- if primary_type -%}
+        <span class="mgp-hero__type">{{ primary_type | replace: '_', ' ' | capitalize }}</span>
+      {%- endif -%}
+    </div>
+  </div>
+
+  <button
+    class="mgp-hero__scroll"
+    onclick="document.getElementById('mgp-main-{{ section.id }}').scrollIntoView({behavior:'smooth'})"
+    aria-label="Scroll to content"
+  >
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <polyline points="6 9 12 15 18 9"></polyline>
+    </svg>
+  </button>
+</section>
+
+<style>
+.mgp-hero {
+  position: relative;
+  width: 100%;
+  height: 60vh;
+  min-height: 400px;
+  max-height: 800px;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+  color: #fff;
+}
+.mgp-hero__media {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+.mgp-hero__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.mgp-hero__gradient {
+  width: 100%;
+  height: 100%;
+}
+.mgp-hero__overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.1) 60%, transparent 100%);
+  z-index: 2;
+}
+.mgp-hero__content {
+  position: relative;
+  z-index: 3;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 48px 24px 80px;
+}
+.mgp-hero__breadcrumb {
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  opacity: 0.8;
+  margin-bottom: 16px;
+}
+.mgp-hero__breadcrumb a {
+  color: #fff;
+  text-decoration: none;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+.mgp-hero__breadcrumb a:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+.mgp-hero__title {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 600;
+  line-height: 1.1;
+  margin: 0 0 16px;
+}
+.mgp-hero__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  font-size: 0.95rem;
+}
+.mgp-hero__location { opacity: 0.9; }
+.mgp-hero__rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.mgp-hero__stars {
+  color: #D4AF37;
+  letter-spacing: 1px;
+}
+.mgp-hero__type {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 100px;
+  background: rgba(255,255,255,0.2);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.mgp-hero__scroll {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  background: none;
+  border: none;
+  color: #fff;
+  opacity: 0.6;
+  cursor: pointer;
+  animation: mgp-bounce 2s infinite;
+}
+@keyframes mgp-bounce {
+  0%, 20%, 50%, 80%, 100% { transform: translateX(-50%) translateY(0); }
+  40% { transform: translateX(-50%) translateY(-8px); }
+  60% { transform: translateX(-50%) translateY(-4px); }
+}
+@media (max-width: 767px) {
+  .mgp-hero {
+    height: 45vh;
+    min-height: 320px;
+  }
+  .mgp-hero__content {
+    padding: 32px 16px 64px;
+  }
+  .mgp-hero__title {
+    font-size: clamp(1.75rem, 6vw, 2.5rem);
+  }
+}
+</style>
+
+{% schema %}
+{
+  "name": "Murmurgo Place Hero",
+  "class": "section-murmurgo-place-hero",
+  "settings": [],
+  "presets": [{ "name": "Murmurgo Place Hero" }]
+}
+{% endschema %}

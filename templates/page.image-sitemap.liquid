@@ -1,0 +1,44 @@
+{% layout none %}
+{{- '<?xml version="1.0" encoding="UTF-8"?>' -}}
+{{- '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">' -}}
+{%- liquid
+  assign page_url = shop.url | append: '/pages/'
+  assign img_limit = 500
+  assign count = 0
+-%}
+{%- for metaobj in metaobjects.murmurgo_place -%}
+  {%- liquid
+    assign obj_handle = metaobj.system.handle
+    assign obj_name = metaobj.name.value | escape
+    assign obj_url = page_url | append: obj_handle
+    assign hero = metaobj.hero_image_ref.value
+    assign gallery = metaobj.gallery_refs.value
+  -%}
+  {%- if hero != blank or gallery != blank -%}
+  {{- '<url>' -}}
+    {{- '<loc>' | append: obj_url | append: '</loc>' -}}
+    {%- if hero != blank -%}
+      {%- assign hero_url = hero.cdn_url | default: hero.url | default: hero -%}
+      {%- assign hero_url = hero_url | replace: 'media.plekify.com', 'media.murmurgo.com' | replace: 'cdn.plekify.com', 'media.murmurgo.com' -%}
+      {{- '<image:image>' -}}
+        {{- '<image:loc>' | append: hero_url | append: '</image:loc>' -}}
+        {{- '<image:title>' | append: obj_name | append: '</image:title>' -}}
+        {{- '<image:caption>' | append: obj_name | append: ' — hero photo</image:caption>' -}}
+      {{- '</image:image>' -}}
+      {%- assign count = count | plus: 1 -%}
+    {%- endif -%}
+    {%- for photo in gallery limit: 5 -%}
+      {%- assign photo_url = photo.cdn_url | default: photo.url | default: photo -%}
+      {%- assign photo_url = photo_url | replace: 'media.plekify.com', 'media.murmurgo.com' | replace: 'cdn.plekify.com', 'media.murmurgo.com' -%}
+      {{- '<image:image>' -}}
+        {{- '<image:loc>' | append: photo_url | append: '</image:loc>' -}}
+        {{- '<image:title>' | append: obj_name | append: ' photo ' | append: forloop.index | append: '</image:title>' -}}
+        {{- '<image:caption>' | append: obj_name | append: ' — gallery photo ' | append: forloop.index | append: '</image:caption>' -}}
+      {{- '</image:image>' -}}
+      {%- assign count = count | plus: 1 -%}
+    {%- endfor -%}
+  {{- '</url>' -}}
+  {%- endif -%}
+  {%- if count >= img_limit -%}{%- break -%}{%- endif -%}
+{%- endfor -%}
+{{- '</urlset>' -}}

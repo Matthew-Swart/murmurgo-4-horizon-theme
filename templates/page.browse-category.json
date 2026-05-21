@@ -1,0 +1,13 @@
+{
+  "sections": {
+    "hero": {
+      "type": "murmurgo-category-hero",
+      "settings": {}
+    },
+    "grid": {
+      "type": "murmurgo-place-grid",
+      "settings": {}
+    }
+  },
+  "order": ["hero", "grid"]
+}

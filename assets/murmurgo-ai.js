@@ -57,8 +57,8 @@
 
   // ─── DOM Refs ──────────────────────────────────────────────────────
 
-  let root, hero, video, input, micBtn, chipsContainer, stickyBar,
-      stickyInput, stickyMic, previewPane, previewBody, previewClose,
+  let root, hero, video, input, micBtn, sendBtn, chipsContainer, stickyBar,
+      stickyInput, stickyMic, stickySend, previewPane, previewBody, previewClose,
       shortlistBar, shortlistDrawer, shortlistList, shortlistClose,
       dayAssignmentView, assignmentMain, assignmentSidebar, assignmentShortlist,
       tripMapPanel, saveModal, undoToast, confirmDialog, activitySearchModal,
@@ -70,10 +70,12 @@
     video = document.querySelector('[data-hero-video]');
     input = document.querySelector('[data-ai-input]');
     micBtn = document.querySelector('[data-ai-mic]');
+    sendBtn = document.querySelector('[data-ai-send]');
     chipsContainer = document.querySelector('[data-ai-chips]');
     stickyBar = document.querySelector('[data-ai-sticky]');
     stickyInput = document.querySelector('[data-ai-sticky-input]');
     stickyMic = document.querySelector('[data-ai-sticky-mic]');
+    stickySend = document.querySelector('[data-ai-sticky-send]');
     previewPane = document.getElementById('murmurgo-preview-pane');
     previewBody = document.querySelector('[data-preview-body]');
     previewClose = document.querySelector('[data-preview-close]');
@@ -129,40 +131,80 @@
     state.isLoading = true;
     render();
 
-    try {
-      const res = await fetch(`${API_BASE}/conversation`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: text,
-          sessionId: state.sessionId,
-          context: { shortlist: state.shortlist.map(s => s.id || s) },
-        }),
-      });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      state.messages.push(data);
-    } catch (err) {
-      console.error('Conversation error:', err);
+    const maxRetries = 2;
+    let lastErr = null;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+        const res = await fetch(`${API_BASE}/conversation`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: text,
+            sessionId: state.sessionId,
+            context: { shortlist: state.shortlist.map(s => s.id || s) },
+          }),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+
+        if (!res.ok) {
+          const errText = await res.text().catch(() => '');
+          throw new Error(`HTTP ${res.status}: ${errText}`);
+        }
+
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        state.messages.push(data);
+        lastErr = null;
+        break;
+      } catch (err) {
+        lastErr = err;
+        if (err.name === 'AbortError') {
+          console.warn('Conversation timeout, retrying...');
+        } else {
+          console.error(`Conversation error (attempt ${attempt + 1}):`, err);
+        }
+        if (attempt < maxRetries) {
+          await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+        }
+      }
+    }
+
+    if (lastErr) {
       state.messages.push({
         type: 'text',
-        text: 'Connection issue. Please try again.',
+        text: 'Connection issue. Please try again in a moment.',
       });
-    } finally {
-      state.isLoading = false;
-      render();
     }
+
+    state.isLoading = false;
+    render();
   }
 
   async function fetchPlace(id) {
-    try {
-      const res = await fetch(`${API_BASE}/places/${id}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return await res.json();
-    } catch (err) {
-      console.error('Failed to fetch place:', err);
-      return null;
+    const maxRetries = 1;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        const res = await fetch(`${API_BASE}/places/${id}`, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return await res.json();
+      } catch (err) {
+        if (attempt < maxRetries) {
+          await new Promise(r => setTimeout(r, 800));
+        } else {
+          console.error('Failed to fetch place:', err);
+          return null;
+        }
+      }
     }
+    return null;
   }
 
   async function cachePlace(id) {
@@ -176,61 +218,65 @@
   }
 
   async function saveItineraryToAPI() {
-    if (!state.itinerary.id) {
-      // Create new
-      try {
-        const body = {
-          name: state.itinerary.name,
-          shortlist: state.shortlist.map(s => ({
-            handle: s.id || s,
-            nights: s.nights || 2,
-            location: s.location || '',
-          })),
-          startDate: state.itinerary.startDate,
-          travelers: state.itinerary.travelers,
-        };
-        const res = await fetch(`${API_BASE}/itinerary`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        });
-        const data = await res.json();
-        if (data.itinerary) {
-          state.itinerary.id = data.itinerary.id;
-          state.itinerary.days = data.itinerary.days || state.itinerary.days;
-        }
-      } catch (err) {
-        console.error('Save itinerary error:', err);
+    const payload = {
+      name: state.itinerary.name,
+      shortlist: state.shortlist.map(s => ({
+        handle: s.id || s,
+        nights: s.nights || 2,
+        location: s.location || '',
+      })),
+      startDate: state.itinerary.startDate,
+      travelers: state.itinerary.travelers,
+    };
+
+    const url = state.itinerary.id
+      ? `${API_BASE}/itinerary/${state.itinerary.id}`
+      : `${API_BASE}/itinerary`;
+    const method = state.itinerary.id ? 'PUT' : 'POST';
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        throw new Error(`HTTP ${res.status}: ${errText}`);
       }
-    } else {
-      // Update existing
-      try {
-        await fetch(`${API_BASE}/itinerary/${state.itinerary.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            days: state.itinerary.days,
-            shortlist: state.shortlist,
-            name: state.itinerary.name,
-            startDate: state.itinerary.startDate,
-            travelers: state.itinerary.travelers,
-          }),
-        });
-      } catch (err) {
-        console.error('Update itinerary error:', err);
+
+      const data = await res.json();
+      if (data.itinerary) {
+        state.itinerary.id = data.itinerary.id;
+        state.itinerary.days = data.itinerary.days || state.itinerary.days;
       }
+      saveToStorage();
+      return true;
+    } catch (err) {
+      console.error('Save itinerary error:', err);
+      saveToStorage();
+      return false;
     }
-    saveToStorage();
   }
 
   async function fetchSuggestions(day, type, lat, lng) {
     if (!state.itinerary.id) return [];
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
       const res = await fetch(`${API_BASE}/itinerary/${state.itinerary.id}/suggest`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ day, type, lat, lng }),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       return data.suggestions || [];
     } catch (err) {
@@ -377,15 +423,18 @@
   }
 
   function renderEntityCard(entity, isComparison = false) {
+    if (!entity || typeof entity !== 'object') {
+      return '<div class="m-entity-card" style="padding:16px;color:#888;">Loading place...</div>';
+    }
     const photo = entity.hero_photo || (entity.photos && entity.photos[0] ? (entity.photos[0].master || entity.photos[0].source || entity.photos[0]) : '');
     const photoUrl = photo ? `${photo}?w=400` : '';
     const srcset = photo ? `${photo}?w=200 200w, ${photo}?w=400 400w` : '';
     const rating = entity.rating != null ? `${entity.rating}★` : (entity.google_rating != null ? `${entity.google_rating}★` : '');
-    const reviews = entity.google_review_count ? `from ${entity.google_review_count.toLocaleString()} Google reviews` : '';
+    const reviews = entity.google_review_count ? `from ${Number(entity.google_review_count).toLocaleString()} Google reviews` : '';
     const location = [entity.city, entity.country].filter(Boolean).join(', ');
     const price = entity.price_level ? priceLabel(entity.price_level) : '';
     const typeLabel = entity.primary_type_display || entity.type || '';
-    const id = entity.id || entity.handle;
+    const id = entity.id || entity.handle || 'unknown';
 
     return `
       <article class="m-entity-card" data-id="${escapeHtml(id)}">
@@ -1202,11 +1251,17 @@
       if (lat) params.set('lat', String(lat));
       if (lng) params.set('lng', String(lng));
 
-      const res = await fetch(`${API_BASE}/places?${params.toString()}`);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      const res = await fetch(`${API_BASE}/places?${params.toString()}`, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       renderActivitySearchResults(data.places || []);
     } catch (err) {
       console.error('Activity search error:', err);
+      const results = activitySearchModal?.querySelector('[data-activity-search-results]');
+      if (results) results.innerHTML = '<p class="m-activity-search__empty">Search failed. Please try again.</p>';
     }
   }
 
@@ -1828,6 +1883,7 @@
 
   function submitInput(text) {
     if (!text || !text.trim()) return;
+    const trimmed = text.trim();
 
     if (!state.hasSubmitted) {
       transitionToConversation();
@@ -1836,26 +1892,38 @@
     const activeInput = state.hasSubmitted ? stickyInput : input;
     if (activeInput) activeInput.value = '';
 
-    sendMessage(text);
+    sendMessage(trimmed);
   }
 
   function transitionToConversation() {
+    if (state.hasSubmitted) return;
     state.hasSubmitted = true;
 
-    if (hero) hero.classList.add('is-submitted');
+    if (hero) {
+      hero.classList.add('is-submitted');
+      // Force reflow for transition
+      void hero.offsetHeight;
+    }
+
     if (video) {
-      video.style.transition = 'opacity 300ms';
+      video.style.transition = 'opacity 400ms ease';
       video.style.opacity = '0';
     }
 
-    if (chipsContainer) chipsContainer.style.display = 'none';
+    if (chipsContainer) {
+      chipsContainer.style.transition = 'opacity 200ms ease';
+      chipsContainer.style.opacity = '0';
+    }
 
     setTimeout(() => {
-      if (video) video.style.display = 'none';
+      if (chipsContainer) chipsContainer.style.display = 'none';
       if (stickyBar) stickyBar.classList.add('is-visible');
       if (root) root.classList.add('is-active');
-      if (stickyInput) stickyInput.focus();
-    }, 300);
+      if (stickyInput) {
+        stickyInput.focus();
+        stickyInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 350);
 
     document.body.classList.add('m-ai-mode');
   }
@@ -1895,13 +1963,25 @@
     if (chipTarget) {
       e.preventDefault();
       const text = chipTarget.dataset.chip;
-      if (!state.hasSubmitted) {
-        if (input) input.value = text;
+      if (!text) return;
+
+      // Visual feedback
+      chipTarget.classList.add('is-running');
+      chipTarget.textContent = 'Planning...';
+
+      // Small delay so user sees the feedback
+      setTimeout(() => {
+        if (!state.hasSubmitted) {
+          if (input) input.value = text;
+        } else {
+          if (stickyInput) stickyInput.value = text;
+        }
         submitInput(text);
-      } else {
-        if (stickyInput) stickyInput.value = text;
-        submitInput(text);
-      }
+
+        // Reset chip after submit
+        chipTarget.classList.remove('is-running');
+        chipTarget.textContent = text;
+      }, 300);
       return;
     }
 
@@ -2035,7 +2115,7 @@
   }
 
   function onKeyDown(e) {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.shiftKey) {
       if (document.activeElement === input) {
         e.preventDefault();
         submitInput(input.value);
@@ -2154,7 +2234,6 @@
 
     if (!root) {
       console.warn('murmurgo-ai.js: #murmurgo-conversation-root not found');
-      return;
     }
 
     initVoice();
@@ -2169,15 +2248,25 @@
     if (micBtn) micBtn.addEventListener('click', toggleVoice);
     if (stickyMic) stickyMic.addEventListener('click', toggleVoice);
 
+    // Send buttons
+    if (sendBtn) sendBtn.addEventListener('click', () => {
+      if (input) submitInput(input.value);
+    });
+    if (stickySend) stickySend.addEventListener('click', () => {
+      if (stickyInput) submitInput(stickyInput.value);
+    });
+
     // Hide day assignment view initially
     if (dayAssignmentView) dayAssignmentView.style.display = 'none';
     if (tripMapPanel) tripMapPanel.style.display = 'none';
 
     // Observe DOM changes to init maps
-    const observer = new MutationObserver(() => {
-      initEmbeddedMaps();
-    });
-    if (root) observer.observe(root, { childList: true, subtree: true });
+    if (root) {
+      const observer = new MutationObserver(() => {
+        initEmbeddedMaps();
+      });
+      observer.observe(root, { childList: true, subtree: true });
+    }
 
     updateShortlistBar();
   }

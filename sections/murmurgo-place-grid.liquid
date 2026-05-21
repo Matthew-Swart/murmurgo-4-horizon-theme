@@ -1,0 +1,208 @@
+{% comment %}
+  Murmurgo Place Grid
+  Fetches places from the public API and renders a responsive card grid.
+{% endcomment %}
+
+{%- assign places_per_page = section.settings.places_per_page | default: 24 -%}
+
+<section class="mg-place-grid-section" data-section-id="{{ section.id }}">
+  <div id="mg-place-grid-root" class="mg-place-grid" data-places-per-page="{{ places_per_page }}">
+    <div class="mg-skeleton" style="height: 280px;"></div>
+    <div class="mg-skeleton" style="height: 280px;"></div>
+    <div class="mg-skeleton" style="height: 280px;"></div>
+    <div class="mg-skeleton" style="height: 280px;"></div>
+    <div class="mg-skeleton" style="height: 280px;"></div>
+    <div class="mg-skeleton" style="height: 280px;"></div>
+  </div>
+
+  <noscript>
+    <div class="mg-place-grid__no-js" style="text-align: center; padding: 48px 24px; color: #555;">
+      <p>JavaScript is required to load the place listings. Please enable JavaScript in your browser to explore places in this category.</p>
+    </div>
+  </noscript>
+</section>
+
+<script>
+(function() {
+  'use strict';
+
+  const API_URL = 'https://app.murmurgo.com/api/places/viewport?south=-40&north=20&west=-20&east=60&limit=500';
+
+  const categoryMatchers = {
+    lodging: ['hotel', 'lodge', 'guest house', 'camp', 'resort', 'accommodation'],
+    restaurant: ['restaurant', 'cafe', 'coffee shop', 'bakery', 'food'],
+    nature: ['park', 'national park', 'nature preserve', 'reserve', 'trail', 'zoo', 'wildlife'],
+    attraction: ['tourist attraction', 'museum', 'historical landmark', 'monument', 'adventure'],
+    spa: ['spa', 'wellness', 'massage', 'beauty'],
+    park: ['park', 'national park', 'state park'],
+    shopping: ['shopping mall', 'market', 'shop', 'store', 'boutique'],
+    nightlife: ['bar', 'pub', 'night club', 'live music', 'entertainment']
+  };
+
+  function getCategorySlug() {
+    const hero = document.querySelector('[data-category-slug]');
+    return hero ? hero.dataset.categorySlug : '';
+  }
+
+  function cfResizeUrl(url, width) {
+    if (!url || typeof url !== 'string') return '';
+    if (!url.includes('cdn.plekify.com')) return url;
+    const cleanUrl = url.split('?')[0];
+    const path = cleanUrl.replace('https://cdn.plekify.com', '');
+    return 'https://cdn.plekify.com/cdn-cgi/image/width=' + width + ',format=webp' + path;
+  }
+
+  function renderStars(rating) {
+    if (!rating && rating !== 0) return '';
+    const full = Math.floor(rating);
+    const half = rating % 1 >= 0.5 ? 1 : 0;
+    let stars = '';
+    for (let i = 0; i < full; i++) stars += '★';
+    if (half) stars += '½';
+    return stars;
+  }
+
+  function matchesCategory(place, slug) {
+    const matchers = categoryMatchers[slug];
+    if (!matchers || !place.primary_type_display) return false;
+    const typeStr = String(place.primary_type_display).toLowerCase();
+    return matchers.some(m => typeStr.includes(m.toLowerCase()));
+  }
+
+  function getFirstPhoto(place) {
+    const p = place.photos?.[0];
+    if (!p) return '';
+    return p.master || p.source || p.url || p.cdn || '';
+  }
+
+  function renderCard(place, index, slug) {
+    const accentColors = {
+      lodging: '#D4A373',
+      restaurant: '#E76F51',
+      nature: '#52796F',
+      attraction: '#2A9D8F',
+      spa: '#2A9D8F',
+      park: '#52796F',
+      shopping: '#E9C46A',
+      nightlife: '#6D597A'
+    };
+    const accent = accentColors[slug] || '#D4A373';
+
+    const photo = getFirstPhoto(place);
+    const loadingAttr = index < 6 ? 'loading="eager"' : 'loading="lazy"';
+
+    let imageHtml;
+    if (photo) {
+      imageHtml = '<img src="' + cfResizeUrl(photo, 600) + '" ' +
+        'srcset="' + cfResizeUrl(photo, 400) + ' 400w, ' +
+        cfResizeUrl(photo, 800) + ' 800w, ' +
+        cfResizeUrl(photo, 1200) + ' 1200w" ' +
+        'sizes="(max-width: 768px) 100vw, 33vw" ' +
+        'alt="Photo of ' + (place.name || '').replace(/"/g, '&quot;') + '" ' +
+        loadingAttr + ' class="mg-place-card__img">';
+    } else {
+      imageHtml = '<div class="mg-place-card__placeholder" style="background:' + accent + ';"><span>📍</span></div>';
+    }
+
+    const rating = place.google_rating || place.rating;
+    const stars = renderStars(rating);
+    const city = place.city || '';
+    const country = place.country || '';
+    const locationParts = [city, country].filter(Boolean);
+    const location = locationParts.join(', ');
+
+    return '<article class="mg-place-card">' +
+      '<a href="/pages/place/' + encodeURIComponent(place.slug || '') + '" class="mg-place-card__link">' +
+      '<div class="mg-place-card__image">' + imageHtml + '</div>' +
+      '<div class="mg-place-card__content">' +
+      '<h3 class="mg-place-card__title">' + (place.name || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</h3>' +
+      '<div class="mg-place-card__meta">' +
+      (rating ? '<span class="mg-place-card__rating">' + rating + ' ' + stars + '</span>' : '') +
+      (location ? '<span class="mg-place-card__location">' + location + '</span>' : '') +
+      '</div>' +
+      '</div>' +
+      '</a>' +
+      '</article>';
+  }
+
+  async function loadPlaces() {
+    const root = document.getElementById('mg-place-grid-root');
+    if (!root) return;
+
+    const slug = getCategorySlug();
+    if (!slug) {
+      root.innerHTML = '<p class="mg-place-grid__error" style="text-align:center;padding:48px 24px;color:#555;">Unable to determine category. Please refresh or try again later.</p>';
+      return;
+    }
+
+    const perPage = parseInt(root.dataset.placesPerPage, 10) || 24;
+
+    try {
+      const response = await fetch(API_URL, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+      });
+
+      if (!response.ok) {
+        throw new Error('HTTP ' + response.status);
+      }
+
+      const data = await response.json();
+      const places = (data.places || data.data || data || []);
+
+      const filtered = places
+        .filter(p => matchesCategory(p, slug))
+        .sort((a, b) => {
+          const ra = a.google_rating || a.rating || 0;
+          const rb = b.google_rating || b.rating || 0;
+          return rb - ra;
+        })
+        .slice(0, perPage);
+
+      if (filtered.length === 0) {
+        root.innerHTML = '<p class="mg-place-grid__empty" style="text-align:center;padding:48px 24px;color:#555;grid-column:1 / -1;">No places found in this category yet. Check back soon.</p>';
+        return;
+      }
+
+      root.innerHTML = filtered.map((p, i) => renderCard(p, i, slug)).join('');
+    } catch (err) {
+      console.error('Murmurgo Place Grid: failed to load places', err);
+      root.innerHTML = '<p class="mg-place-grid__error" style="text-align:center;padding:48px 24px;color:#555;grid-column:1 / -1;">Unable to load places. Please refresh or try again later.</p>';
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadPlaces);
+  } else {
+    loadPlaces();
+  }
+})();
+</script>
+
+{% schema %}
+{
+  "name": "Murmurgo Place Grid",
+  "settings": [
+    {
+      "type": "range",
+      "id": "places_per_page",
+      "label": "Places per page",
+      "min": 12,
+      "max": 48,
+      "step": 12,
+      "default": 24
+    },
+    {
+      "type": "checkbox",
+      "id": "show_map",
+      "label": "Show map toggle",
+      "default": false
+    }
+  ],
+  "presets": [
+    {
+      "name": "Murmurgo Place Grid"
+    }
+  ]
+}
+{% endschema %}

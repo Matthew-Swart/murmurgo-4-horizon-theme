@@ -1,0 +1,930 @@
+{% comment %}
+  murmurgo-place-main.liquid
+  Two-column layout: Plekify-style gallery (left) + descriptive content (right).
+  Desktop: 1fr 420px grid. Mobile: single column.
+  Uses .value access pattern consistent with Horizon theme.
+{% endcomment %}
+
+{%- liquid
+  assign place_name = metaobject.name | default: metaobject.system.handle
+  assign place_handle = metaobject.system.handle
+  assign place_slug = metaobject.slug | default: place_handle
+  assign description = metaobject.description | default: ''
+  assign gallery = metaobject.gallery_refs
+  assign hero_image = metaobject.hero_image_ref
+  assign lat = metaobject.lat
+  assign lon = metaobject.lon
+  assign rating = metaobject.rating_avg
+  assign rating_count = metaobject.rating_count
+  assign primary_type = metaobject.primary_type
+  assign price_band = metaobject.price_band
+  assign country = metaobject.country_iso
+  assign city = metaobject.city | default: ''
+  assign tagline = metaobject.tagline | default: ''
+-%}
+
+{%- capture photo_list -%}
+  {%- if gallery != blank -%}
+    {%- for photo in gallery -%}
+      {%- if photo.cdn_url -%}
+        {{ photo.cdn_url }}
+      {%- elsif photo.url -%}
+        {{ photo.url }}
+      {%- else -%}
+        {{ photo }}
+      {%- endif -%}
+      {%- unless forloop.last -%}|{%- endunless -%}
+    {%- endfor -%}
+  {%- elsif hero_image != blank -%}
+    {%- if hero_image.cdn_url -%}
+      {{ hero_image.cdn_url }}
+    {%- elsif hero_image.url -%}
+      {{ hero_image.url }}
+    {%- else -%}
+      {{ hero_image }}
+    {%- endif -%}
+  {%- endif -%}
+{%- endcapture -%}
+
+{%- assign photo_array = photo_list | split: '|' -%}
+
+<div id="mgp-main-{{ section.id }}" class="mgp-main" data-section-id="{{ section.id }}" data-place-slug="{{ place_slug | escape }}" data-lat="{{ lat }}" data-lon="{{ lon }}">
+  <div class="mgp-main__inner">
+
+    {% comment %} ─── LEFT COLUMN: Gallery ─── {% endcomment %}
+    <div class="mgp-main__left">
+      <div class="mg-place-gallery">
+        <div class="mg-place-gallery__grid">
+          {%- for photo_url in photo_array -%}
+            {%- assign trimmed = photo_url | strip -%}
+            {%- if trimmed == blank -%}{%- continue -%}{%- endif -%}
+            {%- assign display_url = trimmed | replace: 'media.plekify.com', 'media.murmurgo.com' | replace: 'cdn.plekify.com', 'media.murmurgo.com' -%}
+            <div class="mg-place-gallery__item">
+              <img
+                src="{{ display_url }}"
+                alt="{{ place_name | escape }} photo {{ forloop.index }}"
+                loading="{% if forloop.index <= 4 %}eager{% else %}lazy{% endif %}"
+                width="600"
+                height="400"
+                decoding="{% if forloop.index <= 4 %}auto{% else %}async{% endif %}"
+              >
+              <button
+                class="mg-place-gallery__zoom-trigger"
+                type="button"
+                aria-label="Open photo {{ forloop.index }} in fullscreen"
+                data-index="{{ forloop.index0 }}"
+              ></button>
+            </div>
+          {%- endfor -%}
+        </div>
+      </div>
+
+      {% comment %} Lightbox Dialog {% endcomment %}
+      <dialog class="mg-place-lightbox" id="mg-lightbox-{{ section.id }}" aria-modal="true" aria-label="Photo gallery">
+        <div class="mg-place-lightbox__backdrop"></div>
+        <button class="mg-place-lightbox__close" type="button" aria-label="Close gallery">×</button>
+
+        <div class="mg-place-lightbox__scroll">
+          {%- for photo_url in photo_array -%}
+            {%- assign trimmed = photo_url | strip -%}
+            {%- if trimmed == blank -%}{%- continue -%}{%- endif -%}
+            {%- assign display_url = trimmed | replace: 'media.plekify.com', 'media.murmurgo.com' | replace: 'cdn.plekify.com', 'media.murmurgo.com' -%}
+            <div class="mg-place-lightbox__media" data-index="{{ forloop.index0 }}">
+              <img
+                src="{{ display_url }}"
+                alt="{{ place_name | escape }} photo {{ forloop.index }}"
+                loading="lazy"
+                width="1200"
+                height="800"
+              >
+            </div>
+          {%- endfor -%}
+        </div>
+
+        <div class="mg-place-lightbox__thumbnails">
+          {%- for photo_url in photo_array -%}
+            {%- assign trimmed = photo_url | strip -%}
+            {%- if trimmed == blank -%}{%- continue -%}{%- endif -%}
+            {%- assign display_url = trimmed | replace: 'media.plekify.com', 'media.murmurgo.com' | replace: 'cdn.plekify.com', 'media.murmurgo.com' -%}
+            <button
+              class="mg-place-lightbox__thumb"
+              type="button"
+              data-index="{{ forloop.index0 }}"
+              aria-label="Photo {{ forloop.index }}"
+            >
+              <img src="{{ display_url }}" alt="" loading="lazy" width="200" height="133">
+            </button>
+          {%- endfor -%}
+        </div>
+      </dialog>
+    </div>
+
+    {% comment %} ─── RIGHT COLUMN: Content ─── {% endcomment %}
+    <div class="mgp-main__right">
+
+      {% comment %} About {% endcomment %}
+      <section class="mgp-section mgp-section--about" id="mgp-about-{{ section.id }}">
+        <h2 class="mgp-section__title">About</h2>
+        <div class="mgp-section__body mgp-description" data-field="description">
+          {%- if description != blank -%}
+            {{ description }}
+          {%- else -%}
+            <div class="mgp-skeleton mgp-skeleton--text"></div>
+            <div class="mgp-skeleton mgp-skeleton--text" style="width:85%"></div>
+            <div class="mgp-skeleton mgp-skeleton--text" style="width:70%"></div>
+          {%- endif -%}
+        </div>
+      </section>
+
+      {% comment %} At a Glance {% endcomment %}
+      <section class="mgp-section mgp-section--glance">
+        <div class="mgp-card">
+          <h2 class="mgp-card__title">At a Glance</h2>
+          <div class="mgp-card__rows">
+            {%- if rating -%}
+              <div class="mgp-card__row">
+                <span class="mgp-card__label">Rating</span>
+                <span class="mgp-card__value mgp-stars">
+                  {%- for i in (1..5) -%}
+                    {%- if i <= rating -%}★{%- else -%}☆{%- endif -%}
+                  {%- endfor -%}
+                  {{ rating | round: 1 }} {%- if rating_count -%}({{ rating_count }} reviews){%- endif -%}
+                </span>
+              </div>
+            {%- endif -%}
+            {%- if city or country -%}
+              <div class="mgp-card__row">
+                <span class="mgp-card__label">Location</span>
+                <span class="mgp-card__value">
+                  {%- if city -%}{{ city }}{%- endif -%}
+                  {%- if city and country -%}, {%- endif -%}
+                  {%- if country -%}{{ country | upcase }}{%- endif -%}
+                </span>
+              </div>
+            {%- endif -%}
+            {%- if price_band -%}
+              <div class="mgp-card__row">
+                <span class="mgp-card__label">Price</span>
+                <span class="mgp-card__value">{{ price_band }}</span>
+              </div>
+            {%- endif -%}
+            {%- if primary_type -%}
+              <div class="mgp-card__row">
+                <span class="mgp-card__label">Type</span>
+                <span class="mgp-card__value">{{ primary_type | replace: '_', ' ' | capitalize }}</span>
+              </div>
+            {%- endif -%}
+          </div>
+        </div>
+      </section>
+
+      {% comment %} Insider Tips (JS populated) {% endcomment %}
+      <section class="mgp-section mgp-section--tips" id="mgp-tips-{{ section.id }}" style="display:none;">
+        <div class="mgp-card mgp-card--accent">
+          <div class="mgp-card__accent-label">Insider Tips</div>
+          <div class="mgp-tips__body" data-field="copy_tips"></div>
+        </div>
+      </section>
+
+      {% comment %} Contact (JS populated) {% endcomment %}
+      <section class="mgp-section mgp-section--contact" id="mgp-contact-{{ section.id }}" style="display:none;">
+        <div class="mgp-card">
+          <h2 class="mgp-card__title">Contact</h2>
+          <div class="mgp-contact__body" data-field="contact">
+            <div class="mgp-skeleton mgp-skeleton--text" style="width:60%"></div>
+            <div class="mgp-skeleton mgp-skeleton--text" style="width:75%"></div>
+          </div>
+        </div>
+      </section>
+
+      {% comment %} Location / Map {% endcomment %}
+      {%- if lat and lon -%}
+        <section class="mgp-section mgp-section--map">
+          <h2 class="mgp-section__title">Location</h2>
+          <div
+            id="mgp-map-{{ section.id }}"
+            class="mgp-map__container"
+            data-lat="{{ lat }}"
+            data-lon="{{ lon }}"
+            data-name="{{ place_name | escape }}"
+            style="width:100%;height:300px;background:#f0f0f0;border-radius:12px;"
+          >
+            <p style="padding:1rem;color:#666;">Map loading…</p>
+          </div>
+          <div class="mgp-map__actions">
+            <a class="mgp-btn" href="https://www.google.com/maps/dir/?api=1&destination={{ lat }},{{ lon }}" target="_blank" rel="noopener">Get Directions</a>
+            <a class="mgp-btn" href="https://www.google.com/maps/search/?api=1&query={{ lat }},{{ lon }}" target="_blank" rel="noopener">Open in Google Maps</a>
+          </div>
+        </section>
+      {%- endif -%}
+
+      {% comment %} Nearby Places (JS populated) {% endcomment %}
+      {%- if lat and lon -%}
+        <section class="mgp-section mgp-section--nearby" id="mgp-nearby-{{ section.id }}">
+          <h2 class="mgp-section__title">Nearby Places</h2>
+          <div class="mgp-nearby__grid" data-field="nearby">
+            <div class="mgp-skeleton mgp-skeleton--card"></div>
+            <div class="mgp-skeleton mgp-skeleton--card"></div>
+            <div class="mgp-skeleton mgp-skeleton--card"></div>
+          </div>
+        </section>
+      {%- endif -%}
+
+    </div>
+  </div>
+</div>
+
+<script src="{{ 'place-lightbox.js' | asset_url }}" defer></script>
+<script>
+(function() {
+  'use strict';
+
+  const sectionId = '{{ section.id }}';
+  const slug = '{{ place_slug | escape }}';
+  const lat = {{ lat | default: 'null' }};
+  const lon = {{ lon | default: 'null' }};
+  const apiBase = 'https://app.murmurgo.com/apps/murmurgo/api';
+
+  // ─── Lightbox init ───
+  document.addEventListener('DOMContentLoaded', function() {
+    if (window.PlaceLightbox) {
+      new PlaceLightbox('mg-lightbox-' + sectionId, '.mg-place-gallery');
+    }
+  });
+
+  // ─── Fetch place details (tips, contact) ───
+  async function fetchPlaceDetails() {
+    try {
+      const res = await fetch(apiBase + '/places/by-slug?slug=' + encodeURIComponent(slug), {
+        headers: { 'Accept': 'application/json' }
+      });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // ─── Populate description fallback ───
+  async function loadDescription() {
+    const descEl = document.querySelector('#mgp-about-' + sectionId + ' [data-field="description"]');
+    if (!descEl) return;
+    const hasContent = descEl.textContent.trim().length > 0 && !descEl.querySelector('.mgp-skeleton');
+    if (hasContent) return;
+
+    const data = await fetchPlaceDetails();
+    if (!data || !data.place) return;
+    const copy = data.place.copy_long || data.place.copy_medium || data.place.copy_short || '';
+    if (copy) {
+      descEl.innerHTML = copy.replace(/\n/g, '<br>');
+    }
+  }
+
+  // ─── Populate tips ───
+  async function loadTips() {
+    const section = document.getElementById('mgp-tips-' + sectionId);
+    if (!section) return;
+    const data = await fetchPlaceDetails();
+    if (!data || !data.place || !data.place.copy_tips) return;
+    section.style.display = '';
+    const body = section.querySelector('[data-field="copy_tips"]');
+    if (body) body.innerHTML = data.place.copy_tips.replace(/\n/g, '<br>');
+  }
+
+  // ─── Populate contact ───
+  async function loadContact() {
+    const section = document.getElementById('mgp-contact-' + sectionId);
+    if (!section) return;
+    const data = await fetchPlaceDetails();
+    if (!data || !data.place) return;
+    const place = data.place;
+    const items = [];
+    if (place.phone) items.push('<div class="mgp-contact__row"><span class="mgp-contact__label">Phone</span><a href="tel:' + encodeURIComponent(place.phone) + '">' + escapeHtml(place.phone) + '</a></div>');
+    if (place.email) items.push('<div class="mgp-contact__row"><span class="mgp-contact__label">Email</span><a href="mailto:' + encodeURIComponent(place.email) + '">' + escapeHtml(place.email) + '</a></div>');
+    if (place.website) items.push('<div class="mgp-contact__row"><span class="mgp-contact__label">Website</span><a href="' + escapeHtml(place.website) + '" target="_blank" rel="noopener">' + escapeHtml(place.website.replace(/^https?:\/\//, '').replace(/\/$/, '')) + '</a></div>');
+    if (items.length === 0) return;
+    section.style.display = '';
+    const body = section.querySelector('[data-field="contact"]');
+    if (body) body.innerHTML = items.join('');
+  }
+
+  // ─── Map init ───
+  function initMap() {
+    const container = document.getElementById('mgp-map-' + sectionId);
+    if (!container || !window.maplibregl) return;
+    const map = new window.maplibregl.Map({
+      container: container.id,
+      style: 'https://tiles.openfreemap.org/styles/positron',
+      center: [lon, lat],
+      zoom: 13,
+      attributionControl: false
+    });
+    map.addControl(new window.maplibregl.AttributionControl({ compact: true }));
+    map.addControl(new window.maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+    map.on('load', function() {
+      new window.maplibregl.Marker({ color: '#D4A373' })
+        .setLngLat([lon, lat])
+        .setPopup(new window.maplibregl.Popup({ offset: 25 }).setHTML('<strong>' + escapeHtml('{{ place_name | escape }}') + '</strong>'))
+        .addTo(map);
+    });
+  }
+
+  // ─── Nearby places ───
+  async function loadNearby() {
+    const grid = document.querySelector('#mgp-nearby-' + sectionId + ' [data-field="nearby"]');
+    if (!grid || !lat || !lon) return;
+    try {
+      const res = await fetch(apiBase + '/places/nearby?lat=' + lat + '&lng=' + lon + '&limit=6', {
+        headers: { 'Accept': 'application/json' }
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      const places = data.places || data || [];
+      if (places.length === 0) {
+        grid.innerHTML = '<p class="mgp-nearby__empty">No nearby places found.</p>';
+        return;
+      }
+      grid.innerHTML = places.map(function(p) {
+        var photo = '';
+        if (p.photos && p.photos[0]) {
+          photo = p.photos[0].master || p.photos[0].source || p.photos[0].url || '';
+          photo = photo.replace('media.plekify.com', 'media.murmurgo.com').replace('cdn.plekify.com', 'media.murmurgo.com');
+        }
+        var rating = '';
+        if (p.google_rating || p.rating_avg) {
+          var r = p.google_rating || p.rating_avg;
+          var stars = '';
+          for (var i = 1; i <= 5; i++) stars += (i <= Math.round(r)) ? '★' : '☆';
+          rating = '<div class="mgp-nearby__rating">' + stars + ' ' + r + '</div>';
+        }
+        var handle = p.slug || p.shopify_page_handle || p.id;
+        var url = '/pages/place/' + encodeURIComponent(handle);
+        return '<article class="mgp-nearby__card">' +
+          '<a href="' + url + '">' +
+            '<div class="mgp-nearby__thumb">' +
+              (photo ? '<img src="' + escapeHtml(photo) + '" alt="' + escapeHtml(p.name) + '" loading="lazy">' : '') +
+            '</div>' +
+            '<div class="mgp-nearby__info">' +
+              '<h3>' + escapeHtml(p.name) + '</h3>' +
+              rating +
+            '</div>' +
+          '</a>' +
+        '</article>';
+      }).join('');
+    } catch (e) {
+      const section = document.getElementById('mgp-nearby-' + sectionId);
+      if (section) section.style.display = 'none';
+    }
+  }
+
+  // ─── Helpers ───
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  // ─── Lazy init via IntersectionObserver ───
+  function observeInit(selector, callback) {
+    var el = document.querySelector(selector);
+    if (!el) return;
+    var observer = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (entry.isIntersecting) {
+          callback();
+          observer.disconnect();
+        }
+      });
+    }, { rootMargin: '200px' });
+    observer.observe(el);
+  }
+
+  function runInit() {
+    loadDescription();
+    loadTips();
+    loadContact();
+    if (lat && lon) {
+      observeInit('#mgp-map-' + sectionId, initMap);
+      observeInit('#mgp-nearby-' + sectionId, loadNearby);
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', runInit);
+  } else {
+    runInit();
+  }
+})();
+</script>
+
+<script>
+(function() {
+  function initGallery() {
+    const galleryGrid = document.querySelector('.mg-place-gallery__grid');
+    const placeSlug = document.querySelector('[data-place-slug]')?.dataset.placeSlug;
+
+    if (!galleryGrid || galleryGrid.children.length > 1) return; // Already has photos
+
+    // Fetch photos from API
+    fetch('https://app.murmurgo.com/apps/murmurgo/api/places/by-slug?slug=' + encodeURIComponent(placeSlug))
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        const photos = data?.place?.photos || data?.photos || [];
+        if (!photos.length) return;
+
+        galleryGrid.innerHTML = '';
+        photos.slice(0, 8).forEach((photo, i) => {
+          const url = photo.cdn || photo.master || photo.source || photo;
+          if (!url) return;
+
+          const div = document.createElement('div');
+          div.className = 'mg-place-gallery__item';
+          div.innerHTML = `
+            <img src="${url.replace('cdn.plekify.com', 'cdn.plekify.com/cdn-cgi/image/width=800,format=webp')}"
+                 alt="Photo ${i+1}" loading="${i < 4 ? 'eager' : 'lazy'}" width="600" height="400">
+            <button class="mg-place-gallery__zoom-trigger" type="button" aria-label="Open photo ${i+1}" data-index="${i}"></button>
+          `;
+          galleryGrid.appendChild(div);
+        });
+
+        // Re-init lightbox if needed
+        if (window.PlaceLightbox) {
+          new window.PlaceLightbox('mg-lightbox-' + document.querySelector('.mgp-main')?.closest('[data-section-id]')?.dataset.sectionId, '.mg-place-gallery');
+        }
+      })
+      .catch(() => {
+        // Silently fail - show placeholder
+        galleryGrid.innerHTML = '<div class="mg-place-gallery__empty">Photos coming soon</div>';
+      });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initGallery);
+  } else {
+    initGallery();
+  }
+})();
+</script>
+
+<style>
+.mgp-main {
+  background: #fff;
+  padding: 48px 0;
+}
+.mgp-main__inner {
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: 48px;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ─── Gallery ─── */
+.mg-place-gallery__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+}
+.mg-place-gallery__item {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 3 / 2;
+  cursor: zoom-in;
+  background: #e5e5e5;
+}
+.mg-place-gallery__item:first-child {
+  grid-column: span 2;
+  aspect-ratio: 16 / 9;
+}
+.mg-place-gallery__item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.4s ease;
+}
+.mg-place-gallery__item:hover img {
+  transform: scale(1.03);
+}
+.mg-place-gallery__zoom-trigger {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: none;
+  border: none;
+  cursor: zoom-in;
+  z-index: 2;
+}
+
+/* ─── Lightbox ─── */
+.mg-place-lightbox {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  max-width: 100vw;
+  max-height: 100vh;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: #000;
+  z-index: 9999;
+  overflow: hidden;
+}
+.mg-place-lightbox::backdrop {
+  background: #000;
+}
+.mg-place-lightbox__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+}
+.mg-place-lightbox__close {
+  position: fixed;
+  top: 16px;
+  right: 24px;
+  z-index: 10001;
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 2.5rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mg-place-lightbox__scroll {
+  height: 100vh;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+  position: relative;
+  z-index: 2;
+}
+.mg-place-lightbox__media {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  scroll-snap-align: start;
+  padding: 0 0 100px 0;
+}
+.mg-place-lightbox__media img {
+  max-width: 100vw;
+  max-height: calc(100vh - 100px);
+  object-fit: contain;
+  display: block;
+}
+.mg-place-lightbox__thumbnails {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 80px;
+  background: rgba(0,0,0,0.85);
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 0 12px;
+  overflow-x: auto;
+  z-index: 10000;
+  scrollbar-width: none;
+}
+.mg-place-lightbox__thumbnails::-webkit-scrollbar {
+  display: none;
+}
+.mg-place-lightbox__thumb {
+  flex-shrink: 0;
+  height: 64px;
+  width: auto;
+  aspect-ratio: 3 / 2;
+  border: 2px solid transparent;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.2s, border-color 0.2s;
+}
+.mg-place-lightbox__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+}
+.mg-place-lightbox__thumb[aria-selected="true"] {
+  border-color: #fff;
+  opacity: 1;
+}
+
+/* ─── Right Column Content ─── */
+.mgp-main__right {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+.mgp-section {
+  scroll-margin-top: 24px;
+}
+.mgp-section__title {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1.75rem;
+  font-weight: 600;
+  margin: 0 0 16px;
+  color: #1a1a1a;
+}
+.mgp-description {
+  font-size: 1.05rem;
+  line-height: 1.7;
+  color: #333;
+}
+.mgp-description p + p {
+  margin-top: 1.2em;
+}
+
+/* Card */
+.mgp-card {
+  background: #f8f8f8;
+  border-radius: 12px;
+  padding: 24px;
+}
+.mgp-card__title {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0 0 16px;
+}
+.mgp-card__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.mgp-card__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.95rem;
+}
+.mgp-card__label {
+  color: #666;
+  font-weight: 500;
+}
+.mgp-card__value {
+  color: #1a1a1a;
+  text-align: right;
+}
+.mgp-stars {
+  color: #D4AF37;
+  letter-spacing: 1px;
+}
+.mgp-card--accent {
+  background: linear-gradient(135deg, #faf6f1 0%, #f8f8f8 100%);
+  border-left: 4px solid #D4A373;
+}
+.mgp-card__accent-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: #D4A373;
+  margin-bottom: 12px;
+}
+.mgp-tips__body {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-style: italic;
+  font-size: 1.15rem;
+  line-height: 1.7;
+  color: #333;
+}
+
+/* Contact */
+.mgp-contact__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.mgp-contact__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.95rem;
+}
+.mgp-contact__label {
+  color: #666;
+  font-weight: 500;
+}
+.mgp-contact__row a {
+  color: #2A9D8F;
+  text-decoration: none;
+  word-break: break-all;
+}
+.mgp-contact__row a:hover {
+  text-decoration: underline;
+}
+
+/* Map */
+.mgp-map__container {
+  width: 100%;
+  height: 300px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.mgp-map__actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+.mgp-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid #e0e0e0;
+  background: #fff;
+  color: #1a1a1a;
+}
+.mgp-btn:hover {
+  background: #D4A373;
+  color: #fff;
+  border-color: #D4A373;
+}
+
+/* Nearby */
+.mgp-nearby__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+.mgp-nearby__card {
+  background: #fff;
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: box-shadow 0.2s;
+}
+.mgp-nearby__card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+.mgp-nearby__card a {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+.mgp-nearby__thumb {
+  aspect-ratio: 3 / 2;
+  background: #f0f0f0;
+  overflow: hidden;
+}
+.mgp-nearby__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.mgp-nearby__info {
+  padding: 12px;
+}
+.mgp-nearby__info h3 {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  line-height: 1.3;
+}
+.mgp-nearby__rating {
+  font-size: 0.8rem;
+  color: #D4AF37;
+  margin-top: 4px;
+}
+.mgp-nearby__empty {
+  color: #666;
+  font-size: 0.9rem;
+  padding: 1rem 0;
+}
+
+/* Skeleton */
+.mgp-skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: mgp-skeleton-shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+.mgp-skeleton--text {
+  height: 16px;
+  margin-bottom: 8px;
+}
+.mgp-skeleton--card {
+  height: 160px;
+  border-radius: 12px;
+}
+@keyframes mgp-skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Mobile */
+@media (max-width: 1023px) {
+  .mgp-main__inner {
+    grid-template-columns: 1fr;
+    gap: 32px;
+    padding: 0 16px;
+  }
+  .mgp-main {
+    padding: 32px 0;
+  }
+  .mgp-main__left {
+    order: 1;
+  }
+  .mgp-main__right {
+    order: 2;
+    gap: 32px;
+  }
+  .mg-place-gallery__grid {
+    grid-template-columns: 1fr;
+  }
+  .mg-place-gallery__item:first-child {
+    grid-column: span 1;
+    aspect-ratio: 3 / 2;
+  }
+  .mgp-nearby__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 480px) {
+  .mgp-nearby__grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+
+{%- liquid
+  assign schema_type = 'TouristAttraction'
+  if primary_type contains 'lodging' or primary_type contains 'hotel'
+    assign schema_type = 'LodgingBusiness'
+  elsif primary_type contains 'restaurant' or primary_type contains 'food'
+    assign schema_type = 'Restaurant'
+  endif
+  assign schema_first_photo = ''
+  if photo_array.size > 0
+    assign schema_first_photo = photo_array.first | strip
+  endif
+  assign schema_first_photo = schema_first_photo | replace: 'media.plekify.com', 'media.murmurgo.com' | replace: 'cdn.plekify.com', 'media.murmurgo.com'
+-%}
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "{{ schema_type }}",
+  "name": {{ place_name | json }},
+  "description": {{ description | default: tagline | strip_html | truncate: 300 | json }},
+  "url": {{ shop.url | append: '/pages/' | append: place_handle | json }},
+  {%- if lat and lon -%}
+  "geo": {
+    "@type": "GeoCoordinates",
+    "latitude": {{ lat }},
+    "longitude": {{ lon }}
+  },
+  {%- endif -%}
+  "address": {
+    "@type": "PostalAddress",
+    "addressLocality": {{ city | json }},
+    "addressCountry": {{ country | json }}
+  }
+  {%- if rating -%}
+  ,
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": {{ rating }},
+    "reviewCount": {{ rating_count | default: 0 }}
+  }
+  {%- endif -%}
+  {%- if schema_first_photo != blank -%}
+  ,
+  "image": {{ schema_first_photo | json }}
+  {%- endif -%}
+}
+</script>
+
+{% schema %}
+{
+  "name": "Murmurgo Place Main",
+  "class": "section-murmurgo-place-main",
+  "settings": [],
+  "presets": [{ "name": "Murmurgo Place Main" }]
+}
+{% endschema %}

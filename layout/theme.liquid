@@ -22,6 +22,16 @@
     >
 
     {%- render 'meta-tags' -%}
+
+    {%- comment -%} Metaobject page SEO variables {%- endcomment -%}
+    {%- if template == 'metaobject' -%}
+      {%- assign seo_name = metaobject.name | default: metaobject.system.name | escape -%}
+      {%- assign seo_desc = metaobject.description | default: metaobject.ai_snippet | default: metaobject.tagline | strip_html | truncate: 160 | escape -%}
+      {%- assign seo_handle = metaobject.system.handle -%}
+      {%- assign seo_url = shop.url | append: '/pages/' | append: seo_handle -%}
+      {%- assign page_description = seo_desc -%}
+    {%- endif -%}
+
     {%- render 'stylesheets' -%}
     {%- render 'fonts' -%}
     {%- render 'scripts' -%}
@@ -47,6 +57,93 @@
     {{ content_for_header }}
   {% include 'murmurgo-meta' %}
   {% render 'murmurgo-config' %}
+
+  {%- if template == 'metaobject' and metaobject.system.handle != blank -%}
+    <title>{{ seo_name | default: page_title | escape }} | Murmurgo</title>
+    <meta name="description" content="{{ seo_desc | default: page_description | escape }}">
+    <link rel="canonical" href="{{ seo_url }}">
+    <meta property="og:title" content="{{ seo_name | default: page_title | escape }}">
+    <meta property="og:description" content="{{ seo_desc | default: page_description | escape }}">
+    <meta property="og:type" content="place">
+    <meta property="og:url" content="{{ seo_url }}">
+    {%- assign seo_hero = metaobject.hero_image_ref -%}
+    {%- if seo_hero != blank -%}
+      {%- assign seo_hero_url = seo_hero.cdn_url | default: seo_hero.url | default: seo_hero -%}
+      {%- assign seo_hero_url = seo_hero_url | replace: 'media.plekify.com', 'media.murmurgo.com' | replace: 'cdn.plekify.com', 'media.murmurgo.com' -%}
+      <meta property="og:image" content="{{ seo_hero_url }}">
+      <meta property="og:image:secure_url" content="{{ seo_hero_url }}">
+    {%- endif -%}
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ seo_name | default: page_title | escape }}">
+    <meta name="twitter:description" content="{{ seo_desc | default: page_description | escape }}">
+    {%- if seo_hero_url != blank -%}
+      <meta name="twitter:image" content="{{ seo_hero_url }}">
+    {%- endif -%}
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Place",
+      "name": {{ seo_name | default: page_title | json }},
+      "description": {{ seo_desc | default: page_description | json }},
+      "url": {{ seo_url | json }},
+      {%- if metaobject.latitude != blank and metaobject.longitude != blank -%}
+      "geo": {
+        "@type": "GeoCoordinates",
+        "latitude": {{ metaobject.latitude | json }},
+        "longitude": {{ metaobject.longitude | json }}
+      },
+      {%- endif -%}
+      {%- if seo_hero_url != blank -%}
+      "image": {{ seo_hero_url | json }},
+      {%- endif -%}
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": {{ metaobject.city | default: metaobject.address_city | json }},
+        "addressRegion": {{ metaobject.address_region | default: metaobject.province | json }},
+        "addressCountry": {{ metaobject.country_code | default: metaobject.country | json }}
+      }
+    }
+    </script>
+  {%- endif -%}
+
+  <script>
+    // Rewrite Plekify CDN URLs to Murmurgo CDN URLs until data pipeline is updated
+    (function() {
+      function rewriteDomain(el, attr) {
+        var val = el.getAttribute(attr);
+        if (val && (val.includes('media.plekify.com') || val.includes('cdn.plekify.com'))) {
+          el.setAttribute(attr, val.replace(/media\.plekify\.com/g, 'media.murmurgo.com').replace(/cdn\.plekify\.com/g, 'media.murmurgo.com'));
+        }
+      }
+      function rewriteAll() {
+        document.querySelectorAll('img[src*="plekify.com"]').forEach(function(el) { rewriteDomain(el, 'src'); });
+        document.querySelectorAll('img[srcset*="plekify.com"]').forEach(function(el) { rewriteDomain(el, 'srcset'); });
+        document.querySelectorAll('source[srcset*="plekify.com"]').forEach(function(el) { rewriteDomain(el, 'srcset'); });
+        document.querySelectorAll('[style*="plekify.com"]').forEach(function(el) {
+          el.style.cssText = el.style.cssText.replace(/media\.plekify\.com/g, 'media.murmurgo.com').replace(/cdn\.plekify\.com/g, 'media.murmurgo.com');
+        });
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', rewriteAll);
+      } else {
+        rewriteAll();
+      }
+      var observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+          mutation.addedNodes.forEach(function(node) {
+            if (node.nodeType === 1) {
+              if (node.matches && node.matches('img[src*="plekify.com"]')) rewriteDomain(node, 'src');
+              if (node.querySelectorAll) {
+                node.querySelectorAll('img[src*="plekify.com"]').forEach(function(el) { rewriteDomain(el, 'src'); });
+              }
+            }
+          });
+        });
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+    })();
+  </script>
+
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
   <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
   </head>

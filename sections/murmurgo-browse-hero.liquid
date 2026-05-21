@@ -1,0 +1,127 @@
+{% comment %}
+  sections/murmurgo-browse-hero.liquid
+  Full-viewport video hero for the native browse page.
+{% endcomment %}
+
+{{ 'murmurgo-browse.css' | asset_url | stylesheet_tag }}
+
+<section
+  id="murmurgo-browse-hero"
+  class="mg-browse-hero"
+  data-section-id="{{ section.id }}"
+>
+  <div class="mg-browse-hero__video-wrap">
+    <video
+      class="mg-browse-hero__video"
+      autoplay
+      muted
+      loop
+      playsinline
+      poster=""
+    >
+      <source src="{{ section.settings.video_url }}" type="video/mp4">
+    </video>
+  </div>
+
+  <div class="mg-browse-hero__overlay"></div>
+
+  <header class="mg-browse-hero__header">
+    <a href="{{ routes.root_url }}" class="mg-browse-hero__logo">murmurgo</a>
+
+    <a
+      href="{{ routes.account_login_url }}"
+      class="mg-browse-hero__account"
+      aria-label="Account"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+        <circle cx="12" cy="7" r="4"></circle>
+      </svg>
+    </a>
+  </header>
+
+  <div class="mg-browse-hero__content">
+    <h1 class="mg-browse-hero__heading">{{ section.settings.heading }}</h1>
+    <p class="mg-browse-hero__subtitle">{{ section.settings.subtitle }}</p>
+
+    <div class="mg-browse-hero__search">
+      <input
+        type="text"
+        class="mg-browse-hero__input"
+        placeholder="{{ section.settings.search_placeholder }}"
+        aria-label="Search places"
+      >
+      <button
+        type="button"
+        class="mg-browse-hero__search-btn"
+        aria-label="Search"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+      </button>
+    </div>
+
+    <a href="#murmurgo-category-grid" class="mg-browse-hero__scroll-link">
+      Or browse by category &rarr;
+    </a>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Murmurgo Browse Hero",
+  "settings": [
+    {
+      "type": "text",
+      "id": "video_url",
+      "label": "Hero Video URL",
+      "default": "https://cdn.shopify.com/videos/c/o/v/f965289c41f9435ba73f52fddfcd2a3c.mp4"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Discover Africa"
+    },
+    {
+      "type": "text",
+      "id": "subtitle",
+      "label": "Subtitle",
+      "default": "14,500+ curated places. From safari lodges to hidden restaurants."
+    },
+    {
+      "type": "text",
+      "id": "search_placeholder",
+      "label": "Search Placeholder",
+      "default": "Try 'romantic beachfront' or 'family-friendly safari'..."
+    }
+  ],
+  "presets": [
+    {
+      "name": "Murmurgo Browse Hero"
+    }
+  ]
+}
+{% endschema %}

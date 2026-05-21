@@ -338,26 +338,6 @@
     },
     "travel_search_section": {
       "type": "_blocks",
-      "blocks": {
-        "plekify_travel_search": {
-          "type": "shopify://apps/plekify/blocks/travel-search/0199bf66-2f2c-7865-8785-699a8882521a",
-          "settings": {
-            "extension_key": "psk_7f1a5cbd9e428f3b0a61d27e54c3f902a7d1c4e9b2f604c18a2d7f93e0b5c6a1",
-            "title": "Find Your Perfect Stay",
-            "subtitle": "Search accommodations by location, dates, and guests",
-            "placeholder_location": "Where are you going? (optional)",
-            "button_text_default": "See Live Rates",
-            "button_text_loading": "Rates are loading",
-            "button_text_results": "Showing Live Rates",
-            "search_button": "Search Properties",
-            "auto_search": true,
-            "color_scheme": "scheme-1"
-          }
-        }
-      },
-      "block_order": [
-        "plekify_travel_search"
-      ],
       "settings": {
         "content_direction": "column",
         "vertical_on_mobile": true,

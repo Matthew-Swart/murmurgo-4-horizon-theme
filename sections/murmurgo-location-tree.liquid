@@ -1,0 +1,351 @@
+{% comment %}
+  sections/murmurgo-location-tree.liquid
+  Location explorer with collapsible country/region/city tree.
+{% endcomment %}
+
+<section
+  id="murmurgo-location-tree"
+  class="mg-location-tree"
+  data-section-id="{{ section.id }}"
+>
+  <div class="mg-location-tree__inner">
+    <h2 class="mg-location-tree__heading">Explore by location</h2>
+
+    <div class="mg-location-tree__layout">
+      <div class="mg-location-tree__panel" id="mg-location-panel">
+        <div class="mg-location-tree__loading" id="mg-location-loading">
+          Loading locations…
+        </div>
+        <div class="mg-location-tree__list" id="mg-location-list"></div>
+      </div>
+
+      <div class="mg-location-tree__map-placeholder">
+        <div class="mg-location-tree__map-pattern">
+          <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <pattern id="mg-dots" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+                <circle cx="2" cy="2" r="1" fill="currentColor" opacity="0.15"/>
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#mg-dots)"/>
+          </svg>
+        </div>
+        <p class="mg-location-tree__map-label">Map coming soon</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+(function() {
+  'use strict';
+
+  var ENDPOINTS = [
+    'https://app.murmurgo.com/api/places/browse-tree',
+    'https://app.murmurgo.com/apps/murmurgo/api/places/browse-tree'
+  ];
+
+  function kebabCase(str) {
+    return str
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+  }
+
+  function createTreeItem(data, depth) {
+    depth = depth || 0;
+    var item = document.createElement('div');
+    item.className = 'mg-location-tree__item mg-location-tree__item--depth-' + depth;
+
+    var header = document.createElement('div');
+    header.className = 'mg-location-tree__item-header';
+
+    var hasChildren = data.regions && data.regions.length > 0;
+    var isCity = !hasChildren && depth >= 2;
+
+    if (hasChildren) {
+      var toggle = document.createElement('button');
+      toggle.className = 'mg-location-tree__toggle';
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.innerHTML =
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>';
+      header.appendChild(toggle);
+    } else {
+      var spacer = document.createElement('span');
+      spacer.className = 'mg-location-tree__toggle mg-location-tree__toggle--placeholder';
+      header.appendChild(spacer);
+    }
+
+    var label;
+    if (isCity) {
+      var countrySlug = data.countrySlug || '';
+      var citySlug = kebabCase(data.name || data.city || '');
+      var href = '/pages/place/' + citySlug + (countrySlug ? '-' + countrySlug : '');
+      label = document.createElement('a');
+      label.href = href;
+      label.className = 'mg-location-tree__label mg-location-tree__label--link';
+    } else {
+      label = document.createElement('span');
+      label.className = 'mg-location-tree__label';
+    }
+    label.textContent = data.name || data.city || data.region || 'Untitled';
+    header.appendChild(label);
+
+    if (data.count || data.place_count) {
+      var count = document.createElement('span');
+      count.className = 'mg-location-tree__count';
+      count.textContent = String(data.count || data.place_count);
+      header.appendChild(count);
+    }
+
+    item.appendChild(header);
+
+    if (hasChildren) {
+      var children = document.createElement('div');
+      children.className = 'mg-location-tree__children';
+      children.style.display = 'none';
+
+      data.regions.forEach(function(child) {
+        child.countrySlug = child.countrySlug || data.slug || kebabCase(data.name || data.country || '');
+        children.appendChild(createTreeItem(child, depth + 1));
+      });
+
+      item.appendChild(children);
+
+      header.addEventListener('click', function(e) {
+        if (isCity) return;
+        e.preventDefault();
+        var expanded = toggle.getAttribute('aria-expanded') === 'true';
+        toggle.setAttribute('aria-expanded', String(!expanded));
+        item.classList.toggle('is-expanded', !expanded);
+        children.style.display = expanded ? 'none' : 'block';
+      });
+    }
+
+    return item;
+  }
+
+  var AFRICAN_COUNTRIES = ['South Africa','Kenya','Tanzania','Botswana','Namibia','Zimbabwe','Zambia','Mozambique','Mauritius','Seychelles'];
+
+  function renderStatic(countries) {
+    var list = document.getElementById('mg-location-list');
+    var loading = document.getElementById('mg-location-loading');
+    if (loading) loading.style.display = 'none';
+    if (!list) return;
+    list.innerHTML = '';
+
+    if (!countries || countries.length === 0) {
+      list.innerHTML = '<p class="mg-location-tree__note">Locations coming soon.</p>';
+      return;
+    }
+
+    // Filter to African countries, preserving API order
+    var african = countries.filter(function(c) {
+      return AFRICAN_COUNTRIES.indexOf(c.name) !== -1;
+    });
+    // Sort by API order (which is by count desc)
+    african.sort(function(a, b) {
+      return AFRICAN_COUNTRIES.indexOf(a.name) - AFRICAN_COUNTRIES.indexOf(b.name);
+    });
+
+    african.forEach(function(country) {
+      list.appendChild(createTreeItem(country, 0));
+    });
+  }
+
+  function tryFetch(index) {
+    if (index >= ENDPOINTS.length) {
+      renderStatic([]);
+      return;
+    }
+
+    fetch(ENDPOINTS[index])
+      .then(function(res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .then(function(data) {
+        var countries = data.countries || data.data || (Array.isArray(data) ? data : []);
+        renderStatic(countries);
+      })
+      .catch(function() {
+        tryFetch(index + 1);
+      });
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    tryFetch(0);
+  });
+})();
+</script>
+
+<style>
+.mg-location-tree {
+  padding: 64px 0;
+  background: #f8f8f8;
+}
+.mg-location-tree__inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+.mg-location-tree__heading {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 2.5rem;
+  font-weight: 600;
+  margin: 0 0 32px;
+  color: #1a1a1a;
+}
+.mg-location-tree__layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+  align-items: start;
+}
+.mg-location-tree__panel {
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  min-height: 400px;
+}
+.mg-location-tree__loading {
+  color: #666;
+  font-size: 0.95rem;
+  padding: 24px 0;
+}
+.mg-location-tree__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mg-location-tree__item {
+  border-radius: 8px;
+  overflow: hidden;
+}
+.mg-location-tree__item-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+.mg-location-tree__item-header:hover {
+  background: #f5f5f5;
+}
+.mg-location-tree__toggle {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: #666;
+  flex-shrink: 0;
+  transition: transform 0.2s;
+}
+.mg-location-tree__toggle[aria-expanded="true"] {
+  transform: rotate(90deg);
+}
+.mg-location-tree__toggle--placeholder {
+  opacity: 0;
+  pointer-events: none;
+}
+.mg-location-tree__label {
+  flex: 1;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #1a1a1a;
+}
+.mg-location-tree__label--link {
+  color: #2A9D8F;
+  text-decoration: none;
+}
+.mg-location-tree__label--link:hover {
+  text-decoration: underline;
+}
+.mg-location-tree__count {
+  font-size: 0.8rem;
+  color: #999;
+  background: #f0f0f0;
+  padding: 2px 8px;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+.mg-location-tree__children {
+  padding-left: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mg-location-tree__item--depth-1 .mg-location-tree__item-header {
+  padding: 8px 12px;
+}
+.mg-location-tree__item--depth-1 .mg-location-tree__label {
+  font-size: 0.9rem;
+  font-weight: 400;
+}
+.mg-location-tree__item--depth-2 .mg-location-tree__item-header {
+  padding: 6px 12px;
+}
+.mg-location-tree__item--depth-2 .mg-location-tree__label {
+  font-size: 0.85rem;
+  color: #555;
+}
+.mg-location-tree__note {
+  color: #999;
+  font-size: 0.9rem;
+  padding: 12px 0;
+  margin: 0;
+}
+.mg-location-tree__map-placeholder {
+  background: #fff;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.mg-location-tree__map-pattern {
+  position: absolute;
+  inset: 0;
+  color: #1a1a1a;
+}
+.mg-location-tree__map-label {
+  position: relative;
+  z-index: 1;
+  font-size: 0.9rem;
+  color: #999;
+  margin: 0;
+}
+
+@media (max-width: 1023px) {
+  .mg-location-tree__layout {
+    grid-template-columns: 1fr;
+  }
+  .mg-location-tree__map-placeholder {
+    display: none;
+  }
+}
+</style>
+
+{% schema %}
+{
+  "name": "Murmurgo Location Tree",
+  "settings": [],
+  "presets": [
+    {
+      "name": "Murmurgo Location Tree"
+    }
+  ]
+}
+{% endschema %}

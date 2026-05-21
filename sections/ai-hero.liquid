@@ -1,21 +1,20 @@
 {% comment %}
   ai-hero.liquid
-  Full-viewport hero with video, headline, input line, and sample prompt chips.
-  Hero media is configurable via theme editor (Shopify CDN).
+  Light-mode, full-viewport landing for Murmurgo AI itinerary builder.
+  Inspired by Plekify travel-brief aesthetic - minimal, clean, light.
+  All interaction handled by murmurgo-ai.js.
 {% endcomment %}
 
-{% assign hero_image = section.settings.hero_image | default: blank %}
-{% assign hero_video_mp4 = section.settings.hero_video_mp4 | default: blank %}
-{% assign hero_video_webm = section.settings.hero_video_webm | default: blank %}
-{% assign has_video = false %}
-{% if hero_video_mp4 != blank or hero_video_webm != blank %}
-  {% assign has_video = true %}
+{% assign hero_image = section.settings.hero_image %}
+{% assign hero_video = section.settings.hero_video %}
+{% if hero_video != blank %}
+  {% capture video_fallback_attrs %}style="display:none;" data-hero-fallback{% endcapture %}
 {% endif %}
 
-<section class="m-ai-hero" data-ai-hero>
-  {% comment %} Video / Image Background {% endcomment %}
+<section class="m-ai-hero" data-ai-hero data-section-id="{{ section.id }}">
+  {% comment %} Background media (video or solid color) {% endcomment %}
   <div class="m-ai-hero__media">
-    {% if has_video %}
+    {% if hero_video != blank %}
       <video
         class="m-ai-hero__video"
         data-hero-video
@@ -25,12 +24,7 @@
         playsinline
         {% if hero_image != blank %}poster="{{ hero_image | image_url: width: 1200 }}"{% endif %}
       >
-        {% if hero_video_webm != blank %}
-          <source src="{{ hero_video_webm }}" type="video/webm">
-        {% endif %}
-        {% if hero_video_mp4 != blank %}
-          <source src="{{ hero_video_mp4 }}" type="video/mp4">
-        {% endif %}
+        <source src="{{ hero_video }}" type="video/mp4">
       </video>
     {% endif %}
 
@@ -40,59 +34,81 @@
         src="{{ hero_image | image_url: width: 1200 }}"
         srcset="{{ hero_image | image_url: width: 600 }} 600w, {{ hero_image | image_url: width: 1200 }} 1200w, {{ hero_image | image_url: width: 1920 }} 1920w"
         sizes="100vw"
-        alt="{{ section.settings.hero_alt | default: 'Dawn over the African savanna' }}"
+        alt="{{ section.settings.hero_alt | default: 'African landscape' }}"
         loading="eager"
         width="1920"
         height="1080"
-        {% if has_video %}style="display:none;" data-hero-fallback{% endif %}
+        {{ video_fallback_attrs }}
       >
     {% endif %}
-  </div>
 
-  {% comment %} Overlay {% endcomment %}
-  <div class="m-ai-hero__overlay"></div>
+    {% comment %} Subtle gradient overlay for text legibility {% endcomment %}
+    <div class="m-ai-hero__overlay"></div>
+  </div>
 
   {% comment %} Content {% endcomment %}
   <div class="m-ai-hero__content">
-    <h1 class="m-ai-hero__headline">{{ section.settings.headline | default: 'Build your trip.' }}</h1>
+    <div class="m-ai-hero__brand">
+      {% if section.settings.show_logo %}
+        <svg class="m-ai-hero__logo" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+          <circle cx="24" cy="24" r="20" stroke="currentColor" stroke-width="2"/>
+          <path d="M16 24c0-4.4 3.6-8 8-8s8 3.6 8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="24" cy="28" r="4" fill="currentColor"/>
+          <path d="M24 32v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      {% endif %}
+    </div>
 
-    {% comment %} Input Line {% endcomment %}
+    <h1 class="m-ai-hero__headline">{{ section.settings.headline | default: 'Build your trip.' }}</h1>
+    <p class="m-ai-hero__subtitle">{{ section.settings.subtitle | default: 'Describe what you are dreaming of.' }}</p>
+
+    {% comment %} Input Area {% endcomment %}
     <div class="m-ai-hero__input-wrap">
-      <input
-        type="text"
+      <textarea
         class="m-ai-hero__input"
         data-ai-input
-        placeholder="{{ section.settings.input_placeholder | default: 'I want to be in the bush by Thursday' }}"
-        autocomplete="off"
+        placeholder="{{ section.settings.input_placeholder | default: 'I want to be in the bush by Thursday...' }}"
+        rows="2"
         aria-label="Describe your trip"
-      >
-      <button
-        class="m-ai-hero__mic"
-        data-ai-mic
-        aria-label="Voice input"
-        title="Tap to speak"
-      >
-        <svg class="m-ai-hero__mic-icon" data-mic-icon width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-          <path d="M10 12a2 2 0 002-2V5a2 2 0 00-4 0v5a2 2 0 002 2z"/>
-          <path d="M6 9a1 1 0 011 1v1a3 3 0 006 0v-1a1 1 0 112 0v1a5 5 0 01-10 0v-1a1 1 0 011-1zM10 15v3"/>
-          <path d="M7 18h6"/>
-        </svg>
-        <span class="m-ai-hero__mic-pulse" data-mic-pulse></span>
-      </button>
+      ></textarea>
+
+      <div class="m-ai-hero__input-actions">
+        <button
+          class="m-ai-hero__mic"
+          data-ai-mic
+          aria-label="Voice input"
+          title="Tap to speak"
+        >
+          <svg class="m-ai-hero__mic-icon" width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M10 12a2 2 0 002-2V5a2 2 0 00-4 0v5a2 2 0 002 2z"/>
+            <path d="M6 9a1 1 0 011 1v1a3 3 0 006 0v-1a1 1 0 112 0v1a5 5 0 01-10 0v-1a1 1 0 011-1zM10 15v3"/>
+            <path d="M7 18h6"/>
+          </svg>
+          <span class="m-ai-hero__mic-pulse" data-mic-pulse></span>
+        </button>
+
+        <button
+          class="m-ai-hero__send"
+          data-ai-send
+          aria-label="Send message"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="22" y1="2" x2="11" y2="13"/>
+            <polygon points="22,2 15,22 11,13 2,9"/>
+          </svg>
+        </button>
+      </div>
     </div>
 
     {% comment %} Sample Prompt Chips {% endcomment %}
     <div class="m-ai-hero__chips" data-ai-chips>
-      <button class="m-ai-hero__chip" data-chip="7 nights, Cape Town + bush">7 nights, Cape Town + bush</button>
-      <button class="m-ai-hero__chip" data-chip="Honeymoon, no crowds">Honeymoon, no crowds</button>
-      <button class="m-ai-hero__chip" data-chip="Family safari, kids under 10">Family safari, kids under 10</button>
-      <button class="m-ai-hero__chip" data-chip="Long weekend from Joburg">Long weekend from Joburg</button>
-      <button class="m-ai-hero__chip" data-chip="Winelands by bicycle">Winelands by bicycle</button>
-      <button class="m-ai-hero__chip" data-chip="Best light for photography">Best light for photography</button>
-      <button class="m-ai-hero__chip" data-chip="Beach after safari">Beach after safari</button>
-      <button class="m-ai-hero__chip" data-chip="Under R5000 per night">Under R5000 per night</button>
-      <button class="m-ai-hero__chip" data-chip="Small lodge, Big Five">Small lodge, Big Five</button>
-      <button class="m-ai-hero__chip" data-chip="Road trip Garden Route">Road trip Garden Route</button>
+      <span class="m-ai-hero__chips-label">Popular journeys:</span>
+      <div class="m-ai-hero__chips-list">
+        {% assign chips = section.settings.quick_tags | default: '7 nights, Cape Town + bush,Honeymoon, no crowds,Family safari, kids under 10,Long weekend from Joburg,Winelands by bicycle,Best light for photography,Beach after safari,Under R5000 per night,Small lodge, Big Five,Road trip Garden Route' | split: ',' %}
+        {% for chip in chips %}
+          <button class="m-ai-hero__chip" data-chip="{{ chip | strip }}">{{ chip | strip }}</button>
+        {% endfor %}
+      </div>
     </div>
   </div>
 
@@ -103,7 +119,7 @@
         type="text"
         class="m-ai-hero__sticky-input"
         data-ai-sticky-input
-        placeholder="{{ section.settings.input_placeholder | default: 'I want to be in the bush by Thursday' }}"
+        placeholder="{{ section.settings.input_placeholder | default: 'I want to be in the bush by Thursday...' }}"
         autocomplete="off"
         aria-label="Describe your trip"
       >
@@ -112,6 +128,12 @@
           <path d="M10 12a2 2 0 002-2V5a2 2 0 00-4 0v5a2 2 0 002 2z"/>
           <path d="M6 9a1 1 0 011 1v1a3 3 0 006 0v-1a1 1 0 112 0v1a5 5 0 01-10 0v-1a1 1 0 011-1zM10 15v3"/>
           <path d="M7 18h6"/>
+        </svg>
+      </button>
+      <button class="m-ai-hero__sticky-send" data-ai-sticky-send aria-label="Send message">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="22" y1="2" x2="11" y2="13"/>
+          <polygon points="22,2 15,22 11,13 2,9"/>
         </svg>
       </button>
     </div>
@@ -127,25 +149,19 @@
       "type": "image_picker",
       "id": "hero_image",
       "label": "Hero background image",
-      "info": "Upload via Shopify CDN. Used as fallback when video fails or on mobile."
+      "info": "Fallback when video fails or on mobile data saver."
     },
     {
-      "type": "url",
-      "id": "hero_video_mp4",
-      "label": "Hero video (MP4)",
-      "info": "Upload to Shopify Files and paste URL here. Optional."
-    },
-    {
-      "type": "url",
-      "id": "hero_video_webm",
-      "label": "Hero video (WebM)",
-      "info": "Upload to Shopify Files and paste URL here. Optional."
+      "type": "text",
+      "id": "hero_video",
+      "label": "Hero background video URL",
+      "info": "Direct URL to an MP4 video. Leave blank for image-only."
     },
     {
       "type": "text",
       "id": "hero_alt",
       "label": "Hero image alt text",
-      "default": "Dawn over the African savanna"
+      "default": "African landscape"
     },
     {
       "type": "text",
@@ -155,9 +171,28 @@
     },
     {
       "type": "text",
+      "id": "subtitle",
+      "label": "Subtitle",
+      "default": "Describe what you are dreaming of."
+    },
+    {
+      "type": "text",
       "id": "input_placeholder",
       "label": "Input placeholder",
-      "default": "I want to be in the bush by Thursday"
+      "default": "I want to be in the bush by Thursday..."
+    },
+    {
+      "type": "text",
+      "id": "quick_tags",
+      "label": "Quick start prompts",
+      "default": "7 nights, Cape Town + bush, Honeymoon, no crowds, Family safari, kids under 10, Long weekend from Joburg, Winelands by bicycle, Best light for photography, Beach after safari, Under R5000 per night, Small lodge, Big Five, Road trip Garden Route",
+      "info": "Comma-separated list of sample prompts. Each becomes a clickable chip."
+    },
+    {
+      "type": "checkbox",
+      "id": "show_logo",
+      "label": "Show logo icon",
+      "default": true
     }
   ],
   "presets": [

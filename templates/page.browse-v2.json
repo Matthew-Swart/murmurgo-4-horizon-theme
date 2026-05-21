@@ -13,9 +13,5 @@
       "settings": {}
     }
   },
-  "order": [
-    "hero",
-    "categories",
-    "locations"
-  ]
+  "order": ["hero", "categories", "locations"]
 }

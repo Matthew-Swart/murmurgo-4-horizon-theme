@@ -1,0 +1,92 @@
+{% comment %}
+  sections/murmurgo-category-grid.liquid
+  Responsive category card grid for the native browse page.
+{% endcomment %}
+
+<section
+  id="murmurgo-category-grid"
+  class="mg-category-grid"
+  data-section-id="{{ section.id }}"
+>
+  <div class="mg-category-grid__inner">
+    <h2 class="mg-category-grid__heading">Browse by category</h2>
+
+    <div class="mg-category-grid__cards">
+      <a href="/pages/places-to-stay" class="mg-category-card">
+        <div class="mg-category-card__media">
+          <img src="https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&q=80" alt="Places to Stay" class="mg-category-card__img" loading="lazy" width="600" height="400">
+          <div class="mg-category-card__gradient"></div>
+        </div>
+        <span class="mg-category-card__title">Places to Stay</span>
+      </a>
+
+      <a href="/pages/restaurant" class="mg-category-card">
+        <div class="mg-category-card__media">
+          <img src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600&q=80" alt="Restaurants & Bars" class="mg-category-card__img" loading="lazy" width="600" height="400">
+          <div class="mg-category-card__gradient"></div>
+        </div>
+        <span class="mg-category-card__title">Restaurants & Bars</span>
+      </a>
+
+      <a href="/pages/nature" class="mg-category-card">
+        <div class="mg-category-card__media">
+          <img src="https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?w=600&q=80" alt="Wildlife & Nature" class="mg-category-card__img" loading="lazy" width="600" height="400">
+          <div class="mg-category-card__gradient"></div>
+        </div>
+        <span class="mg-category-card__title">Wildlife & Nature</span>
+      </a>
+
+      <a href="/pages/attraction" class="mg-category-card">
+        <div class="mg-category-card__media">
+          <img src="https://images.unsplash.com/photo-1533105079780-92b9be482077?w=600&q=80" alt="Attractions & Activities" class="mg-category-card__img" loading="lazy" width="600" height="400">
+          <div class="mg-category-card__gradient"></div>
+        </div>
+        <span class="mg-category-card__title">Attractions & Activities</span>
+      </a>
+
+      <a href="/pages/spa" class="mg-category-card">
+        <div class="mg-category-card__media">
+          <img src="https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=600&q=80" alt="Spa & Wellness" class="mg-category-card__img" loading="lazy" width="600" height="400">
+          <div class="mg-category-card__gradient"></div>
+        </div>
+        <span class="mg-category-card__title">Spa & Wellness</span>
+      </a>
+
+      <a href="/pages/park" class="mg-category-card">
+        <div class="mg-category-card__media">
+          <img src="https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=600&q=80" alt="Parks & Reserves" class="mg-category-card__img" loading="lazy" width="600" height="400">
+          <div class="mg-category-card__gradient"></div>
+        </div>
+        <span class="mg-category-card__title">Parks & Reserves</span>
+      </a>
+
+      <a href="/pages/shopping" class="mg-category-card">
+        <div class="mg-category-card__media">
+          <img src="https://images.unsplash.com/photo-1483985988355-763728e1935b?w=600&q=80" alt="Shopping" class="mg-category-card__img" loading="lazy" width="600" height="400">
+          <div class="mg-category-card__gradient"></div>
+        </div>
+        <span class="mg-category-card__title">Shopping</span>
+      </a>
+
+      <a href="/pages/nightlife" class="mg-category-card">
+        <div class="mg-category-card__media">
+          <img src="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&q=80" alt="Nightlife" class="mg-category-card__img" loading="lazy" width="600" height="400">
+          <div class="mg-category-card__gradient"></div>
+        </div>
+        <span class="mg-category-card__title">Nightlife</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Murmurgo Category Grid",
+  "settings": [],
+  "presets": [
+    {
+      "name": "Murmurgo Category Grid"
+    }
+  ]
+}
+{% endschema %}
