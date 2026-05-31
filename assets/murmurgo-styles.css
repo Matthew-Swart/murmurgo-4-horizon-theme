@@ -634,12 +634,41 @@ body:has(.m-trip-shell) .announcement-bar {
 /* ═══════════════════════════════════════════════════════════════════
    Murmurgo Phase 4 — AI Conversation Styles
    Rich visual agent, NOT a chatbot.
+   Dark cinematic video hero with glassmorphism.
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ─── AI Hero ─────────────────────────────────────────────────────── */
 /* ═══════════════════════════════════════════════════════════════════
-   AI Hero — Light Mode Landing (Plekify-inspired)
+   AI Hero — Dark Cinematic Mode (Plekify-inspired)
    ═══════════════════════════════════════════════════════════════════ */
+
+/* Hide Shopify header when AI hero is present */
+body:has(.m-ai-hero) #header-group,
+body:has(.m-ai-hero) .shopify-section-group-header-group,
+body:has(.m-ai-hero) #shopify-section-header,
+body:has(.m-ai-hero) #shopify-section-announcement-bar {
+  display: none !important;
+}
+
+/* Full-viewport hero overlay */
+body:has(.m-ai-hero) .m-ai-hero {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  min-height: 100vh !important;
+  z-index: 9999 !important;
+  overflow: hidden !important;
+}
+body:has(.m-ai-hero) .m-ai-hero.is-submitted {
+  position: relative !important;
+  height: auto !important;
+  min-height: 100vh !important;
+  overflow: visible !important;
+}
 
 .m-ai-hero {
   position: relative;
@@ -650,14 +679,15 @@ body:has(.m-trip-shell) .announcement-bar {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  background: #fafafa;
+  background: #000;
 }
 
 .m-ai-hero__media {
   position: absolute;
   inset: 0;
   z-index: 0;
-  opacity: 0.35;
+  opacity: 1;
+  transition: opacity 0.4s ease;
 }
 
 .m-ai-hero__video,
@@ -684,8 +714,15 @@ body:has(.m-trip-shell) .announcement-bar {
 .m-ai-hero__overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(250,250,250,0.2) 0%, rgba(250,250,250,0.6) 60%, rgba(250,250,250,0.95) 100%);
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.3) 0%,
+    rgba(0, 0, 0, 0.1) 40%,
+    rgba(0, 0, 0, 0.1) 60%,
+    rgba(0, 0, 0, 0.4) 100%
+  );
   z-index: 1;
+  transition: background 0.4s ease;
 }
 
 .m-ai-hero__content {
@@ -704,43 +741,46 @@ body:has(.m-trip-shell) .announcement-bar {
 .m-ai-hero__logo {
   width: 48px;
   height: 48px;
-  color: var(--mg-color-text);
+  color: rgba(255, 255, 255, 0.9);
   margin: 0 auto;
 }
 
 .m-ai-hero__headline {
   font-size: clamp(2.25rem, 5vw, 3.5rem);
   font-weight: 600;
-  color: var(--mg-color-text);
+  color: #fff;
   margin: 0 0 12px;
   line-height: 1.1;
   letter-spacing: -0.02em;
+  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
 }
 
 .m-ai-hero__subtitle {
   font-size: clamp(1rem, 2vw, 1.25rem);
-  color: var(--mg-color-text-secondary);
+  color: rgba(255, 255, 255, 0.85);
   margin: 0 0 32px;
   line-height: 1.5;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.3);
 }
 
-/* Input */
+/* Input — Glassmorphism */
 .m-ai-hero__input-wrap {
   position: relative;
   display: flex;
   align-items: flex-end;
   gap: 8px;
-  background: #fff;
-  border: 1px solid var(--mg-color-border);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-radius: 16px;
   padding: 12px 12px 12px 16px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04);
-  transition: box-shadow 0.2s, border-color 0.2s;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  border: none;
+  transition: box-shadow 0.2s;
 }
 
 .m-ai-hero__input-wrap:focus-within {
-  border-color: var(--mg-color-accent);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
 }
 
 .m-ai-hero__input {
@@ -826,7 +866,7 @@ body:has(.m-trip-shell) .announcement-bar {
   50% { transform: scale(1.05); opacity: 1; }
 }
 
-/* Chips */
+/* Chips — Frosted glass */
 .m-ai-hero__chips {
   margin-top: 24px;
   text-align: center;
@@ -835,10 +875,11 @@ body:has(.m-trip-shell) .announcement-bar {
 .m-ai-hero__chips-label {
   display: block;
   font-size: 0.8rem;
-  color: var(--mg-color-text-secondary);
+  color: rgba(255, 255, 255, 0.8);
   margin-bottom: 10px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.3);
 }
 
 .m-ai-hero__chips-list {
@@ -849,28 +890,75 @@ body:has(.m-trip-shell) .announcement-bar {
 }
 
 .m-ai-hero__chip {
-  background: #fff;
-  color: var(--mg-color-text-secondary);
-  border: 1px solid var(--mg-color-border);
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 100px;
   padding: 8px 16px;
   font-size: 0.85rem;
   cursor: pointer;
-  transition: background 0.2s, border-color 0.2s, color 0.2s;
+  transition: background 0.2s, border-color 0.2s;
   white-space: nowrap;
 }
 
 .m-ai-hero__chip:hover {
-  background: var(--mg-color-surface);
-  border-color: var(--mg-color-accent);
-  color: var(--mg-color-text);
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
 }
 
-.m-ai-hero__chip.is-running {
-  background: var(--mg-color-accent);
-  border-color: var(--mg-color-accent);
-  color: #fff;
-  pointer-events: none;
+.m-ai-hero__chip.is-active {
+  background: rgba(255, 255, 255, 0.4);
+  border-color: rgba(255, 255, 255, 0.7);
+}
+
+/* Video Toggle Button */
+.m-ai-hero__video-toggle {
+  position: absolute;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  opacity: 0.7;
+}
+
+.m-ai-hero__video-toggle:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.m-ai-hero__video-toggle svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.m-ai-hero__video-toggle .toggle-label {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .m-ai-hero__video-toggle .toggle-label {
+    display: inline;
+  }
+}
+
+.m-ai-hero__video-toggle[data-video-paused="true"] {
+  background: rgba(255, 255, 255, 0.15);
 }
 
 /* Sticky bar (post-submit) */
@@ -880,9 +968,10 @@ body:has(.m-trip-shell) .announcement-bar {
   left: 0;
   right: 0;
   z-index: 200;
-  background: rgba(255,255,255,0.95);
+  background: rgba(10, 10, 10, 0.92);
   backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--mg-color-border);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   padding: 12px 16px;
   transform: translateY(-100%);
   transition: transform 0.3s ease;
@@ -898,23 +987,29 @@ body:has(.m-trip-shell) .announcement-bar {
   display: flex;
   align-items: center;
   gap: 8px;
-  max-width: 720px;
+  max-width: 960px;
   margin: 0 auto;
 }
 
 .m-ai-hero__sticky-input {
   flex: 1;
-  border: 1px solid var(--mg-color-border);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 12px;
   padding: 10px 14px;
   font-size: 1rem;
   outline: none;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
   font-family: inherit;
 }
 
+.m-ai-hero__sticky-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
 .m-ai-hero__sticky-input:focus {
-  border-color: var(--mg-color-accent);
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .m-ai-hero__sticky-mic,
@@ -924,39 +1019,40 @@ body:has(.m-trip-shell) .announcement-bar {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--mg-color-surface);
+  background: rgba(255, 255, 255, 0.08);
   border: none;
   border-radius: 10px;
   cursor: pointer;
-  color: var(--mg-color-text-secondary);
+  color: rgba(255, 255, 255, 0.7);
   flex-shrink: 0;
   transition: background 0.2s, color 0.2s;
 }
 
 .m-ai-hero__sticky-send {
-  background: var(--mg-color-text);
+  background: rgba(255, 255, 255, 0.15);
   color: #fff;
 }
 
 .m-ai-hero__sticky-mic:hover {
-  background: var(--mg-color-border);
-  color: var(--mg-color-text);
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
 }
 
 .m-ai-hero__sticky-send:hover {
-  background: #333;
+  background: rgba(255, 255, 255, 0.25);
 }
 
-/* Submitted state */
+/* Submitted state — dim video, don't hide */
 .m-ai-hero.is-submitted {
-  height: auto;
-  min-height: 0;
+  position: relative !important;
+  height: auto !important;
+  min-height: 0 !important;
   justify-content: flex-start;
 }
 
 .m-ai-hero.is-submitted .m-ai-hero__media,
 .m-ai-hero.is-submitted .m-ai-hero__overlay {
-  opacity: 0;
+  opacity: 0.25;
   pointer-events: none;
 }
 
@@ -1020,22 +1116,46 @@ body:has(.m-trip-shell) .announcement-bar {
 }
 
 /* ─── AI Conversation ─────────────────────────────────────────────── */
+/* Dark cinematic conversation — no jarring white flash */
+body:has(.m-ai-conversation.is-active) {
+  background: #0a0a0a !important;
+}
+
 .m-ai-conversation {
   min-height: 0;
-  padding: 0 16px 80px;
-  max-width: 800px;
+  padding: 0 24px 100px;
+  max-width: 960px;
   margin: 0 auto;
   display: none;
 }
 
 .m-ai-conversation.is-active {
   display: block;
+  position: relative;
+  z-index: 3;
+  background: rgba(20, 20, 20, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 24px;
+  margin: 2rem auto;
+  padding: 2rem;
+  max-width: 960px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+@media (max-width: 767px) {
+  .m-ai-conversation.is-active {
+    margin: 1rem;
+    padding: 1rem;
+    border-radius: 16px;
+  }
 }
 
 .m-ai-conversation__loading {
   padding: 48px 0;
   text-align: center;
-  color: var(--mg-color-text-secondary);
+  color: rgba(255, 255, 255, 0.5);
   font-size: 1.1rem;
 }
 
@@ -1056,8 +1176,9 @@ body:has(.m-trip-shell) .announcement-bar {
 }
 
 .m-message--user .m-message__bubble {
-  background: var(--mg-color-text);
+  background: #1a1a1a;
   color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 18px 18px 4px 18px;
   padding: 12px 18px;
   max-width: 80%;
@@ -1066,8 +1187,9 @@ body:has(.m-trip-shell) .announcement-bar {
 }
 
 .m-message--agent .m-message__bubble {
-  background: var(--mg-color-surface);
-  color: var(--mg-color-text);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 18px 18px 18px 4px;
   padding: 12px 18px;
   max-width: 90%;
@@ -1084,8 +1206,9 @@ body:has(.m-trip-shell) .announcement-bar {
 }
 
 .m-btn--action {
-  background: #fff;
-  border: 1px solid var(--mg-color-border);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.9);
   border-radius: 100px;
   padding: 8px 16px;
   font-size: 0.9rem;
@@ -1094,12 +1217,12 @@ body:has(.m-trip-shell) .announcement-bar {
 }
 
 .m-btn--action:hover {
-  background: var(--mg-color-surface);
-  border-color: var(--mg-color-accent);
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 .m-message--loading .m-message__bubble {
-  background: var(--mg-color-surface);
+  background: rgba(255, 255, 255, 0.06);
   padding: 16px 24px;
   border-radius: 18px;
 }
@@ -1112,7 +1235,7 @@ body:has(.m-trip-shell) .announcement-bar {
 .m-loading-dots span {
   width: 8px;
   height: 8px;
-  background: var(--mg-color-text-secondary);
+  background: rgba(255, 255, 255, 0.5);
   border-radius: 50%;
   animation: bounce 1.4s infinite ease-in-out both;
 }
@@ -1123,6 +1246,28 @@ body:has(.m-trip-shell) .announcement-bar {
 @keyframes bounce {
   0%, 80%, 100% { transform: scale(0); }
   40% { transform: scale(1); }
+}
+
+/* Error message with retry */
+.m-message--error .m-message__bubble {
+  background: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.m-btn--retry {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  border-radius: 100px;
+  padding: 8px 18px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: background 0.2s;
+}
+.m-btn--retry:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 /* ─── Entity Cards ────────────────────────────────────────────────── */
@@ -1498,8 +1643,9 @@ body:has(.m-trip-shell) .announcement-bar {
   left: 0;
   right: 0;
   height: 56px;
-  background: #fff;
-  border-top: 1px solid var(--mg-color-border);
+  background: rgba(10, 10, 10, 0.95);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.9);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1536,8 +1682,9 @@ body:has(.m-trip-shell) .announcement-bar {
   width: 100%;
   max-width: 420px;
   height: 100vh;
-  background: #fff;
-  border-left: 1px solid var(--mg-color-border);
+  background: #141414;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.9);
   transform: translateX(100%);
   transition: transform 0.3s ease;
   z-index: 110;

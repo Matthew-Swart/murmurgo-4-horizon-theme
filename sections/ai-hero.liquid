@@ -1,20 +1,73 @@
 {% comment %}
   ai-hero.liquid
-  Light-mode, full-viewport landing for Murmurgo AI itinerary builder.
-  Inspired by Plekify travel-brief aesthetic - minimal, clean, light.
+  Dark cinematic, full-viewport landing for Murmurgo AI itinerary builder.
+  Inspired by Plekify travel-brief aesthetic - video hero, glassmorphism, white on dark.
   All interaction handled by murmurgo-ai.js.
 {% endcomment %}
 
+<script>
+  (function() {
+    /* 1. Immediately hide Shopify header to prevent flash */
+    var hider = document.createElement('style');
+    hider.textContent = '#header-group,.shopify-section-group-header-group,#shopify-section-header,#shopify-section-announcement-bar,[data-section-id*="header"],[data-section-id*="announcement"]{display:none!important}';
+    document.head.appendChild(hider);
+
+    /* 2. Force API base to direct backend (bypasses stale CDN JS) */
+    window.MURMURGO_CONFIG = window.MURMURGO_CONFIG || {};
+    window.MURMURGO_CONFIG.apiBase = 'https://app.murmurgo.com/apps/murmurgo/api';
+
+    /* 3. Inject critical dark cinematic styles (bypasses stale CDN CSS) */
+    var s = document.createElement('style');
+    s.textContent = [
+      /* Hero full-viewport dark */
+      '.m-ai-hero{position:fixed!important;top:0!important;left:0!important;right:0!important;bottom:0!important;width:100vw!important;height:100vh!important;min-height:100vh!important;z-index:9999!important;overflow:hidden!important;background:#000!important;color:#fff!important;display:flex!important;flex-direction:column!important;justify-content:center!important;align-items:center!important}',
+      '.m-ai-hero.is-submitted{position:relative!important;height:auto!important;min-height:0!important;overflow:visible!important;padding-bottom:0!important}',
+      /* Content typography */
+      '.m-ai-hero__headline{color:#fff!important;text-shadow:0 2px 20px rgba(0,0,0,0.3)!important}',
+      '.m-ai-hero__subtitle{color:rgba(255,255,255,0.85)!important}',
+      /* Glassmorphism input */
+      '.m-ai-hero__input-wrap{background:rgba(255,255,255,0.95)!important;backdrop-filter:blur(20px)!important;border-radius:16px!important;box-shadow:0 8px 32px rgba(0,0,0,0.15)!important}',
+      '.m-ai-hero__input{color:#1a1a1a!important}',
+      /* Frosted chips */
+      '.m-ai-hero__chip{background:rgba(255,255,255,0.2)!important;backdrop-filter:blur(10px)!important;color:#fff!important;border:1px solid rgba(255,255,255,0.3)!important}',
+      '.m-ai-hero__chip:hover{background:rgba(255,255,255,0.35)!important}',
+      /* Submitted state dim */
+      '.m-ai-hero.is-submitted .m-ai-hero__media,.m-ai-hero.is-submitted .m-ai-hero__overlay{opacity:0.25!important}',
+      /* Dark sticky bar */
+      '.m-ai-hero__sticky{background:rgba(10,10,10,0.92)!important;border-bottom:1px solid rgba(255,255,255,0.08)!important}',
+      '.m-ai-hero__sticky-input{background:rgba(255,255,255,0.06)!important;color:#fff!important;border-color:rgba(255,255,255,0.12)!important}',
+      '.m-ai-hero__sticky-input::placeholder{color:rgba(255,255,255,0.4)!important}',
+      '.m-ai-hero__sticky-send{background:rgba(255,255,255,0.15)!important;color:#fff!important}',
+      /* Dark conversation */
+      'body{background:#0a0a0a!important}',
+      '.m-ai-conversation.is-active{background:rgba(20,20,20,0.85)!important;border:1px solid rgba(255,255,255,0.06)!important;box-shadow:0 8px 32px rgba(0,0,0,0.4)!important;max-width:960px!important;margin:2rem auto!important;padding:2rem!important;border-radius:24px!important}',
+      /* Messages dark */
+      '.m-message--user .m-message__bubble{background:#1a1a1a!important;color:#fff!important;border:1px solid rgba(255,255,255,0.08)!important}',
+      '.m-message--agent .m-message__bubble{background:rgba(255,255,255,0.08)!important;color:rgba(255,255,255,0.92)!important;border:1px solid rgba(255,255,255,0.06)!important}',
+      '.m-message--error .m-message__bubble{background:rgba(239,68,68,0.12)!important;color:#fca5a5!important;border:1px solid rgba(239,68,68,0.25)!important}',
+      /* Buttons dark */
+      '.m-btn--action{background:rgba(255,255,255,0.1)!important;color:rgba(255,255,255,0.9)!important;border:1px solid rgba(255,255,255,0.15)!important}',
+      '.m-btn--retry{background:rgba(255,255,255,0.1)!important;color:#fff!important;border:1px solid rgba(255,255,255,0.2)!important}',
+      /* Loading dots */
+      '.m-loading-dots span{background:rgba(255,255,255,0.5)!important}'
+    ].join('');
+    document.head.appendChild(s);
+  })();
+</script>
+
 {% assign hero_image = section.settings.hero_image %}
 {% assign hero_video = section.settings.hero_video %}
+{% assign has_video = false %}
+{% assign hero_video_url = nil %}
 {% if hero_video != blank %}
+  {% assign has_video = true %}
   {% capture video_fallback_attrs %}style="display:none;" data-hero-fallback{% endcapture %}
 {% endif %}
 
 <section class="m-ai-hero" data-ai-hero data-section-id="{{ section.id }}">
   {% comment %} Background media (video or solid color) {% endcomment %}
   <div class="m-ai-hero__media">
-    {% if hero_video != blank %}
+    {% if has_video %}
       <video
         class="m-ai-hero__video"
         data-hero-video
@@ -22,9 +75,15 @@
         muted
         loop
         playsinline
-        {% if hero_image != blank %}poster="{{ hero_image | image_url: width: 1200 }}"{% endif %}
+        {% if hero_video.preview_image %}
+          poster="{{ hero_video.preview_image | image_url: width: 1200 }}"
+        {% elsif hero_image != blank %}
+          poster="{{ hero_image | image_url: width: 1200 }}"
+        {% endif %}
       >
-        <source src="{{ hero_video }}" type="video/mp4">
+        {% for source in hero_video.sources %}
+          <source src="{{ source.url }}" type="{{ source.mime_type }}">
+        {% endfor %}
       </video>
     {% endif %}
 
@@ -42,9 +101,29 @@
       >
     {% endif %}
 
-    {% comment %} Subtle gradient overlay for text legibility {% endcomment %}
+    {% comment %} Dark gradient overlay for cinematic legibility {% endcomment %}
     <div class="m-ai-hero__overlay"></div>
   </div>
+
+  {% comment %} Video Toggle Button {% endcomment %}
+  {%- if has_video and section.settings.show_video_toggle -%}
+  <button
+    type="button"
+    class="m-ai-hero__video-toggle"
+    data-ai-video-toggle
+    data-video-paused="false"
+    aria-label="Toggle video playback"
+  >
+    <svg class="toggle-icon-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="6" y="4" width="4" height="16" rx="1"/>
+      <rect x="14" y="4" width="4" height="16" rx="1"/>
+    </svg>
+    <svg class="toggle-icon-play" viewBox="0 0 24 24" fill="currentColor" style="display: none;">
+      <polygon points="5,3 19,12 5,21"/>
+    </svg>
+    <span class="toggle-label">Pause video</span>
+  </button>
+  {%- endif -%}
 
   {% comment %} Content {% endcomment %}
   <div class="m-ai-hero__content">
@@ -119,9 +198,9 @@
         type="text"
         class="m-ai-hero__sticky-input"
         data-ai-sticky-input
-        placeholder="{{ section.settings.input_placeholder | default: 'I want to be in the bush by Thursday...' }}"
+        placeholder="Add more details or ask a follow-up question..."
         autocomplete="off"
-        aria-label="Describe your trip"
+        aria-label="Follow-up message"
       >
       <button class="m-ai-hero__sticky-mic" data-ai-sticky-mic aria-label="Voice input">
         <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
@@ -152,10 +231,10 @@
       "info": "Fallback when video fails or on mobile data saver."
     },
     {
-      "type": "text",
+      "type": "video",
       "id": "hero_video",
-      "label": "Hero background video URL",
-      "info": "Direct URL to an MP4 video. Leave blank for image-only."
+      "label": "Hero background video",
+      "info": "Upload a video for the landing page background. Serves via Shopify CDN. Recommended: 1920x1080, MP4, under 10MB."
     },
     {
       "type": "text",
@@ -187,6 +266,13 @@
       "label": "Quick start prompts",
       "default": "7 nights, Cape Town + bush, Honeymoon, no crowds, Family safari, kids under 10, Long weekend from Joburg, Winelands by bicycle, Best light for photography, Beach after safari, Under R5000 per night, Small lodge, Big Five, Road trip Garden Route",
       "info": "Comma-separated list of sample prompts. Each becomes a clickable chip."
+    },
+    {
+      "type": "checkbox",
+      "id": "show_video_toggle",
+      "label": "Show video pause/play toggle",
+      "default": true,
+      "info": "Allows visitors to pause the video if they find it distracting"
     },
     {
       "type": "checkbox",

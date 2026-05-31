@@ -2,7 +2,9 @@
   "sections": {
     "ai_hero": {
       "type": "ai-hero",
-      "settings": {}
+      "settings": {
+        "_cache_bust": "2"
+      }
     },
     "ai_conversation": {
       "type": "ai-conversation",

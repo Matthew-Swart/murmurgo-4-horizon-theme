@@ -9,7 +9,7 @@
   'use strict';
 
   const config = window.MURMURGO_CONFIG || {};
-  const API_BASE = config.apiBase || '/apps/murmurgo/api';
+  const API_BASE = 'https://app.murmurgo.com/apps/murmurgo/api';
   const SHARED = window.Murmurgo || {};
 
   // ─── State ─────────────────────────────────────────────────────────
@@ -58,7 +58,7 @@
   // ─── DOM Refs ──────────────────────────────────────────────────────
 
   let root, hero, video, input, micBtn, sendBtn, chipsContainer, stickyBar,
-      stickyInput, stickyMic, stickySend, previewPane, previewBody, previewClose,
+      stickyInput, stickyMic, stickySend, videoToggle, previewPane, previewBody, previewClose,
       shortlistBar, shortlistDrawer, shortlistList, shortlistClose,
       dayAssignmentView, assignmentMain, assignmentSidebar, assignmentShortlist,
       tripMapPanel, saveModal, undoToast, confirmDialog, activitySearchModal,
@@ -76,6 +76,7 @@
     stickyInput = document.querySelector('[data-ai-sticky-input]');
     stickyMic = document.querySelector('[data-ai-sticky-mic]');
     stickySend = document.querySelector('[data-ai-sticky-send]');
+    videoToggle = document.querySelector('[data-ai-video-toggle]');
     previewPane = document.getElementById('murmurgo-preview-pane');
     previewBody = document.querySelector('[data-preview-body]');
     previewClose = document.querySelector('[data-preview-close]');
@@ -178,6 +179,8 @@
       state.messages.push({
         type: 'text',
         text: 'Connection issue. Please try again in a moment.',
+        isError: true,
+        actions: [{ label: 'Retry', value: 'retry' }],
       });
     }
 
@@ -344,12 +347,15 @@
 
   function renderTextMessage(msg) {
     let actions = '';
+    const errorClass = msg.isError ? ' m-message--error' : '';
     if (msg.actions && msg.actions.length) {
+      const btnClass = msg.isError ? 'm-btn--retry' : 'm-btn--action';
+      const dataAttr = msg.isError ? 'data-retry' : 'data-action';
       actions = `<div class="m-message__actions">
-        ${msg.actions.map(a => `<button class="m-btn--action" data-action="${escapeHtml(a.value)}">${escapeHtml(a.label)}</button>`).join('')}
+        ${msg.actions.map(a => `<button class="${btnClass}" ${dataAttr}="${escapeHtml(a.value)}">${escapeHtml(a.label)}</button>`).join('')}
       </div>`;
     }
-    return `<div class="m-message m-message--agent">
+    return `<div class="m-message m-message--agent${errorClass}">
       <div class="m-message__bubble">${escapeHtml(msg.text)}</div>
       ${actions}
     </div>`;
@@ -1907,7 +1913,7 @@
 
     if (video) {
       video.style.transition = 'opacity 400ms ease';
-      video.style.opacity = '0';
+      video.style.opacity = '0.25';
     }
 
     if (chipsContainer) {
@@ -1959,29 +1965,41 @@
       return;
     }
 
+    const retryTarget = e.target.closest('[data-retry]');
+    if (retryTarget) {
+      e.preventDefault();
+      // Find last user message and resend it
+      const lastUserMsg = [...state.messages].reverse().find(m => m.type === 'user');
+      if (lastUserMsg && lastUserMsg.text) {
+        // Remove the error message
+        state.messages = state.messages.filter(m => !m.isError);
+        sendMessage(lastUserMsg.text);
+      }
+      return;
+    }
+
     const chipTarget = e.target.closest('[data-chip]');
     if (chipTarget) {
       e.preventDefault();
       const text = chipTarget.dataset.chip;
       if (!text) return;
 
-      // Visual feedback
-      chipTarget.classList.add('is-running');
-      chipTarget.textContent = 'Planning...';
-
-      // Small delay so user sees the feedback
-      setTimeout(() => {
-        if (!state.hasSubmitted) {
-          if (input) input.value = text;
-        } else {
-          if (stickyInput) stickyInput.value = text;
+      // Fill the input and let user edit before submitting
+      if (!state.hasSubmitted) {
+        if (input) {
+          input.value = text;
+          input.focus();
         }
-        submitInput(text);
+      } else {
+        if (stickyInput) {
+          stickyInput.value = text;
+          stickyInput.focus();
+        }
+      }
 
-        // Reset chip after submit
-        chipTarget.classList.remove('is-running');
-        chipTarget.textContent = text;
-      }, 300);
+      // Brief visual feedback
+      chipTarget.classList.add('is-active');
+      setTimeout(() => chipTarget.classList.remove('is-active'), 200);
       return;
     }
 
@@ -2229,6 +2247,38 @@
   // ─── Init ──────────────────────────────────────────────────────────
 
   function init() {
+    // Inject header-hiding + full-viewport styles if not already present
+    if (!document.getElementById('murmurgo-ai-styles')) {
+      const style = document.createElement('style');
+      style.id = 'murmurgo-ai-styles';
+      style.textContent = `
+        #header-group,
+        .shopify-section-group-header-group,
+        #shopify-section-header,
+        #shopify-section-announcement-bar {
+          display: none !important;
+        }
+        .m-ai-hero {
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          right: 0 !important;
+          bottom: 0 !important;
+          width: 100vw !important;
+          height: 100vh !important;
+          min-height: 100vh !important;
+          z-index: 9999 !important;
+          overflow: hidden !important;
+        }
+        .m-ai-hero.is-submitted {
+          position: relative !important;
+          height: auto !important;
+          min-height: 100vh !important;
+          overflow: visible !important;
+        }
+      `;
+      document.head.appendChild(style);
+    }
     cacheDOM();
     loadFromStorage();
 
@@ -2255,6 +2305,30 @@
     if (stickySend) stickySend.addEventListener('click', () => {
       if (stickyInput) submitInput(stickyInput.value);
     });
+
+    // Video toggle
+    if (videoToggle && video) {
+      const pauseIcon = videoToggle.querySelector('.toggle-icon-pause');
+      const playIcon = videoToggle.querySelector('.toggle-icon-play');
+      const label = videoToggle.querySelector('.toggle-label');
+
+      videoToggle.addEventListener('click', function() {
+        const isPaused = video.paused;
+        if (isPaused) {
+          video.play();
+          videoToggle.setAttribute('data-video-paused', 'false');
+          if (pauseIcon) pauseIcon.style.display = '';
+          if (playIcon) playIcon.style.display = 'none';
+          if (label) label.textContent = 'Pause video';
+        } else {
+          video.pause();
+          videoToggle.setAttribute('data-video-paused', 'true');
+          if (pauseIcon) pauseIcon.style.display = 'none';
+          if (playIcon) playIcon.style.display = '';
+          if (label) label.textContent = 'Play video';
+        }
+      });
+    }
 
     // Hide day assignment view initially
     if (dayAssignmentView) dayAssignmentView.style.display = 'none';

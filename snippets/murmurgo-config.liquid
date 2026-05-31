@@ -6,15 +6,15 @@
 
 <script>
   window.MURMURGO_CONFIG = {
-    apiBase: '{{ shop.metafields.murmurgo.api_base | default: "/apps/murmurgo/api" }}',
+    apiBase: '{{ shop.metafields.murmurgo.api_base | default: "https://app.murmurgo.com/apps/murmurgo/api" }}',
     mapboxToken: '{{ settings.mapbox_token | default: "" }}',
     maplibreStyle: '{{ settings.maplibre_style | default: "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json" }}',
     cdnBase: 'https://media.murmurgo.com',
     shopDomain: '{{ shop.domain }}',
     aiEnabled: true,
-    conversationApi: '{{ shop.metafields.murmurgo.api_base | default: "/apps/murmurgo/api" }}/conversation',
-    itineraryApi: '{{ shop.metafields.murmurgo.api_base | default: "/apps/murmurgo/api" }}/itinerary',
-    itinerariesApi: '{{ shop.metafields.murmurgo.api_base | default: "/apps/murmurgo/api" }}/itineraries',
+    conversationApi: '{{ shop.metafields.murmurgo.api_base | default: "https://app.murmurgo.com/apps/murmurgo/api" }}/conversation',
+    itineraryApi: '{{ shop.metafields.murmurgo.api_base | default: "https://app.murmurgo.com/apps/murmurgo/api" }}/itinerary',
+    itinerariesApi: '{{ shop.metafields.murmurgo.api_base | default: "https://app.murmurgo.com/apps/murmurgo/api" }}/itineraries',
     placeId: '{{ metaobject.system.id | default: null }}',
     entityType: '{{ metaobject.type | default: null }}',
     entityHandle: '{{ metaobject.system.handle | default: null }}',
@@ -37,5 +37,5 @@
   };
 </script>
 
-<link rel="stylesheet" href="{{ 'murmurgo-styles.css' | asset_url }}" media="print" onload="this.media='all'">
-<noscript><link rel="stylesheet" href="{{ 'murmurgo-styles.css' | asset_url }}"></noscript>
+<link rel="stylesheet" href="{{ 'murmurgo-styles.css' | asset_url | append: '?cb=4' }}" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="{{ 'murmurgo-styles.css' | asset_url | append: '?cb=4' }}"></noscript>
