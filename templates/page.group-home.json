@@ -1,0 +1,35 @@
+{
+  "sections": {
+    "hero": {
+      "type": "microsite-hero",
+      "settings": {}
+    },
+    "travel_search": {
+      "type": "travel-search-frame",
+      "blocks": {
+        "plekify_travel_search": {
+          "type": "shopify://apps/plekify/blocks/travel-search/0199bf66-2f2c-7865-8785-699a8882521a",
+          "settings": {}
+        }
+      },
+      "block_order": [
+        "plekify_travel_search"
+      ],
+      "settings": {
+        "eyebrow": "",
+        "heading": "",
+        "body": "",
+        "flush_top": true
+      }
+    },
+    "properties": {
+      "type": "microsite-properties",
+      "settings": {}
+    }
+  },
+  "order": [
+    "hero",
+    "travel_search",
+    "properties"
+  ]
+}
